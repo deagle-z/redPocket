@@ -1,0 +1,133 @@
+runScheduler: true
+passGoogleAuth: false
+loginConfig:
+  singleLogin: true
+defaultHost:
+  hostName: test.demo.com
+  tablePrefix: pk_w2a
+  hostMark: 主域名
+  accessSecret: XvsJz8me9j7bit1k
+  salt: g2rvSRDktr2eOQSo
+  priKey: |
+    -----BEGIN RSA Private Key-----
+    MIIEowIBAAKCAQEArf1XPQ5gOa5VtRgdEnICG7gzZsCbFu3g13Uct4xrXV5a4tNB
+    xVz8taNpOQ8QmjtaIsAR4DSuNOq6UJWE7ZuPFbfFzbMeI+4S8UwrBciJGcXlZgxN
+    SSAOPbloqXoWFomfWlLAfoDj9MoZSlNf68CUcGyzQErLmYrPYlX5vLupSAEY157N
+    lLyPEFngEIKLCRz/YpSnxwksAT/WmDw+fQKhP7xvTFuknS9aKFeV6Iy+IrY1pdQy
+    svHO4IgGKGpuMK+1fElsyt6F2Dw41vk+qIm+I9CaZUFJbxJl1mNYGESosCqfvjj2
+    OyRKoxxQtElwN7A6IOxpoKzQuomiYpNTsnoGBQIDAQABAoIBAQCrSMqHWw2z+0J5
+    A4IrVH1q2I4Ry+9iRVCiC7L3p49S3b7PqnYHXCGUl4jRGVmY3HFB4KA4fuQ5SBOf
+    nXK9j/Tuxno+pOU5LfkL/5YjHWaLLt1E9ztmj941OcAliAESsu1juC+02iKQLB11
+    pFq79lyryPc2heul/pdnEYjIGl7ueDZy6O9276XsptoW15uobjgkgICcutD1tfuy
+    bzUoSqEZCkLpfdlMHA7P5Hao26YIpPqe3/SA1lRNf4vHK1YW7EFjwqd4WpxgXr6n
+    hm4p/9RsH+vqh12FuVzZBo3yx4q/BmJWwHUmrt50WXq50qesvjd9MZq2avAosuTp
+    PD4iXa1JAoGBANU17iyHcRqgw8E+7ROBQYFH8aKfAFTO+v9lxezTO71gbXn32dy7
+    zW1PrFgDDlncSHaGqeD8aMlFo37nqWYVFv+Fd0HKnW9Q+ADCNQqW4xiJ4AOBonvz
+    y6HAEMVAC73UOEv6l8VO6C92V4jCcvnREokztg7lWARFWJNyr7bKDPqbAoGBANDo
+    XEU4PySd4W+TBPp2eoHc3LmB+xbSwhfdMlnKmaB9sWzwYuI6MbxLpzVOAa97MpKM
+    DsK/OsNDQCpgtwMBCsU3dSfm7EaJML+hhNRequomk36myZ2uGf12FfrqvQ7MSvLO
+    8WHn4MLMHHufB8sR6PYCg/l8m7nt3+ihbnez3jvfAoGANkV2DOulBKwraANGgZKD
+    RA82GLj0cqIFDgGv8eqK6FelRkiqsh8z2UFQk06j1ofWAiWhFF3rpmANj/4UBqIT
+    qpMkmiCjFnS7zCWjLsDdqZ9e4EWdQIP8L34eRrdYxcdBVUXCYD0HqR0shulILwLi
+    /v2kuAH095FXTKECzTp9N0UCgYBsPGdKCclVTGN3rmF+7xGr5OWLS5fvDEU5ngYv
+    VXPhHh5mBeoFsgcAuuWoDYF8DMV3/g7Lwc5NSrOdATzw1oJhCcmuYct7BCt4rdOn
+    QGEnLdNvZDTDeGfI1Xyv4x0O5LPUN3oCsuPVqXD8b7nW8bGUfFsqUPBSFbfTzIfy
+    hwOWWwKBgEjrnL19vuM7gysNNkn0vnppywHz6Yu+g39vRqps6n8X5y4ChImLpta3
+    urVdqIKaQ/6KlSzOc0ow8C+Q1IoHM2aDqazH4ljC0MCH33zSkrkKNDkYAn14sVqL
+    HvB75hNJPvyTD7qXBdeaEZ9QQowzXgK8Q2hkRzq+YeiI71CEtB7O
+    -----END RSA Private Key-----
+  accessExpire: 86400
+defaultUser:
+  username: admin
+  nickName: admin
+  headPhoto: https://avatars.githubusercontent.com/u/52823142
+  password: 123456
+  enabled: true
+  userType: 1
+  parentId: -1
+  roles:
+    - admin
+defaultRoles:
+  - code: admin
+    name: 超级管理员
+    description: 超级管理员权限
+    menuNames:
+      - SysSetting
+      - SystemUser
+      - SystemRole
+      - SystemMenu
+defaultMenus:
+  - menuType: 0
+    path: /system
+    name: SysSetting
+    meta:
+      title: menus.pureSysManagement
+      icon: ri:settings-3-line
+      showLink: true
+      rank: 1
+      transition:
+        enterTransition: "animate__fadeIn animate__faster"
+        leaveTransition: "animate__fadeOut animate__faster"
+  - menuType: 0
+    path: /system/user/index
+    name: SystemUser
+    meta:
+      title: menus.pureUser
+      icon: ri:admin-line
+      rank: 2
+      keepAlive: true
+      showLink: true
+      showParent: true
+      transition:
+        enterTransition: "animate__fadeIn animate__faster"
+        leaveTransition: "animate__fadeOut animate__faster"
+    parentName: SysSetting
+  - menuType: 0
+    path: /system/role/index
+    name: SystemRole
+    meta:
+      title: menus.pureRole
+      icon: ri:admin-fill
+      rank: 3
+      keepAlive: true
+      showLink: true
+      showParent: true
+      transition:
+        enterTransition: "animate__fadeIn animate__faster"
+        leaveTransition: "animate__fadeOut animate__faster"
+    parentName: SysSetting
+  - menuType: 0
+    path: /system/menu/index
+    name: SystemMenu
+    meta:
+      title: menus.pureSystemMenu
+      icon: ep:menu
+      rank: 4
+      keepAlive: true
+      showLink: true
+      showParent: true
+      transition:
+        enterTransition: "animate__fadeIn animate__faster"
+        leaveTransition: "animate__fadeOut animate__faster"
+    parentName: SysSetting
+  - menuType: 0
+    path: /system/host_info/index
+    name: SystemHostInfo
+    meta:
+      title: menus.pureHostInfo
+      icon: ri:planet-line
+      rank: 5
+      keepAlive: true
+      showLink: true
+      showParent: true
+      transition:
+        enterTransition: "animate__fadeIn animate__faster"
+        leaveTransition: "animate__fadeOut animate__faster"
+    parentName: SysSetting
+
+
+
+
+
+
+

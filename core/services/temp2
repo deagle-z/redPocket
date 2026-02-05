@@ -1,0 +1,554 @@
+//package services
+//
+//import (
+//	"BaseGoUni/core/pojo"
+//	"BaseGoUni/core/repository"
+//	"BaseGoUni/core/utils"
+//	"context"
+//	"encoding/json"
+//	"errors"
+//	"fmt"
+//	"gorm.io/gorm"
+//	"log"
+//	"math/rand/v2"
+//	"sort"
+//	"strconv"
+//	"sync/atomic"
+//	"time"
+//)
+//
+//// 全局计数器，用于确保每次调用都有不同的随机种子
+//var thunderGenCounter uint64
+//
+//// SendRedPacket 发送红包业务逻辑
+//func SendRedPacket(db *gorm.DB, senderID int64, senderName string, req pojo.LuckyMoneySend, tablePrefix string) (*pojo.LuckyMoney, error) {
+//	// 验证金额
+//	if req.Amount < 5 {
+//		return nil, errors.New("红包金额不能小于5U")
+//	}
+//
+//	// 验证雷号
+//	if req.Thunder < 1 || req.Thunder > 9 {
+//		return nil, errors.New("指令有误，雷数应是1~9之间")
+//	}
+//
+//	// 获取红包数量配置
+//	luckyNumConfig := GetLuckyNumConfig(tablePrefix, req.ChatID)
+//	if luckyNumConfig == "" {
+//		return nil, errors.New("配置错误：未找到红包数量配置")
+//	}
+//
+//	// 确定红包数量
+//	var luckyTotal int
+//	if req.Number != nil {
+//		// 验证用户指定的数量
+//		valid, msg := utils.ValidateLuckyCount(*req.Number, luckyNumConfig)
+//		if !valid {
+//			return nil, errors.New(msg)
+//		}
+//		luckyTotal = *req.Number
+//	} else {
+//		// 从配置项获取最小值
+//		luckyTotal = utils.GetLuckyNumMin(luckyNumConfig)
+//	}
+//
+//	// 检查余额
+//	user := utils.GetTempUser(tablePrefix, senderID)
+//	if user.ID == 0 {
+//		return nil, errors.New("用户不存在")
+//	}
+//	if !user.Enabled {
+//		return nil, errors.New("用户已禁用，请联系管理员处理")
+//	}
+//	if user.Amount < req.Amount {
+//		return nil, errors.New("您的余额已不足发包")
+//	}
+//
+//	// 生成红包金额数组
+//	minAmount := 0.01
+//	maxAmount := req.Amount / float64(luckyTotal) * 2
+//	redEnvelopes := utils.RedEnvelope(req.Amount, luckyTotal, minAmount, maxAmount)
+//
+//	// 序列化红包列表
+//	redListJSON, err := json.Marshal(redEnvelopes)
+//	if err != nil {
+//		return nil, fmt.Errorf("生成红包列表失败: %v", err)
+//	}
+//
+//	// 生成固定中雷算法：每100个红包中必有52个中雷
+//	thunderIndexes := generateThunderIndexes(luckyTotal)
+//
+//	// 获取中雷倍数
+//	loseRate := GetLoseRate(tablePrefix, req.ChatID)
+//
+//	// 创建红包记录
+//	luckyMoney := &pojo.LuckyMoney{
+//		SenderID:   senderID,
+//		SenderName: senderName,
+//		Amount:     req.Amount,
+//		Number:     luckyTotal,
+//		Thunder:    req.Thunder,
+//		ChatID:     req.ChatID,
+//		RedList:    string(redListJSON),
+//		LoseRate:   loseRate,
+//		Status:     1, // 进行中
+//		Lucky:      1, // 有效
+//		Received:   0,
+//	}
+//
+//	tx := db.Begin()
+//	defer func() {
+//		if r := recover(); r != nil {
+//			tx.Rollback()
+//		}
+//	}()
+//
+//	// 创建红包
+//	if err := repository.CreateLuckyMoney(tx, luckyMoney); err != nil {
+//		tx.Rollback()
+//		return nil, fmt.Errorf("创建红包失败: %v", err)
+//	}
+//
+//	// 扣除发送者余额
+//	if err := tx.Model(&pojo.SysUser{}).
+//		Where("id = ?", senderID).
+//		Update("amount", gorm.Expr("amount - ?", req.Amount)).Error; err != nil {
+//		tx.Rollback()
+//		return nil, fmt.Errorf("扣除余额失败: %v", err)
+//	}
+//
+//	// 记录余额变动
+//	cashHistory := pojo.CashHistory{
+//		UserId:      senderID,
+//		AwardUni:    fmt.Sprintf("lucky_%d", luckyMoney.ID),
+//		Amount:      -req.Amount,
+//		StartAmount: user.Amount,
+//		EndAmount:   user.Amount - req.Amount,
+//		CashMark:    "发送红包",
+//		CashDesc:    fmt.Sprintf("发送红包 %dU，雷号%d", int(req.Amount), req.Thunder),
+//		FromUserId:  senderID,
+//	}
+//	if err := tx.Create(&cashHistory).Error; err != nil {
+//		tx.Rollback()
+//		return nil, fmt.Errorf("记录余额变动失败: %v", err)
+//	}
+//
+//	if err := tx.Commit().Error; err != nil {
+//		return nil, fmt.Errorf("提交事务失败: %v", err)
+//	}
+//
+//	// 将中雷索引存储到 Redis，key: bgu_lucky_thunder_{luckyID}
+//	thunderKey := fmt.Sprintf("bgu_lucky_thunder_%d", luckyMoney.ID)
+//	thunderIndexesJSON, err := json.Marshal(thunderIndexes)
+//	if err != nil {
+//		log.Printf("序列化中雷索引失败: %v", err)
+//	} else {
+//		// 存储到 Redis，设置过期时间为7天
+//		ctx := context.Background()
+//		err = utils.RD.Set(ctx, thunderKey, string(thunderIndexesJSON), 7*24*time.Hour).Err()
+//		if err != nil {
+//			log.Printf("存储中雷索引到Redis失败: %v", err)
+//		}
+//	}
+//
+//	// 更新用户缓存
+//	utils.UpdateTempUser(tablePrefix, user)
+//
+//	return luckyMoney, nil
+//}
+//
+//// GrabRedPacket 抢红包业务逻辑
+//func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string) (map[string]interface{}, error) {
+//	// 获取红包信息
+//	luckyMoney, err := repository.GetLuckyMoney(db, luckyID)
+//	if err != nil {
+//		return nil, errors.New("数据有误！红包不存在")
+//	}
+//
+//	// 检查红包状态
+//	if luckyMoney.Status != 1 {
+//		return nil, errors.New("该红包已结束")
+//	}
+//
+//	// 获取用户信息
+//	user := utils.GetTempUser(tablePrefix, userID)
+//	if user.ID == 0 {
+//		return nil, errors.New("用户未注册，请先注册")
+//	}
+//	if !user.Enabled {
+//		return nil, errors.New("用户已禁用，请联系管理员处理")
+//	}
+//
+//	// 检查余额（需满足 lose_rate 倍数）
+//	lowestAmount := luckyMoney.Amount * luckyMoney.LoseRate
+//	if user.Amount < lowestAmount {
+//		return nil, fmt.Errorf("你至少需要有%.2fU才能抢这个红包~", lowestAmount)
+//	}
+//
+//	// 检查是否已领取
+//	grabbed, err := repository.CheckUserGrabbed(db, luckyID, userID)
+//	if err != nil {
+//		return nil, fmt.Errorf("检查领取状态失败: %v", err)
+//	}
+//	if grabbed {
+//		return nil, errors.New("您已领取该红包，无法再领取")
+//	}
+//
+//	// 获取已领取数量
+//	grabbedCount, err := repository.GetLuckyHistoryCount(db, luckyID)
+//	if err != nil {
+//		return nil, fmt.Errorf("获取领取数量失败: %v", err)
+//	}
+//
+//	if int(grabbedCount) >= luckyMoney.Number {
+//		return nil, errors.New("该红包已全部被领取")
+//	}
+//
+//	// 获取红包金额列表
+//	redList, err := repository.GetLuckyMoneyRedList(db, luckyID)
+//	if err != nil {
+//		return nil, fmt.Errorf("获取红包列表失败: %v", err)
+//	}
+//
+//	if len(redList) <= int(grabbedCount) {
+//		return nil, errors.New("红包数据异常")
+//	}
+//
+//	// 获取下一个红包金额
+//	redAmount := redList[grabbedCount]
+//
+//	// 从 Redis 读取中雷索引，判断是否中雷
+//	isThunder := 0
+//	loseMoney := 0.0
+//	thunderKey := fmt.Sprintf("bgu_lucky_thunder_%d", luckyID)
+//	ctx := context.Background()
+//	thunderIndexesJSON, err := utils.RD.Get(ctx, thunderKey).Result()
+//
+//	if err != nil {
+//		// Redis 中没有数据，降级使用原来的判断方式（根据金额最后一位）
+//		log.Printf("从Redis读取中雷索引失败，使用降级方案: %v", err)
+//		amountStr := fmt.Sprintf("%.2f", redAmount)
+//		lastDigit := amountStr[len(amountStr)-1]
+//		thunderStr := strconv.Itoa(luckyMoney.Thunder)
+//		if string(lastDigit) == thunderStr {
+//			isThunder = 1
+//			loseMoney = luckyMoney.Amount * luckyMoney.LoseRate
+//		}
+//	} else {
+//		// 解析中雷索引数组
+//		var thunderIndexes []int
+//		if err := json.Unmarshal([]byte(thunderIndexesJSON), &thunderIndexes); err != nil {
+//			log.Printf("解析中雷索引失败，使用降级方案: %v", err)
+//			// 降级处理
+//			amountStr := fmt.Sprintf("%.2f", redAmount)
+//			lastDigit := amountStr[len(amountStr)-1]
+//			thunderStr := strconv.Itoa(luckyMoney.Thunder)
+//			if string(lastDigit) == thunderStr {
+//				isThunder = 1
+//				loseMoney = luckyMoney.Amount * luckyMoney.LoseRate
+//			}
+//		} else {
+//			// 检查当前领取位置是否在中雷索引中
+//			currentIndex := int(grabbedCount)
+//			for _, idx := range thunderIndexes {
+//				if idx == currentIndex {
+//					isThunder = 1
+//					loseMoney = luckyMoney.Amount * luckyMoney.LoseRate
+//					break
+//				}
+//			}
+//		}
+//	}
+//
+//	tx := db.Begin()
+//	defer func() {
+//		if r := recover(); r != nil {
+//			tx.Rollback()
+//		}
+//	}()
+//
+//	if isThunder == 1 {
+//		// 中雷
+//
+//		// 扣除用户余额
+//		if err := tx.Model(&pojo.SysUser{}).
+//			Where("id = ?", userID).
+//			Update("amount", gorm.Expr("amount - ?", loseMoney)).Error; err != nil {
+//			tx.Rollback()
+//			return nil, fmt.Errorf("扣除余额失败: %v", err)
+//		}
+//
+//		// 增加发送者余额
+//		if err := tx.Model(&pojo.SysUser{}).
+//			Where("id = ?", luckyMoney.SenderID).
+//			Update("amount", gorm.Expr("amount + ?", loseMoney)).Error; err != nil {
+//			tx.Rollback()
+//			return nil, fmt.Errorf("增加余额失败: %v", err)
+//		}
+//
+//		// 记录余额变动（用户）
+//		cashHistoryUser := pojo.CashHistory{
+//			UserId:      userID,
+//			AwardUni:    fmt.Sprintf("lucky_grab_%d_%d", luckyID, userID),
+//			Amount:      -loseMoney,
+//			StartAmount: user.Amount,
+//			EndAmount:   user.Amount - loseMoney,
+//			CashMark:    "抢红包中雷",
+//			CashDesc:    fmt.Sprintf("抢红包中雷，损失%.2fU", loseMoney),
+//			FromUserId:  luckyMoney.SenderID,
+//		}
+//		if err := tx.Create(&cashHistoryUser).Error; err != nil {
+//			tx.Rollback()
+//			return nil, fmt.Errorf("记录余额变动失败: %v", err)
+//		}
+//
+//		// 记录余额变动（发送者）
+//		senderUser := utils.GetTempUser(tablePrefix, luckyMoney.SenderID)
+//		cashHistorySender := pojo.CashHistory{
+//			UserId:      luckyMoney.SenderID,
+//			AwardUni:    fmt.Sprintf("lucky_thunder_%d_%d", luckyID, userID),
+//			Amount:      loseMoney,
+//			StartAmount: senderUser.Amount,
+//			EndAmount:   senderUser.Amount + loseMoney,
+//			CashMark:    "红包中雷收益",
+//			CashDesc:    fmt.Sprintf("红包中雷收益，获得%.2fU", loseMoney),
+//			FromUserId:  userID,
+//		}
+//		if err := tx.Create(&cashHistorySender).Error; err != nil {
+//			tx.Rollback()
+//			return nil, fmt.Errorf("记录余额变动失败: %v", err)
+//		}
+//	} else {
+//		// 未中雷，增加用户余额
+//		if err := tx.Model(&pojo.SysUser{}).
+//			Where("id = ?", userID).
+//			Update("amount", gorm.Expr("amount + ?", redAmount)).Error; err != nil {
+//			tx.Rollback()
+//			return nil, fmt.Errorf("增加余额失败: %v", err)
+//		}
+//
+//		// 记录余额变动
+//		cashHistory := pojo.CashHistory{
+//			UserId:      userID,
+//			AwardUni:    fmt.Sprintf("lucky_grab_%d_%d", luckyID, userID),
+//			Amount:      redAmount,
+//			StartAmount: user.Amount,
+//			EndAmount:   user.Amount + redAmount,
+//			CashMark:    "抢红包",
+//			CashDesc:    fmt.Sprintf("抢红包，获得%.2fU", redAmount),
+//			FromUserId:  luckyMoney.SenderID,
+//		}
+//		if err := tx.Create(&cashHistory).Error; err != nil {
+//			tx.Rollback()
+//			return nil, fmt.Errorf("记录余额变动失败: %v", err)
+//		}
+//	}
+//
+//	// 创建领取记录
+//	history := &pojo.LuckyHistory{
+//		UserID:    userID,
+//		FirstName: utils.FormatName(user.Username, 8),
+//		LuckyID:   luckyID,
+//		IsThunder: isThunder,
+//		Amount:    redAmount,
+//		LoseMoney: loseMoney,
+//	}
+//	if err := repository.CreateLuckyHistory(tx, history); err != nil {
+//		tx.Rollback()
+//		return nil, fmt.Errorf("创建领取记录失败: %v", err)
+//	}
+//
+//	// 更新红包已领取金额
+//	newReceived := luckyMoney.Received + redAmount
+//	updates := map[string]interface{}{
+//		"received": newReceived,
+//	}
+//
+//	// 检查是否全部领取完成
+//	if int(grabbedCount+1) >= luckyMoney.Number {
+//		updates["status"] = 2 // 已完成
+//	}
+//
+//	if err := repository.UpdateLuckyMoney(tx, luckyID, updates); err != nil {
+//		tx.Rollback()
+//		return nil, fmt.Errorf("更新红包状态失败: %v", err)
+//	}
+//
+//	if err := tx.Commit().Error; err != nil {
+//		return nil, fmt.Errorf("提交事务失败: %v", err)
+//	}
+//
+//	// 更新用户缓存
+//	utils.UpdateTempUser(tablePrefix, user)
+//	if isThunder == 1 {
+//		senderUser := utils.GetTempUser(tablePrefix, luckyMoney.SenderID)
+//		utils.UpdateTempUser(tablePrefix, senderUser)
+//	}
+//
+//	// 返回结果
+//	result := map[string]interface{}{
+//		"amount":    redAmount,
+//		"isThunder": isThunder,
+//		"loseMoney": loseMoney,
+//		"openNum":   int(grabbedCount) + 1,
+//		"luckyInfo": luckyMoney,
+//		"message":   "",
+//	}
+//
+//	if isThunder == 1 {
+//		result["message"] = fmt.Sprintf("中雷，领取 %.2f U，损失 %.2f U", redAmount, loseMoney)
+//	} else {
+//		result["message"] = fmt.Sprintf("未中雷，领取 %.2f U", redAmount)
+//	}
+//
+//	return result, nil
+//}
+//
+//// CheckGrabBalance 检查抢包余额
+//func CheckGrabBalance(db *gorm.DB, luckyID int64, userID int64, tablePrefix string) error {
+//	luckyMoney, err := repository.GetLuckyMoney(db, luckyID)
+//	if err != nil {
+//		return errors.New("数据有误！红包不存在")
+//	}
+//
+//	user := utils.GetTempUser(tablePrefix, userID)
+//	if user.ID == 0 {
+//		return errors.New("用户未注册，请先注册!命令：/register")
+//	}
+//
+//	if !user.Enabled {
+//		return errors.New("用户已禁用，请联系管理员处理")
+//	}
+//
+//	loseRate := GetLoseRate(tablePrefix, luckyMoney.ChatID)
+//	lowestAmount := luckyMoney.Amount * loseRate
+//	if user.Amount < lowestAmount {
+//		return fmt.Errorf("你至少需要有%.2fU才能抢这个红包~", lowestAmount)
+//	}
+//
+//	return nil
+//}
+//
+//// GetRedPacketStatus 获取红包状态
+//func GetRedPacketStatus(db *gorm.DB, luckyID int64) (*pojo.LuckyMoney, int64, error) {
+//	luckyMoney, err := repository.GetLuckyMoney(db, luckyID)
+//	if err != nil {
+//		return nil, 0, err
+//	}
+//
+//	grabbedCount, err := repository.GetLuckyHistoryCount(db, luckyID)
+//	if err != nil {
+//		return nil, 0, err
+//	}
+//
+//	return &luckyMoney, grabbedCount, nil
+//}
+//
+//// GetRedPacketDetails 获取红包详情（包含领取记录）
+//func GetRedPacketDetails(db *gorm.DB, luckyID int64) (map[string]interface{}, error) {
+//	luckyMoney, err := repository.GetLuckyMoney(db, luckyID)
+//	if err != nil {
+//		return nil, err
+//	}
+//
+//	historyList, err := repository.GetLuckyHistoryByLuckyId(db, luckyID)
+//	if err != nil {
+//		return nil, err
+//	}
+//
+//	result := map[string]interface{}{
+//		"luckyMoney": luckyMoney,
+//		"history":    historyList,
+//	}
+//
+//	return result, nil
+//}
+//
+//// GetLoseRate 获取中雷倍数
+//func GetLoseRate(tablePrefix string, chatID int64) float64 {
+//	configKey := fmt.Sprintf("lose_rate_%d", chatID)
+//	defaultValue := 1.8
+//	defaultValueStr := "1.8"
+//	valueStr := utils.GetStringCache(tablePrefix, configKey, &defaultValueStr)
+//	if valueStr == nil {
+//		return defaultValue
+//	}
+//	value, err := strconv.ParseFloat(*valueStr, 64)
+//	if err != nil {
+//		return defaultValue
+//	}
+//	if value <= 0 {
+//		return defaultValue
+//	}
+//	return value
+//}
+//
+//// GetLuckyNumConfig 获取红包数量配置
+//func GetLuckyNumConfig(tablePrefix string, chatID int64) string {
+//	configKey := fmt.Sprintf("lucky_num_%d", chatID)
+//	defaultValue := "3"
+//	valueStr := utils.GetStringCache(tablePrefix, configKey, &defaultValue)
+//	if valueStr == nil {
+//		return defaultValue
+//	}
+//	return *valueStr
+//}
+//
+//// GetDefaultBalance 获取默认余额
+//func GetDefaultBalance(tablePrefix string, chatID int64) float64 {
+//	configKey := fmt.Sprintf("default_balance_%d", chatID)
+//	defaultValue := int64(1000) // 默认1000，单位是分*10，所以是1000 = 1.000
+//	value := utils.GetInt64Cache(tablePrefix, configKey, defaultValue)
+//	return float64(value) / 1000.0
+//}
+//
+//// generateThunderIndexes 生成固定中雷算法：每100个红包中必有52个中雷
+//// 返回中雷位置的索引数组（从0开始）
+//func generateThunderIndexes(totalCount int) []int {
+//	// 计算中雷数量：每100个中52个
+//	thunderCount := (totalCount / 100) * 52
+//	remainder := totalCount % 100
+//	if remainder > 0 {
+//		// 剩余部分按比例计算：remainder * 52 / 100
+//		thunderCount += (remainder * 52) / 100
+//	}
+//
+//	// 如果总数小于等于0，返回空数组
+//	if totalCount <= 0 {
+//		return []int{}
+//	}
+//
+//	// 生成所有位置的索引
+//	allIndexes := make([]int, totalCount)
+//	for i := 0; i < totalCount; i++ {
+//		allIndexes[i] = i
+//	}
+//
+//	// 随机打乱索引数组
+//	// 使用更好的随机种子：组合时间戳、全局计数器和数组长度
+//	now := time.Now()
+//	nanos := now.UnixNano()
+//	// 原子递增全局计数器，确保每次调用都有不同的值
+//	counter := atomic.AddUint64(&thunderGenCounter, 1)
+//	// 使用纳秒时间戳作为第一个种子
+//	seed1 := uint64(nanos)
+//	// 使用纳秒的高32位、低32位、数组长度、当前时间的秒数和全局计数器组合生成第二个种子
+//	// 这样可以确保即使快速连续调用也能产生不同的随机序列
+//	seed2 := uint64(nanos>>32) ^ uint64(nanos&0xFFFFFFFF) ^ uint64(totalCount) ^ uint64(now.Unix()) ^ counter
+//	r := rand.New(rand.NewPCG(seed1, seed2))
+//	r.Shuffle(len(allIndexes), func(i, j int) {
+//		allIndexes[i], allIndexes[j] = allIndexes[j], allIndexes[i]
+//	})
+//
+//	// 取前 thunderCount 个作为中雷位置
+//	if thunderCount > totalCount {
+//		thunderCount = totalCount
+//	}
+//	thunderIndexes := make([]int, thunderCount)
+//	copy(thunderIndexes, allIndexes[:thunderCount])
+//
+//	// 排序以便后续查找
+//	sort.Ints(thunderIndexes)
+//
+//	return thunderIndexes
+//}

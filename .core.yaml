@@ -1,0 +1,29 @@
+host: 0.0.0.0
+port: 8080
+
+mysql:
+  master: root:marking123@tcp(192.168.0.19:3306)/%s?charset=utf8mb4&parseTime=true
+  slave: root:marking123@tcp(192.168.0.19:3306)/%s?charset=utf8mb4&parseTime=true
+
+redis:
+  host: 192.168.0.19:6379
+  pass: "marking123"
+  db: 3
+
+rabbitMq:
+  host: 192.168.0.19
+  port: 5672
+  username: admin
+  password: marking123
+  exchange: sg_exchange
+  routing: sg_routing
+  queue: sg_queue
+
+aliOss:
+  baseDownloadFolder: game
+  downloadLink: https://download.incomeharbor.top
+  bucket: fd-all
+  language: CH
+  endpoint: oss-us-east-1.aliyuncs.com
+  accessKeyId: xxxxxxx
+  accessKeySecret: xxxxxxxxxx

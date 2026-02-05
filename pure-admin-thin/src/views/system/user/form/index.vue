@@ -1,0 +1,186 @@
+<script setup lang="ts">
+import { ref } from "vue";
+import ReCol from "@/components/ReCol";
+import { formRules } from "../utils/rule";
+import { FormProps } from "../utils/types";
+import { usePublicHooks } from "../../hooks";
+
+const props = withDefaults(defineProps<FormProps>(), {
+  formInline: () => ({
+    title: "新增",
+    username: "",
+    nickName: "",
+    password: "",
+    gender: 1,
+    userType: 1,
+    amount: 0,
+    enabled: true,
+    mark: "",
+    roles: [],
+    roleOptions: []
+  })
+});
+
+const userTypeOptions = [
+  {
+    value: 0,
+    label: "无效用户"
+  },
+  {
+    value: 1,
+    label: "管理员"
+  },
+  {
+    value: 2,
+    label: "后台管理"
+  },
+  {
+    value: 3,
+    label: "会员"
+  },
+  {
+    value: 4,
+    label: "对外管理员"
+  }
+];
+const sexOptions = [
+  {
+    value: 0,
+    label: "男"
+  },
+  {
+    value: 1,
+    label: "女"
+  }
+];
+const ruleFormRef = ref();
+const { switchStyle } = usePublicHooks();
+const newFormInline = ref(props.formInline);
+
+function getRef() {
+  return ruleFormRef.value;
+}
+
+defineExpose({ getRef });
+</script>
+
+<template>
+  <el-form
+    ref="ruleFormRef"
+    :model="newFormInline"
+    :rules="formRules"
+    label-width="82px"
+  >
+    <el-row :gutter="30">
+      <re-col :value="12" :xs="24" :sm="24">
+        <el-form-item label="用户昵称" prop="nickname">
+          <el-input
+            v-model="newFormInline.nickName"
+            clearable
+            placeholder="请输入用户昵称"
+          />
+        </el-form-item>
+      </re-col>
+      <re-col :value="12" :xs="24" :sm="24">
+        <el-form-item label="用户名称" prop="username">
+          <el-input
+            v-model="newFormInline.username"
+            placeholder="请输入用户名称"
+            :disabled="newFormInline.title !== '新增'"
+          />
+        </el-form-item>
+      </re-col>
+
+      <re-col
+        v-if="newFormInline.title === '新增'"
+        :value="12"
+        :xs="24"
+        :sm="24"
+      >
+        <el-form-item label="用户密码" prop="password">
+          <el-input
+            v-model="newFormInline.password"
+            clearable
+            placeholder="请输入用户密码"
+          />
+        </el-form-item>
+      </re-col>
+      <re-col :value="12" :xs="24" :sm="24">
+        <el-form-item label="用户性别">
+          <el-select
+            v-model="newFormInline.gender"
+            placeholder="请选择用户性别"
+            class="w-full"
+            clearable
+          >
+            <el-option
+              v-for="(item, index) in sexOptions"
+              :key="index"
+              :label="item.label"
+              :value="item.value"
+            />
+          </el-select>
+        </el-form-item>
+      </re-col>
+      <re-col :value="12" :xs="24" :sm="24">
+        <el-form-item label="用户类型">
+          <el-select
+            v-model="newFormInline.userType"
+            placeholder="请选择用户类型"
+            class="w-full"
+            clearable
+          >
+            <el-option
+              v-for="(item, index) in userTypeOptions"
+              :key="index"
+              :label="item.label"
+              :value="item.value"
+            />
+          </el-select>
+        </el-form-item>
+      </re-col>
+      <re-col :value="12" :xs="24" :sm="24">
+        <el-form-item label="用户状态">
+          <el-switch
+            v-model="newFormInline.enabled"
+            inline-prompt
+            :active-value="true"
+            :inactive-value="false"
+            active-text="启用"
+            inactive-text="停用"
+            :style="switchStyle"
+          />
+        </el-form-item>
+      </re-col>
+      <re-col>
+        <el-form-item label="角色列表" prop="ids">
+          <el-select
+            v-model="newFormInline.roles"
+            placeholder="请选择"
+            class="w-full"
+            clearable
+            multiple
+          >
+            <el-option
+              v-for="(item, index) in newFormInline.roleOptions"
+              :key="index"
+              :value="item.code"
+              :label="item.name"
+            >
+              {{ item.name }}
+            </el-option>
+          </el-select>
+        </el-form-item>
+      </re-col>
+      <re-col>
+        <el-form-item label="备注">
+          <el-input
+            v-model="newFormInline.mark"
+            placeholder="请输入备注信息"
+            type="textarea"
+          />
+        </el-form-item>
+      </re-col>
+    </el-row>
+  </el-form>
+</template>
