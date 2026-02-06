@@ -174,6 +174,35 @@ func (s *TelegramBotService) handleMessage(ctx context.Context, b *bot.Bot, mess
 		s.handleGroupInfoMessage(ctx, b, &models.Update{Message: message})
 		return
 	}
+
+	// 未匹配任何指令：群组消息按配置决定是否删除
+	if message.Chat.Type == "group" || message.Chat.Type == "supergroup" {
+		groupInfo, err := s.GetGroupInfo(chatID)
+		if err == nil && groupInfo != nil && groupInfo.DeleteMsg == 1 {
+			userIDStr := fmt.Sprintf("%d", message.From.ID)
+			if !isWhiteId(groupInfo.WhiteIds, userIDStr) {
+				_, _ = b.DeleteMessage(ctx, &bot.DeleteMessageParams{
+					ChatID:    chatID,
+					MessageID: message.ID,
+				})
+			}
+		}
+	}
+}
+
+func isWhiteId(whiteIds string, userID string) bool {
+	if whiteIds == "" || userID == "" {
+		return false
+	}
+	parts := strings.FieldsFunc(whiteIds, func(r rune) bool {
+		return r == ',' || r == ' ' || r == ';' || r == '|' || r == '\n' || r == '\t'
+	})
+	for _, part := range parts {
+		if strings.TrimSpace(part) == userID {
+			return true
+		}
+	}
+	return false
 }
 
 // handleStartCommand 处理 /start 命令

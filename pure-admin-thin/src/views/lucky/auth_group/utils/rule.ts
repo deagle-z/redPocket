@@ -70,5 +70,19 @@ export const formRules = reactive<FormRules>({
       message: "抢包抽成必须为数字",
       trigger: "blur"
     }
+  ],
+  deleteMsg: [
+    {
+      required: true,
+      message: "消息删除状态不能为空",
+      trigger: "change"
+    }
+  ],
+  whiteIds: [
+    {
+      max: 255,
+      message: "白名单长度不能超过255个字符",
+      trigger: "blur"
+    }
   ]
 });

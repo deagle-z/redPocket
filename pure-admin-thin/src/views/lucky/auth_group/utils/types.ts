@@ -13,6 +13,8 @@ interface FormItemProps {
   numConfig?: string;
   sendCommission?: number;
   grabbingCommission?: number;
+  deleteMsg?: number;
+  whiteIds?: string;
 }
 
 interface FormProps {

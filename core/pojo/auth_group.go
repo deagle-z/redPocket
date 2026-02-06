@@ -18,6 +18,8 @@ type AuthGroup struct {
 	NumConfig          string  `json:"numConfig" gorm:"type:varchar(50);default:'3'"`  // 红包数量配置
 	SendCommission     int     `json:"sendCommission" gorm:"type:int;default:2"`       // 发包中雷抽成百分比
 	GrabbingCommission int     `json:"grabbingCommission" gorm:"type:int;default:3"`   // 抢红包抽成百分比
+	DeleteMsg          int     `json:"deleteMsg" gorm:"type:int;default:0"`            //0 不开启消息删除 1 开启消息删除
+	WhiteIds           string  `json:"whiteIds" gorm:"type:varchar(255)"`              //不删除消息白名单
 }
 
 type AuthGroupBack struct {
@@ -35,6 +37,8 @@ type AuthGroupBack struct {
 	NumConfig          string    `json:"numConfig"`
 	SendCommission     int       `json:"sendCommission"`
 	GrabbingCommission int       `json:"grabbingCommission"`
+	DeleteMsg          int       `json:"deleteMsg"`
+	WhiteIds           string    `json:"whiteIds"`
 }
 
 type AuthGroupSearch struct {

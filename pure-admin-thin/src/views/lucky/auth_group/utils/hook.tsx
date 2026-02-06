@@ -107,6 +107,19 @@ export function useAuthGroup(treeRef: Ref) {
       minWidth: 120
     },
     {
+      label: "消息删除",
+      prop: "deleteMsg",
+      minWidth: 100,
+      formatter: ({ deleteMsg }) => (deleteMsg === 1 ? "开启" : "关闭")
+    },
+    {
+      label: "白名单",
+      prop: "whiteIds",
+      minWidth: 180,
+      showOverflowTooltip: true,
+      formatter: ({ whiteIds }) => whiteIds || "-"
+    },
+    {
       label: "创建时间",
       prop: "createdAt",
       minWidth: 160,
@@ -239,7 +252,9 @@ export function useAuthGroup(treeRef: Ref) {
           loseRate: row?.loseRate ?? 1.8,
           numConfig: row?.numConfig ?? "3",
           sendCommission: row?.sendCommission ?? 2,
-          grabbingCommission: row?.grabbingCommission ?? 3
+          grabbingCommission: row?.grabbingCommission ?? 3,
+          deleteMsg: row?.deleteMsg ?? 0,
+          whiteIds: row?.whiteIds ?? ""
         }
       },
       width: "50%",

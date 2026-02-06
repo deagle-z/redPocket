@@ -21,7 +21,9 @@ const props = withDefaults(defineProps<FormProps>(), {
     loseRate: 1.8,
     numConfig: "3",
     sendCommission: 2,
-    grabbingCommission: 3
+    grabbingCommission: 3,
+    deleteMsg: 0,
+    whiteIds: ""
   })
 });
 
@@ -76,7 +78,6 @@ defineExpose({ getRef });
       <el-input-number
         v-model="newFormInline.groupId"
         placeholder="请输入群组ID"
-        :min="1"
         style="width: 100%"
       />
     </el-form-item>
@@ -194,6 +195,28 @@ defineExpose({ getRef });
         :min="0"
         :max="100"
         style="width: 100%"
+      />
+    </el-form-item>
+
+    <el-form-item label="消息删除" prop="deleteMsg">
+      <el-switch
+        v-model="newFormInline.deleteMsg"
+        inline-prompt
+        :active-value="1"
+        :inactive-value="0"
+        active-text="开启"
+        inactive-text="关闭"
+        :style="switchStyle"
+      />
+    </el-form-item>
+
+    <el-form-item label="白名单" prop="whiteIds">
+      <el-input
+        v-model="newFormInline.whiteIds"
+        placeholder="不删除消息白名单，逗号分隔"
+        clearable
+        type="textarea"
+        :rows="2"
       />
     </el-form-item>
   </el-form>

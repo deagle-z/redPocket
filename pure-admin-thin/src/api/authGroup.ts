@@ -16,6 +16,8 @@ export type AuthGroup = {
   numConfig?: string;
   sendCommission?: number;
   grabbingCommission?: number;
+  deleteMsg?: number;
+  whiteIds?: string;
 };
 
 /** 授权群组搜索参数 */
