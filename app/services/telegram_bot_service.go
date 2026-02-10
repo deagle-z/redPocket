@@ -48,6 +48,11 @@ func InitTelegramBot(db *gorm.DB, tablePrefix string, botToken string) error {
 		bot.WithMessageTextHandler("/start", bot.MatchTypeExact, botService.handleStartCommand),
 		bot.WithMessageTextHandler("/help", bot.MatchTypeExact, botService.handleHelpCommand),
 		bot.WithMessageTextHandler("/register", bot.MatchTypeExact, botService.handleRegisterCommand),
+		bot.WithMessageTextHandler("/recharge", bot.MatchTypeExact, botService.handleRechargeCommand),
+		bot.WithMessageTextHandler("/withdraw", bot.MatchTypeExact, botService.handleWithdrawCommand),
+		bot.WithMessageTextHandler("/team", bot.MatchTypeExact, botService.handleTeamCommand),
+		bot.WithMessageTextHandler("/invite", bot.MatchTypeExact, botService.handleInviteCommand),
+		bot.WithMessageTextHandler("/rebate", bot.MatchTypeExact, botService.handleRebateCommand),
 		bot.WithCallbackQueryDataHandler("qiang-", bot.MatchTypePrefix, botService.handleGrabCallback),
 		bot.WithCallbackQueryDataHandler("balance", bot.MatchTypeExact, botService.handleBalanceCallback),
 		bot.WithCallbackQueryDataHandler("balance_", bot.MatchTypePrefix, botService.handleBalanceActionCallback),
@@ -69,6 +74,11 @@ func InitTelegramBot(db *gorm.DB, tablePrefix string, botToken string) error {
 	if err != nil {
 		return fmt.Errorf("获取 Bot 信息失败: %v", err)
 	}
+
+	if err := botService.configureBotMenus(ctx); err != nil {
+		log.Printf("配置 Telegram 菜单失败: %v", err)
+	}
+
 	log.Printf("Telegram Bot 启动成功: @%s (ID: %d)", botUser.Username, botUser.ID)
 
 	// 在 goroutine 中启动 Bot
@@ -123,6 +133,22 @@ func (s *TelegramBotService) handleMessage(ctx context.Context, b *bot.Bot, mess
 		}
 	}
 
+	// 私聊注册
+	if matched, _ := regexp.MatchString(`(?i)^(注册|register)$`, text); matched {
+		if message.Chat.Type == "private" || chatID > 0 {
+			s.handleRegisterTextMessage(ctx, b, message)
+			return
+		}
+	}
+
+	// 私聊提现
+	if matched, _ := regexp.MatchString(`(?i)^(提现|withdraw)$`, text); matched {
+		if message.Chat.Type == "private" || chatID > 0 {
+			s.handleWithdrawMessage(ctx, b, message)
+			return
+		}
+	}
+
 	// 私聊余额查询
 	if matched, _ := regexp.MatchString(`(?i)^(1|查|余额|查余额)$`, text); matched {
 		if message.Chat.Type == "private" || chatID > 0 {
@@ -137,6 +163,22 @@ func (s *TelegramBotService) handleMessage(ctx context.Context, b *bot.Bot, mess
 	if matched, _ := regexp.MatchString(`(?i)^(团队|我的团队)$`, text); matched {
 		if message.Chat.Type == "private" || chatID > 0 {
 			s.handleTeamMessage(ctx, b, message)
+		}
+		return
+	}
+
+	// 邀请信息查询
+	if matched, _ := regexp.MatchString(`(?i)^(邀请|邀请好友|invite)$`, text); matched {
+		if message.Chat.Type == "private" || chatID > 0 {
+			s.handleInviteMessage(ctx, b, message)
+		}
+		return
+	}
+
+	// 反水/佣金信息查询
+	if matched, _ := regexp.MatchString(`(?i)^(反水|佣金|佣金明细|rebate|commission)$`, text); matched {
+		if message.Chat.Type == "private" || chatID > 0 {
+			s.handleRebateMessage(ctx, b, message)
 		}
 		return
 	}
@@ -219,9 +261,10 @@ func (s *TelegramBotService) handleStartCommand(ctx context.Context, b *bot.Bot,
 	}
 
 	_, _ = b.SendMessage(ctx, &bot.SendMessageParams{
-		ChatID:    message.Chat.ID,
-		Text:      "开始游戏",
-		ParseMode: models.ParseModeHTML,
+		ChatID:      message.Chat.ID,
+		Text:        "开始游戏",
+		ParseMode:   models.ParseModeHTML,
+		ReplyMarkup: s.buildPrivateEntryKeyboard(),
 	})
 }
 
@@ -265,13 +308,14 @@ func (s *TelegramBotService) handleRegisterCommand(ctx context.Context, b *bot.B
 		userName = fmt.Sprintf("User_%d", userID)
 	}
 
-	// 检查群组授权
-	if !s.CheckGroupAuth(chatID) {
-		_, _ = b.SendMessage(ctx, &bot.SendMessageParams{
-			ChatID: chatID,
-			Text:   "未授权",
-		})
-		return
+	if message.Chat.Type == "group" || message.Chat.Type == "supergroup" {
+		if !s.CheckGroupAuth(chatID) {
+			_, _ = b.SendMessage(ctx, &bot.SendMessageParams{
+				ChatID: chatID,
+				Text:   "未授权",
+			})
+			return
+		}
 	}
 
 	result, err := s.HandleRegisterCommand(chatID, userID, userName, userUsername)
@@ -280,10 +324,46 @@ func (s *TelegramBotService) handleRegisterCommand(ctx context.Context, b *bot.B
 	}
 
 	_, _ = b.SendMessage(ctx, &bot.SendMessageParams{
-		ChatID:    chatID,
-		Text:      result,
-		ParseMode: models.ParseModeHTML,
+		ChatID:      chatID,
+		Text:        result,
+		ParseMode:   models.ParseModeHTML,
+		ReplyMarkup: s.buildPrivateEntryKeyboard(),
 	})
+}
+
+func (s *TelegramBotService) handleRechargeCommand(ctx context.Context, b *bot.Bot, update *models.Update) {
+	if update == nil || update.Message == nil {
+		return
+	}
+	s.handleRechargePrivateMessage(ctx, b, update.Message)
+}
+
+func (s *TelegramBotService) handleWithdrawCommand(ctx context.Context, b *bot.Bot, update *models.Update) {
+	if update == nil || update.Message == nil {
+		return
+	}
+	s.handleWithdrawMessage(ctx, b, update.Message)
+}
+
+func (s *TelegramBotService) handleTeamCommand(ctx context.Context, b *bot.Bot, update *models.Update) {
+	if update == nil || update.Message == nil {
+		return
+	}
+	s.handleTeamMessage(ctx, b, update.Message)
+}
+
+func (s *TelegramBotService) handleInviteCommand(ctx context.Context, b *bot.Bot, update *models.Update) {
+	if update == nil || update.Message == nil {
+		return
+	}
+	s.handleInviteMessage(ctx, b, update.Message)
+}
+
+func (s *TelegramBotService) handleRebateCommand(ctx context.Context, b *bot.Bot, update *models.Update) {
+	if update == nil || update.Message == nil {
+		return
+	}
+	s.handleRebateMessage(ctx, b, update.Message)
 }
 
 // handleRedPacketMessage3 处理红包消息（格式：发10-3-1）
@@ -523,8 +603,9 @@ func (s *TelegramBotService) handleTeamMessage(ctx context.Context, b *bot.Bot, 
 	}
 
 	_, _ = b.SendMessage(ctx, &bot.SendMessageParams{
-		ChatID: chatID,
-		Text:   text,
+		ChatID:      chatID,
+		Text:        text,
+		ReplyMarkup: s.buildPrivateEntryKeyboard(),
 	})
 }
 
@@ -554,6 +635,108 @@ func (s *TelegramBotService) handleRechargePrivateMessage(ctx context.Context, b
 		Text:        text,
 		ReplyMarkup: s.buildRechargeKeyboard(),
 	})
+}
+
+func (s *TelegramBotService) handleRegisterTextMessage(ctx context.Context, b *bot.Bot, message *models.Message) {
+	if message == nil || message.From == nil {
+		return
+	}
+	update := &models.Update{Message: message}
+	s.handleRegisterCommand(ctx, b, update)
+}
+
+func (s *TelegramBotService) handleWithdrawMessage(ctx context.Context, b *bot.Bot, message *models.Message) {
+	if message == nil || message.From == nil {
+		return
+	}
+	_, _ = b.SendMessage(ctx, &bot.SendMessageParams{
+		ChatID:      message.Chat.ID,
+		Text:        "提现功能开发中",
+		ReplyMarkup: s.buildPrivateEntryKeyboard(),
+	})
+}
+
+func (s *TelegramBotService) handleInviteMessage(ctx context.Context, b *bot.Bot, message *models.Message) {
+	if message == nil || message.From == nil {
+		return
+	}
+	user, err := s.GetTgUserByTelegramID(int64(message.From.ID))
+	if err != nil {
+		_, _ = b.SendMessage(ctx, &bot.SendMessageParams{
+			ChatID:      message.Chat.ID,
+			Text:        "未注册用户",
+			ReplyMarkup: s.buildPrivateEntryKeyboard(),
+		})
+		return
+	}
+	_, _ = b.SendMessage(ctx, &bot.SendMessageParams{
+		ChatID:      message.Chat.ID,
+		Text:        s.buildInviteText(user),
+		ReplyMarkup: s.buildPrivateEntryKeyboard(),
+	})
+}
+
+func (s *TelegramBotService) handleRebateMessage(ctx context.Context, b *bot.Bot, message *models.Message) {
+	if message == nil || message.From == nil {
+		return
+	}
+	user, err := s.GetTgUserByTelegramID(int64(message.From.ID))
+	if err != nil {
+		_, _ = b.SendMessage(ctx, &bot.SendMessageParams{
+			ChatID:      message.Chat.ID,
+			Text:        "未注册用户",
+			ReplyMarkup: s.buildPrivateEntryKeyboard(),
+		})
+		return
+	}
+	_, _ = b.SendMessage(ctx, &bot.SendMessageParams{
+		ChatID:      message.Chat.ID,
+		Text:        s.buildCommissionText(user),
+		ReplyMarkup: s.buildPrivateEntryKeyboard(),
+	})
+}
+
+func (s *TelegramBotService) buildPrivateEntryKeyboard() *models.ReplyKeyboardMarkup {
+	rows := [][]models.KeyboardButton{
+		{
+			{Text: "注册"},
+			{Text: "充值"},
+			{Text: "提现"},
+		},
+		{
+			{Text: "团队"},
+			{Text: "邀请"},
+			{Text: "反水"},
+		},
+	}
+	return &models.ReplyKeyboardMarkup{
+		Keyboard:       rows,
+		IsPersistent:   true,
+		ResizeKeyboard: true,
+	}
+}
+
+func (s *TelegramBotService) configureBotMenus(ctx context.Context) error {
+	commands := []models.BotCommand{
+		{Command: "register", Description: "注册"},
+		{Command: "recharge", Description: "充值"},
+		{Command: "withdraw", Description: "提现"},
+		{Command: "team", Description: "团队"},
+		{Command: "invite", Description: "邀请"},
+		{Command: "rebate", Description: "反水"},
+	}
+
+	if _, err := s.Bot.SetMyCommands(ctx, &bot.SetMyCommandsParams{
+		Commands: commands,
+		Scope:    &models.BotCommandScopeAllPrivateChats{},
+	}); err != nil {
+		return err
+	}
+
+	_, err := s.Bot.SetChatMenuButton(ctx, &bot.SetChatMenuButtonParams{
+		MenuButton: models.MenuButtonCommands{},
+	})
+	return err
 }
 
 func (s *TelegramBotService) buildRechargeKeyboard() *models.InlineKeyboardMarkup {
