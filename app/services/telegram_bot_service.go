@@ -75,10 +75,6 @@ func InitTelegramBot(db *gorm.DB, tablePrefix string, botToken string) error {
 		return fmt.Errorf("获取 Bot 信息失败: %v", err)
 	}
 
-	if err := botService.configureBotMenus(ctx); err != nil {
-		log.Printf("配置 Telegram 菜单失败: %v", err)
-	}
-
 	log.Printf("Telegram Bot 启动成功: @%s (ID: %d)", botUser.Username, botUser.ID)
 
 	// 在 goroutine 中启动 Bot
@@ -714,29 +710,6 @@ func (s *TelegramBotService) buildPrivateEntryKeyboard() *models.ReplyKeyboardMa
 		IsPersistent:   true,
 		ResizeKeyboard: true,
 	}
-}
-
-func (s *TelegramBotService) configureBotMenus(ctx context.Context) error {
-	commands := []models.BotCommand{
-		{Command: "register", Description: "注册"},
-		{Command: "recharge", Description: "充值"},
-		{Command: "withdraw", Description: "提现"},
-		{Command: "team", Description: "团队"},
-		{Command: "invite", Description: "邀请"},
-		{Command: "rebate", Description: "反水"},
-	}
-
-	if _, err := s.Bot.SetMyCommands(ctx, &bot.SetMyCommandsParams{
-		Commands: commands,
-		Scope:    &models.BotCommandScopeAllPrivateChats{},
-	}); err != nil {
-		return err
-	}
-
-	_, err := s.Bot.SetChatMenuButton(ctx, &bot.SetChatMenuButtonParams{
-		MenuButton: models.MenuButtonCommands{},
-	})
-	return err
 }
 
 func (s *TelegramBotService) buildRechargeKeyboard() *models.InlineKeyboardMarkup {
