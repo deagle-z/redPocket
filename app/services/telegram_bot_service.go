@@ -1195,6 +1195,29 @@ func (s *TelegramBotService) handleBalanceActionCallback(ctx context.Context, b 
 			ChatID: chatID,
 			Text:   text,
 		})
+	case "cash_flow":
+		user, err := s.GetTgUserByTelegramID(userID)
+		if err != nil {
+			_, _ = b.AnswerCallbackQuery(ctx, &bot.AnswerCallbackQueryParams{
+				CallbackQueryID: query.ID,
+				Text:            "未注册用户",
+				ShowAlert:       true,
+			})
+			return
+		}
+		text, err := s.buildCashFlowText(user.ID)
+		if err != nil {
+			_, _ = b.AnswerCallbackQuery(ctx, &bot.AnswerCallbackQueryParams{
+				CallbackQueryID: query.ID,
+				Text:            "获取流水失败",
+				ShowAlert:       true,
+			})
+			return
+		}
+		_, _ = b.SendMessage(ctx, &bot.SendMessageParams{
+			ChatID: chatID,
+			Text:   text,
+		})
 	default:
 		_, _ = b.SendMessage(ctx, &bot.SendMessageParams{
 			ChatID: chatID,
@@ -1532,6 +1555,7 @@ func (s *TelegramBotService) buildBalanceKeyboard() *models.InlineKeyboardMarkup
 			{Text: "我的团队", CallbackData: "balance_team"},
 			{Text: "邀请好友", CallbackData: "balance_invite"},
 			{Text: "佣金明细", CallbackData: "balance_commission"},
+			{Text: "流水明细", CallbackData: "balance_cash_flow"},
 		},
 		{
 			{Text: "语言", CallbackData: "balance_language"},
@@ -1540,6 +1564,47 @@ func (s *TelegramBotService) buildBalanceKeyboard() *models.InlineKeyboardMarkup
 	}
 
 	return &models.InlineKeyboardMarkup{InlineKeyboard: rows}
+}
+
+func (s *TelegramBotService) buildCashFlowText(userID int64) (string, error) {
+	now := time.Now()
+	todayStart := startOfToday(now)
+	yesterdayStart := todayStart.AddDate(0, 0, -1)
+	tomorrowStart := todayStart.AddDate(0, 0, 1)
+
+	todayTotal, err := s.sumCashHistoryAbsAmount(userID, &todayStart, &tomorrowStart)
+	if err != nil {
+		return "", err
+	}
+
+	yesterdayTotal, err := s.sumCashHistoryAbsAmount(userID, &yesterdayStart, &todayStart)
+	if err != nil {
+		return "", err
+	}
+
+	allTotal, err := s.sumCashHistoryAbsAmount(userID, nil, nil)
+	if err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("流水明细\n今日流水：%.3f U\n昨日流水：%.3f U\n总流水：%.3f U", todayTotal, yesterdayTotal, allTotal), nil
+}
+
+func (s *TelegramBotService) sumCashHistoryAbsAmount(userID int64, start *time.Time, end *time.Time) (float64, error) {
+	query := s.DB.Model(&pojo.CashHistory{}).Where("user_id = ?", userID)
+	if start != nil {
+		query = query.Where("created_at >= ?", *start)
+	}
+	if end != nil {
+		query = query.Where("created_at < ?", *end)
+	}
+
+	var total float64
+	if err := query.Select("COALESCE(SUM(ABS(amount)), 0)").Scan(&total).Error; err != nil {
+		return 0, err
+	}
+
+	return total, nil
 }
 
 // ParseRedPacketCommand 解析红包命令
