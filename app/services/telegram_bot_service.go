@@ -1587,7 +1587,7 @@ func (s *TelegramBotService) buildCashFlowText(userID int64) (string, error) {
 		return "", err
 	}
 
-	return fmt.Sprintf("流水明细\n今日流水：%.3f U\n昨日流水：%.3f U\n总流水：%.3f U", todayTotal, yesterdayTotal, allTotal), nil
+	return fmt.Sprintf("流水明细\n今日流水：%.2f U\n昨日流水：%.2f U\n总流水：%.2f U", todayTotal, yesterdayTotal, allTotal), nil
 }
 
 func (s *TelegramBotService) sumCashHistoryAbsAmount(userID int64, start *time.Time, end *time.Time) (float64, error) {
