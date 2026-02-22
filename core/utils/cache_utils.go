@@ -183,6 +183,22 @@ func GetTempUser(preFix string, userId int64) (result pojo.SysUser) {
 	return result
 }
 
+func GetTempTenantUser(preFix string, userId int64) (result pojo.SysTenantUser) {
+	redisKey := fmt.Sprintf(KeyTenantUserTemp, preFix, userId)
+	result, _ = GetOrLoad(context.Background(), NewPrefixDb(preFix), redisKey, GetRandomRangeSecond(20*60, 40*60),
+		func(db *gorm.DB) (tempResult pojo.SysTenantUser, err error) {
+			if err = db.Table("sys_tenant_user").Where("id = ?", userId).First(&tempResult).Error; err != nil {
+				return tempResult, err
+			}
+			if tempResult.ID == 0 {
+				err = errors.New("no match data")
+			}
+			return tempResult, err
+		},
+	)
+	return result
+}
+
 func UpdateTempUser(preFix string, user pojo.SysUser) {
 	redisKey := fmt.Sprintf(KeyUserTemp, preFix, user.ID)
 	jsonStr, _ := json.Marshal(user)

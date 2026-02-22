@@ -8,12 +8,13 @@ import { tenantTypeOptions, statusOptions } from "./enums";
 import {
   delSysTenant,
   getSysTenantList,
+  resetSysTenantPassword,
   setSysTenant,
   type SysTenant
 } from "@/api/tenant";
 import { type Ref, reactive, ref, onMounted, h, toRaw } from "vue";
 import type { FormItemProps } from "./types";
-import { ElTag } from "element-plus";
+import { ElMessageBox, ElTag } from "element-plus";
 
 function getTenantTypeLabel(val: number) {
   const match = tenantTypeOptions.find(item => item.value === val);
@@ -114,7 +115,7 @@ export function useTenant(tableRef: Ref) {
     {
       label: "操作",
       fixed: "right",
-      width: 160,
+      width: 240,
       slot: "operation"
     }
   ];
@@ -143,6 +144,28 @@ export function useTenant(tableRef: Ref) {
 
   function handleSelectionChange(val) {
     console.log("handleSelectionChange", val);
+  }
+
+  function handleResetPassword(row: SysTenant) {
+    ElMessageBox.prompt(`请输入租户「${row.tenantName}」的新密码`, "修改密码", {
+      confirmButtonText: "确定",
+      cancelButtonText: "取消",
+      inputType: "password",
+      inputPlaceholder: "请输入6-64位新密码",
+      inputValidator: value => {
+        if (!value || value.length < 6 || value.length > 64) {
+          return "密码长度需在6-64位之间";
+        }
+        return true;
+      }
+    })
+      .then(({ value }) => {
+        return resetSysTenantPassword({ tenantId: row.id, password: value });
+      })
+      .then(() => {
+        message(`已重置租户 ${row.tenantName} 密码`, { type: "success" });
+      })
+      .catch(() => {});
   }
 
   async function onSearch() {
@@ -183,8 +206,6 @@ export function useTenant(tableRef: Ref) {
           tenantName: row?.tenantName ?? "",
           tenantType: row?.tenantType ?? 1,
           status: row?.status ?? 1,
-          loginAccount: row?.loginAccount ?? "",
-          loginPassword: "",
           ownerUserId: row?.ownerUserId ?? undefined,
           planCode: row?.planCode ?? "",
           timezone: row?.timezone ?? "UTC",
@@ -239,6 +260,7 @@ export function useTenant(tableRef: Ref) {
     onSearch,
     resetForm,
     openDialog,
+    handleResetPassword,
     handleDelete,
     handleSizeChange,
     handleCurrentChange,

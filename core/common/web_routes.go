@@ -5,6 +5,7 @@ import (
 	"BaseGoUni/core/api"
 	"BaseGoUni/core/pojo"
 	"BaseGoUni/core/utils"
+	tenantApi "BaseGoUni/tenant/api"
 	//"BaseGoUni/docs"
 	//_ "BaseGoUni/docs" // 导入生成的docs
 	"bytes"
@@ -51,8 +52,9 @@ func InitGin() {
 	apiGroup := router.Group("/api/v1")
 	{
 		apiGroup.GET("/heath/check", heathCheck)
-		apiGroup.POST("/user/award", api.AwardUser) // 内部用户余额变动
-		apiGroup.POST("/user/login", api.UserLogin) // 管理员登录
+		apiGroup.POST("/user/award", api.AwardUser)            // 内部用户余额变动
+		apiGroup.POST("/user/login", api.UserLogin)            // 管理员登录
+		apiGroup.POST("/tenant/login", api.SysTenantUserLogin) // 租户用户登录
 	}
 	// 通用接口
 	commonGroup := router.Group("/api/v1/outside")
@@ -131,6 +133,8 @@ func InitGin() {
 		adminGroup.GET("/rechargeOrder/:id", api.GetRechargeOrderById)     // 获取充值订单详情
 		adminGroup.POST("/withdrawOrderBr/list", api.GetWithdrawOrderBrs)  // 获取巴西提现订单列表
 		adminGroup.GET("/withdrawOrderBr/:id", api.GetWithdrawOrderBrById) // 获取巴西提现订单详情
+		adminGroup.POST("/tgUser/listWithSubStats", api.GetTgUsersWithSubStats)
+		adminGroup.POST("/tgUser/subStatsSummary", api.GetTgUsersWithSubStatsSummary)
 	}
 	adminGroupLog := router.Group("/api/v1/admin")
 	adminGroupLog.Use(authMiddleware([]int{1}, false, true), manageLog())
@@ -146,6 +150,7 @@ func InitGin() {
 		adminGroupLog.POST("/tgUserRebate", api.SetTgUserRebateRecord)       // 创建或更新Telegram反水记录
 		adminGroupLog.DELETE("/tgUserRebate/:id", api.DelTgUserRebateRecord) // 删除Telegram反水记录
 		adminGroupLog.POST("/tenant", api.SetSysTenant)                      // 创建或更新租户
+		adminGroupLog.POST("/tenant/resetPassword", api.ResetSysTenantPassword)
 		adminGroupLog.DELETE("/tenant/:id", api.DelSysTenant)                // 删除租户
 		adminGroupLog.POST("/tenantUser", api.SetSysTenantUser)              // 创建或更新租户用户
 		adminGroupLog.DELETE("/tenantUser/:id", api.DelSysTenantUser)        // 删除租户用户
@@ -155,6 +160,41 @@ func InitGin() {
 		adminGroupLog.DELETE("/withdrawOrderBr/:id", api.DelWithdrawOrderBr) // 删除巴西提现订单
 		//adminGroupLog.PUT("/host_info", api2.SetHostInfo)
 		//adminGroupLog.DELETE("/host_info/:id", api2.DelHostInfo)
+	}
+
+	tenantGroup := router.Group("/api/v1/tenant")
+	tenantGroup.Use(tenantAuthMiddleware(false), manageLog())
+	{
+		tenantGroup.POST("/authGroup/list", tenantApi.GetAuthGroups)
+		tenantGroup.POST("/authGroup", tenantApi.SetAuthGroup)
+		tenantGroup.DELETE("/authGroup/:id", tenantApi.DelAuthGroup)
+
+		tenantGroup.POST("/lucky/list", tenantApi.GetLuckyMoneyList)
+		tenantGroup.POST("/lucky/history", tenantApi.GetLuckyHistoryList)
+		tenantGroup.GET("/lucky/:id", tenantApi.GetLuckyMoneyDetail)
+
+		tenantGroup.POST("/rechargeOrder/list", tenantApi.GetRechargeOrders)
+		tenantGroup.GET("/rechargeOrder/:id", tenantApi.GetRechargeOrderById)
+		tenantGroup.POST("/rechargeOrder", tenantApi.SetRechargeOrder)
+		tenantGroup.DELETE("/rechargeOrder/:id", tenantApi.DelRechargeOrder)
+
+		tenantGroup.POST("/tgUser/list", tenantApi.GetTgUsers)
+		tenantGroup.POST("/tgUser/listWithSubStats", tenantApi.GetTgUsersWithSubStats)
+		tenantGroup.POST("/tgUser/subStatsSummary", tenantApi.GetTgUsersWithSubStatsSummary)
+		tenantGroup.GET("/tgUser/:id", tenantApi.GetTgUserById)
+		tenantGroup.POST("/tgUser", tenantApi.SetTgUser)
+		tenantGroup.POST("/tgUser/status", tenantApi.SetTgUserStatus)
+		tenantGroup.DELETE("/tgUser/:id", tenantApi.DelTgUser)
+
+		tenantGroup.POST("/tgUserRebate/list", tenantApi.GetTgUserRebateRecords)
+		tenantGroup.GET("/tgUserRebate/:id", tenantApi.GetTgUserRebateRecordById)
+		tenantGroup.POST("/tgUserRebate", tenantApi.SetTgUserRebateRecord)
+		tenantGroup.DELETE("/tgUserRebate/:id", tenantApi.DelTgUserRebateRecord)
+
+		tenantGroup.POST("/withdrawOrderBr/list", tenantApi.GetWithdrawOrderBrs)
+		tenantGroup.GET("/withdrawOrderBr/:id", tenantApi.GetWithdrawOrderBrById)
+		tenantGroup.POST("/withdrawOrderBr", tenantApi.SetWithdrawOrderBr)
+		tenantGroup.DELETE("/withdrawOrderBr/:id", tenantApi.DelWithdrawOrderBr)
 	}
 
 	appRouter := router.Group("/api/v1/app")
@@ -336,6 +376,68 @@ func authMiddleware(types []int, singleLogin bool, passChild bool) gin.HandlerFu
 		//	return
 		//}
 		c.Set("childCode", childCode)
+		c.Set("userId", userId)
+		c.Set("userType", userType)
+		c.Set("token", authHeader)
+		c.Next()
+		endTime := time.Now()
+		latencyTime := endTime.Sub(startTime)
+		if latencyTime > 1*time.Second {
+			log.Printf("Request %s %s took %v", c.Request.Method, c.Request.URL, latencyTime)
+		}
+	}
+}
+
+func tenantAuthMiddleware(singleLogin bool) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		startTime := time.Now()
+		authHeader := c.GetHeader("Authorization")
+		if authHeader == "" {
+			utils.UnauthorizedBack(c, "Authorization header is missing")
+			c.Abort()
+			return
+		}
+		authHeader = strings.TrimPrefix(authHeader, "Bearer ")
+		hostInfo := utils.GetTempHostInfo(utils.GetRequestHost(c))
+		userId, userType, hostName, _, _ := utils.ParseToken(utils.CsConfig.DefaultHost.AccessSecret, authHeader)
+		if hostInfo.HostName != hostName {
+			utils.UnauthorizedBack(c, "token is invalid 0")
+			c.Abort()
+			return
+		}
+		if userId == 0 {
+			utils.UnauthorizedBack(c, "token is invalid 1")
+			c.Abort()
+			return
+		}
+
+		user := utils.GetTempTenantUser(hostInfo.TablePrefix, userId)
+		if user.Status != 1 {
+			utils.UnauthorizedBack(c, "User forbidden")
+			c.Abort()
+			return
+		}
+		if singleLogin {
+			key := utils.KeyRdTenantOnline + utils.MD5(fmt.Sprintf("%d", userId))
+			data := utils.RD.Get(context.Background(), key)
+			if data == nil || data.Err() != nil {
+				utils.UnauthorizedBack(c, "token is passed")
+				c.Abort()
+				return
+			}
+			if data.Val() != authHeader {
+				utils.UnauthorizedBack(c, "already logout")
+				c.Abort()
+				return
+			}
+		}
+		//requestKey := utils.MD5(fmt.Sprintf("%s_%s", c.Request.Method, c.Request.RequestURI))
+		//lockKey := fmt.Sprintf(utils.KeyLockRequest, userId, requestKey)
+		//lock, _ := utils.AcquireLock(lockKey, 1*time.Second)
+		//if !lock {
+		//	c.JSON(http.StatusBadRequest, gin.H{"error": "request too fast.Please try again later."})
+		//	return
+		//}
 		c.Set("userId", userId)
 		c.Set("userType", userType)
 		c.Set("token", authHeader)

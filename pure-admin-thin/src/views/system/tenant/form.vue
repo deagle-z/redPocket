@@ -13,8 +13,6 @@ const props = withDefaults(defineProps<FormProps>(), {
     tenantName: "",
     tenantType: 1,
     status: 1,
-    loginAccount: "",
-    loginPassword: "",
     ownerUserId: undefined,
     planCode: "",
     timezone: "UTC",
@@ -75,27 +73,6 @@ defineExpose({ getRef });
               :value="item.value"
             />
           </el-select>
-        </el-form-item>
-      </re-col>
-
-      <re-col :value="12" :xs="24" :sm="24">
-        <el-form-item label="登录账号" prop="loginAccount">
-          <el-input
-            v-model="newFormInline.loginAccount"
-            placeholder="请输入登录账号"
-            clearable
-          />
-        </el-form-item>
-      </re-col>
-
-      <re-col :value="12" :xs="24" :sm="24">
-        <el-form-item label="登录密码" prop="loginPassword">
-          <el-input
-            v-model="newFormInline.loginPassword"
-            placeholder="请输入登录密码"
-            clearable
-            show-password
-          />
         </el-form-item>
       </re-col>
 

@@ -2,9 +2,14 @@ package repository
 
 import (
 	"BaseGoUni/core/pojo"
+	"BaseGoUni/core/utils"
+	"context"
+	"encoding/json"
 	"errors"
 	"github.com/jinzhu/copier"
+	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
+	"time"
 )
 
 // GetSysTenantUsers 租户用户列表（分页）
@@ -95,5 +100,67 @@ func GetSysTenantUserById(db *gorm.DB, id int64) (result pojo.SysTenantUserBack,
 		return result, errors.New("数据不存在")
 	}
 	_ = copier.Copy(&result, &dbUser)
+	return result, nil
+}
+
+// SysTenantUserLogin 租户用户登录
+func SysTenantUserLogin(db *gorm.DB, hostInfo pojo.HostInfo, req pojo.SysTenantUserLogin, onlineUser pojo.OnlineUser) (result pojo.SysTenantUserLoginBack, err error) {
+	var users []pojo.SysTenantUser
+	db.Where("username = ?", req.Username).Order("id desc").Limit(2).Find(&users)
+	if len(users) == 0 {
+		return result, errors.New("user login error")
+	}
+	if len(users) > 1 {
+		return result, errors.New("用户名重复，请联系管理员")
+	}
+	dbUser := users[0]
+
+	var dbTenant pojo.SysTenant
+	db.Where("id = ?", dbUser.TenantId).First(&dbTenant)
+	if dbTenant.ID == 0 || dbTenant.Status != 1 {
+		return result, errors.New("User account disabled")
+	}
+	if dbUser.Status != 1 {
+		return result, errors.New("User account disabled")
+	}
+	if dbUser.LockedUntil != nil && dbUser.LockedUntil.After(time.Now()) {
+		return result, errors.New("账号已锁定")
+	}
+
+	if err = bcrypt.CompareHashAndPassword([]byte(dbUser.PasswordHash), []byte(req.Password)); err != nil {
+		_ = db.Model(&pojo.SysTenantUser{}).Where("id = ?", dbUser.ID).Update("login_fail_count", gorm.Expr("login_fail_count + 1")).Error
+		return result, errors.New("user login error")
+	}
+
+	now := time.Now()
+	ip := onlineUser.Ip
+	ua := onlineUser.Browser
+	_ = db.Model(&pojo.SysTenantUser{}).Where("id = ?", dbUser.ID).Updates(map[string]any{
+		"last_login_at":    now,
+		"last_login_ip":    ip,
+		"last_login_ua":    ua,
+		"login_fail_count": 0,
+	}).Error
+
+	result = pojo.SysTenantUserLoginBack{
+		UserId:       dbUser.ID,
+		TenantId:     dbUser.TenantId,
+		Username:     dbUser.Username,
+		RoleCode:     dbUser.RoleCode,
+		IsOwner:      dbUser.IsOwner,
+		UserType:     4,
+		PasswordAlgo: dbUser.PasswordAlgo,
+	}
+	token, err := utils.GetJwtToken(hostInfo.AccessSecret, hostInfo.AccessExpire, dbUser.Username, dbUser.ID, result.UserType, hostInfo.HostName)
+	if err != nil {
+		return result, err
+	}
+	result.AccessToken = token
+
+	key := utils.KeyRdTenantOnline + utils.MD5(token)
+	onlineUser.UserId = dbUser.ID
+	onlineUser.Key = key
+	userJSON, _ := json.Marshal(onlineUser)
+	utils.RD.SetEX(context.Background(), key, string(userJSON), time.Duration(hostInfo.AccessExpire)*time.Second)
 	return result, nil
 }

@@ -78,6 +78,22 @@ type SysTenantUserResp struct {
 	BasePageResponse[SysTenantUserBack]
 }
 
+type SysTenantUserLogin struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
+type SysTenantUserLoginBack struct {
+	UserId       int64  `json:"userId"`
+	TenantId     int64  `json:"tenantId"`
+	Username     string `json:"username"`
+	RoleCode     string `json:"roleCode"`
+	IsOwner      bool   `json:"isOwner"`
+	UserType     int    `json:"userType"`
+	AccessToken  string `json:"accessToken"`
+	PasswordAlgo string `json:"passwordAlgo"`
+}
+
 var SysTenantUserTableName = "sys_tenant_user"
 
 func (SysTenantUser) TableName() string {

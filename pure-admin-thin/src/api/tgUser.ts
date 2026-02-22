@@ -11,11 +11,15 @@ export type TgUser = {
   balance: number;
   giftAmount: number;
   giftTotal: number;
+  subRechargeAmount?: number;
+  subFlowAmount?: number;
+  subWithdrawAmount?: number;
   rebateAmount: number;
   rebateTotalAmount: number;
   status: number;
   parentId?: number | null;
   inviteCode?: string | null;
+  tenantId?: number;
 };
 
 export type TgUserSearch = {
@@ -32,6 +36,12 @@ export type TgUserSearch = {
 export type TgUserStatusSet = {
   id: number;
   status: number;
+};
+
+export type TgUserSubStatsSummarySearch = {
+  tenantId?: number;
+  parentId?: number;
+  tgId?: number;
 };
 
 export type TgUserListResult = {
@@ -53,8 +63,31 @@ export type TgUserResult = {
   data: TgUser;
 };
 
+export type TgUserSubStatsSummaryResult = {
+  code: number;
+  message: string;
+  success: boolean;
+  data: {
+    subRechargeAmount: number;
+    subFlowAmount: number;
+    subWithdrawAmount: number;
+  };
+};
+
 export const getTgUserList = (data: TgUserSearch) => {
   return http.request<TgUserListResult>("post", "/api/v1/admin/tgUser/list", {
+    data
+  });
+};
+
+export const getTgUserListWithSubStats = (data: TgUserSearch) => {
+  return http.request<TgUserListResult>("post", "/api/v1/admin/tgUser/listWithSubStats", {
+    data
+  });
+};
+
+export const getTgUserSubStatsSummary = (data: TgUserSubStatsSummarySearch) => {
+  return http.request<TgUserSubStatsSummaryResult>("post", "/api/v1/admin/tgUser/subStatsSummary", {
     data
   });
 };

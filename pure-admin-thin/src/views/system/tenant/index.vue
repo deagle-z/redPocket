@@ -9,6 +9,7 @@ import Delete from "@iconify-icons/ep/delete";
 import EditPen from "@iconify-icons/ep/edit-pen";
 import Refresh from "@iconify-icons/ep/refresh";
 import AddFill from "@iconify-icons/ri/add-circle-line";
+import Lock from "@iconify-icons/ep/lock";
 
 defineOptions({
   name: "SystemTenant"
@@ -28,6 +29,7 @@ const {
   onSearch,
   resetForm,
   openDialog,
+  handleResetPassword,
   handleDelete,
   handleSizeChange,
   handleCurrentChange,
@@ -173,6 +175,16 @@ const {
                     @click="openDialog('修改', row)"
                   >
                     修改
+                  </el-button>
+                  <el-button
+                    class="reset-margin"
+                    link
+                    type="warning"
+                    :size="size"
+                    :icon="useRenderIcon(Lock)"
+                    @click="handleResetPassword(row)"
+                  >
+                    修改密码
                   </el-button>
                   <el-popconfirm
                     :title="`是否确认删除租户 ${row.tenantName} 这条数据`"

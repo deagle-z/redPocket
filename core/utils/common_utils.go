@@ -15,22 +15,24 @@ import (
 	"strings"
 )
 
-const KeyDbPrefix = "prefix"              // db前缀
-const KeyTablePrefix = "prefix_table"     // db订单前缀
-const KeyUserAwardCheck = "bgu_uac_%d_%s" // redis 用户钱校验
-const KeyLockUserAward = "bgu_ua_%d"      // redis 用户钱变动锁
-const KeyLockRequest = "bgu_req_%d_%s"    // redis 请求锁
-const KeyHostInfoTemp = "bgu_hit_%s"      // redis 域名缓存key
-const KeyHostInfosTemp = "bgu_hist"       // redis 域名缓存key
-const KeyConfigTemp = "bgu_ct_%s_%s"      // redis 配置缓存key
-const KeyUserCodeTemp = "bgu_ut_%s_%s"    // redis 用户缓存key
-const KeyUserTemp = "bgu_ut_%s_%d"        // redis 用户缓存key
-const KeySingle = "bgu_so_"               // redis单点在线用户key前缀
-const KeyRdOnline = "bgu_online"          // redis在线用户key前缀
-const KeyMqUserUpdate = "bgu_uu"          // mqKey 用户信息更新通知
-const KeyMqDeviceInfo = "bgu_device_info" // mqKey 设备信息存储通知
-const KeyManageLogNotify = "bgu_mln"      // mqKey 管理日志通知
-const KeyCleanManageLog = "bgu_cml"       // mqKey 清理管理日志通知
+const KeyDbPrefix = "prefix"                    // db前缀
+const KeyTablePrefix = "prefix_table"           // db订单前缀
+const KeyUserAwardCheck = "bgu_uac_%d_%s"       // redis 用户钱校验
+const KeyLockUserAward = "bgu_ua_%d"            // redis 用户钱变动锁
+const KeyLockRequest = "bgu_req_%d_%s"          // redis 请求锁
+const KeyHostInfoTemp = "bgu_hit_%s"            // redis 域名缓存key
+const KeyHostInfosTemp = "bgu_hist"             // redis 域名缓存key
+const KeyConfigTemp = "bgu_ct_%s_%s"            // redis 配置缓存key
+const KeyUserCodeTemp = "bgu_ut_%s_%s"          // redis 用户缓存key
+const KeyUserTemp = "bgu_ut_%s_%d"              // redis 用户缓存key
+const KeySingle = "bgu_so_"                     // redis单点在线用户key前缀
+const KeyRdOnline = "bgu_online"                // redis在线用户key前缀
+const KeyMqUserUpdate = "bgu_uu"                // mqKey 用户信息更新通知
+const KeyMqDeviceInfo = "bgu_device_info"       // mqKey 设备信息存储通知
+const KeyManageLogNotify = "bgu_mln"            // mqKey 管理日志通知
+const KeyCleanManageLog = "bgu_cml"             // mqKey 清理管理日志通知
+const KeyRdTenantOnline = "bgu_tenant_online"   // redis 租户在线用户key前缀
+const KeyTenantUserTemp = "bgu_tenant_ut_%s_%d" // redis 用户缓存key
 
 func InWhiteIps(ip string) (result bool) {
 	for _, whiteIp := range CsConfig.AwardIps {

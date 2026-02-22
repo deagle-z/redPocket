@@ -33,8 +33,6 @@ export type SysTenantSet = {
   tenantName: string;
   tenantType: number;
   status: number;
-  loginAccount?: string;
-  loginPassword?: string;
   ownerUserId?: number | null;
   planCode?: string | null;
   timezone: string;
@@ -61,6 +59,11 @@ export type SysTenantResult = {
   data?: SysTenant;
 };
 
+export type SysTenantResetPassword = {
+  tenantId: number;
+  password: string;
+};
+
 export const getSysTenantList = (data: SysTenantSearch) => {
   return http.request<SysTenantListResult>("post", "/api/v1/admin/tenant/list", {
     data
@@ -69,6 +72,12 @@ export const getSysTenantList = (data: SysTenantSearch) => {
 
 export const setSysTenant = (data: SysTenantSet) => {
   return http.request<SysTenantResult>("post", "/api/v1/admin/tenant", { data });
+};
+
+export const resetSysTenantPassword = (data: SysTenantResetPassword) => {
+  return http.request<SysTenantResult>("post", "/api/v1/admin/tenant/resetPassword", {
+    data
+  });
 };
 
 export const delSysTenant = (id: number) => {

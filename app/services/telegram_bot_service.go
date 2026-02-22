@@ -883,7 +883,8 @@ func (s *TelegramBotService) manualRechargeCallback(db *gorm.DB, orderID int64) 
 	}
 
 	updateUser := map[string]any{
-		"balance": gorm.Expr(fmt.Sprintf("balance + %.3f", order.Amount)),
+		"balance":         gorm.Expr(fmt.Sprintf("balance + %.3f", order.Amount)),
+		"recharge_amount": gorm.Expr("recharge_amount + ?", order.Amount),
 	}
 	if err := tx.Model(&pojo.TgUser{}).Where("id = ?", user.ID).Updates(updateUser).Error; err != nil {
 		tx.Rollback()
@@ -1736,6 +1737,7 @@ func (s *TelegramBotService) HandleBalanceCommand(userID int64) (string, error) 
 
 // HandleRegisterCommand 处理注册命令
 func (s *TelegramBotService) HandleRegisterCommand(chatID int64, userID int64, userName string, userUsername string) (string, error) {
+	_ = chatID
 	var tgUser pojo.TgUser
 	err := s.DB.Where("tg_id = ?", userID).First(&tgUser).Error
 	if err == nil && tgUser.ID > 0 {
@@ -1777,14 +1779,14 @@ func (s *TelegramBotService) HandleRegisterCommand(chatID int64, userID int64, u
 		firstNamePtr = nil
 	}
 
-	defaultBalance := services.GetDefaultBalance(s.TablePrefix, chatID)
+	registerGiftAmount := s.getRegisterGiftAmount()
 	newUser := pojo.TgUser{
 		Username:   usernamePtr,
 		FirstName:  firstNamePtr,
 		TgID:       userID,
-		Balance:    defaultBalance,
-		GiftAmount: 0,
-		GiftTotal:  0,
+		Balance:    registerGiftAmount,
+		GiftAmount: registerGiftAmount,
+		GiftTotal:  registerGiftAmount,
 		Status:     1,
 		ParentID:   parentID,
 		InviteCode: &inviteCode,
@@ -1914,6 +1916,7 @@ func GetTelegramUserIDFromUsername(username string) (int64, error) {
 
 // GetOrCreateTgUserByTelegramID 根据 Telegram ID 获取或创建Telegram用户
 func (s *TelegramBotService) GetOrCreateTgUserByTelegramID(telegramUserID int64, userName string, chatID int64) (*pojo.TgUser, error) {
+	_ = chatID
 	// 使用 Redis 分布式锁，锁键格式：bgu_tg_reg_{telegramUserID}
 	lockKey := fmt.Sprintf("bgu_tg_reg_%d", telegramUserID)
 	lockTimeout := 10 * time.Second // 锁超时时间10秒
@@ -1958,13 +1961,13 @@ func (s *TelegramBotService) GetOrCreateTgUserByTelegramID(telegramUserID int64,
 	if displayName == "" {
 		displayName = fmt.Sprintf("User_%d", telegramUserID)
 	}
-	defaultBalance := services.GetDefaultBalance(s.TablePrefix, chatID)
+	registerGiftAmount := s.getRegisterGiftAmount()
 	newUser := pojo.TgUser{
 		FirstName:  strPtr(displayName),
 		TgID:       telegramUserID,
-		Balance:    defaultBalance,
-		GiftAmount: 0,
-		GiftTotal:  0,
+		Balance:    registerGiftAmount,
+		GiftAmount: registerGiftAmount,
+		GiftTotal:  registerGiftAmount,
 		Status:     1,
 		InviteCode: &inviteCode,
 	}
@@ -2111,6 +2114,21 @@ func (s *TelegramBotService) getRebateRate(key string) float64 {
 		return 0
 	}
 	return rate
+}
+
+func (s *TelegramBotService) getRegisterGiftAmount() float64 {
+	defaultValue := "0"
+	val := utils.GetStringCache(s.TablePrefix, "register_gift_amount", &defaultValue)
+	if val == nil || *val == "" {
+		return 0
+	}
+
+	amount, err := strconv.ParseFloat(strings.TrimSpace(*val), 64)
+	if err != nil || amount < 0 {
+		return 0
+	}
+
+	return amount
 }
 
 func (s *TelegramBotService) createRebateRecord(tx *gorm.DB, level int, order pojo.RechargeOrder, subUserID int64, parentUserID int64, rate float64, now time.Time) error {

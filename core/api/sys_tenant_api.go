@@ -103,3 +103,27 @@ func GetSysTenantById(ctx *gin.Context) {
 	}
 	utils.SuccessObjBack(ctx, result)
 }
+
+// ResetSysTenantPassword godoc
+//
+//	@Summary		重置租户密码
+//	@Tags			租户
+//	@Accept			json
+//	@Produce		json
+//	@Param			data body		pojo.SysTenantResetPassword	true	"租户重置密码参数"
+//	@Success		200	{object}		string
+//	@Router			/api/v1/admin/tenant/resetPassword [post]
+func ResetSysTenantPassword(ctx *gin.Context) {
+	var req pojo.SysTenantResetPassword
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	db := ctx.MustGet("db").(*gorm.DB)
+	result, err := repository.ResetSysTenantPassword(db, req)
+	if err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	utils.SuccessObjBack(ctx, result)
+}

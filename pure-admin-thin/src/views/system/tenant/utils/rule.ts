@@ -11,14 +11,6 @@ export const formRules = reactive(<FormRules>{
     { required: true, message: "租户名称为必填项", trigger: "blur" },
     { max: 128, message: "租户名称长度不能超过128个字符", trigger: "blur" }
   ],
-  loginAccount: [
-    { required: true, message: "登录账号为必填项", trigger: "blur" },
-    { max: 64, message: "登录账号长度不能超过64个字符", trigger: "blur" }
-  ],
-  loginPassword: [
-    { required: true, message: "登录密码为必填项", trigger: "blur" },
-    { max: 64, message: "登录密码长度不能超过64个字符", trigger: "blur" }
-  ],
   tenantType: [
     { required: true, message: "请选择租户类型", trigger: "change" }
   ],

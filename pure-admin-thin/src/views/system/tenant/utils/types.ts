@@ -5,8 +5,6 @@ interface FormItemProps {
   tenantName: string;
   tenantType: number;
   status: number;
-  loginAccount?: string;
-  loginPassword?: string;
   ownerUserId?: number;
   planCode?: string;
   timezone: string;

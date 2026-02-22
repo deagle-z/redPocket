@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 	"strconv"
+	"time"
 )
 
 // GetSysTenantUsers godoc
@@ -102,4 +103,41 @@ func GetSysTenantUserById(ctx *gin.Context) {
 		return
 	}
 	utils.SuccessObjBack(ctx, result)
+}
+
+// SysTenantUserLogin godoc
+//
+//	@Summary		租户用户登录
+//	@Tags			租户用户
+//	@Accept			json
+//	@Produce		json
+//	@Param			data body		pojo.SysTenantUserLogin	true	"登录参数"
+//	@Success		200	{object}		pojo.SysTenantUserLoginBack
+//	@Router			/api/v1/tenantUser/login [post]
+func SysTenantUserLogin(ctx *gin.Context) {
+	var req pojo.SysTenantUserLogin
+	if err := ctx.BindJSON(&req); err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	tempHostInfo := ctx.MustGet("hostInfo").(pojo.HostInfo)
+	password, err := utils.DecPriKey(req.Password, tempHostInfo.PriKey)
+	if err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	req.Password = password
+	onlineUser := pojo.OnlineUser{
+		Username:  req.Username,
+		Browser:   ctx.GetHeader("User-Agent"),
+		Ip:        utils.GetIPAddress(ctx),
+		LoginTime: time.Now(),
+	}
+	db := ctx.MustGet("db").(*gorm.DB)
+	data, err := repository.SysTenantUserLogin(db, tempHostInfo, req, onlineUser)
+	if err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	utils.SuccessObjBack(ctx, data)
 }

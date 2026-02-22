@@ -4,8 +4,10 @@ import (
 	"BaseGoUni/core/pojo"
 	"BaseGoUni/core/repository"
 	"BaseGoUni/core/utils"
+	tenantRepo "BaseGoUni/tenant/repository"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
+	"io"
 	"strconv"
 )
 
@@ -133,5 +135,28 @@ func SetTgUserStatus(ctx *gin.Context) {
 		utils.ErrorBack(ctx, err.Error())
 		return
 	}
+	utils.SuccessObjBack(ctx, result)
+}
+
+// GetTgUsersWithSubStats 列表返回所有下级（不限层级）的充值金额、流水、提现金额
+func GetTgUsersWithSubStats(ctx *gin.Context) {
+	var search pojo.TgUserSearch
+	search.SetPageDefaults()
+	if err := ctx.ShouldBindJSON(&search); err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	result := tenantRepo.GetTgUsersWithSubStats(getDB(ctx), search)
+	utils.SuccessObjBack(ctx, result)
+}
+
+// GetTgUsersWithSubStatsSummary 展示所有不限层级下级的充值金额之和、流水之和、提现金额之和
+func GetTgUsersWithSubStatsSummary(ctx *gin.Context) {
+	var search pojo.TgUserSearch
+	if err := ctx.ShouldBindJSON(&search); err != nil && err != io.EOF {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	result := tenantRepo.GetTgUsersWithSubStatsSummary(getDB(ctx), search.ParentID)
 	utils.SuccessObjBack(ctx, result)
 }

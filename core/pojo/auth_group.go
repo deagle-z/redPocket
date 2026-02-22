@@ -20,6 +20,7 @@ type AuthGroup struct {
 	GrabbingCommission int     `json:"grabbingCommission" gorm:"type:int;default:3"`   // 抢红包抽成百分比
 	DeleteMsg          int     `json:"deleteMsg" gorm:"type:int;default:0"`            //0 不开启消息删除 1 开启消息删除
 	WhiteIds           string  `json:"whiteIds" gorm:"type:varchar(255)"`              //不删除消息白名单
+	TenantId           int64   `json:"tenantId" gorm:"type:bigint;"`
 }
 
 type AuthGroupBack struct {

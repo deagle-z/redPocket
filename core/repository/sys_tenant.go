@@ -58,26 +58,8 @@ func SetSysTenant(db *gorm.DB, req pojo.SysTenantSet) (result pojo.SysTenantBack
 		_ = copier.Copy(&dbTenant, &req)
 		err = db.Save(&dbTenant).Error
 	} else {
-		err = db.Transaction(func(tx *gorm.DB) error {
-			_ = copier.Copy(&dbTenant, &req)
-			if err := tx.Create(&dbTenant).Error; err != nil {
-				return err
-			}
-			passwordHash, err := bcrypt.GenerateFromPassword([]byte(req.LoginPassword), bcrypt.DefaultCost)
-			if err != nil {
-				return err
-			}
-			dbUser := pojo.SysTenantUser{
-				TenantId:     dbTenant.ID,
-				Username:     req.LoginAccount,
-				PasswordHash: string(passwordHash),
-				PasswordAlgo: "bcrypt",
-				RoleCode:     "owner",
-				IsOwner:      true,
-				Status:       req.Status,
-			}
-			return tx.Create(&dbUser).Error
-		})
+		_ = copier.Copy(&dbTenant, &req)
+		err = db.Create(&dbTenant).Error
 	}
 	if err != nil {
 		return result, err
@@ -109,4 +91,44 @@ func GetSysTenantById(db *gorm.DB, id int64) (result pojo.SysTenantBack, err err
 	}
 	_ = copier.Copy(&result, &dbTenant)
 	return result, nil
+}
+
+// ResetSysTenantPassword 重置租户密码（优先重置租户owner账号）
+func ResetSysTenantPassword(db *gorm.DB, req pojo.SysTenantResetPassword) (result string, err error) {
+	if req.TenantId <= 0 {
+		return result, errors.New("参数格式错误")
+	}
+	if len(req.Password) < 6 || len(req.Password) > 64 {
+		return result, errors.New("密码长度需在6-64之间")
+	}
+
+	var dbTenant pojo.SysTenant
+	db.Where("id = ?", req.TenantId).First(&dbTenant)
+	if dbTenant.ID == 0 {
+		return result, errors.New("租户不存在")
+	}
+
+	var dbUser pojo.SysTenantUser
+	db.Where("tenant_id = ? and is_owner = ?", req.TenantId, true).Order("id asc").First(&dbUser)
+	if dbUser.ID == 0 {
+		db.Where("tenant_id = ?", req.TenantId).Order("id asc").First(&dbUser)
+	}
+	if dbUser.ID == 0 {
+		return result, errors.New("租户未配置用户")
+	}
+
+	passwordHash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+	if err != nil {
+		return result, err
+	}
+	err = db.Model(&pojo.SysTenantUser{}).Where("id = ?", dbUser.ID).Updates(map[string]any{
+		"password_hash":    string(passwordHash),
+		"password_algo":    "bcrypt",
+		"login_fail_count": 0,
+		"locked_until":     nil,
+	}).Error
+	if err != nil {
+		return result, err
+	}
+	return "success", nil
 }
