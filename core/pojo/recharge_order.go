@@ -114,6 +114,27 @@ type RechargeOrderResp struct {
 	BasePageResponse[RechargeOrderBack]
 }
 
+type RechargeOrderAppReq struct {
+	Amount          float64 `json:"amount"`          // 充值金额
+	Channel         string  `json:"channel"`         // 充值渠道（必填）
+	PayMethod       string  `json:"payMethod"`       // 支付方式（可选）
+	Currency        string  `json:"currency"`        // 币种（默认BRL）
+	MerchantOrderNo string  `json:"merchantOrderNo"` // 商户订单号（可选）
+}
+
+type RechargeOrderAppBack struct {
+	OrderNo         string   `json:"orderNo"`         // 平台订单号
+	MerchantOrderNo *string  `json:"merchantOrderNo"` // 商户订单号
+	Channel         string   `json:"channel"`         // 渠道
+	PayMethod       *string  `json:"payMethod"`       // 支付方式
+	Currency        string   `json:"currency"`        // 币种
+	Amount          float64  `json:"amount"`          // 充值金额
+	Status          int      `json:"status"`          // 订单状态
+	CreditAmount    *float64 `json:"creditAmount"`    // 入账金额
+	PayURL          string   `json:"payUrl"`          // 支付链接（预留）
+	DevCallback     bool     `json:"devCallback"`     // 是否触发了dev自动回调
+}
+
 var RechargeOrderTableName = "recharge_order"
 
 func (RechargeOrder) TableName() string {

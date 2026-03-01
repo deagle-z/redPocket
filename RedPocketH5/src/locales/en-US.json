@@ -3,7 +3,6 @@
     "name": "Vue3 Vant Mobile",
     "description": "An mobile web apps template based on the Vue 3 ecosystem"
   },
-
   "navbar": {
     "Home": "Home",
     "Profile": "Profile",
@@ -20,32 +19,30 @@
     "404": "⚠️ Page 404",
     "Undefined": "🤷 Undefined title"
   },
-
   "tabbar": {
     "home": "HOME",
-    "profile": "PROFILE"
+    "history": "HISTORY",
+    "sendPacket": "SEND",
+    "profile": "PROFILE",
+    "wallet": "WALLET"
   },
-
   "home": {
     "darkMode": "🌗 Dark Mode",
     "language": "📚 Language",
     "settings": "Settings",
     "examples": "Examples"
   },
-
   "profile": {
     "login": "Login",
     "settings": "Settings",
     "docs": "Docs"
   },
-
   "mock": {
     "fromAsyncData": "Data from asynchronous requests",
     "noData": "No data",
     "pull": "Pull",
     "reset": "Reset"
   },
-
   "charts": {
     "January": "Jan",
     "February": "Feb",
@@ -54,42 +51,72 @@
     "May": "May",
     "June": "Jun"
   },
-
   "counter": {
     "description": "This counter's state is persisted via Pinia. Try refreshing the page to see it in action."
   },
-
   "unocss": {
     "title": "Hello, Unocss!",
     "description": "This is a simple example of Unocss in action.",
     "button": "Button"
   },
-
   "keepAlive": {
     "label": "The current component will be cached"
   },
-
   "scrollCache": {
     "sectionTitle": "Section title",
     "sectionText": "Section text text text text text text text text text text",
     "finished": "Already at the bottom ~",
     "loading": "Loading..."
   },
-
   "login": {
+    "pageTitle": "Login",
     "login": "Sign In",
     "logout": "Sign Out",
     "email": "Email",
+    "emailTab": "Email",
+    "emailOrUsername": "Email or Username",
     "password": "Password",
     "pleaseEnterEmail": "Please enter email",
     "pleaseEnterPassword": "Please enter password",
     "signUp": "Click to sign up",
-    "forgotPassword": "Forgot password?"
+    "noAccountYet": "No account yet?",
+    "signUpNow": "Sign Up Now",
+    "forgotPassword": "Forgot password?",
+    "telegramAuth": "Telegram Authorization",
+    "loginWithTelegram": "Log in with Telegram",
+    "tgUnavailable": "Telegram login is unavailable",
+    "missingBotConfig": "Telegram Bot configuration is missing",
+    "tgAuthCancelled": "Telegram authorization cancelled",
+    "tgLoginFailed": "Telegram login failed",
+    "feature": {
+      "game": {
+        "title": "Mines Game",
+        "desc": "Smart challenge, win rewards"
+      },
+      "coin": {
+        "title": "Earn Coins",
+        "desc": "Every round can bring profit"
+      },
+      "invite": {
+        "title": "Invite Friends",
+        "desc": "Share rewards, grow together"
+      }
+    },
+    "language": {
+      "title": "Select Language",
+      "zhNative": "简体中文",
+      "zhEn": "Chinese (Simplified)",
+      "enNative": "English",
+      "enEn": "English (US)",
+      "changed": "Language changed",
+      "autoRefresh": "Page will refresh automatically after language change"
+    }
   },
-
   "forgotPassword": {
+    "pageTitle": "Reset Password",
     "email": "Email",
     "code": "Code",
+    "newPassword": "New Password",
     "password": "Password",
     "confirmPassword": "Password again",
     "pleaseEnterEmail": "Please enter email",
@@ -99,32 +126,39 @@
     "passwordsDoNotMatch": "Passwords do not match",
     "confirm": "Confirm",
     "backToLogin": "Back to login",
+    "send": "Send",
     "getCode": "Get code",
     "gettingCode": "Getting code",
     "sendCodeSuccess": "Sent, the code is",
     "passwordResetSuccess": "Password reset succeeded"
   },
-
   "register": {
+    "pageTitle": "Register",
+    "telegramLogin": "Login directly with Telegram",
     "email": "Email",
+    "emailCode": "Email Code",
     "code": "Code",
     "nickname": "Nickname",
     "password": "Password",
-    "confirmPassword": "Password again",
+    "confirmPassword": "Confirm Password",
+    "inviteCode": "Invite Code",
     "pleaseEnterEmail": "Please enter email",
-    "pleaseEnterCode": "Please enter code",
+    "pleaseEnterCode": "Please enter email code",
     "pleaseEnterNickname": "Please enter nickname",
-    "pleaseEnterPassword": "Please enter password",
-    "pleaseEnterConfirmPassword": "Please enter password again",
+    "pleaseEnterPassword": "Password",
+    "pleaseEnterConfirmPassword": "Confirm Password",
+    "pleaseEnterInviteCode": "Invite Code",
     "passwordsDoNotMatch": "Passwords do not match",
-    "confirm": "Confirm",
+    "confirm": "Register",
+    "alreadyHaveAccount": "Already have an account?",
+    "loginNow": "Login Now",
     "backToLogin": "Back to login",
+    "send": "Send",
     "getCode": "Get code",
     "gettingCode": "Getting code",
-    "sendCodeSuccess": "Sent, the code is",
+    "sendCodeSuccess": "Code sent",
     "registerSuccess": "Register succeeded"
   },
-
   "settings": {
     "logout": "Sign Out",
     "currentVersion": "Current Version",

@@ -1,0 +1,357 @@
+@import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&display=swap');
+
+:root:root {
+  --withdraw-font-family: 'Sora', sans-serif;
+  --withdraw-page-bg:    var(--color-bg-gradient-a);
+  --withdraw-card-bg:    var(--color-bg-card);
+  --withdraw-text-main:  var(--color-text-title, #141a22);
+  --withdraw-text-sub:   var(--color-text-sub);
+  --withdraw-accent:     var(--color-primary-medium);
+  --withdraw-accent-soft: var(--color-primary-soft);
+  --withdraw-stroke:     var(--color-stroke);
+  --withdraw-shadow:     var(--shadow-card);
+}
+
+.theme-withdraw {
+  font-family: var(--withdraw-font-family);
+  color: var(--withdraw-text-main);
+}
+
+.theme-withdraw.withdraw-page {
+  padding-bottom: 24px;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at top right, rgba(61, 155, 79, 0.12), transparent 45%),
+    linear-gradient(180deg, #f7f9fc 0%, #eef2f8 100%);
+  position: relative;
+}
+
+.theme-withdraw.withdraw-page::before {
+  content: '';
+  position: absolute;
+  top: 70px;
+  left: -30px;
+  width: 140px;
+  height: 140px;
+  background: rgba(61, 155, 79, 0.08);
+  border-radius: 32px;
+  transform: rotate(-8deg);
+}
+
+.theme-withdraw .app-page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.theme-withdraw .header-title {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.theme-withdraw .header-btn {
+  background: transparent;
+  border: none;
+  font-size: 20px;
+  color: var(--withdraw-accent);
+  padding: 6px;
+}
+
+.theme-withdraw .card {
+  background: var(--withdraw-card-bg);
+  border-radius: 14px;
+  padding: 14px 16px;
+  box-shadow: var(--withdraw-shadow);
+  border: 1px solid rgba(228, 233, 240, 0.7);
+  margin-bottom: 14px;
+}
+
+.theme-withdraw .balance-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.theme-withdraw .card-label {
+  font-size: 14px;
+  color: var(--withdraw-text-sub);
+  margin: 0 0 6px;
+}
+
+.theme-withdraw .card-sub {
+  font-size: 13px;
+  color: var(--withdraw-text-sub);
+  margin: 6px 0 0;
+}
+
+.theme-withdraw .card-value {
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.theme-withdraw .card-chip {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: var(--withdraw-accent-soft);
+  color: var(--withdraw-accent);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+}
+
+.theme-withdraw .card h2 {
+  font-size: 15px;
+  font-weight: 600;
+  margin: 0 0 12px;
+}
+
+.theme-withdraw .section-title {
+  color: var(--withdraw-accent);
+}
+
+.theme-withdraw .pill-group {
+  display: flex;
+  gap: 12px;
+}
+
+.theme-withdraw .pill {
+  flex: 1;
+  border-radius: 10px;
+  border: 1px solid var(--withdraw-stroke);
+  background: #fff;
+  padding: 10px 12px;
+  font-weight: 600;
+  color: var(--withdraw-text-main);
+}
+
+.theme-withdraw .pill.active {
+  background: var(--withdraw-accent);
+  color: #fff;
+  border-color: var(--withdraw-accent);
+  box-shadow: 0 6px 14px rgba(61, 155, 79, 0.2);
+}
+
+.theme-withdraw .pay-list {
+  display: grid;
+  gap: 12px;
+}
+
+.theme-withdraw .pay-item {
+  width: 100%;
+  border-radius: 12px;
+  border: 1px solid var(--withdraw-stroke);
+  background: #fff;
+  padding: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  text-align: left;
+}
+
+.theme-withdraw .pay-item.active {
+  border-color: var(--withdraw-accent);
+  box-shadow: 0 8px 18px rgba(61, 155, 79, 0.16);
+}
+
+.theme-withdraw .pay-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.theme-withdraw .pay-logo {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: #101828;
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+}
+
+.theme-withdraw .pay-name {
+  font-weight: 600;
+  margin: 0;
+}
+
+.theme-withdraw .pay-sub {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: var(--withdraw-text-sub);
+}
+
+.theme-withdraw .pay-check {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px solid var(--withdraw-stroke);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--withdraw-accent);
+  background: #fff;
+}
+
+.theme-withdraw .pay-item:not(.active) .pay-check {
+  color: transparent;
+}
+
+.theme-withdraw .form-list {
+  display: grid;
+  gap: 8px;
+}
+
+.theme-withdraw .form-item {
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid var(--withdraw-stroke);
+}
+
+.theme-withdraw .custom-input {
+  margin-bottom: 12px;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid var(--withdraw-stroke);
+}
+
+.theme-withdraw .amount-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.theme-withdraw .amount-item {
+  border-radius: 12px;
+  border: 1px solid var(--withdraw-stroke);
+  background: #fff;
+  padding: 12px 0;
+  font-weight: 600;
+  color: var(--withdraw-text-main);
+  font-size: 14px;
+}
+
+.theme-withdraw .amount-item.active {
+  border-color: var(--withdraw-accent);
+  background: var(--withdraw-accent-soft);
+  color: var(--withdraw-accent);
+}
+
+.theme-withdraw .balance-breakdown {
+  margin-top: 16px;
+  border-radius: 12px;
+  background: #fff;
+  border: 1px solid var(--withdraw-stroke);
+  overflow: hidden;
+}
+
+.theme-withdraw .balance-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--withdraw-stroke);
+  font-weight: 600;
+}
+
+.theme-withdraw .balance-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.theme-withdraw .balance-icon {
+  color: var(--withdraw-accent);
+}
+
+.theme-withdraw .balance-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--withdraw-stroke);
+  font-size: 14px;
+}
+
+.theme-withdraw .balance-row:last-child {
+  border-bottom: none;
+}
+
+.theme-withdraw .row-title {
+  margin: 0;
+  font-weight: 600;
+}
+
+.theme-withdraw .row-sub {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--withdraw-text-sub);
+}
+
+.theme-withdraw .row-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.theme-withdraw .row-badge {
+  font-size: 12px;
+  color: var(--withdraw-accent);
+  border: 1px solid var(--withdraw-accent);
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+
+.theme-withdraw .submit-btn {
+  margin-top: 16px;
+  background: var(--withdraw-accent);
+  border: none;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.theme-withdraw .fee-card {
+  margin-top: 14px;
+  border-radius: 12px;
+  border: 1px solid var(--withdraw-stroke);
+  padding: 12px 14px;
+  background: #fff;
+}
+
+.theme-withdraw .fee-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--withdraw-text-sub);
+  font-size: 14px;
+}
+
+.theme-withdraw .fee-row.total {
+  margin-top: 8px;
+  color: var(--withdraw-accent);
+  font-weight: 600;
+}
+
+.theme-withdraw .tips {
+  background: #fff;
+}
+
+.theme-withdraw .tips-title {
+  color: var(--withdraw-accent);
+  font-size: 16px;
+  margin-bottom: 8px;
+}
+
+.theme-withdraw .tips ol {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--withdraw-text-sub);
+  font-size: 13px;
+  line-height: 1.6;
+}

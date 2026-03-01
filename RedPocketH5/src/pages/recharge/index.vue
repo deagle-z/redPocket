@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { showToast } from 'vant'
+import { createRechargeOrder, getCurrentTgUserInfo } from '@/api/user'
+import AppPageHeader from '@/components/AppPageHeader.vue'
 
 const router = useRouter()
 
@@ -42,6 +45,7 @@ const selectedChannel = ref(channels[0].id)
 const selectedAmount = ref<number | 'custom'>(amountOptions[0] as number)
 const customAmount = ref('')
 const selectedPay = ref(payMethods[0].id)
+const submitLoading = ref(false)
 
 const displayAmount = computed(() => {
   if (selectedAmount.value === 'custom') {
@@ -49,6 +53,8 @@ const displayAmount = computed(() => {
   }
   return selectedAmount.value
 })
+
+const canSubmit = computed(() => Number(displayAmount.value) > 0 && !submitLoading.value)
 
 function chooseAmount(value: number | 'custom') {
   selectedAmount.value = value
@@ -60,19 +66,82 @@ function chooseAmount(value: number | 'custom') {
 function goBack() {
   router.back()
 }
+
+function showCenterToast(message: string) {
+  showToast({
+    message,
+    position: 'middle',
+    teleport: '#app',
+    wordBreak: 'break-word',
+  })
+}
+
+function showHelpTip() {
+  showCenterToast('如有问题请联系客服')
+}
+
+async function loadBalance() {
+  try {
+    const { data } = await getCurrentTgUserInfo()
+    balance.value = Number(data?.balance ?? 0)
+  }
+  catch {
+    balance.value = 0
+  }
+}
+
+async function handleSubmitRecharge() {
+  if (!canSubmit.value)
+    return
+  const amount = Number(displayAmount.value)
+  if (!amount || amount <= 0) {
+    showCenterToast('请输入有效充值金额')
+    return
+  }
+
+  submitLoading.value = true
+  try {
+    const { data } = await createRechargeOrder({
+      amount,
+      channel: selectedChannel.value,
+      payMethod: selectedPay.value,
+      currency: 'BRL',
+    })
+
+    if (data?.payUrl) {
+      showCenterToast('下单成功，正在跳转支付')
+      window.location.href = data.payUrl
+      return
+    }
+
+    if (data?.devCallback) {
+      showCenterToast(`充值成功，订单号: ${data.orderNo}`)
+      await loadBalance()
+      return
+    }
+
+    showCenterToast(`下单成功，订单号: ${data?.orderNo || '--'}`)
+  }
+  catch {
+    showCenterToast('充值下单失败')
+  }
+  finally {
+    submitLoading.value = false
+  }
+}
+
+onMounted(() => {
+  loadBalance()
+})
 </script>
 
 <template>
   <div class="recharge-page">
-    <header class="page-header">
-      <button class="icon-btn" type="button" @click="goBack">
-        <van-icon name="arrow-left" />
-      </button>
-      <h1>充值</h1>
-      <button class="icon-btn" type="button">
+    <AppPageHeader class="recharge-header" title="充值" @back="goBack" @right-click="showHelpTip">
+      <template #right>
         <van-icon name="question-o" />
-      </button>
-    </header>
+      </template>
+    </AppPageHeader>
 
     <section class="card balance-card">
       <div>
@@ -140,7 +209,15 @@ function goBack() {
       </div>
     </section>
 
-    <van-button type="primary" round block class="confirm-btn" :disabled="displayAmount <= 0">
+    <van-button
+      type="primary"
+      round
+      block
+      class="confirm-btn"
+      :loading="submitLoading"
+      :disabled="!canSubmit"
+      @click="handleSubmitRecharge"
+    >
       确认充值
     </van-button>
   </div>
@@ -186,24 +263,8 @@ function goBack() {
   transform: rotate(12deg);
 }
 
-.page-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+.recharge-header {
   margin-bottom: 14px;
-}
-
-.page-header h1 {
-  font-size: 20px;
-  font-weight: 700;
-}
-
-.icon-btn {
-  background: transparent;
-  border: none;
-  font-size: 20px;
-  color: var(--accent);
-  padding: 6px;
 }
 
 .card {

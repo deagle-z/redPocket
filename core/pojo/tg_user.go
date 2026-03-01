@@ -7,13 +7,16 @@ import (
 // TgUser Telegram 用户表
 type TgUser struct {
 	ID        int64     `gorm:"primaryKey;autoIncrement;comment:自增主键" json:"id"`
+	Uid       string    `gorm:"size:8;comment:uid" json:"uid"`
 	CreatedAt time.Time `gorm:"column:created_at;comment:创建时间" json:"created_at"`
 	UpdatedAt time.Time `gorm:"column:updated_at;comment:更新时间" json:"updated_at"`
 
 	Username  *string `gorm:"size:64;comment:Telegram 用户名（不保证唯一，用户可修改）" json:"username"`
 	FirstName *string `gorm:"size:128;comment:Telegram 名（first_name / 展示名）" json:"first_name"`
 
-	Avatar *string `gorm:"size:1024;comment:头像URL" json:"avatar"`
+	Avatar   *string `gorm:"size:1024;comment:头像URL" json:"avatar"`
+	Password string  `gorm:"size:128;comment:password" json:"password"`
+	Email    string  `gorm:"size:255;comment:email" json:"email"`
 
 	TgID int64 `gorm:"column:tg_id;uniqueIndex;not null;comment:Telegram 用户ID（唯一且稳定）" json:"tg_id"`
 
@@ -60,6 +63,38 @@ type TgUserSet struct {
 type TgUserStatusSet struct {
 	ID     int64 `json:"id"`
 	Status int8  `json:"status"` // 1=正常 0=禁用 -1=删除
+}
+
+type TgSendEmailCodeReq struct {
+	Email string `json:"email"`
+}
+
+type TgEmailRegisterReq struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+	Code     string `json:"code"`
+}
+
+type TgEmailLoginReq struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+type TgForgotPasswordReq struct {
+	Email       string `json:"email"`
+	Code        string `json:"code"`
+	NewPassword string `json:"newPassword"`
+}
+
+type TgCurrentUserInfo struct {
+	Avatar       *string `json:"avatar"`
+	Balance      float64 `json:"balance"`
+	Uid          string  `json:"uid"`
+	Username     *string `json:"username"`
+	TgID         int64   `json:"tg_id"`
+	GiftAmount   float64 `json:"gift_amount"`
+	RebateAmount float64 `json:"rebate_amount"`
+	Email        string  `json:"email"`
 }
 
 type TgUserBack struct {

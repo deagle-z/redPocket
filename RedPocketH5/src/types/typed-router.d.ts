@@ -37,6 +37,41 @@ declare module 'vue-router/auto-routes' {
       { all: ParamValue<false> },
       | never
     >,
+    '/bindEmail/': RouteRecordInfo<
+      '/bindEmail/',
+      '/bindEmail',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
+    '/bindTg/': RouteRecordInfo<
+      '/bindTg/',
+      '/bindTg',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
+    '/cs/': RouteRecordInfo<
+      '/cs/',
+      '/cs',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
+    'History': RouteRecordInfo<
+      'History',
+      '/history',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
+    '/invite/': RouteRecordInfo<
+      '/invite/',
+      '/invite',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
     'KeepAlive': RouteRecordInfo<
       'KeepAlive',
       '/keepalive',
@@ -51,9 +86,65 @@ declare module 'vue-router/auto-routes' {
       Record<never, never>,
       | never
     >,
+    'Profile': RouteRecordInfo<
+      'Profile',
+      '/profile',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
+    '/questions/': RouteRecordInfo<
+      '/questions/',
+      '/questions',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
+    '/rebate/': RouteRecordInfo<
+      '/rebate/',
+      '/rebate',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
     'Recharge': RouteRecordInfo<
       'Recharge',
       '/recharge',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
+    'Register': RouteRecordInfo<
+      'Register',
+      '/register',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
+    'ForgotPassword': RouteRecordInfo<
+      'ForgotPassword',
+      '/resetpwd',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
+    'SendPacket': RouteRecordInfo<
+      'SendPacket',
+      '/sendPacket',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
+    'Team': RouteRecordInfo<
+      'Team',
+      '/team',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
+    '/wallet/': RouteRecordInfo<
+      '/wallet/',
+      '/wallet',
       Record<never, never>,
       Record<never, never>,
       | never
@@ -90,6 +181,36 @@ declare module 'vue-router/auto-routes' {
       views:
         | never
     }
+    'src/pages/bindEmail/index.vue': {
+      routes:
+        | '/bindEmail/'
+      views:
+        | never
+    }
+    'src/pages/bindTg/index.vue': {
+      routes:
+        | '/bindTg/'
+      views:
+        | never
+    }
+    'src/pages/cs/index.vue': {
+      routes:
+        | '/cs/'
+      views:
+        | never
+    }
+    'src/pages/history/index.vue': {
+      routes:
+        | 'History'
+      views:
+        | never
+    }
+    'src/pages/invite/index.vue': {
+      routes:
+        | '/invite/'
+      views:
+        | never
+    }
     'src/pages/keepalive/index.vue': {
       routes:
         | 'KeepAlive'
@@ -102,9 +223,57 @@ declare module 'vue-router/auto-routes' {
       views:
         | never
     }
+    'src/pages/profile/index.vue': {
+      routes:
+        | 'Profile'
+      views:
+        | never
+    }
+    'src/pages/questions/index.vue': {
+      routes:
+        | '/questions/'
+      views:
+        | never
+    }
+    'src/pages/rebate/index.vue': {
+      routes:
+        | '/rebate/'
+      views:
+        | never
+    }
     'src/pages/recharge/index.vue': {
       routes:
         | 'Recharge'
+      views:
+        | never
+    }
+    'src/pages/register/index.vue': {
+      routes:
+        | 'Register'
+      views:
+        | never
+    }
+    'src/pages/resetpwd/index.vue': {
+      routes:
+        | 'ForgotPassword'
+      views:
+        | never
+    }
+    'src/pages/sendPacket/index.vue': {
+      routes:
+        | 'SendPacket'
+      views:
+        | never
+    }
+    'src/pages/team/index.vue': {
+      routes:
+        | 'Team'
+      views:
+        | never
+    }
+    'src/pages/wallet/index.vue': {
+      routes:
+        | '/wallet/'
       views:
         | never
     }

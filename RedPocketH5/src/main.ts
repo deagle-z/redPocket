@@ -6,6 +6,8 @@ import pinia from '@/stores'
 import 'virtual:uno.css'
 import '@/styles/app.less'
 import '@/styles/var.less'
+import '@/styles/themes/app-theme.css'
+import '@/styles/themes/withdraw-theme.css'
 import { i18n } from '@/utils/i18n'
 
 // Vant 桌面端适配

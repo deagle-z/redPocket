@@ -5,10 +5,13 @@ import (
 	"BaseGoUni/core/repository"
 	"BaseGoUni/core/utils"
 	tenantRepo "BaseGoUni/tenant/repository"
+	"context"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 	"io"
 	"strconv"
+	"strings"
+	"time"
 )
 
 // GetTgUsers godoc
@@ -159,4 +162,128 @@ func GetTgUsersWithSubStatsSummary(ctx *gin.Context) {
 	}
 	result := tenantRepo.GetTgUsersWithSubStatsSummary(getDB(ctx), search.ParentID)
 	utils.SuccessObjBack(ctx, result)
+}
+
+// SendTgEmailCode 发送邮箱验证码（按IP每分钟限流）
+func SendTgEmailCode(ctx *gin.Context) {
+	var req pojo.TgSendEmailCodeReq
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		utils.ErrorBack(ctx, "参数格式错误")
+		return
+	}
+	code, err := repository.SendTgEmailCode(req.Email, utils.GetIPAddress(ctx), utils.IsDev())
+	if err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	if !utils.IsDev() {
+		utils.SuccessBack(ctx, "success")
+		return
+	}
+
+	utils.SuccessObjBack(ctx, gin.H{
+		"code": code,
+	})
+}
+
+// RegisterTgByEmail 邮箱注册
+func RegisterTgByEmail(ctx *gin.Context) {
+	var req pojo.TgEmailRegisterReq
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		utils.ErrorBack(ctx, "参数格式错误")
+		return
+	}
+	db := ctx.MustGet("db").(*gorm.DB)
+	newUser, err := repository.RegisterTgByEmail(db, req.Email, req.Password, req.Code)
+	if err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+
+	utils.SuccessObjBack(ctx, gin.H{
+		"id":    newUser.ID,
+		"uid":   newUser.Uid,
+		"email": newUser.Email,
+	})
+}
+
+// LoginTgByEmail 邮箱登录
+func LoginTgByEmail(ctx *gin.Context) {
+	var req pojo.TgEmailLoginReq
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		utils.ErrorBack(ctx, "参数格式错误")
+		return
+	}
+	tempHostInfo := ctx.MustGet("hostInfo").(pojo.HostInfo)
+	db := ctx.MustGet("db").(*gorm.DB)
+	onlineUser := pojo.OnlineUser{
+		Username:  req.Email,
+		Browser:   ctx.GetHeader("User-Agent"),
+		Ip:        utils.GetIPAddress(ctx),
+		LoginTime: time.Now(),
+	}
+	data, err := repository.TgEmailLogin(db, tempHostInfo, req, onlineUser)
+	if err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	utils.SuccessObjBack(ctx, data)
+}
+
+// ForgotPasswordByEmail 忘记密码
+func ForgotPasswordByEmail(ctx *gin.Context) {
+	var req pojo.TgForgotPasswordReq
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		utils.ErrorBack(ctx, "参数格式错误")
+		return
+	}
+	db := ctx.MustGet("db").(*gorm.DB)
+	if err := repository.ResetTgPasswordByEmail(db, req.Email, req.Code, req.NewPassword, utils.GetIPAddress(ctx)); err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	utils.SuccessBack(ctx, "success")
+}
+
+// GetCurrentTgUserInfo 获取当前TG用户信息
+func GetCurrentTgUserInfo(ctx *gin.Context) {
+	authHeader := strings.TrimSpace(ctx.GetHeader("Authorization"))
+	if authHeader == "" {
+		utils.UnauthorizedBack(ctx, "Authorization header is missing")
+		return
+	}
+	token := strings.TrimSpace(strings.TrimPrefix(authHeader, "Bearer "))
+	tempHostInfo := ctx.MustGet("hostInfo").(pojo.HostInfo)
+	db := ctx.MustGet("db").(*gorm.DB)
+	data, err := repository.GetCurrentTgUserInfo(db, tempHostInfo.AccessSecret, token)
+	if err != nil {
+		utils.UnauthorizedBack(ctx, err.Error())
+		return
+	}
+	utils.SuccessObjBack(ctx, data)
+}
+
+// TgLogout TG用户登出
+func TgLogout(ctx *gin.Context) {
+	token := ""
+	if tokenVal, ok := ctx.Get("token"); ok {
+		if v, okCast := tokenVal.(string); okCast {
+			token = strings.TrimSpace(v)
+		}
+	}
+	if token == "" {
+		authHeader := strings.TrimSpace(ctx.GetHeader("Authorization"))
+		if authHeader == "" {
+			utils.UnauthorizedBack(ctx, "Authorization header is missing")
+			return
+		}
+		token = strings.TrimSpace(strings.TrimPrefix(authHeader, "Bearer "))
+	}
+	if token == "" {
+		utils.UnauthorizedBack(ctx, "token is invalid")
+		return
+	}
+	key := utils.KeyRdTgOnline + utils.MD5(token)
+	_ = utils.RD.Del(context.Background(), key).Err()
+	utils.SuccessBack(ctx, "success")
 }

@@ -5,10 +5,13 @@ import (
 	"BaseGoUni/core/repository"
 	"BaseGoUni/core/services"
 	"BaseGoUni/core/utils"
+	"context"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/jinzhu/copier"
 	"gorm.io/gorm"
+	"io"
+	"strings"
 )
 
 // SendRedPacket 发送红包
@@ -49,6 +52,95 @@ func SendRedPacket(ctx *gin.Context) {
 
 	var result pojo.LuckyMoneyBack
 	_ = copier.Copy(&result, luckyMoney)
+	utils.SuccessObjBack(ctx, result)
+}
+
+// SendRedPacketApp app端发送红包（TG用户）
+func SendRedPacketApp(ctx *gin.Context) {
+	var req pojo.LuckyMoneySend
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+
+	userIDRaw, ok := ctx.Get("userId")
+	if !ok {
+		utils.UnauthorizedBack(ctx, "token is invalid")
+		return
+	}
+	userID, ok := userIDRaw.(int64)
+	if !ok || userID <= 0 {
+		utils.UnauthorizedBack(ctx, "token is invalid")
+		return
+	}
+
+	db := ctx.MustGet("db").(*gorm.DB)
+	hostInfo := ctx.MustGet("hostInfo").(pojo.HostInfo)
+
+	var tgUser pojo.TgUser
+	if err := db.Where("id = ?", userID).First(&tgUser).Error; err != nil || tgUser.ID == 0 {
+		utils.ErrorBack(ctx, "用户不存在")
+		return
+	}
+	if tgUser.Status != 1 {
+		utils.ErrorBack(ctx, "用户已禁用，请联系管理员处理")
+		return
+	}
+
+	userName := ""
+	if tgUser.FirstName != nil && strings.TrimSpace(*tgUser.FirstName) != "" {
+		userName = strings.TrimSpace(*tgUser.FirstName)
+	} else if tgUser.Username != nil && strings.TrimSpace(*tgUser.Username) != "" {
+		userName = strings.TrimSpace(*tgUser.Username)
+	} else {
+		userName = fmt.Sprintf("User_%d", tgUser.ID)
+	}
+
+	luckyMoney, err := services.SendRedPacket(db, userID, userName, req, hostInfo.TablePrefix)
+	if err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+
+	var result pojo.LuckyMoneyBack
+	_ = copier.Copy(&result, luckyMoney)
+	utils.SuccessObjBack(ctx, result)
+}
+
+// GetRedPacketListApp app端红包大厅列表
+func GetRedPacketListApp(ctx *gin.Context) {
+	var search pojo.LuckyMoneyAppListSearch
+	search.SetPageDefaults()
+	if err := ctx.ShouldBindJSON(&search); err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+
+	userIDRaw, ok := ctx.Get("userId")
+	if !ok {
+		utils.UnauthorizedBack(ctx, "token is invalid")
+		return
+	}
+	userID, ok := userIDRaw.(int64)
+	if !ok || userID <= 0 {
+		utils.UnauthorizedBack(ctx, "token is invalid")
+		return
+	}
+
+	db := ctx.MustGet("db").(*gorm.DB)
+	result := repository.GetLuckyMoneyAppList(db, search, userID)
+	utils.SuccessObjBack(ctx, result)
+}
+
+// GetRecentLuckyWinnersApp app端最近中奖列表
+func GetRecentLuckyWinnersApp(ctx *gin.Context) {
+	var search pojo.LuckyRecentWinnerSearch
+	if err := ctx.ShouldBindJSON(&search); err != nil && err != io.EOF {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	db := ctx.MustGet("db").(*gorm.DB)
+	result := repository.GetRecentLuckyWinners(db, search)
 	utils.SuccessObjBack(ctx, result)
 }
 
@@ -211,4 +303,47 @@ func CheckGrabBalance(ctx *gin.Context) {
 	}
 
 	utils.SuccessBack(ctx, "余额充足")
+}
+
+// GrabRedPacketApp app端抢红包（TG用户）
+func GrabRedPacketApp(ctx *gin.Context) {
+	authHeader := strings.TrimSpace(ctx.GetHeader("Authorization"))
+	if authHeader == "" {
+		utils.UnauthorizedBack(ctx, "Authorization header is missing")
+		return
+	}
+	token := strings.TrimSpace(strings.TrimPrefix(authHeader, "Bearer "))
+	hostInfo := ctx.MustGet("hostInfo").(pojo.HostInfo)
+	userID, userType, _, _, err := utils.ParseToken(hostInfo.AccessSecret, token)
+	if err != nil || userID <= 0 || userType != 5 {
+		utils.UnauthorizedBack(ctx, "token is invalid")
+		return
+	}
+	key := utils.KeyRdTgOnline + utils.MD5(token)
+	data := utils.RD.Get(context.Background(), key)
+	if data == nil || data.Err() != nil || data.Val() == "" {
+		utils.UnauthorizedBack(ctx, "token is passed")
+		return
+	}
+
+	var req pojo.LuckyMoneyGrab
+	if err = ctx.ShouldBindJSON(&req); err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	grabIndex := 0
+	if req.GrabIndex != nil {
+		grabIndex = *req.GrabIndex
+		if grabIndex <= 0 {
+			utils.ErrorBack(ctx, "grabIndex must be greater than 0")
+			return
+		}
+	}
+	db := ctx.MustGet("db").(*gorm.DB)
+	result, err := services.GrabRedPacket(db, req.LuckyID, userID, hostInfo.TablePrefix, grabIndex)
+	if err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	utils.SuccessObjBack(ctx, result)
 }

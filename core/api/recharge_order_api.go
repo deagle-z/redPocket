@@ -103,3 +103,38 @@ func GetRechargeOrderById(ctx *gin.Context) {
 	}
 	utils.SuccessObjBack(ctx, result)
 }
+
+// AppCreateRechargeOrder godoc
+//
+//	@Summary		app端创建充值订单
+//	@Tags			充值订单
+//	@Accept			json
+//	@Produce		json
+//	@Param			data body		pojo.RechargeOrderAppReq	true	"充值下单参数"
+//	@Success		200	{object}		pojo.RechargeOrderAppBack
+//	@Router			/api/v1/app/rechargeOrder [post]
+func AppCreateRechargeOrder(ctx *gin.Context) {
+	var req pojo.RechargeOrderAppReq
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		utils.ErrorBack(ctx, "参数格式错误")
+		return
+	}
+	userIDRaw, ok := ctx.Get("userId")
+	if !ok {
+		utils.UnauthorizedBack(ctx, "token is invalid")
+		return
+	}
+	userID, ok := userIDRaw.(int64)
+	if !ok || userID <= 0 {
+		utils.UnauthorizedBack(ctx, "token is invalid")
+		return
+	}
+
+	db := ctx.MustGet("db").(*gorm.DB)
+	result, err := repository.AppCreateRechargeOrder(db, userID, req)
+	if err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	utils.SuccessObjBack(ctx, result)
+}

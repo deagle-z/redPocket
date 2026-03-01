@@ -1,8 +1,13 @@
 package common
 
 import (
+	"context"
 	"encoding/json"
+	"fmt"
 	"log"
+	"net"
+	"net/http"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -10,13 +15,15 @@ import (
 	"BaseGoUni/core/utils"
 	"github.com/gin-gonic/gin"
 	"golang.org/x/net/websocket"
-	"net/http"
 )
 
 const (
 	wsPingInterval = 25 * time.Second
 	wsPongTimeout  = 60 * time.Second
 	wsSendBuffer   = 64
+	wsConnWindow   = 60 * time.Second
+	wsConnMax      = 30
+	wsReconnectMin = 2 * time.Second
 )
 
 type wsMessage struct {
@@ -43,6 +50,9 @@ type wsClient struct {
 	deviceID   string
 	deviceName string
 	ip         string
+	userId     int64
+	userType   int
+	token      string
 }
 
 type wsBindInfo struct {
@@ -63,7 +73,21 @@ type wsHub struct {
 var (
 	wsHubOnce sync.Once
 	hub       *wsHub
+	wsLimiter = &wsConnLimiter{
+		stats: make(map[string]*wsConnStat),
+	}
 )
+
+type wsConnStat struct {
+	windowStart time.Time
+	count       int
+	lastAttempt time.Time
+}
+
+type wsConnLimiter struct {
+	mu    sync.Mutex
+	stats map[string]*wsConnStat
+}
 
 func startWsHub() {
 	wsHubOnce.Do(func() {
@@ -175,10 +199,128 @@ func bindDevice(client *wsClient, deviceID string) {
 	hub.bindDevice <- wsBindInfo{client: client, deviceID: deviceID}
 }
 
+func getRequestHost(rawHost string) string {
+	if host, _, err := net.SplitHostPort(rawHost); err == nil && host != "" {
+		return host
+	}
+	if strings.Contains(rawHost, ":") {
+		return strings.Split(rawHost, ":")[0]
+	}
+	return rawHost
+}
+
+func extractWsToken(c *gin.Context) string {
+	token := strings.TrimSpace(c.Query("token"))
+	if token != "" {
+		return token
+	}
+	authHeader := strings.TrimSpace(c.GetHeader("Authorization"))
+	if authHeader == "" {
+		return ""
+	}
+	return strings.TrimSpace(strings.TrimPrefix(authHeader, "Bearer "))
+}
+
+func wsTokenOnline(userType int, userID int64, token string) bool {
+	if token == "" || utils.RD == nil {
+		return false
+	}
+	var key string
+	switch userType {
+	case 1, 2, 3:
+		key = utils.KeyRdOnline + utils.MD5(token)
+	case 4:
+		key = utils.KeyRdTenantOnline + utils.MD5(token)
+	case 5:
+		key = utils.KeyRdTgOnline + utils.MD5(token)
+	default:
+		return false
+	}
+	data := utils.RD.Get(context.Background(), key)
+	if data != nil && data.Err() == nil && data.Val() != "" {
+		return true
+	}
+	// 兼容旧key格式（部分租户场景用userId做hash）
+	if userType == 4 {
+		oldKey := utils.KeyRdTenantOnline + utils.MD5(fmt.Sprintf("%d", userID))
+		oldData := utils.RD.Get(context.Background(), oldKey)
+		return oldData != nil && oldData.Err() == nil && oldData.Val() == token
+	}
+	return false
+}
+
+func validateWsToken(c *gin.Context, token string) (int64, int, error) {
+	if token == "" {
+		return 0, 0, fmt.Errorf("token is required")
+	}
+	userID, userType, hostName, _, err := utils.ParseToken(utils.CsConfig.DefaultHost.AccessSecret, token)
+	if err != nil {
+		return 0, 0, fmt.Errorf("invalid token")
+	}
+	if userID <= 0 {
+		return 0, 0, fmt.Errorf("invalid user")
+	}
+	reqHost := getRequestHost(c.Request.Host)
+	if hostName != "" && reqHost != "" && !strings.EqualFold(hostName, reqHost) {
+		return 0, 0, fmt.Errorf("token host mismatch")
+	}
+	if !wsTokenOnline(userType, userID, token) {
+		return 0, 0, fmt.Errorf("token is expired")
+	}
+	return userID, userType, nil
+}
+
+func allowWsConnect(ip string) (bool, string) {
+	now := time.Now()
+	wsLimiter.mu.Lock()
+	defer wsLimiter.mu.Unlock()
+
+	// 轻量清理，避免map持续增长
+	for k, v := range wsLimiter.stats {
+		if now.Sub(v.lastAttempt) > 5*wsConnWindow {
+			delete(wsLimiter.stats, k)
+		}
+	}
+
+	stat, ok := wsLimiter.stats[ip]
+	if !ok {
+		wsLimiter.stats[ip] = &wsConnStat{
+			windowStart: now,
+			count:       1,
+			lastAttempt: now,
+		}
+		return true, ""
+	}
+	if now.Sub(stat.lastAttempt) < wsReconnectMin {
+		stat.lastAttempt = now
+		return false, fmt.Sprintf("reconnect too fast, retry in %ds", int(wsReconnectMin/time.Second))
+	}
+	if now.Sub(stat.windowStart) >= wsConnWindow {
+		stat.windowStart = now
+		stat.count = 0
+	}
+	stat.count++
+	stat.lastAttempt = now
+	if stat.count > wsConnMax {
+		return false, fmt.Sprintf("too many connections, max %d per %ds", wsConnMax, int(wsConnWindow/time.Second))
+	}
+	return true, ""
+}
+
 // WsHandler upgrades the connection and registers a websocket client.
 func WsHandler(c *gin.Context) {
 	startWsHub()
 	clientIP := c.ClientIP()
+	if ok, msg := allowWsConnect(clientIP); !ok {
+		c.String(http.StatusTooManyRequests, msg)
+		return
+	}
+	token := extractWsToken(c)
+	userID, userType, err := validateWsToken(c, token)
+	if err != nil {
+		c.String(http.StatusUnauthorized, err.Error())
+		return
+	}
 	server := websocket.Server{
 		Handshake: func(_ *websocket.Config, _ *http.Request) error {
 			return nil
@@ -189,6 +331,9 @@ func WsHandler(c *gin.Context) {
 				send:     make(chan []byte, wsSendBuffer),
 				lastPong: time.Now().UnixNano(),
 				ip:       clientIP,
+				userId:   userID,
+				userType: userType,
+				token:    token,
 			}
 			hub.register <- client
 			go client.writePump()

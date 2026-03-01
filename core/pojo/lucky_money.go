@@ -55,11 +55,50 @@ type LuckyMoneySend struct {
 }
 
 type LuckyMoneyGrab struct {
-	LuckyID int64 `json:"luckyId" binding:"required,gt=0"` // 红包ID，必填
+	LuckyID   int64 `json:"luckyId" binding:"required,gt=0"` // 红包ID，必填
+	GrabIndex *int  `json:"grabIndex"`                       // 抢第几个包（1-based，可选）
 }
 
 type LuckyMoneyResp struct {
 	BasePageResponse[LuckyMoneyBack]
+}
+
+type LuckyMoneyAppListSearch struct {
+	PageInfo
+	ChatID  int64 `json:"chatId"`  // 群组ID，可选
+	Status  *int  `json:"status"`  // 状态，可选（默认进行中）
+	LuckyID int64 `json:"luckyId"` // 红包ID，可选
+}
+
+type LuckyMoneyAppItemBack struct {
+	SeqNo      uint    `json:"seqNo"`
+	Amount     float64 `json:"amount"`
+	IsGrabbed  int8    `json:"isGrabbed"`
+	Thunder    int8    `json:"thunder"`
+	IsGrabMine int8    `json:"isGrabMine"` // 是否本人抢到
+}
+
+type LuckyMoneyAppBack struct {
+	ID               int64                   `json:"id"`
+	SenderID         int64                   `json:"senderId"`
+	SenderName       string                  `json:"senderName"`
+	SenderAvatar     *string                 `json:"senderAvatar"`
+	Amount           float64                 `json:"amount"`
+	Received         float64                 `json:"received"`
+	Number           int                     `json:"number"`
+	GrabbedCount     int64                   `json:"grabbedCount"`
+	Thunder          int                     `json:"thunder"`
+	HitCount         int64                   `json:"hitCount"` // 中雷次数
+	LoseRate         float64                 `json:"loseRate"`
+	Status           int                     `json:"status"`
+	RemainingSeconds int64                   `json:"remainingSeconds"`
+	RemainingText    string                  `json:"remainingText"`
+	Items            []LuckyMoneyAppItemBack `json:"items"`
+	CreatedAt        time.Time               `json:"createdAt"`
+}
+
+type LuckyMoneyAppResp struct {
+	BasePageResponse[LuckyMoneyAppBack]
 }
 
 var LuckyMoneyTableName = "lucky_money"

@@ -39,6 +39,21 @@ type LuckyHistoryResp struct {
 	BasePageResponse[LuckyHistoryBack]
 }
 
+type LuckyRecentWinnerSearch struct {
+	Limit int `json:"limit"` // 返回条数，默认10，最大50
+}
+
+type LuckyRecentWinnerBack struct {
+	ID        int64     `json:"id"`
+	UserID    int64     `json:"userId"`
+	FirstName string    `json:"firstName"`
+	Avatar    *string   `json:"avatar"`
+	Amount    float64   `json:"amount"`
+	LuckyID   int64     `json:"luckyId"`
+	CreatedAt time.Time `json:"createdAt"`
+	TimeText  string    `json:"timeText"` // 刚刚/xx分钟前/xx小时前
+}
+
 var LuckyHistoryTableName = "lucky_history"
 
 func (LuckyHistory) TableName() string {

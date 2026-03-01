@@ -1,7 +1,6 @@
 package main
 
 import (
-	appservices "BaseGoUni/app/services"
 	utils2 "BaseGoUni/app/utils"
 	"BaseGoUni/core/base"
 	"BaseGoUni/core/common"
@@ -81,17 +80,17 @@ func main() {
 	}
 	go utils.Test()
 	utils.InitI18n()
-	
+
 	// 初始化 Telegram Bot（如果配置了）
-	if utils.GlobalConfig.Telegram.Enabled && utils.GlobalConfig.Telegram.BotToken != "" {
-		db := utils.NewPrefixDb(dbHostInfo.TablePrefix)
-		err = appservices.InitTelegramBot(db, dbHostInfo.TablePrefix, utils.GlobalConfig.Telegram.BotToken)
-		if err != nil {
-			log.Printf("Init telegram bot error.err=%v\n", err)
-		} else {
-			log.Print("init telegram bot success\n")
-		}
-	}
-	
+	//if utils.GlobalConfig.Telegram.Enabled && utils.GlobalConfig.Telegram.BotToken != "" {
+	//	db := utils.NewPrefixDb(dbHostInfo.TablePrefix)
+	//	err = appservices.InitTelegramBot(db, dbHostInfo.TablePrefix, utils.GlobalConfig.Telegram.BotToken)
+	//	if err != nil {
+	//		log.Printf("Init telegram bot error.err=%v\n", err)
+	//	} else {
+	//		log.Print("init telegram bot success\n")
+	//	}
+	//}
+
 	common.InitGin()
 }

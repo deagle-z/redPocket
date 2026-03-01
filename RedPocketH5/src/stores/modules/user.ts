@@ -1,14 +1,16 @@
 import { defineStore } from 'pinia'
-import type { LoginData, UserState } from '@/api/user'
+import type { ForgotPasswordData, LoginData, RegisterData, TgAuthLoginData, UserState } from '@/api/user'
 import { clearToken, setToken } from '@/utils/auth'
 
 import {
+  forgotPasswordByEmail,
   getEmailCode,
   getUserInfo,
-  resetPassword,
-  login as userLogin,
+  sendRegisterEmailCode,
+  loginByEmail as userLoginByEmail,
   logout as userLogout,
   register as userRegister,
+  tgLogin as userTgLogin,
 } from '@/api/user'
 
 const InitUserInfo = {
@@ -27,8 +29,22 @@ export const useUserStore = defineStore('user', () => {
 
   const login = async (loginForm: LoginData) => {
     try {
-      const { data } = await userLogin(loginForm)
-      setToken(data.token)
+      const { data } = await userLoginByEmail(loginForm)
+      const token = data.accessToken || data.token
+      if (!token)
+        throw new Error('Login token missing')
+      setToken(token)
+    }
+    catch (error) {
+      clearToken()
+      throw error
+    }
+  }
+
+  const loginByTelegram = async (payload: TgAuthLoginData) => {
+    try {
+      const { data } = await userTgLogin(payload)
+      setToken(data.accessToken)
     }
     catch (error) {
       clearToken()
@@ -65,30 +81,31 @@ export const useUserStore = defineStore('user', () => {
     catch {}
   }
 
-  const reset = async () => {
-    try {
-      const data = await resetPassword()
-      return data
-    }
-    catch {}
+  const reset = async (form: ForgotPasswordData) => {
+    const data = await forgotPasswordByEmail(form)
+    return data
   }
 
-  const register = async () => {
-    try {
-      const data = await userRegister()
-      return data
-    }
-    catch {}
+  const register = async (form: RegisterData) => {
+    const data = await userRegister(form)
+    return data
+  }
+
+  const sendCode = async (email: string) => {
+    const data = await sendRegisterEmailCode(email)
+    return data
   }
 
   return {
     userInfo,
     info,
     login,
+    loginByTelegram,
     logout,
     getCode,
     reset,
     register,
+    sendCode,
   }
 }, {
   persist: true,

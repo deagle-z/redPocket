@@ -12,9 +12,18 @@ import setPageTitle from '@/utils/set-page-title'
 
 NProgress.configure({ showSpinner: true, parent: '#app' })
 
+const publicRouteNames = new Set(['Home', 'Login', 'Register'])
+const publicRoutePaths = new Set(['/', '/login', '/register'])
+
 const router = createRouter({
   history: createWebHistory(import.meta.env.VITE_APP_PUBLIC_PATH),
   routes,
+  scrollBehavior() {
+    return {
+      left: 0,
+      top: 0,
+    }
+  },
 })
 
 // This will update routes at runtime without reloading the page
@@ -32,6 +41,16 @@ router.beforeEach(async (to: EnhancedRouteLocation) => {
 
   // Set page title
   setPageTitle(to.name)
+
+  const routeName = String(to.name || '')
+  const isPublicRoute = publicRouteNames.has(routeName) || publicRoutePaths.has(to.path)
+  if (!isLogin() && !isPublicRoute) {
+    return {
+      name: 'Login',
+      query: { redirect: to.fullPath },
+      replace: true,
+    }
+  }
 
   if (isLogin() && !userStore.userInfo?.uid)
     await userStore.info()

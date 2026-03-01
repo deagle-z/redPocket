@@ -5,11 +5,11 @@ import (
 	"BaseGoUni/core/repository"
 	"BaseGoUni/core/utils"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"gorm.io/gorm"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -26,7 +26,7 @@ func SendRedPacket(db *gorm.DB, senderID int64, senderName string, req pojo.Luck
 	}
 
 	// 获取红包数量配置
-	luckyNumConfig := GetLuckyNumConfig(db, req.ChatID)
+	luckyNumConfig := GetLuckyNumConfig(db)
 	if luckyNumConfig == "" {
 		return nil, errors.New("配置错误：未找到红包数量配置")
 	}
@@ -62,14 +62,8 @@ func SendRedPacket(db *gorm.DB, senderID int64, senderName string, req pojo.Luck
 	maxAmount := req.Amount / float64(luckyTotal) * 2
 	redEnvelopes := utils.RedEnvelope(req.Amount, luckyTotal, minAmount, maxAmount)
 
-	// 序列化红包列表
-	redListJSON, err := json.Marshal(redEnvelopes)
-	if err != nil {
-		return nil, fmt.Errorf("生成红包列表失败: %v", err)
-	}
-
 	// 获取中雷倍数
-	loseRate := GetLoseRate(db, req.ChatID)
+	loseRate := GetLoseRate(db)
 
 	// 创建红包记录
 	luckyMoney := &pojo.LuckyMoney{
@@ -79,7 +73,7 @@ func SendRedPacket(db *gorm.DB, senderID int64, senderName string, req pojo.Luck
 		Number:     luckyTotal,
 		Thunder:    req.Thunder,
 		ChatID:     req.ChatID,
-		RedList:    string(redListJSON),
+		RedList:    "",
 		LoseRate:   loseRate,
 		Status:     1, // 进行中
 		Lucky:      1, // 有效
@@ -97,6 +91,10 @@ func SendRedPacket(db *gorm.DB, senderID int64, senderName string, req pojo.Luck
 	if err := repository.CreateLuckyMoney(tx, luckyMoney); err != nil {
 		tx.Rollback()
 		return nil, fmt.Errorf("创建红包失败: %v", err)
+	}
+	if err := repository.CreateLuckyMoneyItems(tx, luckyMoney.ID, redEnvelopes); err != nil {
+		tx.Rollback()
+		return nil, fmt.Errorf("创建红包明细失败: %v", err)
 	}
 
 	// 扣除发送者余额，同时扣除赠送余额（不低于0）
@@ -234,11 +232,15 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 	redAmountMilli := int64(redAmount * 1000)
 
 	// 判断是否中雷
-	isThunder := 0
+	isThunder := int8(0)
 	loseMoney := 0.0
 	amountStr := fmt.Sprintf("%.2f", redAmount)
 	lastDigit := amountStr[len(amountStr)-1]
 	thunderStr := strconv.Itoa(luckyMoney.Thunder)
+	hitThunder := string(lastDigit) == thunderStr
+	if hitThunder {
+		isThunder = 1
+	}
 
 	tx := db.Begin()
 	defer func() {
@@ -247,9 +249,14 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 		}
 	}()
 
-	if string(lastDigit) == thunderStr {
+	// 标记子红包被抢（防止同一序号被重复抢），并记录是否中雷
+	if err := repository.MarkLuckyMoneyItemGrabbed(tx, luckyID, grabIndex, userID, isThunder, time.Now()); err != nil {
+		tx.Rollback()
+		return nil, err
+	}
+
+	if hitThunder {
 		// 中雷
-		isThunder = 1
 		loseMoney = luckyMoney.Amount * luckyMoney.LoseRate
 
 		// 扣除用户余额
@@ -268,7 +275,7 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 		}
 
 		// 获取发包中雷抽成百分比
-		sendCommission := GetSendCommission(db, luckyMoney.ChatID)
+		sendCommission := GetSendCommission(db)
 		// 计算抽成金额
 		commissionAmount := loseMoney * float64(sendCommission) / 100.0
 		// 实际到账金额 = 显示金额 - 抽成金额
@@ -371,7 +378,7 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 	} else {
 		// 未中雷，增加用户余额（需要扣除抽成）
 		// 获取抢红包抽成百分比
-		grabbingCommission := GetGrabbingCommission(db, luckyMoney.ChatID)
+		grabbingCommission := GetGrabbingCommission(db)
 		// 计算抽成金额
 		commissionAmount := redAmount * float64(grabbingCommission) / 100.0
 		// 实际到账金额 = 显示金额 - 抽成金额
@@ -429,7 +436,7 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 		UserID:    userID,
 		FirstName: utils.FormatName(getTgUserDisplayName(&user), 8),
 		LuckyID:   luckyID,
-		IsThunder: isThunder,
+		IsThunder: int(isThunder),
 		Amount:    redAmount,
 		LoseMoney: loseMoney,
 	}
@@ -493,7 +500,7 @@ func CheckGrabBalance(db *gorm.DB, luckyID int64, userID int64, tablePrefix stri
 		return errors.New("用户已禁用，请联系管理员处理")
 	}
 
-	loseRate := GetLoseRate(db, luckyMoney.ChatID)
+	loseRate := GetLoseRate(db)
 	lowestAmount := luckyMoney.Amount * loseRate
 	if user.Balance < lowestAmount {
 		return fmt.Errorf("你至少需要有%.2fU才能抢这个红包~", lowestAmount)
@@ -538,10 +545,11 @@ func GetRedPacketDetails(db *gorm.DB, luckyID int64) (map[string]interface{}, er
 }
 
 // GetLoseRate 获取中雷倍数（带Redis缓存）
-func GetLoseRate(db *gorm.DB, chatID int64) float64 {
+func GetLoseRate(db *gorm.DB) float64 {
 	defaultValue := 1.8
-	redisKey := fmt.Sprintf("bgu_auth_group_lose_rate_%d", chatID)
+	redisKey := fmt.Sprintf("bgu_auth_group_lose_rate")
 	ctx := context.Background()
+	configKey := fmt.Sprintf("lucky_lose_rate")
 
 	// 先从Redis缓存获取
 	cachedValue, err := utils.RD.Get(ctx, redisKey).Result()
@@ -551,34 +559,25 @@ func GetLoseRate(db *gorm.DB, chatID int64) float64 {
 		}
 	}
 
-	// 缓存未命中，从数据库查询
-	var authGroup pojo.AuthGroup
-	err = db.Where("group_id = ?", chatID).First(&authGroup).Error
-	if err != nil {
-		// 即使查询失败也缓存默认值，避免频繁查询数据库
-		utils.RD.SetEX(ctx, redisKey, strconv.FormatFloat(defaultValue, 'f', 2, 64), utils.GetRandomRangeSecond(20*60, 40*60))
-		return defaultValue
+	// 缓存未命中，从sys_config查询；key不存在时写入默认值
+	configValue := getOrInitSysConfigValue(db, configKey, strconv.FormatFloat(defaultValue, 'f', 2, 64), "红包中雷倍数")
+	result, parseErr := strconv.ParseFloat(configValue, 64)
+	if parseErr != nil || result <= 0 {
+		result = defaultValue
+		_ = db.Model(&pojo.SysConfig{}).Where("config_key = ?", configKey).Update("config_value", strconv.FormatFloat(defaultValue, 'f', 2, 64)).Error
 	}
-
-	// 如果查询到有效值，存入缓存
-	result := defaultValue
-	if authGroup.LoseRate > 0 {
-		result = authGroup.LoseRate
-		// 存入Redis，设置过期时间为20-40分钟随机
-		utils.RD.SetEX(ctx, redisKey, strconv.FormatFloat(result, 'f', 2, 64), utils.GetRandomRangeSecond(20*60, 40*60))
-	} else {
-		// 即使没有值也缓存默认值，避免频繁查询数据库
-		utils.RD.SetEX(ctx, redisKey, strconv.FormatFloat(defaultValue, 'f', 2, 64), utils.GetRandomRangeSecond(20*60, 40*60))
-	}
+	// 存入Redis，设置过期时间为20-40分钟随机
+	utils.RD.SetEX(ctx, redisKey, strconv.FormatFloat(result, 'f', 2, 64), utils.GetRandomRangeSecond(20*60, 40*60))
 
 	return result
 }
 
 // GetLuckyNumConfig 获取红包数量配置（带Redis缓存）
-func GetLuckyNumConfig(db *gorm.DB, chatID int64) string {
+func GetLuckyNumConfig(db *gorm.DB) string {
 	defaultValue := "3"
-	redisKey := fmt.Sprintf("bgu_auth_group_num_config_%d", chatID)
+	redisKey := fmt.Sprintf("bgu_auth_group_num_config")
 	ctx := context.Background()
+	configKey := fmt.Sprintf("lucky_num_config")
 
 	// 先从Redis缓存获取
 	cachedValue, err := utils.RD.Get(ctx, redisKey).Result()
@@ -586,21 +585,11 @@ func GetLuckyNumConfig(db *gorm.DB, chatID int64) string {
 		return cachedValue
 	}
 
-	// 缓存未命中，从数据库查询
-	var authGroup pojo.AuthGroup
-	err = db.Where("group_id = ?", chatID).First(&authGroup).Error
-	if err != nil {
-		// 即使查询失败也缓存默认值，避免频繁查询数据库
-		utils.RD.SetEX(ctx, redisKey, defaultValue, utils.GetRandomRangeSecond(20*60, 40*60))
-		return defaultValue
-	}
-
-	// 如果查询到有效值，存入缓存
-	result := defaultValue
-	if authGroup.NumConfig != "" {
-		result = authGroup.NumConfig
-	} else {
+	// 缓存未命中，从sys_config查询；key不存在时写入默认值
+	result := getOrInitSysConfigValue(db, configKey, defaultValue, "红包数量配置")
+	if result == "" {
 		result = defaultValue
+		_ = db.Model(&pojo.SysConfig{}).Where("config_key = ?", configKey).Update("config_value", defaultValue).Error
 	}
 	// 存入Redis，设置过期时间为20-40分钟随机
 	utils.RD.SetEX(ctx, redisKey, result, utils.GetRandomRangeSecond(20*60, 40*60))
@@ -609,10 +598,11 @@ func GetLuckyNumConfig(db *gorm.DB, chatID int64) string {
 }
 
 // GetSendCommission 获取发包中雷抽成百分比（带Redis缓存）
-func GetSendCommission(db *gorm.DB, chatID int64) int {
+func GetSendCommission(db *gorm.DB) int {
 	defaultValue := 2
-	redisKey := fmt.Sprintf("bgu_auth_group_send_commission_%d", chatID)
+	redisKey := fmt.Sprintf("bgu_auth_group_send_commission")
 	ctx := context.Background()
+	configKey := fmt.Sprintf("lucky_send_commission")
 
 	// 先从Redis缓存获取
 	cachedValue, err := utils.RD.Get(ctx, redisKey).Result()
@@ -622,21 +612,12 @@ func GetSendCommission(db *gorm.DB, chatID int64) int {
 		}
 	}
 
-	// 缓存未命中，从数据库查询
-	var authGroup pojo.AuthGroup
-	err = db.Where("group_id = ?", chatID).First(&authGroup).Error
-	if err != nil {
-		// 即使查询失败也缓存默认值，避免频繁查询数据库
-		utils.RD.SetEX(ctx, redisKey, strconv.Itoa(defaultValue), utils.GetRandomRangeSecond(20*60, 40*60))
-		return defaultValue
-	}
-
-	// 如果查询到有效值，存入缓存
-	result := defaultValue
-	if authGroup.SendCommission > 0 {
-		result = authGroup.SendCommission
-	} else {
+	// 缓存未命中，从sys_config查询；key不存在时写入默认值
+	configValue := getOrInitSysConfigValue(db, configKey, strconv.Itoa(defaultValue), "红包中雷抽成百分比")
+	result, parseErr := strconv.Atoi(configValue)
+	if parseErr != nil || result < 0 {
 		result = defaultValue
+		_ = db.Model(&pojo.SysConfig{}).Where("config_key = ?", configKey).Update("config_value", strconv.Itoa(defaultValue)).Error
 	}
 	// 存入Redis，设置过期时间为20-40分钟随机
 	utils.RD.SetEX(ctx, redisKey, strconv.Itoa(result), utils.GetRandomRangeSecond(20*60, 40*60))
@@ -645,10 +626,11 @@ func GetSendCommission(db *gorm.DB, chatID int64) int {
 }
 
 // GetGrabbingCommission 获取抢红包抽成百分比（带Redis缓存）
-func GetGrabbingCommission(db *gorm.DB, chatID int64) int {
+func GetGrabbingCommission(db *gorm.DB) int {
 	defaultValue := 3
-	redisKey := fmt.Sprintf("bgu_auth_group_grabbing_commission_%d", chatID)
+	redisKey := fmt.Sprintf("bgu_auth_group_grabbing_commission")
 	ctx := context.Background()
+	configKey := fmt.Sprintf("lucky_grabbing_commission")
 
 	// 先从Redis缓存获取
 	cachedValue, err := utils.RD.Get(ctx, redisKey).Result()
@@ -658,26 +640,41 @@ func GetGrabbingCommission(db *gorm.DB, chatID int64) int {
 		}
 	}
 
-	// 缓存未命中，从数据库查询
-	var authGroup pojo.AuthGroup
-	err = db.Where("group_id = ?", chatID).First(&authGroup).Error
-	if err != nil {
-		// 即使查询失败也缓存默认值，避免频繁查询数据库
-		utils.RD.SetEX(ctx, redisKey, strconv.Itoa(defaultValue), utils.GetRandomRangeSecond(20*60, 40*60))
-		return defaultValue
-	}
-
-	// 如果查询到有效值，存入缓存
-	result := defaultValue
-	if authGroup.GrabbingCommission > 0 {
-		result = authGroup.GrabbingCommission
-	} else {
+	// 缓存未命中，从sys_config查询；key不存在时写入默认值
+	configValue := getOrInitSysConfigValue(db, configKey, strconv.Itoa(defaultValue), "抢红包抽成百分比")
+	result, parseErr := strconv.Atoi(configValue)
+	if parseErr != nil || result < 0 {
 		result = defaultValue
+		_ = db.Model(&pojo.SysConfig{}).Where("config_key = ?", configKey).Update("config_value", strconv.Itoa(defaultValue)).Error
 	}
 	// 存入Redis，设置过期时间为20-40分钟随机
 	utils.RD.SetEX(ctx, redisKey, strconv.Itoa(result), utils.GetRandomRangeSecond(20*60, 40*60))
 
 	return result
+}
+
+func getOrInitSysConfigValue(db *gorm.DB, configKey string, defaultValue string, configDesc string) string {
+	var sysConfig pojo.SysConfig
+	err := db.Where("config_key = ?", configKey).First(&sysConfig).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			sysConfig = pojo.SysConfig{
+				ConfigKey:   configKey,
+				ConfigValue: defaultValue,
+				ConfigDesc:  configDesc,
+			}
+			if createErr := db.Create(&sysConfig).Error; createErr == nil {
+				return defaultValue
+			}
+			return defaultValue
+		}
+		return defaultValue
+	}
+	if strings.TrimSpace(sysConfig.ConfigValue) == "" {
+		_ = db.Model(&sysConfig).Update("config_value", defaultValue).Error
+		return defaultValue
+	}
+	return sysConfig.ConfigValue
 }
 
 func getTgUserByID(db *gorm.DB, userID int64) (pojo.TgUser, error) {

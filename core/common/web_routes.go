@@ -121,6 +121,8 @@ func InitGin() {
 		adminGroup.POST("/lucky/list", api.GetLuckyMoneyListAdmin)         // 管理员获取红包列表
 		adminGroup.POST("/lucky/history", api.GetLuckyHistoryListAdmin)    // 管理员获取领取历史
 		adminGroup.GET("/lucky/:id", api.GetLuckyMoneyDetailAdmin)         // 管理员获取红包详情
+		adminGroup.POST("/luckyItem/list", api.GetLuckyMoneyItems)         // 管理员获取红包明细列表
+		adminGroup.GET("/luckyItem/:id", api.GetLuckyMoneyItemById)        // 管理员获取红包明细详情
 		adminGroup.POST("/cashHistory/list", api.GetCashHistoryListAdmin)  // 管理员获取余额变动记录列表
 		adminGroup.POST("/authGroup/list", api.GetAuthGroups)              // 获取授权群组列表
 		adminGroup.POST("/authGroup", api.SetAuthGroup)                    // 创建或更新授权群组
@@ -133,6 +135,8 @@ func InitGin() {
 		adminGroup.GET("/rechargeOrder/:id", api.GetRechargeOrderById)     // 获取充值订单详情
 		adminGroup.POST("/withdrawOrderBr/list", api.GetWithdrawOrderBrs)  // 获取巴西提现订单列表
 		adminGroup.GET("/withdrawOrderBr/:id", api.GetWithdrawOrderBrById) // 获取巴西提现订单详情
+		adminGroup.POST("/payChannel/list", api.GetPayChannels)            // 获取支付通道列表
+		adminGroup.GET("/payChannel/:id", api.GetPayChannelById)           // 获取支付通道详情
 		adminGroup.POST("/tgUser/listWithSubStats", api.GetTgUsersWithSubStats)
 		adminGroup.POST("/tgUser/subStatsSummary", api.GetTgUsersWithSubStatsSummary)
 	}
@@ -149,6 +153,8 @@ func InitGin() {
 		adminGroupLog.DELETE("/tgUser/:id", api.DelTgUser)                   // 删除Telegram用户
 		adminGroupLog.POST("/tgUserRebate", api.SetTgUserRebateRecord)       // 创建或更新Telegram反水记录
 		adminGroupLog.DELETE("/tgUserRebate/:id", api.DelTgUserRebateRecord) // 删除Telegram反水记录
+		adminGroupLog.POST("/luckyItem", api.SetLuckyMoneyItem)              // 创建或更新红包明细
+		adminGroupLog.DELETE("/luckyItem/:id", api.DelLuckyMoneyItem)        // 删除红包明细
 		adminGroupLog.POST("/tenant", api.SetSysTenant)                      // 创建或更新租户
 		adminGroupLog.POST("/tenant/resetPassword", api.ResetSysTenantPassword)
 		adminGroupLog.DELETE("/tenant/:id", api.DelSysTenant)                // 删除租户
@@ -158,6 +164,8 @@ func InitGin() {
 		adminGroupLog.DELETE("/rechargeOrder/:id", api.DelRechargeOrder)     // 删除充值订单
 		adminGroupLog.POST("/withdrawOrderBr", api.SetWithdrawOrderBr)       // 创建或更新巴西提现订单
 		adminGroupLog.DELETE("/withdrawOrderBr/:id", api.DelWithdrawOrderBr) // 删除巴西提现订单
+		adminGroupLog.POST("/payChannel", api.SetPayChannel)                 // 创建或更新支付通道
+		adminGroupLog.DELETE("/payChannel/:id", api.DelPayChannel)           // 删除支付通道
 		//adminGroupLog.PUT("/host_info", api2.SetHostInfo)
 		//adminGroupLog.DELETE("/host_info/:id", api2.DelHostInfo)
 	}
@@ -198,9 +206,25 @@ func InitGin() {
 	}
 
 	appRouter := router.Group("/api/v1/app")
-	// appRouter.Use(authMiddleware([]int{1, 2, 3, 4}, false, true))
 	{
-		appRouter.GET("/getPkByName/:name", api.GetPkManagerUrlByName) // 获取PK管理器列表
+		//appRouter.GET("/getPkByName/:name", api.GetPkManagerUrlByName) // 获取PK管理器列表
+		appRouter.POST("/tg/login", api.TgAuthLogin)
+		appRouter.POST("/tg/loginByEmail", api.LoginTgByEmail)
+		appRouter.POST("/tg/sendEmailCode", api.SendTgEmailCode)
+		appRouter.POST("/tg/registerByEmail", api.RegisterTgByEmail)
+		appRouter.POST("/tg/forgotPasswordByEmail", api.ForgotPasswordByEmail)
+	}
+
+	appAuthRouter := router.Group("/api/v1/app")
+	appAuthRouter.Use(appAuthMiddle(true))
+	{
+		appAuthRouter.POST("/rechargeOrder", api.AppCreateRechargeOrder)
+		appAuthRouter.POST("/lucky/send", api.SendRedPacketApp)
+		appAuthRouter.POST("/lucky/list", api.GetRedPacketListApp)
+		appAuthRouter.POST("/lucky/recentWinners", api.GetRecentLuckyWinnersApp)
+		appAuthRouter.POST("/tg/logout", api.TgLogout)
+		appAuthRouter.GET("/tg/currentUserInfo", api.GetCurrentTgUserInfo)
+		appAuthRouter.POST("/lucky/grab", api.GrabRedPacketApp)
 	}
 
 	log.Printf("Start server at %s:%d ", utils.GlobalConfig.Host, utils.GlobalConfig.Port)
@@ -438,6 +462,55 @@ func tenantAuthMiddleware(singleLogin bool) gin.HandlerFunc {
 		//	c.JSON(http.StatusBadRequest, gin.H{"error": "request too fast.Please try again later."})
 		//	return
 		//}
+		c.Set("userId", userId)
+		c.Set("userType", userType)
+		c.Set("token", authHeader)
+		c.Next()
+		endTime := time.Now()
+		latencyTime := endTime.Sub(startTime)
+		if latencyTime > 1*time.Second {
+			log.Printf("Request %s %s took %v", c.Request.Method, c.Request.URL, latencyTime)
+		}
+	}
+}
+
+func appAuthMiddle(singleLogin bool) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		startTime := time.Now()
+		authHeader := c.GetHeader("Authorization")
+		if authHeader == "" {
+			utils.UnauthorizedBack(c, "Authorization header is missing")
+			c.Abort()
+			return
+		}
+		authHeader = strings.TrimPrefix(authHeader, "Bearer ")
+		hostInfo := utils.GetTempHostInfo(utils.GetRequestHost(c))
+		userId, userType, hostName, _, _ := utils.ParseToken(hostInfo.AccessSecret, authHeader)
+		if hostInfo.HostName != hostName {
+			utils.UnauthorizedBack(c, "token is invalid 0")
+			c.Abort()
+			return
+		}
+		if userId == 0 {
+			utils.UnauthorizedBack(c, "token is invalid 1")
+			c.Abort()
+			return
+		}
+		if userType != 5 {
+			utils.UnauthorizedBack(c, "not support api")
+			c.Abort()
+			return
+		}
+		if singleLogin {
+			key := utils.KeyRdTgOnline + utils.MD5(authHeader)
+			data := utils.RD.Get(context.Background(), key)
+			if data == nil || data.Err() != nil || data.Val() == "" {
+				utils.UnauthorizedBack(c, "token is passed")
+				c.Abort()
+				return
+			}
+		}
+
 		c.Set("userId", userId)
 		c.Set("userType", userType)
 		c.Set("token", authHeader)

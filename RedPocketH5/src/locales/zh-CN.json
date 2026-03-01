@@ -1,7 +1,7 @@
 {
   "app": {
-    "name": "Vue3 移动端模板",
-    "description": "一个基于 Vue 3 生态系统的移动 web 应用模板"
+    "name": "Lucky Packet Boom",
+    "description": "Lucky Packet Boom"
   },
 
   "navbar": {
@@ -13,8 +13,8 @@
     "Counter": "🍍 状态持久化",
     "KeepAlive": "♻️ 页面缓存",
     "ScrollCache": "📍 滚动缓存",
-    "Login": "🧑‍💻 登录",
-    "Register": "🧑‍💻 注册",
+    "Login": "登录",
+    "Register": "注册",
     "ForgotPassword": "❓ 忘记密码",
     "Settings": "⚙️ 设置",
     "404": "⚠️ 404 页面",
@@ -23,7 +23,10 @@
 
   "tabbar": {
     "home": "首页",
-    "profile": "我的"
+    "history": "历史",
+    "sendPacket": "发红包",
+    "profile": "我的",
+    "wallet": "钱包"
   },
 
   "home": {
@@ -77,19 +80,55 @@
   },
 
   "login": {
+    "pageTitle": "登录",
     "login": "登录",
     "logout": "退出登录",
     "email": "邮箱",
+    "emailTab": "邮箱",
+    "emailOrUsername": "邮箱或用户名",
     "password": "密码",
     "pleaseEnterEmail": "请输入邮箱",
     "pleaseEnterPassword": "请输入密码",
     "signUp": "还没有账号？点击注册",
-    "forgotPassword": "忘记密码？"
+    "noAccountYet": "还没有账号？",
+    "signUpNow": "立即注册",
+    "forgotPassword": "忘记密码？",
+    "telegramAuth": "Telegram授权",
+    "loginWithTelegram": "使用 Telegram 登录",
+    "tgUnavailable": "Telegram 登录不可用",
+    "missingBotConfig": "缺少 Telegram Bot 配置",
+    "tgAuthCancelled": "Telegram 授权已取消",
+    "tgLoginFailed": "Telegram 登录失败",
+    "feature": {
+      "game": {
+        "title": "扫雷游戏",
+        "desc": "智慧挑战，赢取奖励"
+      },
+      "coin": {
+        "title": "赚取金币",
+        "desc": "每局都有收益机会"
+      },
+      "invite": {
+        "title": "邀请好友",
+        "desc": "分享奖励，共同致富"
+      }
+    },
+    "language": {
+      "title": "选择语言",
+      "zhNative": "简体中文",
+      "zhEn": "Chinese (Simplified)",
+      "enNative": "English",
+      "enEn": "English (US)",
+      "changed": "语言已切换",
+      "autoRefresh": "语言切换后页面将自动刷新"
+    }
   },
 
   "forgotPassword": {
+    "pageTitle": "重置密码",
     "email": "邮箱",
     "code": "验证码",
+    "newPassword": "新密码",
     "password": "密码",
     "confirmPassword": "再次输入密码",
     "pleaseEnterEmail": "请输入邮箱",
@@ -99,6 +138,7 @@
     "passwordsDoNotMatch": "两次输入的密码不一致",
     "confirm": "确认",
     "backToLogin": "返回登录",
+    "send": "发送",
     "getCode": "获取验证码",
     "gettingCode": "获取中",
     "sendCodeSuccess": "已发送，验证码为",
@@ -106,22 +146,30 @@
   },
 
   "register": {
+    "pageTitle": "注册",
+    "telegramLogin": "使用Telegram授权直接登录",
     "email": "邮箱",
+    "emailCode": "邮箱验证码",
     "code": "验证码",
     "nickname": "昵称",
     "password": "密码",
-    "confirmPassword": "再次输入密码",
+    "confirmPassword": "密码确认",
+    "inviteCode": "邀请码",
     "pleaseEnterEmail": "请输入邮箱",
-    "pleaseEnterCode": "请输入验证码",
+    "pleaseEnterCode": "请输入邮箱验证码",
     "pleaseEnterNickname": "请输入昵称",
-    "pleaseEnterPassword": "请输入密码",
-    "pleaseEnterConfirmPassword": "请再次输入密码",
+    "pleaseEnterPassword": "密码",
+    "pleaseEnterConfirmPassword": "密码确认",
+    "pleaseEnterInviteCode": "邀请码",
     "passwordsDoNotMatch": "两次输入的密码不一致",
-    "confirm": "确认",
+    "confirm": "注册",
+    "alreadyHaveAccount": "已有账号？",
+    "loginNow": "立即登录",
     "backToLogin": "返回登录",
+    "send": "发送",
     "getCode": "获取验证码",
     "gettingCode": "获取中",
-    "sendCodeSuccess": "已发送，验证码为",
+    "sendCodeSuccess": "验证码已发送",
     "registerSuccess": "注册成功"
   },
 
