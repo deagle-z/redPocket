@@ -11,6 +11,10 @@ const wsClient = new WsClient({
 })
 
 export function connectWebSocket(uid?: string) {
+  const targetUid = uid || defaultUid
+  const debugUrl = targetUid ? `${defaultUrl}${defaultUrl.includes('?') ? '&' : '?'}uid=${targetUid}` : defaultUrl
+  console.warn('[ws] connect attempt:', debugUrl || '(empty url)')
+
   if (uid && uid !== defaultUid) {
     const dynamicClient = new WsClient({
       url: defaultUrl,

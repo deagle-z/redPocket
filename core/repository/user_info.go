@@ -135,6 +135,11 @@ func AwardUser(db *gorm.DB, reqData pojo.AwardInfo) (result []int64, err error) 
 			CashDesc:    awardUni.CashDesc,
 			FromUserId:  awardUni.FromUserId,
 		}
+		if awardUni.Amount >= 0 {
+			cashHistory.Type = pojo.CashHistoryTypeAdminManualAward
+		} else {
+			cashHistory.Type = pojo.CashHistoryTypeAdminManualDeduct
+		}
 		err = tx.Create(&cashHistory).Error
 		if err != nil {
 			return result, err
@@ -490,6 +495,32 @@ func GetCashHistoryListAdmin(db *gorm.DB, search pojo.CashHistorySearch) (result
 	result.PageSize = search.PageSize
 	result.CurrentPage = search.CurrentPage
 
+	return result
+}
+
+// GetCashHistoryListApp 当前TG用户流水列表（分页，排除抽成）
+func GetCashHistoryListApp(db *gorm.DB, userID int64, search pojo.CashHistorySearch) (result pojo.CashHistoryPage) {
+	var cashHistoryList []pojo.CashHistory
+	query := db.Model(&pojo.CashHistory{}).
+		Where("user_id = ?", userID).
+		Where("type <> ?", pojo.CashHistoryTypeRedPacketCommission)
+
+	if search.CashMark != "" {
+		query = query.Where("cash_mark LIKE ?", "%"+search.CashMark+"%")
+	}
+
+	query.Count(&result.Total)
+	query = query.Order("id desc").Limit(search.PageSize).Offset(search.PageSize * search.CurrentPage)
+	query.Find(&cashHistoryList)
+
+	for _, history := range cashHistoryList {
+		var tempResp pojo.CashHistoryResp
+		_ = copier.Copy(&tempResp, &history)
+		result.List = append(result.List, tempResp)
+	}
+
+	result.PageSize = search.PageSize
+	result.CurrentPage = search.CurrentPage
 	return result
 }
 

@@ -64,6 +64,9 @@ func SendRedPacket(db *gorm.DB, senderID int64, senderName string, req pojo.Luck
 
 	// 获取中雷倍数
 	loseRate := GetLoseRate(db)
+	// 获取红包过期分钟配置
+	expireMinutes := GetLuckyExpireMinutes(db)
+	expireAt := time.Now().Add(time.Duration(expireMinutes) * time.Minute)
 
 	// 创建红包记录
 	luckyMoney := &pojo.LuckyMoney{
@@ -78,6 +81,7 @@ func SendRedPacket(db *gorm.DB, senderID int64, senderName string, req pojo.Luck
 		Status:     1, // 进行中
 		Lucky:      1, // 有效
 		Received:   0,
+		ExpireTime: expireAt,
 	}
 
 	tx := db.Begin()
@@ -126,7 +130,7 @@ func SendRedPacket(db *gorm.DB, senderID int64, senderName string, req pojo.Luck
 			EndAmount:   runningBalance - giftDeduct,
 			CashMark:    "发送红包",
 			CashDesc:    fmt.Sprintf("发送红包 %dU（赠送金额%.2fU），雷号%d", int(req.Amount), giftDeduct, req.Thunder),
-			Type:        1,
+			Type:        pojo.CashHistoryTypeSendRedPacket,
 			IsGift:      1,
 			FromUserId:  senderID,
 		}
@@ -146,7 +150,7 @@ func SendRedPacket(db *gorm.DB, senderID int64, senderName string, req pojo.Luck
 			EndAmount:   runningBalance - normalDeduct,
 			CashMark:    "发送红包",
 			CashDesc:    fmt.Sprintf("发送红包 %dU（正常金额%.2fU），雷号%d", int(req.Amount), normalDeduct, req.Thunder),
-			Type:        1,
+			Type:        pojo.CashHistoryTypeSendRedPacket,
 			IsGift:      0,
 			FromUserId:  senderID,
 		}
@@ -159,6 +163,7 @@ func SendRedPacket(db *gorm.DB, senderID int64, senderName string, req pojo.Luck
 	if err := tx.Commit().Error; err != nil {
 		return nil, fmt.Errorf("提交事务失败: %v", err)
 	}
+	_ = EnqueueLuckyExpireTask(tablePrefix, luckyMoney.ID, luckyMoney.ExpireTime)
 
 	return luckyMoney, nil
 }
@@ -234,12 +239,22 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 	// 判断是否中雷
 	isThunder := int8(0)
 	loseMoney := 0.0
+	thunderFee := 0.0 // 中雷手续费（发包者端抽成）
+	winFee := 0.0     // 中奖手续费（抢包者端抽成）
+	sendCommission := 0
+	grabbingCommission := 0
 	amountStr := fmt.Sprintf("%.2f", redAmount)
 	lastDigit := amountStr[len(amountStr)-1]
 	thunderStr := strconv.Itoa(luckyMoney.Thunder)
 	hitThunder := string(lastDigit) == thunderStr
 	if hitThunder {
 		isThunder = 1
+		loseMoney = luckyMoney.Amount * luckyMoney.LoseRate
+		sendCommission = GetSendCommission(db)
+		thunderFee = loseMoney * float64(sendCommission) / 100.0
+	} else {
+		grabbingCommission = GetGrabbingCommission(db)
+		winFee = redAmount * float64(grabbingCommission) / 100.0
 	}
 
 	tx := db.Begin()
@@ -250,15 +265,13 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 	}()
 
 	// 标记子红包被抢（防止同一序号被重复抢），并记录是否中雷
-	if err := repository.MarkLuckyMoneyItemGrabbed(tx, luckyID, grabIndex, userID, isThunder, time.Now()); err != nil {
+	if err := repository.MarkLuckyMoneyItemGrabbed(tx, luckyID, grabIndex, userID, isThunder, loseMoney, thunderFee, winFee, time.Now()); err != nil {
 		tx.Rollback()
 		return nil, err
 	}
 
 	if hitThunder {
 		// 中雷
-		loseMoney = luckyMoney.Amount * luckyMoney.LoseRate
-
 		// 扣除用户余额
 		giftDeduct := loseMoney
 		if user.GiftAmount < giftDeduct {
@@ -274,10 +287,8 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 			return nil, fmt.Errorf("扣除余额失败: %v", err)
 		}
 
-		// 获取发包中雷抽成百分比
-		sendCommission := GetSendCommission(db)
-		// 计算抽成金额
-		commissionAmount := loseMoney * float64(sendCommission) / 100.0
+		// 中雷手续费
+		commissionAmount := thunderFee
 		// 实际到账金额 = 显示金额 - 抽成金额
 		actualLoseMoney := loseMoney - commissionAmount
 
@@ -303,7 +314,7 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 				EndAmount:   runningBalance - giftDeduct,
 				CashMark:    "抢红包中雷",
 				CashDesc:    fmt.Sprintf("抢红包中雷，损失%.2fU（赠送金额%.2fU）", loseMoney, giftDeduct),
-				Type:        3,
+				Type:        pojo.CashHistoryTypeGrabRedPacketThunder,
 				IsGift:      1,
 				FromUserId:  luckyMoney.SenderID,
 			}
@@ -323,7 +334,7 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 				EndAmount:   runningBalance - normalDeduct,
 				CashMark:    "抢红包中雷",
 				CashDesc:    fmt.Sprintf("抢红包中雷，损失%.2fU（正常金额%.2fU）", loseMoney, normalDeduct),
-				Type:        3,
+				Type:        pojo.CashHistoryTypeGrabRedPacketThunder,
 				IsGift:      0,
 				FromUserId:  luckyMoney.SenderID,
 			}
@@ -346,8 +357,8 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 			StartAmount: senderUser.Balance,
 			EndAmount:   senderUser.Balance + actualLoseMoney, // 实际到账金额
 			CashMark:    "红包中雷收益",
-			CashDesc:    fmt.Sprintf("红包中雷收益，获得%.2fU（抽成后）", actualLoseMoney),
-			Type:        2,
+			CashDesc:    fmt.Sprintf("红包中雷收益，获得%.2f", actualLoseMoney),
+			Type:        pojo.CashHistoryTypeRedPacketThunderIncome,
 			IsGift:      0,
 			FromUserId:  userID,
 		}
@@ -366,7 +377,7 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 				EndAmount:   senderUser.Balance + actualLoseMoney, // 抽成后金额（不变）
 				CashMark:    "红包中雷抽成",
 				CashDesc:    fmt.Sprintf("红包中雷抽成%.2f%%，抽成金额%.2fU", float64(sendCommission), commissionAmount),
-				Type:        4,
+				Type:        pojo.CashHistoryTypeRedPacketCommission,
 				IsGift:      0,
 				FromUserId:  userID,
 			}
@@ -377,10 +388,8 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 		}
 	} else {
 		// 未中雷，增加用户余额（需要扣除抽成）
-		// 获取抢红包抽成百分比
-		grabbingCommission := GetGrabbingCommission(db)
-		// 计算抽成金额
-		commissionAmount := redAmount * float64(grabbingCommission) / 100.0
+		// 中奖手续费
+		commissionAmount := winFee
 		// 实际到账金额 = 显示金额 - 抽成金额
 		actualAmount := redAmount - commissionAmount
 
@@ -400,8 +409,8 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 			StartAmount: user.Balance,
 			EndAmount:   user.Balance + actualAmount, // 实际到账金额
 			CashMark:    "抢红包",
-			CashDesc:    fmt.Sprintf("抢红包，获得%.2fU（抽成后）", actualAmount),
-			Type:        2,
+			CashDesc:    fmt.Sprintf("抢红包，获得%.2fU", actualAmount),
+			Type:        pojo.CashHistoryTypeGrabRedPacketWin,
 			IsGift:      0,
 			FromUserId:  luckyMoney.SenderID,
 		}
@@ -420,7 +429,7 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 				EndAmount:   user.Balance + actualAmount, // 抽成后金额（不变）
 				CashMark:    "抢红包抽成",
 				CashDesc:    fmt.Sprintf("抢红包抽成%.2f%%，抽成金额%.2fU", float64(grabbingCommission), commissionAmount),
-				Type:        4,
+				Type:        pojo.CashHistoryTypeRedPacketCommission,
 				IsGift:      0,
 				FromUserId:  luckyMoney.SenderID,
 			}
@@ -471,6 +480,7 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 		"isThunder": isThunder,
 		"loseMoney": loseMoney,
 		"openNum":   grabIndex,
+		"grabIndex": grabIndex,
 		"luckyInfo": luckyMoney,
 		"message":   "",
 	}
@@ -644,6 +654,34 @@ func GetGrabbingCommission(db *gorm.DB) int {
 	configValue := getOrInitSysConfigValue(db, configKey, strconv.Itoa(defaultValue), "抢红包抽成百分比")
 	result, parseErr := strconv.Atoi(configValue)
 	if parseErr != nil || result < 0 {
+		result = defaultValue
+		_ = db.Model(&pojo.SysConfig{}).Where("config_key = ?", configKey).Update("config_value", strconv.Itoa(defaultValue)).Error
+	}
+	// 存入Redis，设置过期时间为20-40分钟随机
+	utils.RD.SetEX(ctx, redisKey, strconv.Itoa(result), utils.GetRandomRangeSecond(20*60, 40*60))
+
+	return result
+}
+
+// GetLuckyExpireMinutes 获取红包过期分钟配置（带Redis缓存）
+func GetLuckyExpireMinutes(db *gorm.DB) int {
+	defaultValue := 3
+	redisKey := fmt.Sprintf("bgu_lucky_expire_time")
+	ctx := context.Background()
+	configKey := fmt.Sprintf("lucky_expire_time")
+
+	// 先从Redis缓存获取
+	cachedValue, err := utils.RD.Get(ctx, redisKey).Result()
+	if err == nil && cachedValue != "" {
+		if value, parseErr := strconv.Atoi(cachedValue); parseErr == nil && value > 0 {
+			return value
+		}
+	}
+
+	// 缓存未命中，从sys_config查询；key不存在时写入默认值
+	configValue := getOrInitSysConfigValue(db, configKey, strconv.Itoa(defaultValue), "红包过期时间(分钟)")
+	result, parseErr := strconv.Atoi(configValue)
+	if parseErr != nil || result <= 0 {
 		result = defaultValue
 		_ = db.Model(&pojo.SysConfig{}).Where("config_key = ?", configKey).Update("config_value", strconv.Itoa(defaultValue)).Error
 	}

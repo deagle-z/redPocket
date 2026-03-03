@@ -5,6 +5,7 @@ import (
 	"BaseGoUni/core/base"
 	"BaseGoUni/core/common"
 	"BaseGoUni/core/pojo"
+	"BaseGoUni/core/services"
 	"BaseGoUni/core/utils"
 	"encoding/json"
 	"flag"
@@ -80,6 +81,11 @@ func main() {
 	}
 	go utils.Test()
 	utils.InitI18n()
+	if err = services.InitLuckyExpireAsynq(); err != nil {
+		log.Printf("Init asynq error.err=%v\n", err)
+		return
+	}
+	log.Print("init asynq success\n")
 
 	// 初始化 Telegram Bot（如果配置了）
 	//if utils.GlobalConfig.Telegram.Enabled && utils.GlobalConfig.Telegram.BotToken != "" {

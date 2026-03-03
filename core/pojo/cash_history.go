@@ -11,10 +11,26 @@ type CashHistory struct { // 积分变动记录
 	EndAmount   float64 `yaml:"endAmount" json:"endAmount" gorm:"type:numeric(20,3)"`             // 变动后积分
 	CashMark    string  `yaml:"cashMark" json:"cashMark" gorm:"type:varchar(32);index:ccf"`       // 积分备注
 	CashDesc    string  `yaml:"cashDesc" json:"cashDesc" gorm:"type:varchar(64);index:ccf"`       // 积分描述
-	Type        int8    `yaml:"type" json:"type" gorm:"type:tinyint;default:1"`                   // 1发红包金额 2抢红包收益金额 3抢红包中雷金额 4抽成金额
+	Type        int8    `yaml:"type" json:"type" gorm:"type:tinyint;default:1"`                   // 变动类型，见 CashHistoryType 常量
 	IsGift      int8    `yaml:"isGift" json:"isGift" gorm:"type:tinyint(1);default:0"`            // 0否 1是
 	FromUserId  int64   `yaml:"fromUserId" json:"fromUserId" gorm:"type:bigint;index:ccf"`        // 来源用户id
 }
+
+const (
+	CashHistoryTypeUnknown                int8 = 0
+	CashHistoryTypeSendRedPacket          int8 = 1  // 发送红包
+	CashHistoryTypeGrabRedPacketWin       int8 = 2  // 抢红包未中雷收益
+	CashHistoryTypeGrabRedPacketThunder   int8 = 3  // 抢红包中雷损失
+	CashHistoryTypeRedPacketThunderIncome int8 = 4  // 发包者中雷收益
+	CashHistoryTypeRedPacketCommission    int8 = 5  // 红包相关抽成
+	CashHistoryTypeRechargeCredit         int8 = 6  // 充值到账
+	CashHistoryTypeAdminManualAward       int8 = 7  // 后台手工加款
+	CashHistoryTypeAdminManualDeduct      int8 = 8  // 后台手工扣款
+	CashHistoryTypeWithdrawApply          int8 = 9  // 提现申请扣款
+	CashHistoryTypeWithdrawRefund         int8 = 10 // 提现失败/取消/退回返还
+	CashHistoryTypeRebateTransfer         int8 = 11 // 佣金(返水)转余额
+	CashHistoryTypeLuckyExpireRefund      int8 = 12 // 红包过期退回
+)
 
 type CashHistoryResp struct {
 	CreatedAt   time.Time `json:"createdAt"`

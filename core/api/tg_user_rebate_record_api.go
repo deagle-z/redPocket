@@ -6,6 +6,7 @@ import (
 	"BaseGoUni/core/utils"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
+	"io"
 	"strconv"
 )
 
@@ -25,6 +26,34 @@ func GetTgUserRebateRecords(ctx *gin.Context) {
 		utils.ErrorBack(ctx, err.Error())
 		return
 	}
+	db := ctx.MustGet("db").(*gorm.DB)
+	result := repository.GetTgUserRebateRecords(db, search)
+	utils.SuccessObjBack(ctx, result)
+}
+
+// GetCurrentTgUserRebateRecords app端获取当前用户反水记录列表（分页）
+func GetCurrentTgUserRebateRecords(ctx *gin.Context) {
+	userIDRaw, ok := ctx.Get("userId")
+	if !ok {
+		utils.UnauthorizedBack(ctx, "token is invalid")
+		return
+	}
+	userID, ok := userIDRaw.(int64)
+	if !ok || userID <= 0 {
+		utils.UnauthorizedBack(ctx, "token is invalid")
+		return
+	}
+
+	var search pojo.TgUserRebateRecordSearch
+	search.SetPageDefaults()
+	if err := ctx.ShouldBindJSON(&search); err != nil && err != io.EOF {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	// app端固定查询“我作为上级”的返佣记录，避免越权查他人数据
+	search.ParentUserId = userID
+	search.SubUserId = 0
+
 	db := ctx.MustGet("db").(*gorm.DB)
 	result := repository.GetTgUserRebateRecords(db, search)
 	utils.SuccessObjBack(ctx, result)

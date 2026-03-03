@@ -1,6 +1,6 @@
 import type { AxiosError, AxiosInstance, AxiosRequestConfig, AxiosResponse, InternalAxiosRequestConfig } from 'axios'
 import axios from 'axios'
-import { showNotify } from 'vant'
+import { showToast } from 'vant'
 import { STORAGE_TOKEN_KEY } from '@/stores/mutation-type'
 
 // 这里是用于设定请求后端时，所用的 Token KEY
@@ -17,31 +17,41 @@ const request = axios.create({
 })
 
 export type RequestError = AxiosError<{
+  code?: number
+  msg?: string
+  success?: boolean
+  data?: any
   message?: string
   result?: any
   errorMessage?: string
 }>
 
+function getErrorMessage(payload?: Record<string, any>, fallback = '请求失败') {
+  return payload?.message || payload?.msg || payload?.errorMessage || fallback
+}
+
 // 异常拦截处理器
 function errorHandler(error: RequestError): Promise<any> {
   if (error.response) {
     const { data = {}, status, statusText } = error.response
+    const message = getErrorMessage(data as Record<string, any>, statusText || '请求失败')
+
     // 403 无权限
     if (status === 403) {
-      showNotify({
-        type: 'danger',
-        message: (data && data.message) || statusText,
-      })
+      showToast(message)
     }
     // 401 未登录/未授权
     if (status === 401 && data.result && data.result.isLogin) {
-      showNotify({
-        type: 'danger',
-        message: 'Authorization verification failed',
-      })
+      showToast('Authorization verification failed')
       // 如果你需要直接跳转登录页面
       // location.replace(loginRoutePath)
     }
+    if (status !== 401 && status !== 403) {
+      showToast(message)
+    }
+  }
+  else {
+    showToast(error.message || '网络异常，请稍后重试')
   }
   return Promise.reject(error)
 }
@@ -61,8 +71,24 @@ function requestHandler(config: InternalAxiosRequestConfig): InternalAxiosReques
 request.interceptors.request.use(requestHandler, errorHandler)
 
 // 响应拦截器
-function responseHandler(response: AxiosResponse) {
-  return response.data
+function responseHandler(response: AxiosResponse): any {
+  const payload = response.data as Record<string, any>
+
+  if (payload && typeof payload === 'object') {
+    const hasSuccess = typeof payload.success === 'boolean'
+    const hasCode = typeof payload.code === 'number'
+
+    const isBizError = (hasSuccess && payload.success === false)
+      || (hasCode && ![0, 200].includes(payload.code))
+
+    if (isBizError) {
+      const message = getErrorMessage(payload)
+      showToast(message)
+      return Promise.reject(new Error(message))
+    }
+  }
+
+  return payload
 }
 
 // Add a response interceptor

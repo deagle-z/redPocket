@@ -1,5 +1,5 @@
-<script setup lang="ts">
-import { getCurrentTgUserInfo, tgLogout } from '@/api/user'
+﻿<script setup lang="ts">
+import { appUpload, getCurrentTgUserInfo, tgLogout, updateCurrentTgAvatar } from '@/api/user'
 import { showToast } from 'vant'
 import { clearToken, isLogin } from '@/utils/auth'
 import { locale } from '@/utils/i18n'
@@ -32,7 +32,7 @@ const accountMenus: MenuItem[] = [
   { key: 'recharge', label: '充值', icon: downIcon },
   { key: 'withdraw', label: '提现', icon: upIcon },
   { key: 'withdraw-account', label: '提现账户', icon: bankCardIcon },
-  { key: 'lucky-reward', label: '幸运转盘奖励', icon: gamesIcon },
+  // { key: 'lucky-reward', label: '幸运转盘奖励', icon: gamesIcon },
 ]
 
 const promoMenus: MenuItem[] = [
@@ -42,6 +42,11 @@ const promoMenus: MenuItem[] = [
 ]
 
 const profileLoading = ref(false)
+const showAvatarPopup = ref(false)
+const uploadingAvatar = ref(false)
+const avatarFileInput = ref<HTMLInputElement>()
+const PROFILE_AVATAR_KEY = 'profile_custom_avatar'
+const avatarOptions = Array.from({ length: 9 }, (_, idx) => `https://game.luckypacket.me/images/avatar${idx + 1}.png`)
 const profile = reactive({
   avatar: '',
   username: '',
@@ -103,12 +108,81 @@ async function loadCurrentTgUserInfo() {
     profile.email = data?.email || ''
     profile.balance = Number(data?.balance || 0)
     profile.rebateAmount = Number(data?.rebate_amount || 0)
+    const customAvatar = localStorage.getItem(PROFILE_AVATAR_KEY) || ''
+    if (customAvatar)
+      profile.avatar = customAvatar
   }
   catch {
     showToast('加载用户信息失败')
   }
   finally {
     profileLoading.value = false
+  }
+}
+
+function openAvatarPopup() {
+  showAvatarPopup.value = true
+}
+
+function closeAvatarPopup() {
+  showAvatarPopup.value = false
+}
+
+async function selectAvatar(url: string) {
+  if (uploadingAvatar.value)
+    return
+  try {
+    uploadingAvatar.value = true
+    await updateCurrentTgAvatar(url)
+    profile.avatar = url
+    localStorage.setItem(PROFILE_AVATAR_KEY, url)
+    showToast('头像已更新')
+    closeAvatarPopup()
+  }
+  finally {
+    uploadingAvatar.value = false
+  }
+}
+
+function triggerAvatarUpload() {
+  if (uploadingAvatar.value)
+    return
+  avatarFileInput.value?.click()
+}
+
+async function handleAvatarFileChange(event: Event) {
+  const target = event.target as HTMLInputElement
+  const file = target?.files?.[0]
+  target.value = ''
+  if (!file)
+    return
+  if (!file.type.startsWith('image/')) {
+    showToast('请上传图片文件')
+    return
+  }
+  if (file.size > 5 * 1024 * 1024) {
+    showToast('图片不能超过5MB')
+    return
+  }
+  if (uploadingAvatar.value)
+    return
+
+  uploadingAvatar.value = true
+  try {
+    const uploadRes = await appUpload(file)
+    const url = uploadRes?.data?.url || ''
+    if (!url) {
+      showToast('上传失败，请重试')
+      return
+    }
+    await updateCurrentTgAvatar(url)
+    profile.avatar = url
+    localStorage.setItem(PROFILE_AVATAR_KEY, url)
+    showToast('头像已更新')
+    closeAvatarPopup()
+  }
+  finally {
+    uploadingAvatar.value = false
   }
 }
 
@@ -163,6 +237,14 @@ function selectLanguage(lang: string) {
 
 function goByPath(path: string) {
   router.push(path)
+}
+
+function goWallet() {
+  goByPath('/wallet')
+}
+
+function goTransform() {
+  goByPath('/transform')
 }
 
 function onMenuClick(item: MenuItem) {
@@ -234,7 +316,7 @@ async function handleConfirmLogout() {
     showLogoutDialog.value = false
     logoutLoading.value = false
     showToast('已退出登录')
-    router.replace({ name: 'Login' as keyof RouteMap })
+    router.replace('/login')
   }
 }
 </script>
@@ -243,9 +325,9 @@ async function handleConfirmLogout() {
   <div class="profile-page">
     <section class="profile-card">
       <div class="profile-top">
-        <div class="avatar-box">
+        <button class="avatar-box" type="button" @click="openAvatarPopup">
           <img :src="profile.avatar || avatarPlaceholderIcon" alt="" class="avatar-icon">
-        </div>
+        </button>
         <div class="profile-meta">
           <div class="name-row">
             <h3 class="user-name">
@@ -260,15 +342,15 @@ async function handleConfirmLogout() {
       </div>
 
       <div class="balance-row">
-        <div class="balance-item">
+        <button class="balance-item" type="button" @click="goWallet">
           <strong class="balance-value">{{ displayBalance }}</strong>
           <span class="balance-label">余额(₱)</span>
-        </div>
+        </button>
         <div class="balance-divider" />
-        <div class="balance-item">
+        <button class="balance-item" type="button" @click="goTransform">
           <strong class="balance-value">{{ displayRebateAmount }}</strong>
           <span class="balance-label">佣金(₱)</span>
-        </div>
+        </button>
       </div>
     </section>
 
@@ -365,6 +447,40 @@ async function handleConfirmLogout() {
         {{ t('login.language.autoRefresh') }}
       </p>
     </van-popup>
+
+    <van-popup v-model:show="showAvatarPopup" round position="bottom" class="avatar-popup">
+      <div class="avatar-popup-header">
+        <span class="avatar-popup-title">更换头像</span>
+        <button class="avatar-popup-close" @click="closeAvatarPopup">
+          ×
+        </button>
+      </div>
+
+      <div class="avatar-grid">
+        <button
+          v-for="item in avatarOptions"
+          :key="item"
+          type="button"
+          class="avatar-option"
+          :class="{ active: profile.avatar === item }"
+          @click="selectAvatar(item)"
+        >
+          <img :src="item" alt="" class="avatar-option-img">
+        </button>
+      </div>
+
+      <div class="avatar-divider">
+        <span>或</span>
+      </div>
+
+      <div class="avatar-upload-wrap">
+        <button type="button" class="avatar-upload-btn" :disabled="uploadingAvatar" @click="triggerAvatarUpload">
+          <van-icon name="photograph" />
+          <span>{{ uploadingAvatar ? '上传中...' : '上传自定义头像' }}</span>
+        </button>
+        <input ref="avatarFileInput" type="file" accept="image/*" class="avatar-file-input" @change="handleAvatarFileChange">
+      </div>
+    </van-popup>
   </div>
 </template>
 
@@ -392,15 +508,19 @@ async function handleConfirmLogout() {
   height: 56px;
   border-radius: 16px;
   background: #e8f0fe;
+  border: none;
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 0;
 }
 
 .avatar-icon {
-  width: 26px;
-  height: 26px;
-  opacity: 0.5;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  object-fit: cover;
+  opacity: 1;
 }
 
 .profile-meta {
@@ -417,7 +537,7 @@ async function handleConfirmLogout() {
 .user-name {
   margin: 0;
   color: #1a1a2e;
-  font-size: 30px;
+  font-size: 18px;
   line-height: 1.1;
   font-weight: 700;
 }
@@ -448,16 +568,20 @@ async function handleConfirmLogout() {
 }
 
 .balance-item {
+  border: none;
+  background: transparent;
+  padding: 0;
   flex: 1;
   text-align: center;
   display: flex;
   flex-direction: column;
   gap: 4px;
+  cursor: pointer;
 }
 
 .balance-value {
-  color: #2dc84d;
-  font-size: 30px;
+  color: var(--color-primary);
+  font-size: 18px;
   line-height: 1;
   font-weight: 700;
 }
@@ -537,7 +661,7 @@ async function handleConfirmLogout() {
 }
 
 .menu-extra.success {
-  color: #2dc84d;
+  color: var(--color-primary);
 }
 
 .menu-extra.muted {
@@ -592,7 +716,7 @@ async function handleConfirmLogout() {
   transform: translateY(-50%);
   border: none;
   background: transparent;
-  font-size: 36px;
+  font-size: 18px;
   color: var(--color-text-light);
   line-height: 1;
   cursor: pointer;
@@ -659,13 +783,120 @@ async function handleConfirmLogout() {
   font-size: var(--font-sm);
 }
 
+.avatar-popup {
+  min-height: 420px;
+  padding: 0 0 24px;
+  background: #edf6f6;
+}
+
+.avatar-popup-header {
+  height: 62px;
+  border-bottom: 1px solid #dce6e6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  background: #fff;
+}
+
+.avatar-popup-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1a1a2e;
+}
+
+.avatar-popup-close {
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  border: 0;
+  background: transparent;
+  color: #94a3b8;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.avatar-grid {
+  padding: 16px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px 14px;
+}
+
+.avatar-option {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.avatar-option-img {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid transparent;
+  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.08);
+}
+
+.avatar-option.active .avatar-option-img {
+  border-color: var(--color-primary);
+}
+
+.avatar-divider {
+  margin: 8px 16px 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #9ca3af;
+  font-size: 14px;
+}
+
+.avatar-divider::before,
+.avatar-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: #d9e3e3;
+}
+
+.avatar-upload-wrap {
+  padding: 14px 16px 0;
+}
+
+.avatar-upload-btn {
+  width: 100%;
+  height: 48px;
+  border: 1px solid var(--color-border-active);
+  border-radius: 8px;
+  background: #f8fffb;
+  color: #29a35b;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.avatar-upload-btn:disabled {
+  opacity: 0.6;
+}
+
+.avatar-file-input {
+  display: none;
+}
+
 @media (max-width: 390px) {
   .user-name {
-    font-size: 26px;
+    font-size: 16px;
   }
 
   .balance-value {
-    font-size: 26px;
+    font-size: 16px;
   }
 }
 </style>
@@ -675,3 +906,4 @@ async function handleConfirmLogout() {
   name: 'Profile'
 }
 </route>
+

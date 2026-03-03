@@ -33,6 +33,7 @@ const defaultOptions: Required<Omit<WsClientOptions, 'url'>> = {
 export class WsClient {
   private readonly options: Required<WsClientOptions>
   private socket: WebSocket | null = null
+  private latestUrl = ''
   private heartbeatTimer: ReturnType<typeof setInterval> | null = null
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null
   private reconnectAttemptsLeft: number
@@ -84,11 +85,12 @@ export class WsClient {
       return
 
     const url = this.buildSocketUrl()
+    this.latestUrl = url
     this.socket = new WebSocket(url)
     this.socket.onopen = evt => this.handleOpen(evt)
     this.socket.onclose = evt => this.handleClose(evt)
     this.socket.onerror = evt => this.handleError(evt)
-    this.socket.onmessage = evt => this.handleMessage(evt)
+    this.socket.onmessage = evt => { void this.handleMessage(evt) }
   }
 
   close() {
@@ -139,11 +141,19 @@ export class WsClient {
     this.reconnectAttemptsLeft = this.options.maxReconnectAttempts
     this.reconnectLock = false
     this.startHeartbeat()
+    console.warn('[ws] connected:', this.maskToken(this.latestUrl))
     this.openHandlers.forEach(handler => handler(evt))
   }
 
   private handleClose(evt: CloseEvent) {
     this.clearHeartbeat()
+    console.warn('[ws] closed:', {
+      code: evt.code,
+      reason: evt.reason || '(empty)',
+      wasClean: evt.wasClean,
+      reconnectLeft: this.reconnectAttemptsLeft,
+      url: this.maskToken(this.latestUrl),
+    })
     this.closeHandlers.forEach(handler => handler(evt))
 
     // 1000 = normal close, do not reconnect
@@ -152,16 +162,23 @@ export class WsClient {
   }
 
   private handleError(evt: Event) {
+    console.error('[ws] error:', {
+      readyState: this.socket?.readyState,
+      reconnectLeft: this.reconnectAttemptsLeft,
+      url: this.maskToken(this.latestUrl),
+      event: evt,
+    })
     this.errorHandlers.forEach(handler => handler(evt))
   }
 
-  private handleMessage(evt: MessageEvent<string>) {
-    if (evt.data === 'ping') {
+  private async handleMessage(evt: MessageEvent<string | Blob | ArrayBuffer>) {
+    const raw = await this.normalizeMessageData(evt.data)
+    if (raw === 'ping') {
       this.send('pong')
       return
     }
 
-    const parsed = this.parseMessage(evt.data)
+    const parsed = this.parseMessage(raw)
     if (parsed.event === 'ping') {
       this.send({
         type: 'pong',
@@ -191,6 +208,16 @@ export class WsClient {
     catch {
       return { origin: raw }
     }
+  }
+
+  private async normalizeMessageData(data: string | Blob | ArrayBuffer): Promise<string> {
+    if (typeof data === 'string')
+      return data
+    if (data instanceof Blob)
+      return await data.text()
+    if (data instanceof ArrayBuffer)
+      return new TextDecoder().decode(new Uint8Array(data))
+    return ''
   }
 
   private startHeartbeat() {
@@ -232,5 +259,11 @@ export class WsClient {
       return
     clearTimeout(this.reconnectTimer)
     this.reconnectTimer = null
+  }
+
+  private maskToken(url: string) {
+    if (!url)
+      return url
+    return url.replace(/(token=)[^&]+/g, '$1***')
   }
 }

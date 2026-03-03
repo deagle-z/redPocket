@@ -86,6 +86,15 @@ type TgForgotPasswordReq struct {
 	NewPassword string `json:"newPassword"`
 }
 
+type TgBindEmailReq struct {
+	Email string `json:"email"`
+	Code  string `json:"code"`
+}
+
+type TgUpdateAvatarReq struct {
+	Avatar string `json:"avatar" binding:"required"`
+}
+
 type TgCurrentUserInfo struct {
 	Avatar       *string `json:"avatar"`
 	Balance      float64 `json:"balance"`
@@ -95,6 +104,17 @@ type TgCurrentUserInfo struct {
 	GiftAmount   float64 `json:"gift_amount"`
 	RebateAmount float64 `json:"rebate_amount"`
 	Email        string  `json:"email"`
+}
+
+type TgInviteStatsBack struct {
+	InviteCode       string  `json:"inviteCode"`
+	InviteCount      int64   `json:"inviteCount"`
+	TodayInviteCount int64   `json:"todayInviteCount"`
+	RechargeUsers    int64   `json:"rechargeUsers"`
+	TodayRechargeUsers int64 `json:"todayRechargeUsers"`
+	TotalCommission  float64 `json:"totalCommission"`
+	AvailableCommission float64 `json:"availableCommission"`
+	TodayCommission  float64 `json:"todayCommission"`
 }
 
 type TgUserBack struct {

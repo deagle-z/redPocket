@@ -1,7 +1,7 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { computed, onMounted, reactive } from 'vue'
 import { useRouter } from 'vue-router'
-import { getCurrentTgUserInfo } from '@/api/user'
+import { getCurrentTgInviteStats } from '@/api/user'
 import AppPageHeader from '@/components/AppPageHeader.vue'
 
 const router = useRouter()
@@ -39,11 +39,14 @@ function formatAmount(value: number) {
 
 async function loadTeamData() {
   try {
-    const { data } = await getCurrentTgUserInfo()
-    const rebateAmount = Number(data?.rebate_amount || 0)
-    stats.totalCommission = rebateAmount
-    stats.availableCommission = rebateAmount
-    stats.todayCommission = 0
+    const { data } = await getCurrentTgInviteStats()
+    stats.inviteUsers = Number(data?.inviteCount || 0)
+    stats.rechargeUsers = Number(data?.rechargeUsers || 0)
+    stats.todayInviteUsers = Number(data?.todayInviteCount || 0)
+    stats.todayRechargeUsers = Number(data?.todayRechargeUsers || 0)
+    stats.totalCommission = Number(data?.totalCommission || 0)
+    stats.availableCommission = Number(data?.availableCommission || 0)
+    stats.todayCommission = Number(data?.todayCommission || 0)
   }
   catch {
     // Keep zero values as fallback.
@@ -176,7 +179,7 @@ onMounted(() => {
 }
 
 .dot.green {
-  background: #22c55e;
+  background: var(--color-primary);
 }
 
 .dot.yellow {
@@ -209,8 +212,8 @@ onMounted(() => {
   width: 24px;
   height: 24px;
   border-radius: 8px;
-  background: #ebf9ef;
-  color: #3fa758;
+  background: var(--color-primary-soft);
+  color: var(--color-primary-medium);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -219,7 +222,7 @@ onMounted(() => {
 
 .overview-value {
   margin: 10px 0 6px;
-  font-size: 24px;
+  font-size: 18px;
   line-height: 1;
   color: #f59e0b;
   font-weight: 700;
@@ -254,7 +257,7 @@ onMounted(() => {
 }
 
 .commission-item.success {
-  background: #e8f8ec;
+  background: var(--color-primary-soft);
 }
 
 .commission-item.info {
@@ -292,7 +295,7 @@ onMounted(() => {
 }
 
 .commission-item.success .commission-value {
-  color: #2ea34f;
+  color: var(--color-primary-medium);
 }
 
 .commission-item.info .commission-value {
@@ -376,3 +379,4 @@ onMounted(() => {
   name: 'Team'
 }
 </route>
+

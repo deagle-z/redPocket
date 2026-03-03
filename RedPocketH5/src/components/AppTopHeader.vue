@@ -105,8 +105,7 @@ watch(() => route.fullPath, () => {
 }
 
 .brand-title {
-  font-size: clamp(16px, 3.4vw, 22px);
-  font-weight: 700;
+  font-size: clamp(12px, 2.8vw, 16px);
   line-height: 1;
   letter-spacing: 0.2px;
   white-space: nowrap;

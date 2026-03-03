@@ -12,6 +12,17 @@
         const setting = localStorage.getItem('vueuse-color-scheme') || 'auto'
         if (setting === 'dark' || (prefersDark && setting !== 'light'))
           document.documentElement.classList.toggle('dark', true)
+
+        // Capture invite code from URL like /register?c=123456 and persist for register page prefill.
+        try {
+          const searchParams = new URLSearchParams(window.location.search || '')
+          const inviteCode = (searchParams.get('c') || '').trim()
+          if (inviteCode)
+            localStorage.setItem('invite_code', inviteCode)
+        }
+        catch (error) {
+          console.warn('Failed to parse invite code from URL.', error)
+        }
       })()
     </script>
   </head>

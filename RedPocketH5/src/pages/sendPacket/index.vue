@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { showToast } from 'vant'
 import { sendLuckyPacket } from '@/api/user'
 import language1Icon from '@/assets/svg/language-1.svg'
@@ -7,9 +7,11 @@ const amountPresets = [100, 200, 300, 500, 1000, 2000]
 const mineOptions = [1, 2, 3, 4, 5, 6, 7, 8, 9]
 
 const selectedAmountPreset = ref<number | null>(null)
-const selectedMine = ref<number | null>(2)
+const selectedMine = ref<number | null>(1)
 const amountInput = ref('')
 const submitLoading = ref(false)
+const SUBMIT_THROTTLE_MS = 1000
+const lastSubmitAt = ref(0)
 
 const canSubmit = computed(() => {
   const amount = Number(amountInput.value)
@@ -35,6 +37,10 @@ function selectMine(value: number) {
 async function submitPacket() {
   if (!canSubmit.value)
     return
+  const now = Date.now()
+  if (now - lastSubmitAt.value < SUBMIT_THROTTLE_MS)
+    return
+  lastSubmitAt.value = now
   const amount = Number(amountInput.value)
   const thunder = Number(selectedMine.value)
   if (!amount || amount <= 0 || !thunder) {
@@ -192,7 +198,7 @@ async function submitPacket() {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 27px;
+  font-size: 18px;
   background: #dae0ff;
   color: #4d5dff;
 }
@@ -247,18 +253,18 @@ async function submitPacket() {
 }
 
 .amount-card {
-  padding: 16px;
+  padding: 12px;
 }
 
 .amount-input-row {
   display: flex;
   align-items: center;
   gap: 4px;
-  min-height: 52px;
-  border: 1.5px solid #2dc84d;
+  min-height: 46px;
+  border: 1.5px solid var(--color-primary);
   border-radius: 12px;
   background: #fff;
-  padding: 0 16px;
+  padding: 0 12px;
 }
 
 .amount-label {
@@ -280,7 +286,7 @@ async function submitPacket() {
   border: none;
   outline: none;
   text-align: right;
-  font-size: 24px;
+  font-size: 18px;
   line-height: 1.1;
   font-weight: 700;
   color: #1a1a2e;
@@ -301,15 +307,15 @@ async function submitPacket() {
 }
 
 .preset-grid {
-  margin-top: 10px;
+  margin-top: 8px;
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: 8px;
 }
 
 .preset-item {
-  flex: 0 0 calc((100% - 12px) / 2);
-  height: 44px;
+  flex: 0 0 calc((100% - 8px) / 2);
+  height: 38px;
   border-radius: 999px;
   border: none;
   background: #e5e7eb;
@@ -324,7 +330,7 @@ async function submitPacket() {
 }
 
 .preset-item.active {
-  background: #2dc84d;
+  background: var(--color-primary);
   color: #fff;
 }
 
@@ -340,13 +346,13 @@ async function submitPacket() {
 }
 
 .mine-title-icon {
-  color: #2dc84d;
+  color: var(--color-primary);
   font-size: 16px;
 }
 
 .mine-title {
   margin: 0;
-  color: #2dc84d;
+  color: var(--color-primary);
   font-size: 16px;
   line-height: 1;
   font-weight: 700;
@@ -395,7 +401,7 @@ async function submitPacket() {
 }
 
 .mine-item.active {
-  background: #2dc84d;
+  background: var(--color-primary);
   color: #fff;
 }
 
@@ -405,7 +411,7 @@ async function submitPacket() {
   height: 52px;
   border: none;
   border-radius: 999px;
-  background: linear-gradient(90deg, #2dc84d 0%, #5dd87a 100%);
+  background: linear-gradient(90deg, var(--color-primary) 0%, var(--color-primary-gradient-end) 100%);
   color: #fff;
   font-size: 14px;
   line-height: 1;
@@ -448,7 +454,7 @@ async function submitPacket() {
 
 @media (max-width: 390px) {
   .amount-input {
-    font-size: 22px;
+    font-size: 18px;
   }
 
   .mine-item {
@@ -462,3 +468,4 @@ async function submitPacket() {
   name: 'SendPacket'
 }
 </route>
+

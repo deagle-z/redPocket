@@ -243,7 +243,7 @@ func rechargeOrderDevCallback(db *gorm.DB, orderNo string) (err error) {
 			EndAmount:   user.Balance + creditAmount,
 			CashMark:    "充值到账",
 			CashDesc:    fmt.Sprintf("充值订单%s到账", order.OrderNo),
-			Type:        2,
+			Type:        pojo.CashHistoryTypeRechargeCredit,
 			IsGift:      0,
 			FromUserId:  0,
 		}

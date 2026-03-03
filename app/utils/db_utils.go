@@ -84,6 +84,27 @@ func InitTables(prefix string) (firstInit bool, err error) {
 		}
 	}
 	InitShardingHook(db)
+	// 兼容历史数据：lucky_money_item.thunder 由可空升级为 not null 时，
+	// 先将旧数据中的 NULL 回填为 0，避免 ALTER TABLE 报错 1138。
+	if db.Migrator().HasTable(&pojo.LuckyMoneyItem{}) && db.Migrator().HasColumn(&pojo.LuckyMoneyItem{}, "thunder") {
+		_ = db.Exec("UPDATE `lucky_money_item` SET `thunder` = 0 WHERE `thunder` IS NULL").Error
+	}
+	// 兼容历史数据：金额/手续费字段升级为 decimal(18,2) not null 时，先归一旧脏值，避免 1265。
+	if db.Migrator().HasTable(&pojo.LuckyMoneyItem{}) {
+		if db.Migrator().HasColumn(&pojo.LuckyMoneyItem{}, "thunder_amount") {
+			_ = db.Exec("UPDATE `lucky_money_item` SET `thunder_amount` = 0").Error
+		}
+		if db.Migrator().HasColumn(&pojo.LuckyMoneyItem{}, "thunder_fee") {
+			_ = db.Exec("UPDATE `lucky_money_item` SET `thunder_fee` = 0").Error
+		}
+		if db.Migrator().HasColumn(&pojo.LuckyMoneyItem{}, "win_fee") {
+			_ = db.Exec("UPDATE `lucky_money_item` SET `win_fee` = 0").Error
+		}
+	}
+	// 兼容增量字段/新表变更
+	if err = db.AutoMigrate(&pojo.LuckyMoney{}, &pojo.LuckyMoneyItem{}); err != nil {
+		panic(err)
+	}
 	if !db.Migrator().HasTable(pojo.AllCashHistoryShardingName) {
 		err = InitShardingDataBase(db, pojo.CashHistory{}, pojo.CashHistoryTableName, pojo.CashHistoryShards)
 		if err != nil {

@@ -52,6 +52,10 @@ func SendRedPacket(ctx *gin.Context) {
 
 	var result pojo.LuckyMoneyBack
 	_ = copier.Copy(&result, luckyMoney)
+
+	// 发包成功后，向所有在线用户广播最新红包信息（包含 LuckyMoneyBack）
+	_ = utils.BroadcastWsWithType("lucky_sent", result)
+
 	utils.SuccessObjBack(ctx, result)
 }
 
@@ -104,6 +108,10 @@ func SendRedPacketApp(ctx *gin.Context) {
 
 	var result pojo.LuckyMoneyBack
 	_ = copier.Copy(&result, luckyMoney)
+
+	// app发包成功后，向所有在线用户广播最新红包信息（包含 LuckyMoneyBack）
+	_ = utils.BroadcastWsWithType("lucky_sent", result)
+
 	utils.SuccessObjBack(ctx, result)
 }
 
@@ -132,6 +140,23 @@ func GetRedPacketListApp(ctx *gin.Context) {
 	utils.SuccessObjBack(ctx, result)
 }
 
+// GetLuckyDetailApp app端红包详情
+func GetLuckyDetailApp(ctx *gin.Context) {
+	var req pojo.LuckyMoneyAppDetailReq
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+
+	db := ctx.MustGet("db").(*gorm.DB)
+	result, err := repository.GetLuckyMoneyAppDetail(db, req.LuckyID)
+	if err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	utils.SuccessObjBack(ctx, result)
+}
+
 // GetRecentLuckyWinnersApp app端最近中奖列表
 func GetRecentLuckyWinnersApp(ctx *gin.Context) {
 	var search pojo.LuckyRecentWinnerSearch
@@ -141,6 +166,31 @@ func GetRecentLuckyWinnersApp(ctx *gin.Context) {
 	}
 	db := ctx.MustGet("db").(*gorm.DB)
 	result := repository.GetRecentLuckyWinners(db, search)
+	utils.SuccessObjBack(ctx, result)
+}
+
+// GetLuckyAppHistory app端发包+抢包历史（union）
+func GetLuckyAppHistory(ctx *gin.Context) {
+	var search pojo.LuckyAppHistorySearch
+	search.SetPageDefaults()
+	if err := ctx.ShouldBindJSON(&search); err != nil && err != io.EOF {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+
+	userIDRaw, ok := ctx.Get("userId")
+	if !ok {
+		utils.UnauthorizedBack(ctx, "token is invalid")
+		return
+	}
+	userID, ok := userIDRaw.(int64)
+	if !ok || userID <= 0 {
+		utils.UnauthorizedBack(ctx, "token is invalid")
+		return
+	}
+
+	db := ctx.MustGet("db").(*gorm.DB)
+	result := repository.GetLuckyAppHistoryUnion(db, userID, search)
 	utils.SuccessObjBack(ctx, result)
 }
 
@@ -345,5 +395,53 @@ func GrabRedPacketApp(ctx *gin.Context) {
 		utils.ErrorBack(ctx, err.Error())
 		return
 	}
+
+	// 抢包成功后，向所有在线用户广播最新红包信息（包含 LuckyMoneyBack）
+	if luckyMoney, luckyErr := repository.GetLuckyMoney(db, req.LuckyID); luckyErr == nil && luckyMoney.ID > 0 {
+		var luckyBack pojo.LuckyMoneyBack
+		_ = copier.Copy(&luckyBack, &luckyMoney)
+
+		broadcast := gin.H{
+			"id":         luckyBack.ID,
+			"createdAt":  luckyBack.CreatedAt,
+			"updatedAt":  luckyBack.UpdatedAt,
+			"senderId":   luckyBack.SenderID,
+			"senderName": luckyBack.SenderName,
+			"amount":     luckyBack.Amount,
+			"received":   luckyBack.Received,
+			"number":     luckyBack.Number,
+			"lucky":      luckyBack.Lucky,
+			"thunder":    luckyBack.Thunder,
+			"chatId":     luckyBack.ChatID,
+			"redList":    luckyBack.RedList,
+			"loseRate":   luckyBack.LoseRate,
+			"status":     luckyBack.Status,
+			"tenantId":   luckyBack.TenantId,
+			"expireTime": luckyBack.ExpireTime,
+		}
+		if idx, ok := result["grabIndex"]; ok {
+			broadcast["grabIndex"] = idx
+		} else if idx, ok := result["openNum"]; ok {
+			broadcast["grabIndex"] = idx
+		}
+		if amount, ok := result["amount"]; ok {
+			broadcast["grabAmount"] = amount
+		}
+		if isThunder, ok := result["isThunder"]; ok {
+			broadcast["isThunder"] = isThunder
+		}
+		if loseMoney, ok := result["loseMoney"]; ok {
+			broadcast["loseMoney"] = loseMoney
+		}
+		var totalThunderAmount float64
+		_ = db.Table("lucky_money_item").
+			Select("COALESCE(SUM(thunder_amount), 0)").
+			Where("red_packet_id = ?", req.LuckyID).
+			Scan(&totalThunderAmount).Error
+		broadcast["totalThunderAmount"] = totalThunderAmount
+
+		_ = utils.BroadcastWsWithType("lucky_grabbed", broadcast)
+	}
+
 	utils.SuccessObjBack(ctx, result)
 }

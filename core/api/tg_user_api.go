@@ -6,8 +6,10 @@ import (
 	"BaseGoUni/core/utils"
 	tenantRepo "BaseGoUni/tenant/repository"
 	"context"
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 	"io"
 	"strconv"
 	"strings"
@@ -245,6 +247,62 @@ func ForgotPasswordByEmail(ctx *gin.Context) {
 	utils.SuccessBack(ctx, "success")
 }
 
+// BindCurrentTgEmail 绑定当前TG用户邮箱
+func BindCurrentTgEmail(ctx *gin.Context) {
+	userIDRaw, ok := ctx.Get("userId")
+	if !ok {
+		utils.UnauthorizedBack(ctx, "token is invalid")
+		return
+	}
+	userID, ok := userIDRaw.(int64)
+	if !ok || userID <= 0 {
+		utils.UnauthorizedBack(ctx, "token is invalid")
+		return
+	}
+
+	var req pojo.TgBindEmailReq
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		utils.ErrorBack(ctx, "参数格式错误")
+		return
+	}
+	email := strings.TrimSpace(strings.ToLower(req.Email))
+	code := strings.TrimSpace(req.Code)
+	if !utils.IsEmail(email) {
+		utils.ErrorBack(ctx, "邮箱格式错误")
+		return
+	}
+	if len(code) != 6 {
+		utils.ErrorBack(ctx, "验证码格式错误")
+		return
+	}
+
+	codeKey := fmt.Sprintf("bgu_tg_email_code_%s", email)
+	cacheCode, err := utils.RD.Get(context.Background(), codeKey).Result()
+	if err != nil || strings.TrimSpace(cacheCode) == "" {
+		utils.ErrorBack(ctx, "验证码已失效")
+		return
+	}
+	if strings.TrimSpace(cacheCode) != code {
+		utils.ErrorBack(ctx, "验证码错误")
+		return
+	}
+
+	db := ctx.MustGet("db").(*gorm.DB)
+	var exists pojo.TgUser
+	if err = db.Where("email = ? AND id <> ? AND status <> ?", email, userID, -1).First(&exists).Error; err == nil && exists.ID > 0 {
+		utils.ErrorBack(ctx, "邮箱已被使用")
+		return
+	}
+	if err = db.Model(&pojo.TgUser{}).Where("id = ?", userID).Update("email", email).Error; err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	_ = utils.RD.Del(context.Background(), codeKey).Err()
+	utils.SuccessObjBack(ctx, gin.H{
+		"email": email,
+	})
+}
+
 // GetCurrentTgUserInfo 获取当前TG用户信息
 func GetCurrentTgUserInfo(ctx *gin.Context) {
 	authHeader := strings.TrimSpace(ctx.GetHeader("Authorization"))
@@ -261,6 +319,201 @@ func GetCurrentTgUserInfo(ctx *gin.Context) {
 		return
 	}
 	utils.SuccessObjBack(ctx, data)
+}
+
+// UpdateCurrentTgUserAvatar 更新当前TG用户头像
+func UpdateCurrentTgUserAvatar(ctx *gin.Context) {
+	userIDRaw, ok := ctx.Get("userId")
+	if !ok {
+		utils.UnauthorizedBack(ctx, "token is invalid")
+		return
+	}
+	userID, ok := userIDRaw.(int64)
+	if !ok || userID <= 0 {
+		utils.UnauthorizedBack(ctx, "token is invalid")
+		return
+	}
+
+	var req pojo.TgUpdateAvatarReq
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	req.Avatar = strings.TrimSpace(req.Avatar)
+	if req.Avatar == "" {
+		utils.ErrorBack(ctx, "avatar is required")
+		return
+	}
+
+	db := ctx.MustGet("db").(*gorm.DB)
+	if err := db.Model(&pojo.TgUser{}).Where("id = ?", userID).Update("avatar", req.Avatar).Error; err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	utils.SuccessObjBack(ctx, gin.H{
+		"avatar": req.Avatar,
+	})
+}
+
+// GetCurrentTgInviteStats 获取当前TG用户邀请统计
+func GetCurrentTgInviteStats(ctx *gin.Context) {
+	userIDRaw, ok := ctx.Get("userId")
+	if !ok {
+		utils.UnauthorizedBack(ctx, "token is invalid")
+		return
+	}
+	userID, ok := userIDRaw.(int64)
+	if !ok || userID <= 0 {
+		utils.UnauthorizedBack(ctx, "token is invalid")
+		return
+	}
+
+	db := ctx.MustGet("db").(*gorm.DB)
+
+	var user pojo.TgUser
+	if err := db.Where("id = ?", userID).First(&user).Error; err != nil || user.ID == 0 {
+		utils.ErrorBack(ctx, "用户不存在")
+		return
+	}
+
+	var inviteCount int64
+	_ = db.Model(&pojo.TgUser{}).
+		Where("parent_id = ? AND status <> ?", userID, -1).
+		Count(&inviteCount).Error
+
+	now := time.Now()
+	startOfDay := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	endOfDay := startOfDay.Add(24 * time.Hour)
+	var todayInviteCount int64
+	_ = db.Model(&pojo.TgUser{}).
+		Where("parent_id = ? AND status <> ? AND created_at >= ? AND created_at < ?", userID, -1, startOfDay, endOfDay).
+		Count(&todayInviteCount).Error
+
+	var rechargeUsers int64
+	_ = db.Model(&pojo.TgUser{}).
+		Where("parent_id = ? AND status <> ? AND recharge_amount > 0", userID, -1).
+		Count(&rechargeUsers).Error
+
+	var todayRechargeUsers int64
+	_ = db.Table("recharge_order ro").
+		Joins("inner join tg_user tu on tu.id = ro.user_id").
+		Where("tu.parent_id = ? AND tu.status <> ? AND ro.status = ? AND ro.pay_time >= ? AND ro.pay_time < ?", userID, -1, 1, startOfDay, endOfDay).
+		Select("COUNT(DISTINCT ro.user_id)").
+		Scan(&todayRechargeUsers).Error
+
+	var todayCommission float64
+	_ = db.Model(&pojo.TgUserRebateRecord{}).
+		Where("parent_user_id = ? AND status = ? AND created_at >= ? AND created_at < ?", userID, 1, startOfDay, endOfDay).
+		Select("COALESCE(SUM(rebate_amount), 0)").
+		Scan(&todayCommission).Error
+
+	inviteCode := ""
+	if user.InviteCode != nil {
+		inviteCode = strings.TrimSpace(*user.InviteCode)
+	}
+
+	utils.SuccessObjBack(ctx, pojo.TgInviteStatsBack{
+		InviteCode:       inviteCode,
+		InviteCount:      inviteCount,
+		TodayInviteCount: todayInviteCount,
+		RechargeUsers:    rechargeUsers,
+		TodayRechargeUsers: todayRechargeUsers,
+		TotalCommission:  user.RebateTotalAmount,
+		AvailableCommission: user.RebateAmount,
+		TodayCommission:  todayCommission,
+	})
+}
+
+// TransferRebateToBalance 将当前用户 rebate_amount 转移到 balance，并记录 cash_history
+func TransferRebateToBalance(ctx *gin.Context) {
+	userIDRaw, ok := ctx.Get("userId")
+	if !ok {
+		utils.UnauthorizedBack(ctx, "token is invalid")
+		return
+	}
+	userID, ok := userIDRaw.(int64)
+	if !ok || userID <= 0 {
+		utils.UnauthorizedBack(ctx, "token is invalid")
+		return
+	}
+
+	db := ctx.MustGet("db").(*gorm.DB)
+	var transferAmount float64
+	var newBalance float64
+
+	err := db.Transaction(func(tx *gorm.DB) error {
+		var user pojo.TgUser
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ?", userID).First(&user).Error; err != nil {
+			return err
+		}
+		if user.Status != 1 {
+			return fmt.Errorf("用户已禁用，请联系管理员处理")
+		}
+		if user.RebateAmount <= 0 {
+			return fmt.Errorf("暂无可转移佣金")
+		}
+
+		transferAmount = user.RebateAmount
+		newBalance = user.Balance + transferAmount
+
+		if err := tx.Model(&pojo.TgUser{}).
+			Where("id = ?", user.ID).
+			Updates(map[string]any{
+				"balance":       gorm.Expr("balance + ?", transferAmount),
+				"rebate_amount": 0,
+			}).Error; err != nil {
+			return err
+		}
+
+		cashHistory := pojo.CashHistory{
+			UserId:      user.ID,
+			AwardUni:    fmt.Sprintf("rebate_transfer_%d_%d", user.ID, time.Now().UnixNano()),
+			Amount:      transferAmount,
+			StartAmount: user.Balance,
+			EndAmount:   newBalance,
+			CashMark:    "佣金转余额",
+			CashDesc:    fmt.Sprintf("返佣余额转入主余额%.3f", transferAmount),
+			Type:        pojo.CashHistoryTypeRebateTransfer,
+			IsGift:      0,
+			FromUserId:  0,
+		}
+		return tx.Create(&cashHistory).Error
+	})
+	if err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+
+	utils.SuccessObjBack(ctx, gin.H{
+		"transferAmount": transferAmount,
+		"balance":        newBalance,
+		"rebateAmount":   0,
+	})
+}
+
+// GetCurrentTgCashHistory 当前TG用户流水列表（分页，排除抽成）
+func GetCurrentTgCashHistory(ctx *gin.Context) {
+	userIDRaw, ok := ctx.Get("userId")
+	if !ok {
+		utils.UnauthorizedBack(ctx, "token is invalid")
+		return
+	}
+	userID, ok := userIDRaw.(int64)
+	if !ok || userID <= 0 {
+		utils.UnauthorizedBack(ctx, "token is invalid")
+		return
+	}
+
+	var search pojo.CashHistorySearch
+	search.SetPageDefaults()
+	if err := ctx.ShouldBindJSON(&search); err != nil && err != io.EOF {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+
+	db := ctx.MustGet("db").(*gorm.DB)
+	result := repository.GetCashHistoryListApp(db, userID, search)
+	utils.SuccessObjBack(ctx, result)
 }
 
 // TgLogout TG用户登出

@@ -2,6 +2,8 @@ package repository
 
 import (
 	"BaseGoUni/core/pojo"
+	"BaseGoUni/core/utils"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -63,9 +65,37 @@ func GetLuckyMoneyList(db *gorm.DB, search pojo.LuckyMoneySearch) (result pojo.L
 	query = query.Order("id desc").Limit(search.PageSize).Offset(search.PageSize * search.CurrentPage)
 	query.Find(&luckyMoneyList)
 
+	senderAvatarMap := map[int64]*string{}
+	if len(luckyMoneyList) > 0 {
+		senderIDs := make([]int64, 0, len(luckyMoneyList))
+		seen := map[int64]struct{}{}
+		for _, lucky := range luckyMoneyList {
+			if lucky.SenderID <= 0 {
+				continue
+			}
+			if _, ok := seen[lucky.SenderID]; ok {
+				continue
+			}
+			seen[lucky.SenderID] = struct{}{}
+			senderIDs = append(senderIDs, lucky.SenderID)
+		}
+		if len(senderIDs) > 0 {
+			type senderAvatarRow struct {
+				ID     int64   `gorm:"column:id"`
+				Avatar *string `gorm:"column:avatar"`
+			}
+			var avatarRows []senderAvatarRow
+			_ = db.Model(&pojo.TgUser{}).Select("id, avatar").Where("id IN ?", senderIDs).Scan(&avatarRows).Error
+			for _, row := range avatarRows {
+				senderAvatarMap[row.ID] = row.Avatar
+			}
+		}
+	}
+
 	for _, lucky := range luckyMoneyList {
 		var tempLucky pojo.LuckyMoneyBack
 		_ = copier.Copy(&tempLucky, &lucky)
+		tempLucky.SenderAvatar = senderAvatarMap[lucky.SenderID]
 		result.List = append(result.List, tempLucky)
 	}
 
@@ -137,7 +167,61 @@ func GetLuckyMoneyAppList(db *gorm.DB, search pojo.LuckyMoneyAppListSearch, curr
 	query = query.Order("CASE WHEN status = 1 THEN 0 ELSE 1 END ASC, id DESC").Limit(search.PageSize).Offset(search.PageSize * search.CurrentPage)
 	query.Find(&luckyMoneyList)
 
-	remainingWindow := 3 * time.Minute
+	if len(luckyMoneyList) == 0 {
+		result.PageSize = search.PageSize
+		result.CurrentPage = search.CurrentPage
+		return result
+	}
+
+	luckyIDs := make([]int64, 0, len(luckyMoneyList))
+	senderIDs := make([]int64, 0, len(luckyMoneyList))
+	senderSeen := map[int64]struct{}{}
+	for _, lucky := range luckyMoneyList {
+		luckyIDs = append(luckyIDs, lucky.ID)
+		if lucky.SenderID > 0 {
+			if _, ok := senderSeen[lucky.SenderID]; !ok {
+				senderSeen[lucky.SenderID] = struct{}{}
+				senderIDs = append(senderIDs, lucky.SenderID)
+			}
+		}
+	}
+
+	senderAvatarMap := map[int64]*string{}
+	if len(senderIDs) > 0 {
+		type senderAvatarRow struct {
+			ID     int64   `gorm:"column:id"`
+			Avatar *string `gorm:"column:avatar"`
+		}
+		var avatarRows []senderAvatarRow
+		_ = db.Model(&pojo.TgUser{}).Select("id, avatar").Where("id IN ?", senderIDs).Scan(&avatarRows).Error
+		for _, row := range avatarRows {
+			senderAvatarMap[row.ID] = row.Avatar
+		}
+	}
+
+	type luckyCountRow struct {
+		LuckyID      int64 `gorm:"column:lucky_id"`
+		GrabbedCount int64 `gorm:"column:grabbed_count"`
+		HitCount     int64 `gorm:"column:hit_count"`
+	}
+	luckyCountMap := map[int64]luckyCountRow{}
+	var countRows []luckyCountRow
+	_ = db.Model(&pojo.LuckyHistory{}).
+		Select("lucky_id, COUNT(1) AS grabbed_count, SUM(CASE WHEN is_thunder = 1 THEN 1 ELSE 0 END) AS hit_count").
+		Where("lucky_id IN ?", luckyIDs).
+		Group("lucky_id").
+		Scan(&countRows).Error
+	for _, row := range countRows {
+		luckyCountMap[row.LuckyID] = row
+	}
+
+	itemMap := map[int64][]pojo.LuckyMoneyItem{}
+	var allItems []pojo.LuckyMoneyItem
+	_ = db.Where("red_packet_id IN ?", luckyIDs).Order("red_packet_id asc, seq_no asc").Find(&allItems).Error
+	for _, item := range allItems {
+		id := int64(item.RedPacketID)
+		itemMap[id] = append(itemMap[id], item)
+	}
 
 	for _, lucky := range luckyMoneyList {
 		var itemBack pojo.LuckyMoneyAppBack
@@ -151,38 +235,37 @@ func GetLuckyMoneyAppList(db *gorm.DB, search pojo.LuckyMoneyAppListSearch, curr
 		itemBack.LoseRate = lucky.LoseRate
 		itemBack.Status = lucky.Status
 		itemBack.CreatedAt = lucky.CreatedAt
-
-		var sender pojo.TgUser
-		if err := db.Select("avatar").Where("id = ?", lucky.SenderID).First(&sender).Error; err == nil && sender.ID > 0 {
-			itemBack.SenderAvatar = sender.Avatar
+		itemBack.SenderAvatar = senderAvatarMap[lucky.SenderID]
+		if c, ok := luckyCountMap[lucky.ID]; ok {
+			itemBack.GrabbedCount = c.GrabbedCount
+			itemBack.HitCount = c.HitCount
 		}
 
-		// 已抢数量
-		_ = db.Model(&pojo.LuckyHistory{}).Where("lucky_id = ?", lucky.ID).Count(&itemBack.GrabbedCount).Error
-		// 中雷次数
-		_ = db.Model(&pojo.LuckyHistory{}).Where("lucky_id = ? and is_thunder = 1", lucky.ID).Count(&itemBack.HitCount).Error
-
-		// 剩余时间（默认3分钟窗口）
-		remain := int64(time.Until(lucky.CreatedAt.Add(remainingWindow)).Seconds())
+		// 剩余时间（优先使用 expire_time，兼容旧数据回退到默认3分钟）
+		expireAt := lucky.ExpireTime
+		if expireAt.IsZero() {
+			expireAt = lucky.CreatedAt.Add(3 * time.Minute)
+		}
+		itemBack.ExpireTime = expireAt
+		remain := int64(time.Until(expireAt).Seconds())
 		if remain < 0 {
 			remain = 0
 		}
 		itemBack.RemainingSeconds = remain
 		itemBack.RemainingText = fmt.Sprintf("%02d:%02d", remain/60, remain%60)
 
-		var items []pojo.LuckyMoneyItem
-		_ = db.Where("red_packet_id = ?", lucky.ID).Order("seq_no asc").Find(&items).Error
-		for _, it := range items {
+		for _, it := range itemMap[lucky.ID] {
 			isMine := int8(0)
 			if it.GrabbedUid != nil && uint64(currentUserID) == *it.GrabbedUid {
 				isMine = 1
 			}
 			itemBack.Items = append(itemBack.Items, pojo.LuckyMoneyAppItemBack{
-				SeqNo:      it.SeqNo,
-				Amount:     it.Amount,
-				IsGrabbed:  it.IsGrabbed,
-				Thunder:    it.Thunder,
-				IsGrabMine: isMine,
+				SeqNo:         it.SeqNo,
+				Amount:        it.Amount,
+				ThunderAmount: it.ThunderAmount,
+				IsGrabbed:     it.IsGrabbed,
+				Thunder:       it.Thunder,
+				IsGrabMine:    isMine,
 			})
 		}
 
@@ -192,4 +275,144 @@ func GetLuckyMoneyAppList(db *gorm.DB, search pojo.LuckyMoneyAppListSearch, curr
 	result.PageSize = search.PageSize
 	result.CurrentPage = search.CurrentPage
 	return result
+}
+
+// GetLuckyMoneyAppDetail app端红包详情
+func GetLuckyMoneyAppDetail(db *gorm.DB, luckyID int64) (pojo.LuckyMoneyAppDetailResp, error) {
+	var result pojo.LuckyMoneyAppDetailResp
+	cacheKey := fmt.Sprintf("bgu_lucky_detail_%d", luckyID)
+	if utils.RD != nil {
+		if cacheStr, err := utils.RD.Get(context.Background(), cacheKey).Result(); err == nil && cacheStr != "" {
+			if e := json.Unmarshal([]byte(cacheStr), &result); e == nil {
+				return result, nil
+			}
+		}
+	}
+
+	type luckyBaseRow struct {
+		ID           int64      `gorm:"column:id"`
+		SenderID     int64      `gorm:"column:sender_id"`
+		SenderName   string     `gorm:"column:sender_name"`
+		SenderAvatar *string    `gorm:"column:sender_avatar"`
+		Amount       float64    `gorm:"column:amount"`
+		Number       int        `gorm:"column:number"`
+		Thunder      int        `gorm:"column:thunder"`
+		LoseRate     float64    `gorm:"column:lose_rate"`
+		Status       int        `gorm:"column:status"`
+		CreatedAt    time.Time  `gorm:"column:created_at"`
+		ExpireTime   *time.Time `gorm:"column:expire_time"`
+	}
+	var base luckyBaseRow
+	err := db.Table("lucky_money l").
+		Select("l.id, l.sender_id, l.sender_name, u.avatar as sender_avatar, l.amount, l.number, l.thunder, l.lose_rate, l.status, l.created_at, l.expire_time").
+		Joins("left join tg_user u on u.id = l.sender_id").
+		Where("l.id = ?", luckyID).
+		Take(&base).Error
+	if err != nil || base.ID == 0 {
+		return result, fmt.Errorf("红包不存在")
+	}
+
+	expireAt := time.Time{}
+	if base.ExpireTime != nil {
+		expireAt = *base.ExpireTime
+	}
+	if expireAt.IsZero() {
+		expireAt = base.CreatedAt.Add(3 * time.Minute)
+	}
+	statusText := "进行中"
+	if base.Status != 1 {
+		statusText = "已结束"
+	}
+
+	result.Summary = pojo.LuckyMoneyAppDetailSummary{
+		ID:           base.ID,
+		Status:       base.Status,
+		StatusText:   statusText,
+		Amount:       base.Amount,
+		Thunder:      base.Thunder,
+		LoseRate:     base.LoseRate,
+		ExpireTime:   expireAt,
+		GrabbedCount: 0,
+		Number:       base.Number,
+		GameText:     "Game",
+		RoomText:     "PUBLIC",
+		UnitAmount:   "Random",
+	}
+	result.Sender = pojo.LuckyMoneyAppDetailSender{
+		SenderID:     base.SenderID,
+		SenderName:   base.SenderName,
+		SenderAvatar: base.SenderAvatar,
+		SendTime:     base.CreatedAt,
+	}
+
+	// 参与记录（按子红包序号）
+	type participantRow struct {
+		SeqNo         uint      `gorm:"column:seq_no"`
+		UserID        int64     `gorm:"column:user_id"`
+		FirstName     string    `gorm:"column:first_name"`
+		Avatar        *string   `gorm:"column:avatar"`
+		Amount        float64   `gorm:"column:amount"`
+		ThunderAmount float64   `gorm:"column:thunder_amount"`
+		IsThunder     int       `gorm:"column:is_thunder"`
+		CreatedAt     time.Time `gorm:"column:created_at"`
+	}
+	var rows []participantRow
+	_ = db.Table("lucky_money_item i").
+		Select("i.seq_no, COALESCE(i.grabbed_uid, 0) as user_id, COALESCE(u.first_name, u.username, '') as first_name, u.avatar, i.amount, i.thunder_amount, i.thunder as is_thunder, i.grabbed_at as created_at").
+		Joins("left join tg_user u on u.id = i.grabbed_uid").
+		Where("i.red_packet_id = ? AND i.is_grabbed = 1", base.ID).
+		Order("i.seq_no asc").
+		Scan(&rows).Error
+	for _, row := range rows {
+		result.Participants = append(result.Participants, pojo.LuckyMoneyAppDetailParticipant{
+			SeqNo:         row.SeqNo,
+			UserID:        row.UserID,
+			FirstName:     row.FirstName,
+			Avatar:        row.Avatar,
+			Amount:        row.Amount,
+			ThunderAmount: row.ThunderAmount,
+			IsThunder:     row.IsThunder,
+			CreatedAt:     row.CreatedAt,
+		})
+	}
+
+	// 统计统一从子红包聚合
+	var agg struct {
+		GrabbedCount   int64   `gorm:"column:grabbed_count"`
+		HitCount       int64   `gorm:"column:hit_count"`
+		ReceivedAmount float64 `gorm:"column:received_amount"`
+		ThunderIncome  float64 `gorm:"column:thunder_income"`
+	}
+	_ = db.Table("lucky_money_item").
+		Select("COUNT(1) as grabbed_count, COALESCE(SUM(CASE WHEN thunder = 1 THEN 1 ELSE 0 END), 0) as hit_count, COALESCE(SUM(amount), 0) as received_amount, COALESCE(SUM(thunder_amount), 0) as thunder_income").
+		Where("red_packet_id = ? AND is_grabbed = 1", base.ID).
+		Scan(&agg).Error
+
+	var refundRow struct {
+		RefundAmount float64 `gorm:"column:refund_amount"`
+	}
+	_ = db.Table("cash_history").
+		Select("COALESCE(SUM(amount), 0) as refund_amount").
+		Where("user_id = ? AND type = ? AND award_uni = ?", base.SenderID, pojo.CashHistoryTypeLuckyExpireRefund, fmt.Sprintf("lucky_expire_refund_%d", base.ID)).
+		Scan(&refundRow).Error
+
+	result.ParticipantCount = agg.GrabbedCount
+	result.Summary.GrabbedCount = agg.GrabbedCount
+	finalProfit := agg.ThunderIncome + refundRow.RefundAmount - base.Amount
+	result.Finance = pojo.LuckyMoneyAppDetailFinance{
+		SendAmount:     base.Amount,
+		ReceivedAmount: agg.ReceivedAmount,
+		RefundAmount:   refundRow.RefundAmount,
+		ThunderIncome:  agg.ThunderIncome,
+		HitCount:       agg.HitCount,
+		FinalProfit:    finalProfit,
+	}
+
+	// 已结束红包缓存短时间，减少重复读取压力
+	if base.Status != 1 && utils.RD != nil {
+		if b, e := json.Marshal(result); e == nil {
+			_ = utils.RD.SetEX(context.Background(), cacheKey, b, 30*time.Second).Err()
+		}
+	}
+	return result, nil
 }

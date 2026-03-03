@@ -65,8 +65,8 @@ declare module 'vue-router/auto-routes' {
       Record<never, never>,
       | never
     >,
-    '/invite/': RouteRecordInfo<
-      '/invite/',
+    'Invite': RouteRecordInfo<
+      'Invite',
       '/invite',
       Record<never, never>,
       Record<never, never>,
@@ -86,6 +86,13 @@ declare module 'vue-router/auto-routes' {
       Record<never, never>,
       | never
     >,
+    'LuckyDetail': RouteRecordInfo<
+      'LuckyDetail',
+      '/luckyDetail',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
     'Profile': RouteRecordInfo<
       'Profile',
       '/profile',
@@ -93,8 +100,8 @@ declare module 'vue-router/auto-routes' {
       Record<never, never>,
       | never
     >,
-    '/questions/': RouteRecordInfo<
-      '/questions/',
+    'Questions': RouteRecordInfo<
+      'Questions',
       '/questions',
       Record<never, never>,
       Record<never, never>,
@@ -142,8 +149,15 @@ declare module 'vue-router/auto-routes' {
       Record<never, never>,
       | never
     >,
-    '/wallet/': RouteRecordInfo<
-      '/wallet/',
+    'Transform': RouteRecordInfo<
+      'Transform',
+      '/transform',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
+    'Wallet': RouteRecordInfo<
+      'Wallet',
       '/wallet',
       Record<never, never>,
       Record<never, never>,
@@ -207,7 +221,7 @@ declare module 'vue-router/auto-routes' {
     }
     'src/pages/invite/index.vue': {
       routes:
-        | '/invite/'
+        | 'Invite'
       views:
         | never
     }
@@ -223,6 +237,12 @@ declare module 'vue-router/auto-routes' {
       views:
         | never
     }
+    'src/pages/luckyDetail/index.vue': {
+      routes:
+        | 'LuckyDetail'
+      views:
+        | never
+    }
     'src/pages/profile/index.vue': {
       routes:
         | 'Profile'
@@ -231,7 +251,7 @@ declare module 'vue-router/auto-routes' {
     }
     'src/pages/questions/index.vue': {
       routes:
-        | '/questions/'
+        | 'Questions'
       views:
         | never
     }
@@ -271,9 +291,15 @@ declare module 'vue-router/auto-routes' {
       views:
         | never
     }
+    'src/pages/transform/index.vue': {
+      routes:
+        | 'Transform'
+      views:
+        | never
+    }
     'src/pages/wallet/index.vue': {
       routes:
-        | '/wallet/'
+        | 'Wallet'
       views:
         | never
     }

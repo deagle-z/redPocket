@@ -656,7 +656,7 @@ func (s *TelegramBotService) handleInviteMessage(ctx context.Context, b *bot.Bot
 	if message == nil || message.From == nil {
 		return
 	}
-	user, err := s.GetTgUserByTelegramID(int64(message.From.ID))
+	user, err := s.GetTgUserByTelegramID(message.From.ID)
 	if err != nil {
 		_, _ = b.SendMessage(ctx, &bot.SendMessageParams{
 			ChatID:      message.Chat.ID,

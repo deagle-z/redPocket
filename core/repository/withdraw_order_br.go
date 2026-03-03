@@ -3,8 +3,10 @@ package repository
 import (
 	"BaseGoUni/core/pojo"
 	"errors"
+	"fmt"
 	"github.com/jinzhu/copier"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 // GetWithdrawOrderBrs 巴西提现订单列表（分页）
@@ -61,17 +63,38 @@ func GetWithdrawOrderBrs(db *gorm.DB, search pojo.WithdrawOrderBrSearch) (result
 // SetWithdrawOrderBr 创建或更新巴西提现订单
 func SetWithdrawOrderBr(db *gorm.DB, req pojo.WithdrawOrderBrSet) (result pojo.WithdrawOrderBrBack, err error) {
 	var dbOrder pojo.WithdrawOrderBr
-	if req.ID > 0 {
-		db.Where("id = ?", req.ID).First(&dbOrder)
-		if dbOrder.ID == 0 {
-			return result, errors.New("更新的数据不存在")
+	err = db.Transaction(func(tx *gorm.DB) error {
+		if req.ID > 0 {
+			if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ?", req.ID).First(&dbOrder).Error; err != nil {
+				if errors.Is(err, gorm.ErrRecordNotFound) {
+					return errors.New("更新的数据不存在")
+				}
+				return err
+			}
+			oldStatus := dbOrder.Status
+			_ = copier.Copy(&dbOrder, &req)
+			if err := tx.Save(&dbOrder).Error; err != nil {
+				return err
+			}
+			if needWithdrawRefund(oldStatus, dbOrder.Status) {
+				if err := refundWithdrawAmount(tx, dbOrder); err != nil {
+					return err
+				}
+			}
+			return nil
 		}
+
 		_ = copier.Copy(&dbOrder, &req)
-		err = db.Save(&dbOrder).Error
-	} else {
-		_ = copier.Copy(&dbOrder, &req)
-		err = db.Create(&dbOrder).Error
-	}
+		if err := tx.Create(&dbOrder).Error; err != nil {
+			return err
+		}
+		if needWithdrawDeductOnCreate(dbOrder.Status) {
+			if err := deductWithdrawAmount(tx, dbOrder); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 	if err != nil {
 		return result, err
 	}
@@ -102,4 +125,81 @@ func GetWithdrawOrderBrById(db *gorm.DB, id int64) (result pojo.WithdrawOrderBrB
 	}
 	_ = copier.Copy(&result, &dbOrder)
 	return result, nil
+}
+
+func needWithdrawDeductOnCreate(status int) bool {
+	// 0待审核 1待打款 2打款中 3成功：创建单据时需要先冻结/扣减余额
+	return status == 0 || status == 1 || status == 2 || status == 3
+}
+
+func needWithdrawRefund(oldStatus int, newStatus int) bool {
+	// 活跃状态 -> 失败/取消/退回，执行退款
+	oldActive := oldStatus == 0 || oldStatus == 1 || oldStatus == 2 || oldStatus == 3
+	newRefund := newStatus == 4 || newStatus == 5 || newStatus == 6
+	return oldActive && newRefund
+}
+
+func deductWithdrawAmount(tx *gorm.DB, order pojo.WithdrawOrderBr) error {
+	if order.UserId <= 0 || order.Amount <= 0 {
+		return nil
+	}
+	var user pojo.TgUser
+	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ?", order.UserId).First(&user).Error; err != nil {
+		return err
+	}
+	if user.ID == 0 {
+		return errors.New("用户不存在")
+	}
+	if user.Balance < order.Amount {
+		return errors.New("用户余额不足")
+	}
+	if err := tx.Model(&pojo.TgUser{}).
+		Where("id = ?", user.ID).
+		Update("balance", gorm.Expr("balance - ?", order.Amount)).Error; err != nil {
+		return err
+	}
+	cashHistory := pojo.CashHistory{
+		UserId:      user.ID,
+		AwardUni:    fmt.Sprintf("withdraw_apply_%s", order.OrderNo),
+		Amount:      -order.Amount,
+		StartAmount: user.Balance,
+		EndAmount:   user.Balance - order.Amount,
+		CashMark:    "提现申请",
+		CashDesc:    fmt.Sprintf("提现申请%s，冻结/扣减%.2f", order.OrderNo, order.Amount),
+		Type:        pojo.CashHistoryTypeWithdrawApply,
+		IsGift:      0,
+		FromUserId:  0,
+	}
+	return tx.Create(&cashHistory).Error
+}
+
+func refundWithdrawAmount(tx *gorm.DB, order pojo.WithdrawOrderBr) error {
+	if order.UserId <= 0 || order.Amount <= 0 {
+		return nil
+	}
+	var user pojo.TgUser
+	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ?", order.UserId).First(&user).Error; err != nil {
+		return err
+	}
+	if user.ID == 0 {
+		return errors.New("用户不存在")
+	}
+	if err := tx.Model(&pojo.TgUser{}).
+		Where("id = ?", user.ID).
+		Update("balance", gorm.Expr("balance + ?", order.Amount)).Error; err != nil {
+		return err
+	}
+	cashHistory := pojo.CashHistory{
+		UserId:      user.ID,
+		AwardUni:    fmt.Sprintf("withdraw_refund_%s", order.OrderNo),
+		Amount:      order.Amount,
+		StartAmount: user.Balance,
+		EndAmount:   user.Balance + order.Amount,
+		CashMark:    "提现退回",
+		CashDesc:    fmt.Sprintf("提现订单%s失败/取消/退回，返还%.2f", order.OrderNo, order.Amount),
+		Type:        pojo.CashHistoryTypeWithdrawRefund,
+		IsGift:      0,
+		FromUserId:  0,
+	}
+	return tx.Create(&cashHistory).Error
 }

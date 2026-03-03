@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
-import type { RouteMap } from 'vue-router'
 import { useUserStore } from '@/stores'
 import { showToast } from 'vant'
 import { locale } from '@/utils/i18n'
@@ -50,8 +49,9 @@ async function login() {
     loading.value = true
     await userStore.login({ ...postData })
     const { redirect, ...othersQuery } = router.currentRoute.value.query
+    const redirectPath = typeof redirect === 'string' && redirect ? redirect : '/'
     router.push({
-      name: (redirect as keyof RouteMap) || 'Home',
+      path: redirectPath,
       query: {
         ...othersQuery,
       },
@@ -100,8 +100,9 @@ async function handleTelegramAuth() {
       })
     })
     const { redirect, ...othersQuery } = router.currentRoute.value.query
+    const redirectPath = typeof redirect === 'string' && redirect ? redirect : '/'
     router.push({
-      name: (redirect as keyof RouteMap) || 'Home',
+      path: redirectPath,
       query: {
         ...othersQuery,
       },
@@ -141,11 +142,11 @@ function selectLanguage(lang: string) {
 }
 
 function goForgotPassword() {
-  router.push({ name: 'ForgotPassword' as keyof RouteMap })
+  router.push('/resetpwd')
 }
 
 function goRegister() {
-  router.push({ name: 'Register' as keyof RouteMap })
+  router.push('/register')
 }
 </script>
 
@@ -330,6 +331,13 @@ function goRegister() {
 
 <style scoped>
 .login-page {
+  --font-xs: 11px;
+  --font-sm: 12px;
+  --font-base: 13px;
+  --font-md: 14px;
+  --font-lg: 16px;
+  --font-xl: 18px;
+  --font-2xl: 20px;
   min-height: 100vh;
   background:
     radial-gradient(1200px 500px at 50% -240px, rgba(84, 185, 105, 0.12), transparent 65%), var(--color-bg-page);
@@ -451,17 +459,17 @@ function goRegister() {
   border-radius: var(--radius-2xl);
   border: 1px solid rgba(16, 24, 40, 0.08);
   box-shadow: 0 8px 22px rgba(15, 23, 42, 0.05);
-  padding: 8px 16px;
+  padding: 6px 14px;
 }
 
 .email-form-row {
-  min-height: 86px;
+  min-height: 72px;
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: stretch;
-  gap: 10px;
-  padding: 8px 0;
+  gap: 8px;
+  padding: 6px 0;
 }
 
 .email-form-row + .email-form-row {
@@ -490,7 +498,7 @@ function goRegister() {
   background: rgba(255, 255, 255, 0.96);
   outline: none;
   border-radius: 10px;
-  min-height: 46px;
+  min-height: 40px;
   padding: 0 14px;
   font-size: var(--font-base);
   color: var(--color-text-input);
@@ -581,7 +589,7 @@ function goRegister() {
   border-radius: 50%;
   background: linear-gradient(145deg, #61be73 0%, #4ca95f 100%);
   color: var(--color-bg-card);
-  font-size: 20px;
+  font-size: 16px;
   font-weight: 700;
   display: flex;
   align-items: center;
@@ -650,7 +658,7 @@ function goRegister() {
   transform: translateY(-50%);
   border: none;
   background: transparent;
-  font-size: 36px;
+  font-size: 18px;
   color: var(--color-text-light);
   line-height: 1;
   cursor: pointer;

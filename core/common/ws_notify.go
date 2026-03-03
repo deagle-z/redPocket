@@ -100,6 +100,7 @@ func startWsHub() {
 			devices:    make(map[string]*wsClient),
 		}
 		utils.RegisterWsNotify(NotifyDevicesWithType)
+		utils.RegisterWsBroadcast(BroadcastAllWithType)
 		go hub.run()
 	})
 }
@@ -142,9 +143,14 @@ func (h *wsHub) run() {
 
 // NotifyAll broadcasts a notification message to all connected clients.
 func NotifyAll(data interface{}) {
+	BroadcastAllWithType("notify", data)
+}
+
+// BroadcastAllWithType broadcasts a typed message to all connected clients.
+func BroadcastAllWithType(msgType string, data interface{}) {
 	startWsHub()
 	msg := wsMessage{
-		Type: "notify",
+		Type: msgType,
 		Data: data,
 		Ts:   time.Now().Unix(),
 	}
@@ -246,6 +252,12 @@ func wsTokenOnline(userType int, userID int64, token string) bool {
 		oldData := utils.RD.Get(context.Background(), oldKey)
 		return oldData != nil && oldData.Err() == nil && oldData.Val() == token
 	}
+	// 兼容旧key格式（部分tg场景用userId做hash）
+	if userType == 5 {
+		oldKey := utils.KeyRdTgOnline + utils.MD5(fmt.Sprintf("%d", userID))
+		oldData := utils.RD.Get(context.Background(), oldKey)
+		return oldData != nil && oldData.Err() == nil && oldData.Val() == token
+	}
 	return false
 }
 
@@ -253,7 +265,16 @@ func validateWsToken(c *gin.Context, token string) (int64, int, error) {
 	if token == "" {
 		return 0, 0, fmt.Errorf("token is required")
 	}
-	userID, userType, hostName, _, err := utils.ParseToken(utils.CsConfig.DefaultHost.AccessSecret, token)
+	accessSecret := utils.CsConfig.DefaultHost.AccessSecret
+	hostInfo := utils.GetTempHostInfo(utils.GetRequestHost(c))
+	if strings.TrimSpace(hostInfo.AccessSecret) != "" {
+		accessSecret = hostInfo.AccessSecret
+	}
+	userID, userType, hostName, _, err := utils.ParseToken(accessSecret, token)
+	if err != nil && accessSecret != utils.CsConfig.DefaultHost.AccessSecret {
+		// 兼容历史token：尝试默认host密钥
+		userID, userType, hostName, _, err = utils.ParseToken(utils.CsConfig.DefaultHost.AccessSecret, token)
+	}
 	if err != nil {
 		return 0, 0, fmt.Errorf("invalid token")
 	}
@@ -312,12 +333,14 @@ func WsHandler(c *gin.Context) {
 	startWsHub()
 	clientIP := c.ClientIP()
 	if ok, msg := allowWsConnect(clientIP); !ok {
+		log.Printf("ws reject: ip=%s host=%s reason=%s", clientIP, c.Request.Host, msg)
 		c.String(http.StatusTooManyRequests, msg)
 		return
 	}
 	token := extractWsToken(c)
 	userID, userType, err := validateWsToken(c, token)
 	if err != nil {
+		log.Printf("ws auth failed: ip=%s host=%s reason=%v", clientIP, c.Request.Host, err)
 		c.String(http.StatusUnauthorized, err.Error())
 		return
 	}
@@ -411,7 +434,7 @@ func (c *wsClient) writePump() {
 			if !ok {
 				return
 			}
-			if err := websocket.Message.Send(c.conn, msg); err != nil {
+			if err := websocket.Message.Send(c.conn, string(msg)); err != nil {
 				return
 			}
 		case <-ticker.C:
@@ -424,7 +447,7 @@ func (c *wsClient) writePump() {
 			if err != nil {
 				return
 			}
-			if err := websocket.Message.Send(c.conn, payload); err != nil {
+			if err := websocket.Message.Send(c.conn, string(payload)); err != nil {
 				return
 			}
 		}

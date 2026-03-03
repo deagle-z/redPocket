@@ -2,6 +2,7 @@ package repository
 
 import (
 	"BaseGoUni/core/pojo"
+	"fmt"
 	"github.com/jinzhu/copier"
 	"gorm.io/gorm"
 	"strconv"
@@ -124,4 +125,128 @@ func formatRecentTimeText(d time.Duration) string {
 		return strconv.Itoa(int(d.Hours())) + "小时前"
 	}
 	return strconv.Itoa(int(d.Hours()/24)) + "天前"
+}
+
+// GetLuckyAppHistoryUnion app端发包+抢包历史（union）
+func GetLuckyAppHistoryUnion(db *gorm.DB, userID int64, search pojo.LuckyAppHistorySearch) (result pojo.LuckyAppHistoryResp) {
+	unionSQL := `
+		SELECT
+			'send' AS record_type,
+			1 AS action_type,
+			m.id AS record_id,
+			m.id AS lucky_id,
+			m.amount AS lucky_amount,
+			0 AS grab_amount,
+			0 AS lose_money,
+			0 AS is_thunder,
+			m.thunder AS thunder,
+			m.sender_id AS sender_id,
+			m.sender_name AS sender_name,
+			u.avatar AS avatar,
+			0 AS income,
+			m.amount AS expense,
+			-m.amount AS net_amount,
+			m.created_at AS created_at
+		FROM lucky_money m
+		LEFT JOIN tg_user u ON u.id = m.sender_id
+		WHERE m.sender_id = ?
+
+		UNION ALL
+
+		SELECT
+			'grab' AS record_type,
+			2 AS action_type,
+			h.id AS record_id,
+			h.lucky_id AS lucky_id,
+			m.amount AS lucky_amount,
+			h.amount AS grab_amount,
+			h.lose_money AS lose_money,
+			h.is_thunder AS is_thunder,
+			m.thunder AS thunder,
+			m.sender_id AS sender_id,
+			m.sender_name AS sender_name,
+			u.avatar AS avatar,
+			CASE WHEN h.is_thunder = 0 THEN h.amount ELSE 0 END AS income,
+			CASE WHEN h.is_thunder = 1 THEN h.lose_money ELSE 0 END AS expense,
+			CASE WHEN h.is_thunder = 0 THEN h.amount ELSE -h.lose_money END AS net_amount,
+			h.created_at AS created_at
+		FROM lucky_history h
+		LEFT JOIN lucky_money m ON m.id = h.lucky_id
+		LEFT JOIN tg_user u ON u.id = m.sender_id
+		WHERE h.user_id = ?
+	`
+
+	args := []interface{}{userID, userID}
+	whereSQL := " WHERE 1=1"
+
+	if search.ActionType == 1 || search.ActionType == 2 {
+		whereSQL += " AND t.action_type = ?"
+		args = append(args, search.ActionType)
+	}
+
+	if search.ResultType == 1 {
+		whereSQL += " AND (t.net_amount > 0 OR (t.record_type = 'grab' AND t.is_thunder = 0 AND t.grab_amount > 0))"
+	} else if search.ResultType == 2 {
+		whereSQL += " AND (t.net_amount < 0 OR t.is_thunder = 1)"
+	}
+
+	if search.StartTime > 0 {
+		whereSQL += " AND t.created_at >= ?"
+		args = append(args, time.Unix(search.StartTime, 0))
+	}
+
+	if search.EndTime > 0 {
+		whereSQL += " AND t.created_at <= ?"
+		args = append(args, time.Unix(search.EndTime, 0))
+	}
+
+	countSQL := fmt.Sprintf("SELECT COUNT(1) AS total FROM (%s) t %s", unionSQL, whereSQL)
+	_ = db.Raw(countSQL, args...).Scan(&result.Total).Error
+
+	type summaryRow struct {
+		TotalIncome   float64 `gorm:"column:total_income"`
+		TotalExpense  float64 `gorm:"column:total_expense"`
+		NetProfitLoss float64 `gorm:"column:net_profit_loss"`
+	}
+	var summary summaryRow
+	summarySQL := fmt.Sprintf(`
+		SELECT
+			COALESCE(SUM(t.income), 0) AS total_income,
+			COALESCE(SUM(t.expense), 0) AS total_expense,
+			COALESCE(SUM(t.net_amount), 0) AS net_profit_loss
+		FROM (%s) t %s
+	`, unionSQL, whereSQL)
+	_ = db.Raw(summarySQL, args...).Scan(&summary).Error
+	result.TotalIncome = summary.TotalIncome
+	result.TotalExpense = summary.TotalExpense
+	result.NetProfitLoss = summary.NetProfitLoss
+
+	listSQL := fmt.Sprintf(`
+		SELECT
+			t.record_type,
+			t.action_type,
+			t.record_id,
+			t.lucky_id,
+			t.lucky_amount,
+			t.grab_amount,
+			t.lose_money,
+			t.is_thunder,
+			t.thunder,
+			t.sender_id,
+			t.sender_name,
+			t.avatar,
+			t.income,
+			t.expense,
+			t.net_amount,
+			t.created_at
+		FROM (%s) t %s
+		ORDER BY t.created_at DESC, t.record_id DESC
+		LIMIT ? OFFSET ?
+	`, unionSQL, whereSQL)
+	listArgs := append(args, search.PageSize, search.PageSize*search.CurrentPage)
+	_ = db.Raw(listSQL, listArgs...).Scan(&result.List).Error
+
+	result.PageSize = search.PageSize
+	result.CurrentPage = search.CurrentPage
+	return result
 }

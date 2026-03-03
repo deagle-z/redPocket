@@ -29,3 +29,20 @@ func AdminUpload(ctx *gin.Context) {
 		"url": url,
 	})
 }
+
+// AppUpload app端上传文件（R2）
+func AppUpload(ctx *gin.Context) {
+	file, err := ctx.FormFile("file")
+	if err != nil {
+		utils.ErrorBack(ctx, "file is required")
+		return
+	}
+	url, err := utils.UploadR2(ctx, file, "upload")
+	if err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	utils.SuccessObjBack(ctx, map[string]string{
+		"url": url,
+	})
+}

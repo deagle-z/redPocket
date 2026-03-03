@@ -47,6 +47,7 @@ func InitGin() {
 	//docs.SwaggerInfo.Schemes = []string{"http", "https"}
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	router.GET("/ws", WsHandler)
+	router.GET("/api/v1/ws", WsHandler)
 	_ = mime.AddExtensionType(".js", "application/javascript")
 	router.Use(static.ServeRoot("/", "dist"))
 	apiGroup := router.Group("/api/v1")
@@ -221,9 +222,18 @@ func InitGin() {
 		appAuthRouter.POST("/rechargeOrder", api.AppCreateRechargeOrder)
 		appAuthRouter.POST("/lucky/send", api.SendRedPacketApp)
 		appAuthRouter.POST("/lucky/list", api.GetRedPacketListApp)
+		appAuthRouter.POST("/lucky/detail", api.GetLuckyDetailApp)
+		appAuthRouter.POST("/lucky/history", api.GetLuckyAppHistory)
 		appAuthRouter.POST("/lucky/recentWinners", api.GetRecentLuckyWinnersApp)
 		appAuthRouter.POST("/tg/logout", api.TgLogout)
 		appAuthRouter.GET("/tg/currentUserInfo", api.GetCurrentTgUserInfo)
+		appAuthRouter.POST("/tg/avatar", api.UpdateCurrentTgUserAvatar)
+		appAuthRouter.POST("/tg/bindEmail", api.BindCurrentTgEmail)
+		appAuthRouter.GET("/tg/inviteStats", api.GetCurrentTgInviteStats)
+		appAuthRouter.POST("/tg/rebate/transfer", api.TransferRebateToBalance)
+		appAuthRouter.POST("/tg/rebate/list", api.GetCurrentTgUserRebateRecords)
+		appAuthRouter.POST("/cashHistory/list", api.GetCurrentTgCashHistory)
+		appAuthRouter.POST("/upload", api.AppUpload)
 		appAuthRouter.POST("/lucky/grab", api.GrabRedPacketApp)
 	}
 
@@ -297,7 +307,7 @@ func manageLog() gin.HandlerFunc {
 func hostInfoMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		//log.Printf("%s %s", c.Request.Method, c.Request.RequestURI)
-		if c.Request.URL.Path == "/ws" {
+		if c.Request.URL.Path == "/ws" || c.Request.URL.Path == "/api/v1/ws" {
 			c.Next()
 			return
 		}

@@ -64,6 +64,16 @@ onUnmounted(() => {
   }
 })
 
+onMounted(() => {
+  const queryCode = String(router.currentRoute.value.query.c || '').trim()
+  const localCode = String(localStorage.getItem('invite_code') || '').trim()
+  const inviteCode = queryCode || localCode
+  if (inviteCode)
+    postData.inviteCode = inviteCode
+  if (queryCode)
+    localStorage.setItem('invite_code', queryCode)
+})
+
 async function sendCode() {
   if (!postData.email) {
     showToast(t('register.pleaseEnterEmail'))
@@ -409,6 +419,13 @@ function selectLanguage(lang: string) {
 
 <style scoped>
 .register-page {
+  --font-xs: 11px;
+  --font-sm: 12px;
+  --font-base: 13px;
+  --font-md: 14px;
+  --font-lg: 16px;
+  --font-xl: 18px;
+  --font-2xl: 20px;
   min-height: 100vh;
   background:
     radial-gradient(1200px 500px at 50% -240px, rgba(84, 185, 105, 0.12), transparent 65%), var(--color-bg-page);
@@ -476,17 +493,17 @@ function selectLanguage(lang: string) {
   border-radius: var(--radius-2xl);
   border: 1px solid rgba(16, 24, 40, 0.08);
   box-shadow: 0 8px 22px rgba(15, 23, 42, 0.05);
-  padding: 8px 16px;
+  padding: 6px 14px;
 }
 
 .form-row {
-  min-height: 86px;
+  min-height: 72px;
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: stretch;
-  gap: 10px;
-  padding: 8px 0;
+  gap: 8px;
+  padding: 6px 0;
 }
 
 .form-row + .form-row {
@@ -515,7 +532,7 @@ function selectLanguage(lang: string) {
   background: rgba(255, 255, 255, 0.96);
   outline: none;
   border-radius: 10px;
-  min-height: 46px;
+  min-height: 40px;
   padding: 0 14px;
   font-size: var(--font-base);
   color: var(--color-text-input);
@@ -552,8 +569,8 @@ function selectLanguage(lang: string) {
 
 .send-btn {
   flex-shrink: 0;
-  min-width: 94px;
-  height: 42px;
+  min-width: 88px;
+  height: 38px;
   border: none;
   border-radius: 10px;
   background: var(--color-danger);
@@ -636,7 +653,7 @@ function selectLanguage(lang: string) {
   border-radius: 50%;
   background: linear-gradient(145deg, #61be73 0%, #4ca95f 100%);
   color: var(--color-bg-card);
-  font-size: 20px;
+  font-size: 16px;
   font-weight: 700;
   display: flex;
   align-items: center;
@@ -705,7 +722,7 @@ function selectLanguage(lang: string) {
   transform: translateY(-50%);
   border: none;
   background: transparent;
-  font-size: 36px;
+  font-size: 18px;
   color: var(--color-text-light);
   line-height: 1;
   cursor: pointer;

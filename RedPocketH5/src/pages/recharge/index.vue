@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { showToast } from 'vant'
@@ -238,7 +238,7 @@ onMounted(() => {
   --text-main: #141a22;
   --text-sub: #6b7280;
   --accent: #3d9b4f;
-  --accent-soft: #e6f5ea;
+  --accent-soft: var(--color-primary-soft);
   --stroke: #e4e9f0;
   --shadow: 0 12px 28px rgba(21, 32, 56, 0.08);
   font-family: 'Sora', sans-serif;
@@ -289,7 +289,7 @@ onMounted(() => {
 }
 
 .card-value {
-  font-size: 20px;
+  font-size: 16px;
   font-weight: 600;
   margin: 0;
 }
@@ -438,3 +438,4 @@ onMounted(() => {
   letter-spacing: 0.5px;
 }
 </style>
+

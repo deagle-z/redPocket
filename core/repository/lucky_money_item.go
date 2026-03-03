@@ -90,7 +90,7 @@ func GetLuckyMoneyItemById(db *gorm.DB, id uint64) (result pojo.LuckyMoneyItemBa
 }
 
 // MarkLuckyMoneyItemGrabbed 标记第N个子红包已被抢（兼容旧数据：若无明细记录则跳过）
-func MarkLuckyMoneyItemGrabbed(db *gorm.DB, luckyID int64, seqNo int, userID int64, isThunder int8, grabbedAt time.Time) error {
+func MarkLuckyMoneyItemGrabbed(db *gorm.DB, luckyID int64, seqNo int, userID int64, isThunder int8, thunderAmount float64, thunderFee float64, winFee float64, grabbedAt time.Time) error {
 	var itemCount int64
 	if err := db.Model(&pojo.LuckyMoneyItem{}).Where("red_packet_id = ?", luckyID).Count(&itemCount).Error; err != nil {
 		return err
@@ -104,10 +104,13 @@ func MarkLuckyMoneyItemGrabbed(db *gorm.DB, luckyID int64, seqNo int, userID int
 	result := db.Model(&pojo.LuckyMoneyItem{}).
 		Where("red_packet_id = ? and seq_no = ? and is_grabbed = 0", luckyID, seqNo).
 		Updates(map[string]any{
-			"is_grabbed":  1,
-			"thunder":     isThunder,
-			"grabbed_uid": uid,
-			"grabbed_at":  grabbedAt,
+			"is_grabbed":     1,
+			"thunder":        isThunder,
+			"thunder_amount": thunderAmount,
+			"thunder_fee":    thunderFee,
+			"win_fee":        winFee,
+			"grabbed_uid":    uid,
+			"grabbed_at":     grabbedAt,
 		})
 	if result.Error != nil {
 		return result.Error

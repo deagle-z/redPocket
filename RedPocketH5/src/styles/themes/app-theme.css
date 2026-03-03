@@ -17,6 +17,8 @@
   /* 主操作按钮背景                          */
   --color-primary-link: #49a86d;
   /* 链接 / 注册按钮边框                     */
+  --color-primary-gradient-end: #5dd87a;
+  /* 主色渐变尾色                            */
   --color-primary-soft: #e6f5ea;
   /* 绿色浅底 / active item bg              */
   --color-primary-active: #f2f8f4;

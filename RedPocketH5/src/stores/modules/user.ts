@@ -5,7 +5,7 @@ import { clearToken, setToken } from '@/utils/auth'
 import {
   forgotPasswordByEmail,
   getEmailCode,
-  getUserInfo,
+  getCurrentTgUserInfo,
   sendRegisterEmailCode,
   loginByEmail as userLoginByEmail,
   logout as userLogout,
@@ -52,10 +52,14 @@ export const useUserStore = defineStore('user', () => {
     }
   }
 
-  const info = async () => {
+  const loadCurrentUserInfo = async () => {
     try {
-      const { data } = await getUserInfo()
-      setInfo(data)
+      const { data } = await getCurrentTgUserInfo()
+      setInfo({
+        uid: Number(data?.uid || 0),
+        name: data?.username || '',
+        avatar: data?.avatar || '',
+      })
     }
     catch (error) {
       clearToken()
@@ -98,7 +102,8 @@ export const useUserStore = defineStore('user', () => {
 
   return {
     userInfo,
-    info,
+    info: loadCurrentUserInfo,
+    loadCurrentUserInfo,
     login,
     loginByTelegram,
     logout,

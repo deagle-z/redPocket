@@ -1,7 +1,9 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { showToast } from 'vant'
+import { useRouter } from 'vue-router'
 import { getLuckyPacketList, getLuckyRecentWinners, grabLuckyPacket } from '@/api/user'
 import { isLogin } from '@/utils/auth'
+import wsClient from '@/plugins/websocket'
 
 const bannerList = [
   {
@@ -21,10 +23,14 @@ const bannerList = [
 const DEFAULT_AVATAR = 'https://game.luckypacket.me/images/avatar-placeholder.png'
 
 const activeIndex = ref(0)
+const router = useRouter()
 
 const packetList = ref<any[]>([])
 const packetLoading = ref(false)
 const grabbingKey = ref('')
+const GRAB_THROTTLE_MS = 1000
+const lastGrabAtMap = new Map<string, number>()
+let countdownTimer: number | undefined
 const loggedIn = computed(() => isLogin())
 const recentWinnersLoading = ref(false)
 
@@ -38,6 +44,9 @@ const visibleWinners = computed(() => {
 
 const showPacketEmpty = computed(() => {
   return !loggedIn.value || (!packetLoading.value && packetList.value.length === 0)
+})
+const showPacketLoading = computed(() => {
+  return loggedIn.value && packetLoading.value && packetList.value.length === 0
 })
 
 const showWinnerEmpty = computed(() => {
@@ -53,6 +62,16 @@ function onSwipeChange(index: number) {
   activeIndex.value = index
 }
 
+function goLuckyDetail(packet: any) {
+  const id = Number(packet?.id || 0)
+  if (!id)
+    return
+  router.push({
+    path: '/luckyDetail',
+    query: { id: String(id) },
+  })
+}
+
 function formatAmount(value: number) {
   const num = Number(value || 0)
   if (Number.isNaN(num))
@@ -60,9 +79,42 @@ function formatAmount(value: number) {
   return `₱${num.toFixed(2)}`
 }
 
+function formatRemainText(seconds: number) {
+  const s = Math.max(0, Math.floor(seconds))
+  return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`
+}
+
+function refreshPacketCountdowns() {
+  const now = Date.now()
+  packetList.value = packetList.value.map((packet) => {
+    if (packet.status !== 'ongoing')
+      return packet
+    const expireAtMs = Number(packet.expireAtMs || 0)
+    if (!expireAtMs)
+      return packet
+    const remainSec = Math.max(0, Math.floor((expireAtMs - now) / 1000))
+    if (remainSec <= 0) {
+      return {
+        ...packet,
+        status: 'done',
+        statusText: '已结束',
+        timeText: '已结束',
+        packetImage: 'https://game.luckypacket.me/images/redpacket.jpg',
+      }
+    }
+    return {
+      ...packet,
+      timeText: `剩余时间: ${formatRemainText(remainSec)}`,
+    }
+  })
+}
+
 function mapPacket(item: any) {
   const isOngoing = Number(item?.status) === 1
-  const actions = (item?.items || [])
+  const senderWinAmount = (item?.items || []).reduce((sum: number, it: any) => {
+    return sum + Number(it?.thunderAmount || 0)
+  }, 0)
+  let actions = (item?.items || [])
     .map((it: any) => ({
       seqNo: Number(it?.seqNo || 0),
       isGrabbed: Number(it?.isGrabbed) === 1,
@@ -71,6 +123,17 @@ function mapPacket(item: any) {
       thunder: Number(it?.thunder || 0),
       label: Number(it?.isGrabbed) === 1 ? formatAmount(it?.amount) : `抢红包 #${it?.seqNo}`,
     }))
+  if (actions.length === 0 && isOngoing) {
+    const number = Number(item?.number || 0)
+    actions = Array.from({ length: number }, (_, idx) => ({
+      seqNo: idx + 1,
+      isGrabbed: false,
+      isGrabMine: false,
+      amount: 0,
+      thunder: 0,
+      label: `抢红包 #${idx + 1}`,
+    }))
+  }
 
   return {
     id: Number(item?.id || 0),
@@ -81,13 +144,36 @@ function mapPacket(item: any) {
     statusText: isOngoing ? '进行中' : '已结束',
     gameText: 'Game',
     progressText: `已抢: ${Number(item?.grabbedCount || 0)} / ${Number(item?.number || 0)} 个`,
-    thunderText: `雷号: ${Number(item?.thunder || 0)}`,
+    thunderText: isOngoing ? '' : `雷号: ${Number(item?.thunder || 0)}`,
     hitsText: `撞雷次数: ${Number(item?.hitCount || 0)}`,
-    rebateText: '发包者获赢: ₱0.00',
+    rebateText: `发包者获赢: ${formatAmount(senderWinAmount)}`,
     timeText: isOngoing ? `剩余时间: ${item?.remainingText || '00:00'}` : '已结束',
     packetImage: isOngoing ? 'https://game.luckypacket.me/images/redpacket.gif' : 'https://game.luckypacket.me/images/redpacket.jpg',
+    expireAtMs: item?.expireTime ? new Date(item.expireTime).getTime() : 0,
     actions,
   }
+}
+
+function applyLuckySent(message: any) {
+  const lucky = message?.data || message
+  const mapped = mapPacket(lucky)
+  if (!mapped.id)
+    return
+
+  const current = packetList.value
+  const existingIndex = current.findIndex(item => Number(item.id) === Number(mapped.id))
+  if (existingIndex >= 0) {
+    const next = [...current]
+    next[existingIndex] = {
+      ...next[existingIndex],
+      ...mapped,
+    }
+    packetList.value = next
+    return
+  }
+
+  packetList.value = [mapped, ...current].slice(0, 20)
+  refreshPacketCountdowns()
 }
 
 async function loadPacketList() {
@@ -104,6 +190,7 @@ async function loadPacketList() {
       pageSize: 20,
     })
     packetList.value = (data?.list || []).map((item: any) => mapPacket(item))
+    refreshPacketCountdowns()
   }
   catch {
     showToast('红包列表加载失败')
@@ -121,6 +208,11 @@ async function handleGrab(packet: any, action: { seqNo: number, label: string })
   const key = `${packet.id}_${action.seqNo}`
   if (grabbingKey.value === key)
     return
+  const now = Date.now()
+  const lastGrabAt = lastGrabAtMap.get(key) || 0
+  if (now - lastGrabAt < GRAB_THROTTLE_MS)
+    return
+  lastGrabAtMap.set(key, now)
   grabbingKey.value = key
   try {
     const { data } = await grabLuckyPacket({
@@ -128,7 +220,6 @@ async function handleGrab(packet: any, action: { seqNo: number, label: string })
       grabIndex: Number(action.seqNo),
     })
     showToast(data?.message || '抢红包成功')
-    await loadPacketList()
   }
   catch {
     showToast('抢红包失败')
@@ -136,6 +227,61 @@ async function handleGrab(packet: any, action: { seqNo: number, label: string })
   finally {
     grabbingKey.value = ''
   }
+}
+
+function applyLuckyBroadcast(message: any) {
+  const lucky = message?.data || message
+  const luckyId = Number(lucky?.id || 0)
+  const grabbedSeqNo = Number(lucky?.grabIndex || 0)
+  const totalThunderAmount = Number(lucky?.totalThunderAmount)
+  if (!luckyId)
+    return
+
+  packetList.value = packetList.value.map((packet) => {
+    if (Number(packet.id) !== luckyId)
+      return packet
+
+    const nextStatus = Number(lucky?.status) === 1 ? 'ongoing' : 'done'
+    const nextActions = Array.isArray(packet.actions) ? [...packet.actions] : []
+
+    if (nextStatus === 'ongoing') {
+      // 广播带序号时，精确更新对应子红包。
+      if (grabbedSeqNo > 0) {
+        const idx = nextActions.findIndex((it: any) => Number(it?.seqNo) === grabbedSeqNo)
+        if (idx >= 0) {
+          nextActions[idx] = {
+            ...nextActions[idx],
+            isGrabbed: true,
+            thunder: Number(lucky?.isThunder || 0),
+            amount: Number(lucky?.grabAmount || nextActions[idx]?.amount || 0),
+          }
+        }
+      }
+      else {
+        // 兼容旧广播：按顺序推进一个未抢子红包，避免再拉列表。
+        const idx = nextActions.findIndex((it: any) => !it.isGrabbed)
+        if (idx >= 0)
+          nextActions[idx] = { ...nextActions[idx], isGrabbed: true }
+      }
+    }
+
+    const grabbedCount = nextActions.filter((it: any) => it.isGrabbed).length
+    const packetNumber = Number(lucky?.number || packet?.actions?.length || 0)
+
+    return {
+      ...packet,
+      status: nextStatus,
+      statusText: nextStatus === 'ongoing' ? '进行中' : '已结束',
+      amount: formatAmount(lucky?.amount),
+      rebateText: Number.isFinite(totalThunderAmount) ? `发包者获赢: ${formatAmount(totalThunderAmount)}` : packet.rebateText,
+      thunderText: nextStatus === 'ongoing' ? '' : `雷号: ${Number(lucky?.thunder || 0)}`,
+      progressText: `已抢: ${grabbedCount} / ${packetNumber} 个`,
+      timeText: nextStatus === 'ongoing' ? packet.timeText : '已结束',
+      packetImage: nextStatus === 'ongoing' ? 'https://game.luckypacket.me/images/redpacket.gif' : 'https://game.luckypacket.me/images/redpacket.jpg',
+      actions: nextActions,
+    }
+  })
+  refreshPacketCountdowns()
 }
 
 async function loadRecentWinners() {
@@ -165,8 +311,20 @@ async function loadRecentWinners() {
 }
 
 onMounted(() => {
+  if (!loggedIn.value)
+    return
   loadPacketList()
   loadRecentWinners()
+  countdownTimer = window.setInterval(refreshPacketCountdowns, 1000)
+  wsClient.on('lucky_sent', applyLuckySent)
+  wsClient.on('lucky_grabbed', applyLuckyBroadcast)
+})
+
+onBeforeUnmount(() => {
+  if (countdownTimer)
+    window.clearInterval(countdownTimer)
+  wsClient.off('lucky_sent', applyLuckySent)
+  wsClient.off('lucky_grabbed', applyLuckyBroadcast)
 })
 </script>
 
@@ -190,11 +348,17 @@ onMounted(() => {
         </div>
       </header>
 
-      <AppEmpty v-if="showPacketEmpty" text="暂无热门红包" :min-height="120" />
+      <div v-if="showPacketLoading" class="packet-loading">
+        <van-loading size="24px" color="var(--color-primary)" vertical>
+          加载中...
+        </van-loading>
+      </div>
+
+      <AppEmpty v-else-if="showPacketEmpty" text="暂无热门红包" :min-height="120" />
 
       <template v-else>
         <article v-for="packet in packetList" :key="packet.id" class="packet-card" :class="packet.status">
-          <div class="packet-main">
+          <div class="packet-main" @click="goLuckyDetail(packet)">
             <div class="packet-top">
               <div class="user-wrap">
                 <img :src="packet.avatar" alt="" class="user-avatar">
@@ -218,7 +382,7 @@ onMounted(() => {
                   <span class="tag progress">{{ packet.progressText }}</span>
                 </div>
                 <div class="meta-row">
-                  <span>{{ packet.thunderText }}</span>
+                  <span v-if="packet.thunderText">{{ packet.thunderText }}</span>
                   <span>{{ packet.hitsText }}</span>
                 </div>
                 <p class="rebate-text">
@@ -281,7 +445,9 @@ onMounted(() => {
           </article>
         </div>
 
-        <AppEmpty text="没有更多了" :min-height="120" />
+        <div class="winner-end">
+          没有更多了
+        </div>
       </template>
     </section>
   </div>
@@ -346,6 +512,16 @@ onMounted(() => {
   margin-top: 12px;
 }
 
+.packet-loading {
+  min-height: 120px;
+  border-radius: 10px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .packet-header {
   border-top: 1px solid #e5e7eb;
   padding-top: 8px;
@@ -362,7 +538,7 @@ onMounted(() => {
 }
 
 .packet-title-wrap :deep(.van-icon) {
-  color: #22c55e;
+  color: var(--color-primary);
 }
 
 .packet-card {
@@ -370,11 +546,11 @@ onMounted(() => {
   border: 1px solid #e5e7eb;
   background: #fff;
   overflow: hidden;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
 
 .packet-main {
-  padding: 10px 12px 8px;
+  padding: 8px 10px 6px;
 }
 
 .packet-top {
@@ -391,14 +567,14 @@ onMounted(() => {
 }
 
 .user-avatar {
-  width: 42px;
-  height: 42px;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
   object-fit: cover;
 }
 
 .user-name {
-  font-size: 20px;
+  font-size: 16px;
   line-height: 1;
   color: #111827;
   white-space: nowrap;
@@ -415,7 +591,7 @@ onMounted(() => {
 }
 
 .packet-amount {
-  font-size: 16px;
+  font-size: 14px;
   line-height: 1;
   font-weight: 700;
   color: #f1b91b;
@@ -426,29 +602,29 @@ onMounted(() => {
 }
 
 .packet-body {
-  margin-top: 8px;
+  margin-top: 6px;
   display: flex;
   align-items: flex-start;
-  gap: 10px;
+  gap: 8px;
 }
 
 .packet-image-wrap {
-  width: 108px;
-  flex: 0 0 108px;
+  width: 90px;
+  flex: 0 0 90px;
 }
 
 .status-badge {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 56px;
-  height: 24px;
+  min-width: 50px;
+  height: 20px;
   border-radius: 4px;
   background: #f4c33e;
   color: #111827;
-  font-size: 14px;
+  font-size: 12px;
   line-height: 1;
-  margin-bottom: 6px;
+  margin-bottom: 4px;
 }
 
 .packet-card.done .status-badge {
@@ -475,12 +651,12 @@ onMounted(() => {
 }
 
 .tag {
-  height: 24px;
+  height: 20px;
   display: inline-flex;
   align-items: center;
   border-radius: 4px;
-  padding: 0 8px;
-  font-size: 13px;
+  padding: 0 6px;
+  font-size: 11px;
   line-height: 1;
 }
 
@@ -504,24 +680,24 @@ onMounted(() => {
 }
 
 .meta-row {
-  margin-top: 7px;
+  margin-top: 5px;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   color: #374151;
-  font-size: 12px;
+  font-size: 11px;
 }
 
 .rebate-text {
-  margin: 8px 0 0;
+  margin: 6px 0 0;
   color: #374151;
-  font-size: 12px;
+  font-size: 11px;
 }
 
 .time-text {
-  margin: 8px 0 0;
-  color: #2ea34f;
-  font-size: 18px;
+  margin: 6px 0 0;
+  color: var(--color-primary-medium);
+  font-size: 14px;
   line-height: 1;
 }
 
@@ -530,19 +706,19 @@ onMounted(() => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  height: 30px;
+  height: 24px;
   border-radius: 4px;
   background: #9ca3af;
   padding: 0 8px;
-  font-size: 15px;
+  font-size: 12px;
 }
 
 .packet-actions {
   border-top: 1px solid #edf0f4;
-  padding: 8px 10px;
+  padding: 6px 8px;
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 6px;
+  gap: 5px;
 }
 
 .action-pill {
@@ -550,9 +726,9 @@ onMounted(() => {
   border-radius: 999px;
   background: #45a75f;
   color: #fff;
-  font-size: 8px;
+  font-size: 7px;
   line-height: 1;
-  min-height: 30px;
+  min-height: 24px;
 }
 
 .action-pill.grabbed {
@@ -653,6 +829,19 @@ onMounted(() => {
   font-size: 16px;
   line-height: 1;
 }
+
+.winner-end {
+  margin-top: 12px;
+  height: 52px;
+  border-radius: 8px;
+  border: 1px solid #dfe4ea;
+  background: #f7f8fa;
+  color: #c5cad1;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 </style>
 
 <route lang="json5">
@@ -660,3 +849,4 @@ onMounted(() => {
   name: 'Home'
 }
 </route>
+
