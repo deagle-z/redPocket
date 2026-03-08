@@ -1,15 +1,18 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import AppPageHeader from '@/components/AppPageHeader.vue'
 import { getLuckyAppHistory } from '@/api/user'
+import { formatCurrency } from '@/utils/currency'
+import imgAvatarPlaceholder from '@/assets/images/avatar-placeholder.png'
+const { t } = useI18n()
 
 type RangeKey = 'today' | 'week' | 'month' | 'custom'
 type TxType = 'send' | 'grab'
 type TxResult = 'loss' | 'win'
 type MenuKey = 'type' | 'result'
 
-const DEFAULT_AVATAR = 'https://game.luckypacket.me/images/avatar-placeholder.png'
+const DEFAULT_AVATAR = imgAvatarPlaceholder
 
 interface TxItem {
   id: string
@@ -39,19 +42,19 @@ const filter = reactive<{
 })
 
 const typeOptions = [
-  { label: '全部类型', value: 'all' as const },
-  { label: '我发出的', value: 'send' as const },
-  { label: '我抢到的', value: 'grab' as const },
+  { label: t('historyPage.typeAll'), value: 'all' as const },
+  { label: t('historyPage.typeSend'), value: 'send' as const },
+  { label: t('historyPage.typeGrab'), value: 'grab' as const },
 ]
 
 const resultOptions = [
-  { label: '全部结果', value: 'all' as const },
-  { label: '盈利/中奖', value: 'win' as const },
-  { label: '亏损/中雷', value: 'loss' as const },
+  { label: t('historyPage.resultAll'), value: 'all' as const },
+  { label: t('historyPage.resultWin'), value: 'win' as const },
+  { label: t('historyPage.resultLoss'), value: 'loss' as const },
 ]
 
-const typeLabel = computed(() => typeOptions.find(item => item.value === filter.type)?.label || '全部类型')
-const resultLabel = computed(() => resultOptions.find(item => item.value === filter.result)?.label || '全部结果')
+const typeLabel = computed(() => typeOptions.find(item => item.value === filter.type)?.label || t('historyPage.typeAll'))
+const resultLabel = computed(() => resultOptions.find(item => item.value === filter.result)?.label || t('historyPage.resultAll'))
 
 function formatYmd(date: Date) {
   const y = date.getFullYear()
@@ -114,16 +117,14 @@ const stats = computed(() => {
 })
 
 const dateTabs = [
-  { key: 'today', label: '今日' },
-  { key: 'week', label: '本周' },
-  { key: 'month', label: '本月' },
-  { key: 'custom', label: '自定义' },
+  { key: 'today', label: t('historyPage.dateToday') },
+  { key: 'week', label: t('historyPage.dateWeek') },
+  { key: 'month', label: t('historyPage.dateMonth') },
+  { key: 'custom', label: t('historyPage.dateCustom') },
 ] as const
 
 function formatAmount(value: number) {
-  const abs = Math.abs(value)
-  const sign = value >= 0 ? '+' : '-'
-  return `${sign}₱${abs.toFixed(2)}`
+  return formatCurrency(value, { signed: true })
 }
 
 function goBack() {
@@ -258,11 +259,11 @@ function mapHistoryItem(item: any): TxItem {
   return {
     id: String(item?.recordId || item?.luckyId || Date.now()),
     avatar: item?.avatar || DEFAULT_AVATAR,
-    title: isSend ? `发出红包 ${luckyAmount.toFixed(2)}` : `抢到${senderName}的红包 ₱${grabAmount.toFixed(2)}`,
-    sub: isSend ? `雷号: ${thunder}` : `雷号: ${thunder}`,
+    title: isSend ? t('historyPage.txSendTitle', { amount: formatCurrency(luckyAmount) }) : t('historyPage.txGrabTitle', { sender: senderName, amount: formatCurrency(grabAmount) }),
+    sub: t('historyPage.thunderNo', { no: thunder }),
     time: formatTime(item?.createdAt || ''),
     amount,
-    badge: isWin ? '中奖' : '亏损',
+    badge: isWin ? t('historyPage.badgeWin') : t('historyPage.badgeLoss'),
     type: isSend ? 'send' : 'grab',
     result: isWin ? 'win' : 'loss',
   }
@@ -342,7 +343,7 @@ onMounted(() => {
 
 <template>
   <div class="history-page">
-    <AppPageHeader title="历史记录" @back="goBack" />
+    <AppPageHeader :title="t('historyPage.title')" @back="goBack" />
 
     <div class="filter-wrap">
       <section class="filter-bar card">
@@ -402,7 +403,7 @@ onMounted(() => {
     <section class="stats-row card">
       <div class="stat-item">
         <p class="stat-label">
-          总收入
+          {{ t('historyPage.summaryIncome') }}
         </p>
         <p class="stat-value income">
           {{ formatAmount(stats.income) }}
@@ -410,7 +411,7 @@ onMounted(() => {
       </div>
       <div class="stat-item">
         <p class="stat-label">
-          总支出
+          {{ t('historyPage.summaryExpense') }}
         </p>
         <p class="stat-value expense">
           {{ formatAmount(-stats.expense) }}
@@ -418,7 +419,7 @@ onMounted(() => {
       </div>
       <div class="stat-item pnl">
         <p class="stat-label">
-          净盈亏
+          {{ t('historyPage.summaryPnl') }}
         </p>
         <p class="stat-value pnl-text">
           {{ formatAmount(stats.pnl) }}
@@ -429,7 +430,7 @@ onMounted(() => {
     <van-list
       v-model:loading="listLoading"
       :finished="finished"
-      finished-text="没有更多了"
+      :finished-text="t('historyPage.finishedText')"
       @load="onLoadMore"
     >
       <section class="tx-list">
@@ -467,24 +468,24 @@ onMounted(() => {
 
     <section v-if="showEmpty" class="empty-state card">
       <van-icon name="description" />
-      <p>暂无历史记录</p>
+      <p>{{ t('historyPage.emptyText') }}</p>
     </section>
 
     <van-popup v-model:show="showRangePopup" round position="bottom" class="range-popup">
       <div class="range-header">
-        <span class="range-title">选择日期范围</span>
+        <span class="range-title">{{ t('historyPage.rangeTitle') }}</span>
         <div class="range-actions">
           <button type="button" class="range-cancel-btn" @click="cancelRange">
-            取消
+            {{ t('historyPage.cancel') }}
           </button>
           <button type="button" class="range-confirm-btn" @click="confirmRange">
-            确认
+            {{ t('historyPage.confirm') }}
           </button>
         </div>
       </div>
 
       <div class="range-row">
-        <span>开始日期</span>
+        <span>{{ t('historyPage.startDate') }}</span>
         <div class="range-date-wrap" @click="openDatePicker('start')">
           <span class="range-date-text">{{ tempCustomRange.start }}</span>
           <van-icon name="arrow" />
@@ -492,7 +493,7 @@ onMounted(() => {
       </div>
 
       <div class="range-row">
-        <span>结束日期</span>
+        <span>{{ t('historyPage.endDate') }}</span>
         <div class="range-date-wrap" @click="openDatePicker('end')">
           <span class="range-date-text">{{ tempCustomRange.end }}</span>
           <van-icon name="arrow" />
@@ -506,8 +507,8 @@ onMounted(() => {
         title=""
         :show-toolbar="true"
         :columns-type="['year', 'month', 'day']"
-        cancel-button-text="取消"
-        confirm-button-text="确认"
+        :cancel-button-text="t('historyPage.cancel')"
+        :confirm-button-text="t('historyPage.confirm')"
         @cancel="cancelDatePicker"
         @confirm="confirmDatePicker"
       />
@@ -881,4 +882,3 @@ onMounted(() => {
   name: 'History'
 }
 </route>
-

@@ -3,6 +3,8 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { showToast } from 'vant'
 import AppPageHeader from '@/components/AppPageHeader.vue'
+import { CURRENCY_SYMBOL, formatCurrency } from '@/utils/currency'
+const { t } = useI18n()
 
 const router = useRouter()
 
@@ -18,13 +20,13 @@ const payMethods = [
   {
     id: 'gcash',
     name: 'GCash Wallet',
-    fee: '0.0% + 固定10.00',
+    fee: '0.0% + 10.00',
     logo: 'G',
   },
   {
     id: 'maya',
     name: 'Maya',
-    fee: '0.5% + 固定5.00',
+    fee: '0.5% + 5.00',
     logo: 'M',
   },
 ]
@@ -62,13 +64,13 @@ function goBack() {
 }
 
 function showHelpTip() {
-  showToast('如有问题请联系客服')
+  showToast(t('withdrawPage.helpTip'))
 }
 </script>
 
 <template>
   <div class="withdraw-page theme-withdraw">
-    <AppPageHeader title="提现" @back="goBack" @right-click="showHelpTip">
+    <AppPageHeader :title="t('withdrawPage.title')" @back="goBack" @right-click="showHelpTip">
       <template #right>
         <van-icon name="question-o" />
       </template>
@@ -77,20 +79,20 @@ function showHelpTip() {
     <section class="card balance-card">
       <div>
         <p class="card-label">
-          当前余额
+          {{ t('withdrawPage.currentBalance') }}
         </p>
         <p class="card-value">
-          R${{ balance.toFixed(2) }}
+          {{ formatCurrency(balance) }}
         </p>
         <p class="card-sub">
-          提现中冻结: R${{ frozen.toFixed(2) }}
+          {{ t('withdrawPage.frozenBalance', { amount: formatCurrency(frozen) }) }}
         </p>
       </div>
-      <span class="card-chip">R$</span>
+      <span class="card-chip">{{ CURRENCY_SYMBOL }}</span>
     </section>
 
     <section class="card">
-      <h2>提现渠道</h2>
+      <h2>{{ t('withdrawPage.channelTitle') }}</h2>
       <div class="pill-group">
         <button
           v-for="item in channels" :key="item.id" type="button" class="pill"
@@ -102,7 +104,7 @@ function showHelpTip() {
     </section>
 
     <section class="card">
-      <h2>支付方式</h2>
+      <h2>{{ t('withdrawPage.payMethodTitle') }}</h2>
       <div class="pay-list">
         <button
           v-for="method in payMethods" :key="method.id" type="button" class="pay-item"
@@ -115,7 +117,7 @@ function showHelpTip() {
                 {{ method.name }}
               </p>
               <p class="pay-sub">
-                手续费: {{ method.fee }}
+                {{ t('withdrawPage.feePrefix', { fee: method.fee }) }}
               </p>
             </div>
           </div>
@@ -128,21 +130,21 @@ function showHelpTip() {
 
     <section class="card">
       <h2 class="section-title">
-        收款信息
+        {{ t('withdrawPage.receiverTitle') }}
       </h2>
       <div class="form-list">
-        <van-field v-model="receiverAccount" label="收款账号" placeholder="请输入您的收款账号" class="form-item" />
-        <van-field v-model="receiverName" label="收款人姓名" placeholder="请输入收款人姓名" class="form-item" />
-        <van-field v-model="receiverEmail" label="邮箱地址" placeholder="请输入邮箱地址" class="form-item" />
+        <van-field v-model="receiverAccount" :label="t('withdrawPage.receiverAccount')" :placeholder="t('withdrawPage.receiverAccountPlaceholder')" class="form-item" />
+        <van-field v-model="receiverName" :label="t('withdrawPage.receiverName')" :placeholder="t('withdrawPage.receiverNamePlaceholder')" class="form-item" />
+        <van-field v-model="receiverEmail" :label="t('withdrawPage.receiverEmail')" :placeholder="t('withdrawPage.receiverEmailPlaceholder')" class="form-item" />
       </div>
     </section>
 
     <section class="card">
       <h2 class="section-title">
-        提现金额
+        {{ t('withdrawPage.amountTitle') }}
       </h2>
       <van-field
-        v-model="customAmount" type="number" label="金额" placeholder="请输入提现金额" class="custom-input"
+        v-model="customAmount" type="number" :label="t('withdrawPage.amountLabel')" :placeholder="t('withdrawPage.amountPlaceholder')" class="custom-input"
         @focus="selectedAmount = 'custom'"
       />
       <div class="amount-grid">
@@ -150,8 +152,8 @@ function showHelpTip() {
           v-for="item in amountOptions" :key="item" type="button" class="amount-item"
           :class="{ active: selectedAmount === item }" @click="chooseAmount(item as number | 'custom')"
         >
-          <span v-if="item !== 'custom'">R${{ item }}</span>
-          <span v-else>自定义</span>
+          <span v-if="item !== 'custom'">{{ CURRENCY_SYMBOL }}{{ item }}</span>
+          <span v-else>{{ t('withdrawPage.custom') }}</span>
         </button>
       </div>
 
@@ -159,78 +161,78 @@ function showHelpTip() {
         <div class="balance-header">
           <div class="balance-title">
             <span class="balance-icon">◎</span>
-            可用余额
+            {{ t('withdrawPage.availableBalance') }}
           </div>
           <div class="balance-amount">
-            R${{ balance.toFixed(2) }}
+            {{ formatCurrency(balance) }}
           </div>
         </div>
         <div class="balance-row">
           <div>
             <p class="row-title">
-              正常余额
+              {{ t('withdrawPage.normalBalance') }}
             </p>
             <p class="row-sub">
-              剩余打码量
+              {{ t('withdrawPage.codingRemain') }}
             </p>
           </div>
           <div class="row-right">
-            <span>R$0.00</span>
-            <span class="row-badge">可提现</span>
+            <span>{{ CURRENCY_SYMBOL }}0.00</span>
+            <span class="row-badge">{{ t('withdrawPage.withdrawable') }}</span>
           </div>
         </div>
         <div class="balance-row">
           <div>
             <p class="row-title">
-              赠金余额
+              {{ t('withdrawPage.bonusBalance') }}
             </p>
             <p class="row-sub">
-              剩余打码量
+              {{ t('withdrawPage.codingRemain') }}
             </p>
           </div>
           <div class="row-right">
-            <span>R$0.00</span>
-            <span class="row-badge">可提现</span>
+            <span>{{ CURRENCY_SYMBOL }}0.00</span>
+            <span class="row-badge">{{ t('withdrawPage.withdrawable') }}</span>
           </div>
         </div>
         <div class="balance-row">
           <div>
             <p class="row-title">
-              提现中冻结
+              {{ t('withdrawPage.freezing') }}
             </p>
           </div>
           <div class="row-right">
-            <span>-R$0.00</span>
+            <span>-{{ CURRENCY_SYMBOL }}0.00</span>
           </div>
         </div>
       </div>
 
       <van-button type="primary" round block class="submit-btn">
-        提交
+        {{ t('withdrawPage.submit') }}
       </van-button>
 
       <div class="fee-card">
         <div class="fee-row">
-          <span>手续费</span>
-          <span>R$0.00</span>
+          <span>{{ t('withdrawPage.serviceFee') }}</span>
+          <span>{{ CURRENCY_SYMBOL }}0.00</span>
         </div>
         <div class="fee-row total">
-          <span>实际扣除</span>
-          <span>R$0.00</span>
+          <span>{{ t('withdrawPage.actualDeduct') }}</span>
+          <span>{{ CURRENCY_SYMBOL }}0.00</span>
         </div>
       </div>
     </section>
 
     <section class="card tips">
       <h2 class="tips-title">
-        提现说明:
+        {{ t('withdrawPage.tipsTitle') }}
       </h2>
       <ol>
-        <li>提现最低金额为 R$100</li>
-        <li>正常余额需打满充值的 1 倍流水后方可提现</li>
-        <li>赠金需打满 20 倍流水后提现，流水从第一笔充值开始计算</li>
-        <li>请仔细核对收款信息，错误信息将导致提现失败</li>
-        <li>提现将在 1-30 分钟内处理完成，如有问题请联系客服</li>
+        <li>{{ t('withdrawPage.tips1', { amount: `${CURRENCY_SYMBOL}100` }) }}</li>
+        <li>{{ t('withdrawPage.tips2') }}</li>
+        <li>{{ t('withdrawPage.tips3') }}</li>
+        <li>{{ t('withdrawPage.tips4') }}</li>
+        <li>{{ t('withdrawPage.tips5') }}</li>
       </ol>
     </section>
   </div>

@@ -8,10 +8,12 @@
 :root {
   /* ─── 主色 / Primary ─────────────────────────── */
   --color-primary: #08ad5e;
+  --color-primary-rgb: 8, 173, 94;
   /* 激活态 / active tab underline          */
   --color-primary-dark: #07bd63;
   /* 图标背景 / feature icon bg             */
   --color-primary-medium: #3d9b4f;
+  --color-primary-medium-rgb: 61, 155, 79;
   /* withdraw/recharge 主强调色             */
   --color-primary-btn: #4cae63;
   /* 主操作按钮背景                          */

@@ -1,10 +1,15 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { computed, onMounted, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { getCurrentTgInviteStats } from '@/api/user'
 import AppPageHeader from '@/components/AppPageHeader.vue'
+import { CURRENCY_SYMBOL, formatCurrency } from '@/utils/currency'
+import imgRedpacketJpg from '@/assets/images/redpacket.jpg'
+
+const { t } = useI18n()
 
 const router = useRouter()
+const teamRuleBannerImage = imgRedpacketJpg
 
 const stats = reactive({
   inviteUsers: 0,
@@ -17,16 +22,16 @@ const stats = reactive({
 })
 
 const overviewCards = computed(() => [
-  { key: 'inviteUsers', icon: 'friends-o', label: '邀请用户数', value: stats.inviteUsers },
-  { key: 'rechargeUsers', icon: 'cash-back-record', label: '充值用户数', value: stats.rechargeUsers },
-  { key: 'todayInviteUsers', icon: 'calendar-o', label: '今日邀请用户数', value: stats.todayInviteUsers },
-  { key: 'todayRechargeUsers', icon: 'fire-o', label: '今日充值用户数', value: stats.todayRechargeUsers },
+  { key: 'inviteUsers', icon: 'friends-o', label: t('teamPage.statInviteUsers'), value: stats.inviteUsers },
+  { key: 'rechargeUsers', icon: 'cash-back-record', label: t('teamPage.statRechargeUsers'), value: stats.rechargeUsers },
+  { key: 'todayInviteUsers', icon: 'calendar-o', label: t('teamPage.statTodayInviteUsers'), value: stats.todayInviteUsers },
+  { key: 'todayRechargeUsers', icon: 'fire-o', label: t('teamPage.statTodayRechargeUsers'), value: stats.todayRechargeUsers },
 ])
 
 const commissionCards = computed(() => [
-  { key: 'total', label: '累计佣金', value: stats.totalCommission, tone: 'warm' },
-  { key: 'available', label: '可提佣金', value: stats.availableCommission, tone: 'success' },
-  { key: 'today', label: '今日佣金', value: stats.todayCommission, tone: 'info' },
+  { key: 'total', label: t('teamPage.commissionTotal'), value: stats.totalCommission, tone: 'warm' },
+  { key: 'available', label: t('teamPage.commissionAvailable'), value: stats.availableCommission, tone: 'success' },
+  { key: 'today', label: t('teamPage.commissionToday'), value: stats.todayCommission, tone: 'info' },
 ])
 
 function goBack() {
@@ -34,7 +39,7 @@ function goBack() {
 }
 
 function formatAmount(value: number) {
-  return `₱${Number(value || 0).toFixed(2)}`
+  return formatCurrency(Number(value || 0))
 }
 
 async function loadTeamData() {
@@ -60,12 +65,12 @@ onMounted(() => {
 
 <template>
   <div class="team-page">
-    <AppPageHeader class="team-header" title="我的团队" @back="goBack" />
+    <AppPageHeader class="team-header" :title="t('teamPage.title')" @back="goBack" />
 
     <section class="section-card">
       <div class="section-title">
         <span class="dot green" />
-        <span>团队概览</span>
+        <span>{{ t('teamPage.overviewTitle') }}</span>
       </div>
       <div class="overview-grid">
         <article v-for="item in overviewCards" :key="item.key" class="overview-item">
@@ -85,7 +90,7 @@ onMounted(() => {
     <section class="section-card">
       <div class="section-title">
         <span class="dot yellow" />
-        <span>佣金统计</span>
+        <span>{{ t('teamPage.commissionTitle') }}</span>
       </div>
       <div class="commission-grid">
         <article v-for="item in commissionCards" :key="item.key" class="commission-item" :class="item.tone">
@@ -102,41 +107,41 @@ onMounted(() => {
     <section class="section-card">
       <div class="section-title">
         <span class="dot orange" />
-        <span>佣金规则</span>
+        <span>{{ t('teamPage.ruleTitle') }}</span>
       </div>
 
       <div class="rule-banner">
-        <img src="https://game.luckypacket.me/images/redpacket.jpg" alt="commission banner">
+        <img :src="teamRuleBannerImage" alt="commission banner">
       </div>
 
       <div class="rule-content">
-        <h3>邀请佣金奖励说明：</h3>
+        <h3>{{ t('teamPage.ruleIntroTitle') }}</h3>
         <ul class="rule-list">
           <li>
             <van-icon name="friends-o" />
-            邀请新用户首次充值100₱，奖励10₱佣金
+            {{ t('teamPage.ruleItem1', { symbol: CURRENCY_SYMBOL }) }}
           </li>
           <li>
             <van-icon name="gift-o" />
-            邀请用户抢红包平台收益5%，平台收益40%返佣
+            {{ t('teamPage.ruleItem2') }}
           </li>
           <li>
             <van-icon name="flash" />
-            邀请用户发红包中雷收益平台抽成5%，平台收益40%返佣
+            {{ t('teamPage.ruleItem3') }}
           </li>
         </ul>
 
         <p class="rule-text">
-          抢红包和发红包系统都有收益，邀请越多人越高佣金。
+          {{ t('teamPage.ruleText1') }}
         </p>
 
-        <h3>收益示例</h3>
+        <h3>{{ t('teamPage.exampleTitle') }}</h3>
         <p class="rule-text">
-          若好友抢红包产生平台收益50₱，你可获得20₱佣金；若发红包中雷平台收益30₱，你可获得12₱佣金。
+          {{ t('teamPage.exampleText', { symbol: CURRENCY_SYMBOL }) }}
         </p>
 
         <div class="rule-highlight">
-          邀请好友越多，长期佣金越高；建议通过专属邀请码持续推广。
+          {{ t('teamPage.highlightText') }}
         </div>
       </div>
     </section>
@@ -276,7 +281,7 @@ onMounted(() => {
 }
 
 .commission-item.success .commission-label {
-  color: #3f9f61;
+  color: var(--color-primary-link);
 }
 
 .commission-item.info .commission-label {
@@ -379,4 +384,3 @@ onMounted(() => {
   name: 'Team'
 }
 </route>
-

@@ -1,8 +1,10 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { getAppCashHistoryList, getCurrentTgUserInfo } from '@/api/user'
 import AppPageHeader from '@/components/AppPageHeader.vue'
+import { CURRENCY_CODE, CURRENCY_SYMBOL, formatCurrency } from '@/utils/currency'
+const { t } = useI18n()
 
 interface WalletTx {
   id: string
@@ -29,8 +31,8 @@ const txPageSize = 20
 const totalAsset = computed(() => wallet.balance + wallet.commission)
 
 const assetRows = computed(() => [
-  { key: 'balance', label: '余额', unit: 'PHP', value: wallet.balance, emoji: '💰', tone: 'gold' },
-  { key: 'commission', label: '佣金', unit: 'PHP', value: wallet.commission, emoji: '💵', tone: 'green' },
+  { key: 'balance', label: t('walletPage.assetBalance'), unit: CURRENCY_CODE, value: wallet.balance, emoji: '💰', tone: 'gold' },
+  { key: 'commission', label: t('walletPage.assetCommission'), unit: CURRENCY_CODE, value: wallet.commission, emoji: '💵', tone: 'green' },
 ])
 
 function goBack() {
@@ -54,8 +56,7 @@ function formatPlain(value: number) {
 }
 
 function formatTxAmount(value: number) {
-  const sign = value >= 0 ? '+' : '-'
-  return `${sign}₱ ${Math.abs(value).toFixed(2)}`
+  return formatCurrency(value, { signed: true, spaceBetweenSymbolAndAmount: true })
 }
 
 function formatTxTime(raw: string) {
@@ -75,19 +76,19 @@ function mapCashTypeTitle(type: number, cashMark?: string, cashDesc?: string) {
   if (cashMark)
     return cashMark
   const map: Record<number, string> = {
-    1: '发送红包',
-    2: '抢红包收益',
-    3: '抢红包中雷',
-    4: '发包雷收益',
-    6: '充值到账',
-    7: '手工加款',
-    8: '手工扣款',
-    9: '提现申请',
-    10: '提现退回',
-    11: '佣金转余额',
-    12: '红包过期退回',
+    1: t('walletPage.typeSend'),
+    2: t('walletPage.typeGrabWin'),
+    3: t('walletPage.typeGrabThunder'),
+    4: t('walletPage.typeSendThunderWin'),
+    6: t('walletPage.typeRecharge'),
+    7: t('walletPage.typeManualAdd'),
+    8: t('walletPage.typeManualDeduct'),
+    9: t('walletPage.typeWithdrawApply'),
+    10: t('walletPage.typeWithdrawReturn'),
+    11: t('walletPage.typeRebateTransfer'),
+    12: t('walletPage.typeLuckyExpiredRefund'),
   }
-  return map[Number(type) || 0] || '账户变动'
+  return map[Number(type) || 0] || t('walletPage.typeAccountChange')
 }
 
 function mapTxItem(item: any): WalletTx {
@@ -159,7 +160,7 @@ onMounted(() => {
 
 <template>
   <div class="wallet-page">
-    <AppPageHeader title="我的钱包" @back="goBack">
+    <AppPageHeader :title="t('walletPage.title')" @back="goBack">
       <template #right>
         <van-icon name="ellipsis" />
       </template>
@@ -167,7 +168,7 @@ onMounted(() => {
 
     <section class="asset-card card">
       <p class="asset-label">
-        总资产 (₱)
+        {{ t('walletPage.totalAsset') }} ({{ CURRENCY_SYMBOL }})
       </p>
       <p class="asset-value">
         {{ formatPlain(totalAsset) }}
@@ -178,26 +179,26 @@ onMounted(() => {
           <span class="action-icon">
             <van-icon name="gold-coin-o" />
           </span>
-          <span>充值</span>
+          <span>{{ t('walletPage.recharge') }}</span>
         </button>
         <button type="button" class="asset-action withdraw" @click="goWithdraw">
           <span class="action-icon">
             <van-icon name="balance-pay" />
           </span>
-          <span>提现</span>
+          <span>{{ t('walletPage.withdraw') }}</span>
         </button>
         <button type="button" class="asset-action transfer" @click="goTransform">
           <span class="action-icon">
             <van-icon name="exchange" />
           </span>
-          <span>转账</span>
+          <span>{{ t('walletPage.transfer') }}</span>
         </button>
       </div>
     </section>
 
     <section class="card list-card">
       <div class="list-header">
-        <p>资产明细</p>
+        <p>{{ t('walletPage.assetDetails') }}</p>
         <van-icon name="arrow" />
       </div>
       <article
@@ -220,14 +221,14 @@ onMounted(() => {
 
     <section class="card list-card">
       <div class="list-header">
-        <p>最近交易</p>
+        <p>{{ t('walletPage.recentTx') }}</p>
         <van-icon name="arrow" />
       </div>
       <van-list
         v-model:loading="txLoading"
         :finished="txFinished"
         :immediate-check="false"
-        finished-text="没有更多了"
+        :finished-text="t('walletPage.noMore')"
         @load="onLoadTxMore"
       >
         <article
@@ -248,7 +249,7 @@ onMounted(() => {
         </article>
       </van-list>
       <div v-if="!txLoading && txList.length === 0" class="wallet-empty">
-        暂无交易流水
+        {{ t('walletPage.emptyTx') }}
       </div>
     </section>
   </div>
@@ -446,4 +447,3 @@ onMounted(() => {
   name: 'Wallet'
 }
 </route>
-

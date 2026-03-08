@@ -176,7 +176,7 @@ function goBack() {
 .reset-page {
   min-height: 100vh;
   background:
-    radial-gradient(1200px 500px at 50% -240px, rgba(84, 185, 105, 0.12), transparent 65%), var(--color-bg-page);
+    radial-gradient(1200px 500px at 50% -240px, rgba(var(--color-primary-rgb), 0.12), transparent 65%), var(--color-bg-page);
   padding: 0 var(--page-padding-x) 32px;
 }
 
@@ -251,7 +251,7 @@ function goBack() {
 
 .reset-input:focus {
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 4px rgba(101, 177, 104, 0.16);
+  box-shadow: 0 0 0 4px rgba(var(--color-primary-rgb), 0.16);
 }
 
 .reset-code-wrap {
@@ -285,7 +285,7 @@ function goBack() {
   height: 54px;
   font-size: var(--font-xl);
   font-weight: 500;
-  box-shadow: 0 10px 24px rgba(101, 177, 104, 0.34);
+  box-shadow: 0 10px 24px rgba(var(--color-primary-rgb), 0.34);
 }
 </style>
 

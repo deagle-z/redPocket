@@ -1,9 +1,18 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { appUpload, getCurrentTgUserInfo, tgLogout, updateCurrentTgAvatar } from '@/api/user'
 import { showToast } from 'vant'
 import { clearToken, isLogin } from '@/utils/auth'
 import { locale } from '@/utils/i18n'
 import avatarPlaceholderIcon from '@/assets/my/question-circle.svg'
+import avatar1 from '@/assets/images/avatar1.png'
+import avatar2 from '@/assets/images/avatar2.png'
+import avatar3 from '@/assets/images/avatar3.png'
+import avatar4 from '@/assets/images/avatar4.png'
+import avatar5 from '@/assets/images/avatar5.png'
+import avatar6 from '@/assets/images/avatar6.png'
+import avatar7 from '@/assets/images/avatar7.png'
+import avatar8 from '@/assets/images/avatar8.png'
+import avatar9 from '@/assets/images/avatar9.png'
 import bankCardIcon from '@/assets/my/bank card.svg'
 import chartBarAltIcon from '@/assets/my/chart-bar-alt.svg'
 import customerServiceIcon from '@/assets/my/customer-service-fill.svg'
@@ -16,6 +25,9 @@ import teamIcon from '@/assets/my/team.svg'
 import telegramIcon from '@/assets/my/telegram.svg'
 import upIcon from '@/assets/my/up2.svg'
 import walletIcon from '@/assets/my/wallet.svg'
+import { CURRENCY_SYMBOL } from '@/utils/currency'
+
+const { t } = useI18n()
 
 type ExtraTone = 'success' | 'muted'
 
@@ -27,26 +39,12 @@ interface MenuItem {
   tone?: ExtraTone
 }
 
-const accountMenus: MenuItem[] = [
-  { key: 'wallet', label: '我的钱包', icon: walletIcon },
-  { key: 'recharge', label: '充值', icon: downIcon },
-  { key: 'withdraw', label: '提现', icon: upIcon },
-  { key: 'withdraw-account', label: '提现账户', icon: bankCardIcon },
-  // { key: 'lucky-reward', label: '幸运转盘奖励', icon: gamesIcon },
-]
-
-const promoMenus: MenuItem[] = [
-  { key: 'team', label: '我的团队', icon: teamIcon },
-  { key: 'invite', label: '邀请好友', icon: shareIcon, extra: '奖励', tone: 'success' },
-  { key: 'rebate', label: '佣金明细', icon: chartBarAltIcon },
-]
-
 const profileLoading = ref(false)
 const showAvatarPopup = ref(false)
 const uploadingAvatar = ref(false)
 const avatarFileInput = ref<HTMLInputElement>()
 const PROFILE_AVATAR_KEY = 'profile_custom_avatar'
-const avatarOptions = Array.from({ length: 9 }, (_, idx) => `https://game.luckypacket.me/images/avatar${idx + 1}.png`)
+const avatarOptions = [avatar1, avatar2, avatar3, avatar4, avatar5, avatar6, avatar7, avatar8, avatar9]
 const profile = reactive({
   avatar: '',
   username: '',
@@ -57,14 +55,28 @@ const profile = reactive({
   rebateAmount: 0,
 })
 
+const accountMenus = computed<MenuItem[]>(() => [
+  { key: 'wallet', label: t('profilePage.accountWallet'), icon: walletIcon },
+  { key: 'recharge', label: t('profilePage.accountRecharge'), icon: downIcon },
+  { key: 'withdraw', label: t('profilePage.accountWithdraw'), icon: upIcon },
+  { key: 'withdraw-account', label: t('profilePage.accountWithdrawAccount'), icon: bankCardIcon },
+  // { key: 'lucky-reward', label: t('profilePage.accountLuckyReward'), icon: gamesIcon },
+])
+
+const promoMenus = computed<MenuItem[]>(() => [
+  { key: 'team', label: t('profilePage.promoTeam'), icon: teamIcon },
+  { key: 'invite', label: t('profilePage.promoInvite'), icon: shareIcon, extra: t('profilePage.promoInviteExtra'), tone: 'success' },
+  { key: 'rebate', label: t('profilePage.promoRebate'), icon: chartBarAltIcon },
+])
+
 const otherMenus = computed<MenuItem[]>(() => [
-  { key: 'language', label: '语言（Language）', icon: shareIcon },
-  { key: 'rules', label: '游戏规则', icon: gamesIcon },
-  { key: 'bind-tg', label: '绑定Telegram', icon: telegramIcon, extra: formatMaskedNumber(profile.tgId), tone: 'muted' },
-  { key: 'bind-email', label: '绑定邮箱', icon: emailIcon, extra: formatMaskedEmail(profile.email), tone: 'muted' },
-  { key: 'change-password', label: '修改密码', icon: passwordIcon },
-  { key: 'questions', label: '常见问题', icon: avatarPlaceholderIcon },
-  { key: 'cs', label: '客服中心', icon: customerServiceIcon },
+  { key: 'language', label: t('profilePage.serviceLanguage'), icon: shareIcon },
+  { key: 'rules', label: t('profilePage.serviceRules'), icon: gamesIcon },
+  { key: 'bind-tg', label: t('profilePage.serviceBindTg'), icon: telegramIcon, extra: formatMaskedNumber(profile.tgId), tone: 'muted' },
+  { key: 'bind-email', label: t('profilePage.serviceBindEmail'), icon: emailIcon, extra: formatMaskedEmail(profile.email), tone: 'muted' },
+  { key: 'change-password', label: t('profilePage.serviceChangePassword'), icon: passwordIcon },
+  { key: 'questions', label: t('profilePage.serviceQuestions'), icon: avatarPlaceholderIcon },
+  { key: 'cs', label: t('profilePage.serviceCs'), icon: customerServiceIcon },
 ])
 
 const displayName = computed(() => profile.username || '--')
@@ -75,7 +87,7 @@ const displayRebateAmount = computed(() => Number(profile.rebateAmount || 0).toF
 function formatMaskedNumber(value: number) {
   const text = String(value || '').trim()
   if (!text)
-    return '未绑定'
+    return t('profilePage.notBound')
   if (text.length <= 4)
     return `${text.slice(0, 1)}***${text.slice(-1)}`
   return `${text.slice(0, 1)}***${text.slice(-3)}`
@@ -84,7 +96,7 @@ function formatMaskedNumber(value: number) {
 function formatMaskedEmail(email: string) {
   const text = String(email || '').trim()
   if (!text)
-    return '未绑定'
+    return t('profilePage.notBound')
   const atIndex = text.indexOf('@')
   if (atIndex <= 1)
     return text
@@ -113,7 +125,7 @@ async function loadCurrentTgUserInfo() {
       profile.avatar = customAvatar
   }
   catch {
-    showToast('加载用户信息失败')
+    showToast(t('profilePage.toastLoadFailed'))
   }
   finally {
     profileLoading.value = false
@@ -136,7 +148,7 @@ async function selectAvatar(url: string) {
     await updateCurrentTgAvatar(url)
     profile.avatar = url
     localStorage.setItem(PROFILE_AVATAR_KEY, url)
-    showToast('头像已更新')
+    showToast(t('profilePage.toastAvatarUpdated'))
     closeAvatarPopup()
   }
   finally {
@@ -157,11 +169,11 @@ async function handleAvatarFileChange(event: Event) {
   if (!file)
     return
   if (!file.type.startsWith('image/')) {
-    showToast('请上传图片文件')
+    showToast(t('profilePage.toastUploadImageOnly'))
     return
   }
   if (file.size > 5 * 1024 * 1024) {
-    showToast('图片不能超过5MB')
+    showToast(t('profilePage.toastUploadTooLarge'))
     return
   }
   if (uploadingAvatar.value)
@@ -172,13 +184,13 @@ async function handleAvatarFileChange(event: Event) {
     const uploadRes = await appUpload(file)
     const url = uploadRes?.data?.url || ''
     if (!url) {
-      showToast('上传失败，请重试')
+      showToast(t('profilePage.toastUploadFailed'))
       return
     }
     await updateCurrentTgAvatar(url)
     profile.avatar = url
     localStorage.setItem(PROFILE_AVATAR_KEY, url)
-    showToast('头像已更新')
+    showToast(t('profilePage.toastAvatarUpdated'))
     closeAvatarPopup()
   }
   finally {
@@ -193,7 +205,6 @@ onMounted(() => {
 const showLogoutDialog = ref(false)
 const logoutLoading = ref(false)
 const showLangPopup = ref(false)
-const { t } = useI18n()
 const router = useRouter()
 const languageOptions = [
   {
@@ -315,7 +326,7 @@ async function handleConfirmLogout() {
     clearToken()
     showLogoutDialog.value = false
     logoutLoading.value = false
-    showToast('已退出登录')
+    showToast(t('profilePage.toastLogoutSuccess'))
     router.replace('/login')
   }
 }
@@ -344,18 +355,18 @@ async function handleConfirmLogout() {
       <div class="balance-row">
         <button class="balance-item" type="button" @click="goWallet">
           <strong class="balance-value">{{ displayBalance }}</strong>
-          <span class="balance-label">余额(₱)</span>
+          <span class="balance-label">{{ t('profilePage.balanceLabel', { symbol: CURRENCY_SYMBOL }) }}</span>
         </button>
         <div class="balance-divider" />
         <button class="balance-item" type="button" @click="goTransform">
           <strong class="balance-value">{{ displayRebateAmount }}</strong>
-          <span class="balance-label">佣金(₱)</span>
+          <span class="balance-label">{{ t('profilePage.commissionLabel', { symbol: CURRENCY_SYMBOL }) }}</span>
         </button>
       </div>
     </section>
 
     <p class="section-label">
-      账户管理
+      {{ t('profilePage.sectionAccount') }}
     </p>
     <section class="menu-card">
       <button v-for="item in accountMenus" :key="item.key" type="button" class="menu-row" @click="onMenuClick(item)">
@@ -371,7 +382,7 @@ async function handleConfirmLogout() {
     </section>
 
     <p class="section-label">
-      推广中心
+      {{ t('profilePage.sectionPromo') }}
     </p>
     <section class="menu-card">
       <button v-for="item in promoMenus" :key="item.key" type="button" class="menu-row" @click="onMenuClick(item)">
@@ -387,7 +398,7 @@ async function handleConfirmLogout() {
     </section>
 
     <p class="section-label">
-      其他服务
+      {{ t('profilePage.sectionService') }}
     </p>
     <section class="menu-card">
       <button v-for="item in otherMenus" :key="item.key" type="button" class="menu-row" @click="onMenuClick(item)">
@@ -404,18 +415,18 @@ async function handleConfirmLogout() {
 
     <div class="logout-wrap">
       <button type="button" class="logout-btn" @click="openLogoutDialog">
-        退出登录
+        {{ t('profilePage.logout') }}
       </button>
     </div>
 
     <AppConfirmDialog
       v-model:show="showLogoutDialog"
-      title="确认退出"
-      cancel-text="取消"
-      confirm-text="确认"
+      :title="t('profilePage.logoutTitle')"
+      :cancel-text="t('profilePage.logoutCancel')"
+      :confirm-text="t('profilePage.logoutConfirm')"
       @confirm="handleConfirmLogout"
     >
-      确定要退出登录吗？
+      {{ t('profilePage.logoutContent') }}
     </AppConfirmDialog>
 
     <van-popup v-model:show="showLangPopup" round position="bottom" class="language-popup">
@@ -450,7 +461,7 @@ async function handleConfirmLogout() {
 
     <van-popup v-model:show="showAvatarPopup" round position="bottom" class="avatar-popup">
       <div class="avatar-popup-header">
-        <span class="avatar-popup-title">更换头像</span>
+        <span class="avatar-popup-title">{{ t('profilePage.avatarPopupTitle') }}</span>
         <button class="avatar-popup-close" @click="closeAvatarPopup">
           ×
         </button>
@@ -470,13 +481,13 @@ async function handleConfirmLogout() {
       </div>
 
       <div class="avatar-divider">
-        <span>或</span>
+        <span>{{ t('profilePage.avatarPopupOr') }}</span>
       </div>
 
       <div class="avatar-upload-wrap">
         <button type="button" class="avatar-upload-btn" :disabled="uploadingAvatar" @click="triggerAvatarUpload">
           <van-icon name="photograph" />
-          <span>{{ uploadingAvatar ? '上传中...' : '上传自定义头像' }}</span>
+          <span>{{ uploadingAvatar ? t('profilePage.avatarUploading') : t('profilePage.avatarUpload') }}</span>
         </button>
         <input ref="avatarFileInput" type="file" accept="image/*" class="avatar-file-input" @change="handleAvatarFileChange">
       </div>
@@ -872,8 +883,8 @@ async function handleConfirmLogout() {
   height: 48px;
   border: 1px solid var(--color-border-active);
   border-radius: 8px;
-  background: #f8fffb;
-  color: #29a35b;
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -906,4 +917,3 @@ async function handleConfirmLogout() {
   name: 'Profile'
 }
 </route>
-

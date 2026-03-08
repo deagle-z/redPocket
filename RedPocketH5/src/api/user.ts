@@ -61,6 +61,14 @@ export interface TgInviteStats {
   todayCommission?: number
 }
 
+export interface TgInviteRuleConfig {
+  luckySendCommission?: number
+  luckyGrabbingCommission?: number
+  inviteFirstRechargeReward?: number
+  inviteLuckyRebateRate?: number
+  inviteThunderRebateRate?: number
+}
+
 export interface UserState {
   uid?: number
   name?: string
@@ -338,6 +346,10 @@ export function getCurrentTgUserInfo() {
 
 export function getCurrentTgInviteStats() {
   return request.get<ApiResult<TgInviteStats>>('/api/v1/app/tg/inviteStats')
+}
+
+export function getCurrentTgInviteRuleConfig() {
+  return request.get<ApiResult<TgInviteRuleConfig>>('/api/v1/app/tg/inviteRuleConfig')
 }
 
 export function appUpload(file: File) {

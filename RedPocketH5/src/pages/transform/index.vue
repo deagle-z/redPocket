@@ -1,10 +1,13 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import { showToast } from 'vant'
 import { useRouter } from 'vue-router'
 import { getAppCashHistoryList, getCurrentTgUserInfo, transferRebateToBalance } from '@/api/user'
 import AppPageHeader from '@/components/AppPageHeader.vue'
 import gameIcon from '@/assets/my/game.svg'
+import { CURRENCY_SYMBOL, formatCurrency } from '@/utils/currency'
+
+const { t } = useI18n()
 
 interface TransformTx {
   id: string
@@ -25,11 +28,19 @@ const wallet = reactive({
 })
 
 const canTransferAll = computed(() => wallet.commission > 0)
-const commissionText = computed(() => `₱${wallet.commission.toFixed(2)}`)
-const gameText = computed(() => `₱${wallet.game.toFixed(2)}`)
+const commissionText = computed(() => formatCurrency(wallet.commission))
+const gameText = computed(() => formatCurrency(wallet.game))
 
 function goBack() {
   router.back()
+}
+
+function isCommissionTx(item: any) {
+  const type = Number(item?.type || 0)
+  if (type === 11)
+    return true
+  const mark = String(item?.cashMark || item?.cashDesc || '').toLowerCase()
+  return mark.includes('commission')
 }
 
 function formatTime(raw: string) {
@@ -45,7 +56,7 @@ function formatTime(raw: string) {
 }
 
 function formatAmount(value: number) {
-  return `₱${Number(value || 0).toFixed(2)}`
+  return formatCurrency(Number(value || 0))
 }
 
 function fillAll() {
@@ -74,10 +85,10 @@ async function loadRecentList() {
       pageSize: 20,
     })
     const list = (data?.list || [])
-      .filter((item: any) => Number(item?.type) === 11 || String(item?.cashMark || '').includes('佣金'))
+      .filter((item: any) => isCommissionTx(item))
       .map((item: any) => ({
         id: String(`${item?.createdAt || ''}_${item?.amount || 0}`),
-        title: item?.cashDesc || item?.cashMark || '佣金转账',
+        title: item?.cashDesc || item?.cashMark || t('transformPage.txTitleDefault'),
         time: formatTime(item?.createdAt || ''),
         amount: Number(item?.amount || 0),
       }))
@@ -97,15 +108,15 @@ async function handleConfirm() {
     return
   const amount = Number(amountInput.value)
   if (!amount || Number.isNaN(amount)) {
-    showToast('请输入转账金额')
+    showToast(t('transformPage.toastEnterAmount'))
     return
   }
   if (amount < 1) {
-    showToast('最低转账金额为 ₱1')
+    showToast(t('transformPage.toastMinAmount', { min: `${CURRENCY_SYMBOL}1` }))
     return
   }
   if (amount > wallet.commission) {
-    showToast('转账金额不能超过佣金余额')
+    showToast(t('transformPage.toastExceedBalance'))
     return
   }
   confirming.value = true
@@ -115,7 +126,7 @@ async function handleConfirm() {
     wallet.commission = Number(data?.rebateAmount || 0)
     wallet.game = Number(data?.balance || 0)
     amountInput.value = ''
-    showToast(`转账成功 ₱${transferAmount.toFixed(2)}`)
+    showToast(t('transformPage.toastSuccess', { amount: formatCurrency(transferAmount) }))
     void loadRecentList()
   }
   finally {
@@ -131,36 +142,36 @@ onMounted(() => {
 
 <template>
   <div class="transform-page">
-    <AppPageHeader title="佣金转账" @back="goBack" />
+    <AppPageHeader :title="t('transformPage.title')" @back="goBack" />
 
     <section class="flow-row card">
       <div class="flow-item">
         <span class="flow-icon green">
           <van-icon name="gold-coin-o" />
         </span>
-        <p>佣金钱包</p>
+        <p>{{ t('transformPage.walletCommission') }}</p>
       </div>
       <van-icon name="arrow" class="flow-arrow" />
       <div class="flow-item">
         <span class="flow-icon orange">
           <img :src="gameIcon" alt="" class="flow-icon-img">
         </span>
-        <p>游戏钱包</p>
+        <p>{{ t('transformPage.walletGame') }}</p>
       </div>
       <van-icon name="arrow" class="flow-arrow" />
       <div class="flow-item">
         <span class="flow-icon blue">
           <van-icon name="balance-list-o" />
         </span>
-        <p>提现到账</p>
+        <p>{{ t('transformPage.walletWithdraw') }}</p>
       </div>
     </section>
 
     <section class="cards-wrap">
       <article class="wallet-card commission">
         <div class="wallet-row">
-          <h3>佣金钱包</h3>
-          <span>可用余额</span>
+          <h3>{{ t('transformPage.walletCommission') }}</h3>
+          <span>{{ t('transformPage.availableBalance') }}</span>
         </div>
         <p class="wallet-value">
           {{ commissionText }}
@@ -169,8 +180,8 @@ onMounted(() => {
 
       <article class="wallet-card game">
         <div class="wallet-row">
-          <h3>游戏钱包</h3>
-          <span>可用余额</span>
+          <h3>{{ t('transformPage.walletGame') }}</h3>
+          <span>{{ t('transformPage.availableBalance') }}</span>
         </div>
         <p class="wallet-value">
           {{ gameText }}
@@ -181,33 +192,33 @@ onMounted(() => {
     <section class="input-section card">
       <div class="input-row">
         <p class="input-label">
-          转账金额
+          {{ t('transformPage.transferAmount') }}
         </p>
-        <input v-model="amountInput" class="amount-input" type="number" min="1" placeholder="请输入金额（最低 ₱1）">
+        <input v-model="amountInput" class="amount-input" type="number" min="1" :placeholder="t('transformPage.amountPlaceholder', { min: `${CURRENCY_SYMBOL}1` })">
         <button type="button" class="fill-btn" :disabled="!canTransferAll" @click="fillAll">
-          全部转入
+          {{ t('transformPage.fillAll') }}
         </button>
       </div>
       <p class="input-hint">
-        最低转账金额为 ₱1
+        {{ t('transformPage.minTip', { min: `${CURRENCY_SYMBOL}1` }) }}
       </p>
     </section>
 
     <section class="confirm-wrap">
       <button type="button" class="confirm-btn" :disabled="confirming" @click="handleConfirm">
-        确认转账
+        {{ t('transformPage.confirmTransfer') }}
       </button>
     </section>
 
     <section class="recent-wrap card">
       <header class="recent-header" @click="goHistory">
-        <h3>最近交易</h3>
+        <h3>{{ t('transformPage.recentTx') }}</h3>
         <van-icon name="arrow" />
       </header>
 
       <div v-if="loading" class="state-wrap">
         <van-loading size="24px" color="var(--color-primary)" vertical>
-          加载中...
+          {{ t('transformPage.loading') }}
         </van-loading>
       </div>
 
@@ -231,7 +242,7 @@ onMounted(() => {
         <div class="empty-icon">
           <van-icon name="description" />
         </div>
-        <p>没有更多了</p>
+        <p>{{ t('transformPage.noMore') }}</p>
       </div>
     </section>
   </div>
@@ -516,4 +527,3 @@ onMounted(() => {
   name: 'Transform',
 }
 </route>
-

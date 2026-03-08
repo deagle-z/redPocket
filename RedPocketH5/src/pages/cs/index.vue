@@ -1,3 +1,7 @@
+<script setup lang="ts">
+const { t } = useI18n()
+</script>
+
 <template>
-  <div>客服中心</div>
+  <div>{{ t('profilePage.serviceCs') }}</div>
 </template>

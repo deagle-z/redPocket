@@ -1,9 +1,11 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { showToast } from 'vant'
 import { createRechargeOrder, getCurrentTgUserInfo } from '@/api/user'
 import AppPageHeader from '@/components/AppPageHeader.vue'
+import { CURRENCY_CODE, CURRENCY_SYMBOL, formatCurrency } from '@/utils/currency'
+const { t } = useI18n()
 
 const router = useRouter()
 
@@ -30,13 +32,13 @@ const payMethods = [
   {
     id: 'gcash',
     name: 'GCash QR',
-    sub: '扫码支付',
+    subKey: 'rechargePage.paySubQr',
     logo: 'G',
   },
   {
     id: 'maya',
     name: 'Maya',
-    sub: '电子钱包',
+    subKey: 'rechargePage.paySubWallet',
     logo: 'M',
   },
 ]
@@ -77,7 +79,7 @@ function showCenterToast(message: string) {
 }
 
 function showHelpTip() {
-  showCenterToast('如有问题请联系客服')
+  showCenterToast(t('rechargePage.helpTip'))
 }
 
 async function loadBalance() {
@@ -95,7 +97,7 @@ async function handleSubmitRecharge() {
     return
   const amount = Number(displayAmount.value)
   if (!amount || amount <= 0) {
-    showCenterToast('请输入有效充值金额')
+    showCenterToast(t('rechargePage.invalidAmount'))
     return
   }
 
@@ -105,25 +107,25 @@ async function handleSubmitRecharge() {
       amount,
       channel: selectedChannel.value,
       payMethod: selectedPay.value,
-      currency: 'BRL',
+      currency: CURRENCY_CODE,
     })
 
     if (data?.payUrl) {
-      showCenterToast('下单成功，正在跳转支付')
+      showCenterToast(t('rechargePage.orderToPay'))
       window.location.href = data.payUrl
       return
     }
 
     if (data?.devCallback) {
-      showCenterToast(`充值成功，订单号: ${data.orderNo}`)
+      showCenterToast(t('rechargePage.orderRechargeSuccess', { orderNo: data.orderNo }))
       await loadBalance()
       return
     }
 
-    showCenterToast(`下单成功，订单号: ${data?.orderNo || '--'}`)
+    showCenterToast(t('rechargePage.orderSuccess', { orderNo: data?.orderNo || '--' }))
   }
   catch {
-    showCenterToast('充值下单失败')
+    showCenterToast(t('rechargePage.orderFailed'))
   }
   finally {
     submitLoading.value = false
@@ -137,7 +139,7 @@ onMounted(() => {
 
 <template>
   <div class="recharge-page">
-    <AppPageHeader class="recharge-header" title="充值" @back="goBack" @right-click="showHelpTip">
+    <AppPageHeader class="recharge-header" :title="t('rechargePage.title')" @back="goBack" @right-click="showHelpTip">
       <template #right>
         <van-icon name="question-o" />
       </template>
@@ -146,17 +148,17 @@ onMounted(() => {
     <section class="card balance-card">
       <div>
         <p class="card-label">
-          当前余额
+          {{ t('rechargePage.currentBalance') }}
         </p>
         <p class="card-value">
-          R${{ balance.toFixed(2) }}
+          {{ formatCurrency(balance) }}
         </p>
       </div>
-      <span class="card-chip">R$</span>
+      <span class="card-chip">{{ CURRENCY_SYMBOL }}</span>
     </section>
 
     <section class="card">
-      <h2>充值渠道</h2>
+      <h2>{{ t('rechargePage.channelTitle') }}</h2>
       <div class="pill-group">
         <button
           v-for="item in channels" :key="item.id" type="button" class="pill"
@@ -168,24 +170,24 @@ onMounted(() => {
     </section>
 
     <section class="card">
-      <h2>选择充值金额</h2>
+      <h2>{{ t('rechargePage.amountTitle') }}</h2>
       <div class="amount-grid">
         <button
           v-for="item in amountOptions" :key="item" type="button" class="amount-item"
           :class="{ active: selectedAmount === item }" @click="chooseAmount(item as number | 'custom')"
         >
           <span v-if="item !== 'custom'">{{ item }}</span>
-          <span v-else>自定义</span>
+          <span v-else>{{ t('rechargePage.custom') }}</span>
         </button>
       </div>
       <van-field
-        v-if="selectedAmount === 'custom'" v-model="customAmount" type="number" label="自定义金额"
-        placeholder="请输入充值金额" class="custom-input"
+        v-if="selectedAmount === 'custom'" v-model="customAmount" type="number" :label="t('rechargePage.customAmount')"
+        :placeholder="t('rechargePage.customAmountPlaceholder')" class="custom-input"
       />
     </section>
 
     <section class="card">
-      <h2>选择支付方式</h2>
+      <h2>{{ t('rechargePage.payMethodTitle') }}</h2>
       <div class="pay-list">
         <button
           v-for="method in payMethods" :key="method.id" type="button" class="pay-item"
@@ -198,7 +200,7 @@ onMounted(() => {
                 {{ method.name }}
               </p>
               <p class="pay-sub">
-                {{ method.sub }}
+                {{ t(method.subKey) }}
               </p>
             </div>
           </div>
@@ -218,7 +220,7 @@ onMounted(() => {
       :disabled="!canSubmit"
       @click="handleSubmitRecharge"
     >
-      确认充值
+      {{ t('rechargePage.submit') }}
     </van-button>
   </div>
 </template>
@@ -237,7 +239,7 @@ onMounted(() => {
   --card-bg: #ffffff;
   --text-main: #141a22;
   --text-sub: #6b7280;
-  --accent: #3d9b4f;
+  --accent: var(--color-primary-medium);
   --accent-soft: var(--color-primary-soft);
   --stroke: #e4e9f0;
   --shadow: 0 12px 28px rgba(21, 32, 56, 0.08);
@@ -246,7 +248,7 @@ onMounted(() => {
   padding-bottom: 16px;
   min-height: calc(100vh - 32px);
   background:
-    radial-gradient(circle at top right, rgba(61, 155, 79, 0.12), transparent 45%),
+    radial-gradient(circle at top right, rgba(var(--color-primary-medium-rgb), 0.12), transparent 45%),
     linear-gradient(180deg, #f7f9fc 0%, #eef2f8 100%);
   position: relative;
 }
@@ -258,7 +260,7 @@ onMounted(() => {
   right: -40px;
   width: 120px;
   height: 120px;
-  background: rgba(61, 155, 79, 0.08);
+  background: rgba(var(--color-primary-medium-rgb), 0.08);
   border-radius: 28px;
   transform: rotate(12deg);
 }
@@ -331,7 +333,7 @@ onMounted(() => {
   background: var(--accent);
   color: #fff;
   border-color: var(--accent);
-  box-shadow: 0 6px 14px rgba(61, 155, 79, 0.2);
+  box-shadow: 0 6px 14px rgba(var(--color-primary-medium-rgb), 0.2);
 }
 
 .amount-grid {
@@ -382,7 +384,7 @@ onMounted(() => {
 
 .pay-item.active {
   border-color: var(--accent);
-  box-shadow: 0 8px 18px rgba(61, 155, 79, 0.16);
+  box-shadow: 0 8px 18px rgba(var(--color-primary-medium-rgb), 0.16);
 }
 
 .pay-left {
@@ -438,4 +440,3 @@ onMounted(() => {
   letter-spacing: 0.5px;
 }
 </style>
-

@@ -8,9 +8,9 @@ interface Props {
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  title: '确认退出',
-  cancelText: '取消',
-  confirmText: '确认',
+  title: '',
+  cancelText: '',
+  confirmText: '',
   closeOnClickOverlay: true,
 })
 
@@ -19,6 +19,12 @@ const emit = defineEmits<{
   (e: 'cancel'): void
   (e: 'confirm'): void
 }>()
+
+const { t } = useI18n()
+const dialogTitle = computed(() => props.title || t('common.confirmTitle'))
+const dialogCancelText = computed(() => props.cancelText || t('common.cancel'))
+const dialogConfirmText = computed(() => props.confirmText || t('common.confirm'))
+const dialogDefaultContent = computed(() => t('common.confirmAction'))
 
 function closeDialog() {
   emit('update:show', false)
@@ -48,20 +54,20 @@ function onClickOverlay() {
         <div class="confirm-dialog" role="dialog" aria-modal="true" @click.stop>
           <div class="confirm-body">
             <h3 class="confirm-title">
-              {{ title }}
+              {{ dialogTitle }}
             </h3>
             <div class="confirm-content">
               <slot>
-                确定要执行该操作吗？
+                {{ dialogDefaultContent }}
               </slot>
             </div>
           </div>
           <div class="confirm-actions">
             <button type="button" class="action-btn cancel-btn" @click="onCancel">
-              {{ cancelText }}
+              {{ dialogCancelText }}
             </button>
             <button type="button" class="action-btn confirm-btn" @click="onConfirm">
-              {{ confirmText }}
+              {{ dialogConfirmText }}
             </button>
           </div>
         </div>
@@ -97,7 +103,7 @@ function onClickOverlay() {
 .confirm-title {
   margin: 0;
   color: #111827;
-  font-size: 20px;
+  font-size: 17px;
   line-height: 1.1;
   font-weight: 700;
 }
@@ -105,7 +111,7 @@ function onClickOverlay() {
 .confirm-content {
   margin-top: 10px;
   color: #6b7280;
-  font-size: 16px;
+  font-size: 14px;
   line-height: 1.35;
 }
 
@@ -119,7 +125,7 @@ function onClickOverlay() {
   flex: 1;
   height: 100%;
   border: none;
-  font-size: 17px;
+  font-size: 15px;
   line-height: 1;
   font-weight: 600;
 }

@@ -8,13 +8,15 @@ import emailIcon from '@/assets/svg/email.svg'
 import lockIcon from '@/assets/svg/lock.svg'
 import inviteIcon from '@/assets/svg/invite.svg'
 import languageIcon from '@/assets/svg/language.svg'
+import imgRegisterHeader from '@/assets/images/register-header.jpg'
+import imgTelegram from '@/assets/images/telegram.png'
 
 const { t } = useI18n()
 const router = useRouter()
 const userStore = useUserStore()
 const loading = ref(false)
 const activeTab = ref<'telegram' | 'email'>('telegram')
-const tgBotId = Number(import.meta.env.VITE_TG_BOT_ID || 0)
+const tgBotUsername = import.meta.env.VITE_TG_BOT_USERNAME || 'luckRedBoomPacket66Bot'
 const showLangPopup = ref(false)
 const languageOptions = [
   {
@@ -72,33 +74,10 @@ interface TgAuthPayload {
   hash: string
 }
 
-async function handleTelegramAuth() {
-  const tgLogin = (window as any)?.Telegram?.Login
-  if (!tgLogin?.auth) {
-    showToast(t('login.tgUnavailable'))
-    return
-  }
-  if (!tgBotId) {
-    showToast(t('login.missingBotConfig'))
-    return
-  }
+async function handleTelegramAuth(user: TgAuthPayload) {
   try {
     loading.value = true
-    await new Promise<void>((resolve, reject) => {
-      tgLogin.auth({ bot_id: tgBotId }, async (data: TgAuthPayload | false) => {
-        if (!data) {
-          reject(new Error(t('login.tgAuthCancelled')))
-          return
-        }
-        try {
-          await userStore.loginByTelegram(data)
-          resolve()
-        }
-        catch (error) {
-          reject(error)
-        }
-      })
-    })
+    await userStore.loginByTelegram(user)
     const { redirect, ...othersQuery } = router.currentRoute.value.query
     const redirectPath = typeof redirect === 'string' && redirect ? redirect : '/'
     router.push({
@@ -167,7 +146,7 @@ function goRegister() {
       <div class="banner">
         <img
           class="banner-image"
-          src="https://game.luckypacket.me/images/register-header.jpg"
+          :src="imgRegisterHeader"
           alt="register banner"
         >
       </div>
@@ -193,16 +172,21 @@ function goRegister() {
         <div class="tg-logo">
           <img
             class="tg-logo-image"
-            src="https://game.luckypacket.me/static/image/telegram.png"
+            :src="imgTelegram"
             alt="telegram"
           >
         </div>
         <p class="tg-title">
           {{ t('login.telegramAuth') }}
         </p>
-        <van-button class="tg-login-btn" :loading="loading" round block @click="handleTelegramAuth">
-          {{ t('login.loginWithTelegram') }}
-        </van-button>
+        <TelegramLogin
+          mode="callback"
+          :telegram-login="tgBotUsername"
+          size="large"
+          request-access="write"
+          @callback="handleTelegramAuth"
+        />
+        <van-loading v-if="loading" class="tg-loading" size="20px" />
       </section>
 
       <section v-else class="email-panel">
@@ -340,7 +324,7 @@ function goRegister() {
   --font-2xl: 20px;
   min-height: 100vh;
   background:
-    radial-gradient(1200px 500px at 50% -240px, rgba(84, 185, 105, 0.12), transparent 65%), var(--color-bg-page);
+    radial-gradient(1200px 500px at 50% -240px, rgba(var(--color-primary-rgb), 0.12), transparent 65%), var(--color-bg-page);
   padding: 0 var(--page-padding-x) 34px;
 }
 
@@ -454,6 +438,10 @@ function goRegister() {
   box-shadow: 0 8px 20px rgba(50, 164, 235, 0.2);
 }
 
+.tg-loading {
+  margin-top: 12px;
+}
+
 .email-form-card {
   background: var(--color-bg-card);
   border-radius: var(--radius-2xl);
@@ -513,7 +501,7 @@ function goRegister() {
 
 .email-form-input:focus {
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 4px rgba(101, 177, 104, 0.16);
+  box-shadow: 0 0 0 4px rgba(var(--color-primary-rgb), 0.16);
 }
 
 .email-forgot-wrap {
@@ -544,7 +532,7 @@ function goRegister() {
   font-size: var(--font-xl);
   font-weight: 500;
   letter-spacing: 0.2px;
-  box-shadow: 0 10px 24px rgba(101, 177, 104, 0.34);
+  box-shadow: 0 10px 24px rgba(var(--color-primary-rgb), 0.34);
 }
 
 .email-signup-text {
@@ -587,14 +575,14 @@ function goRegister() {
   height: 56px;
   margin: 0 auto 12px;
   border-radius: 50%;
-  background: linear-gradient(145deg, #61be73 0%, #4ca95f 100%);
+  background: linear-gradient(145deg, var(--color-primary-gradient-end) 0%, var(--color-primary-btn) 100%);
   color: var(--color-bg-card);
   font-size: 16px;
   font-weight: 700;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 8px 18px rgba(76, 169, 95, 0.26);
+  box-shadow: 0 8px 18px rgba(var(--color-primary-medium-rgb), 0.26);
 }
 
 .feature-icon-game {
@@ -606,7 +594,7 @@ function goRegister() {
 }
 
 .feature-icon-invite {
-  background: linear-gradient(145deg, #61be73 0%, #4ca95f 100%);
+  background: linear-gradient(145deg, var(--color-primary-gradient-end) 0%, var(--color-primary-btn) 100%);
 }
 
 .feature-icon-img {

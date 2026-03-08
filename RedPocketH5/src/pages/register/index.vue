@@ -10,6 +10,7 @@ import lockIcon from '@/assets/svg/lock.svg'
 import languageIcon from '@/assets/svg/language.svg'
 import verifyIcon from '@/assets/svg/verify.svg'
 import inviteIcon from '@/assets/svg/invite.svg'
+import imgRegisterHeader from '@/assets/images/register-header.jpg'
 
 const { t } = useI18n()
 const router = useRouter()
@@ -20,6 +21,7 @@ const countdown = ref(0)
 const devCode = ref('')
 const showLangPopup = ref(false)
 const tgBotId = Number(import.meta.env.VITE_TG_BOT_ID || 0)
+const registerHeaderImage = imgRegisterHeader
 
 const languageOptions = [
   {
@@ -232,7 +234,7 @@ function selectLanguage(lang: string) {
       <div class="banner">
         <img
           class="banner-image"
-          src="https://game.luckypacket.me/images/register-header.jpg"
+          :src="registerHeaderImage"
           alt="register banner"
         >
       </div>
@@ -428,7 +430,8 @@ function selectLanguage(lang: string) {
   --font-2xl: 20px;
   min-height: 100vh;
   background:
-    radial-gradient(1200px 500px at 50% -240px, rgba(84, 185, 105, 0.12), transparent 65%), var(--color-bg-page);
+    radial-gradient(1200px 500px at 50% -240px, rgba(var(--color-primary-rgb), 0.12), transparent 65%),
+    var(--color-bg-page);
   padding: 0 var(--page-padding-x) 34px;
 }
 
@@ -469,7 +472,7 @@ function selectLanguage(lang: string) {
 }
 
 .tg-link {
-  border: 1px solid rgba(101, 177, 104, 0.4);
+  border: 1px solid rgba(var(--color-primary-rgb), 0.4);
   background: rgba(255, 255, 255, 0.7);
   color: var(--color-primary-link);
   font-size: var(--font-md);
@@ -484,7 +487,7 @@ function selectLanguage(lang: string) {
 }
 
 .tg-link:active {
-  background: rgba(101, 177, 104, 0.14);
+  background: rgba(var(--color-primary-rgb), 0.14);
 }
 
 .form-card {
@@ -547,7 +550,7 @@ function selectLanguage(lang: string) {
 
 .form-input:focus {
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 4px rgba(101, 177, 104, 0.16);
+  box-shadow: 0 0 0 4px rgba(var(--color-primary-rgb), 0.16);
 }
 
 .form-row--code .code-input-group {
@@ -600,7 +603,7 @@ function selectLanguage(lang: string) {
   font-size: var(--font-xl);
   font-weight: 500;
   letter-spacing: 0.2px;
-  box-shadow: 0 10px 24px rgba(101, 177, 104, 0.34);
+  box-shadow: 0 10px 24px rgba(var(--color-primary-rgb), 0.34);
 }
 
 .login-text {
@@ -625,7 +628,7 @@ function selectLanguage(lang: string) {
 }
 
 .login-link:active {
-  background: rgba(101, 177, 104, 0.14);
+  background: rgba(var(--color-primary-rgb), 0.14);
 }
 
 .feature-card {
@@ -651,14 +654,14 @@ function selectLanguage(lang: string) {
   height: 56px;
   margin: 0 auto 12px;
   border-radius: 50%;
-  background: linear-gradient(145deg, #61be73 0%, #4ca95f 100%);
+  background: linear-gradient(145deg, var(--color-primary-gradient-end) 0%, var(--color-primary-btn) 100%);
   color: var(--color-bg-card);
   font-size: 16px;
   font-weight: 700;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 8px 18px rgba(76, 169, 95, 0.26);
+  box-shadow: 0 8px 18px rgba(var(--color-primary-medium-rgb), 0.26);
 }
 
 .feature-icon-game {
@@ -670,7 +673,7 @@ function selectLanguage(lang: string) {
 }
 
 .feature-icon-invite {
-  background: linear-gradient(145deg, #61be73 0%, #4ca95f 100%);
+  background: linear-gradient(145deg, var(--color-primary-gradient-end) 0%, var(--color-primary-btn) 100%);
 }
 
 .feature-icon-img {

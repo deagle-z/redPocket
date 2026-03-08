@@ -1,17 +1,24 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { computed, onMounted, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { showToast } from 'vant'
-import { getCurrentTgInviteStats } from '@/api/user'
+import { getCurrentTgInviteRuleConfig, getCurrentTgInviteStats } from '@/api/user'
 import AppPageHeader from '@/components/AppPageHeader.vue'
+import { CURRENCY_SYMBOL } from '@/utils/currency'
 
 const router = useRouter()
+const { t } = useI18n()
 
 const state = reactive({
   inviteCode: '',
   inviteCount: 0,
   todayCount: 0,
   totalCommission: 0,
+  luckySendCommission: 5,
+  luckyGrabbingCommission: 5,
+  inviteFirstRechargeReward: 10,
+  inviteLuckyRebateRate: 40,
+  inviteThunderRebateRate: 40,
 })
 // https://t.me/goodLuckEveryOne66Bot/?start=597811
 const tgBotName = (import.meta.env.VITE_TG_BOT_NAME || 'goodLuckEveryOne66Bot').trim()
@@ -56,6 +63,24 @@ async function loadInviteData() {
   }
 }
 
+async function loadInviteRuleConfig() {
+  try {
+    const { data } = await getCurrentTgInviteRuleConfig()
+    state.luckySendCommission = Number(data?.luckySendCommission || 5)
+    state.luckyGrabbingCommission = Number(data?.luckyGrabbingCommission || 5)
+    state.inviteFirstRechargeReward = Number(data?.inviteFirstRechargeReward || 10)
+    state.inviteLuckyRebateRate = Number(data?.inviteLuckyRebateRate || 40)
+    state.inviteThunderRebateRate = Number(data?.inviteThunderRebateRate || 40)
+  }
+  catch {
+    state.luckySendCommission = 5
+    state.luckyGrabbingCommission = 5
+    state.inviteFirstRechargeReward = 10
+    state.inviteLuckyRebateRate = 40
+    state.inviteThunderRebateRate = 40
+  }
+}
+
 async function copyText(text: string) {
   try {
     if (navigator.clipboard?.writeText) {
@@ -69,15 +94,15 @@ async function copyText(text: string) {
       document.execCommand('copy')
       document.body.removeChild(input)
     }
-    showToast('复制成功')
+    showToast(t('invitePage.toastCopySuccess'))
   }
   catch {
-    showToast('复制失败')
+    showToast(t('invitePage.toastCopyFailed'))
   }
 }
 
 function shareToTelegram() {
-  const text = encodeURIComponent('邀请你一起玩红包雷游戏，点击注册：')
+  const text = encodeURIComponent(t('invitePage.shareText'))
   const url = encodeURIComponent(webInviteLink.value)
   window.open(`https://t.me/share/url?url=${url}&text=${text}`, '_blank')
 }
@@ -93,25 +118,26 @@ function saveQrCode() {
 
 onMounted(() => {
   loadInviteData()
+  loadInviteRuleConfig()
 })
 </script>
 
 <template>
   <div class="invite-page">
-    <AppPageHeader title="邀请好友" @back="goBack" />
+    <AppPageHeader :title="t('invitePage.title')" @back="goBack" />
 
     <section class="card qr-card">
-      <h2>邀请好友赚佣金</h2>
+      <h2>{{ t('invitePage.heroTitle') }}</h2>
       <p class="sub-title">
-        一次邀请，永远享受流水奖励
+        {{ t('invitePage.heroSubTitle') }}
       </p>
       <img class="qr-image" :src="qrCodeUrl" alt="invite qrcode">
       <div class="qr-actions">
         <button type="button" class="main-btn" @click="saveQrCode">
-          ⬇ 保存二维码
+          {{ t('invitePage.saveQr') }}
         </button>
         <button type="button" class="main-btn" @click="shareToTelegram">
-          ✈ 分享到Telegram
+          {{ t('invitePage.shareToTelegram') }}
         </button>
       </div>
     </section>
@@ -119,23 +145,23 @@ onMounted(() => {
     <section class="card link-card">
       <div class="link-row">
         <p class="link-title">
-          邀请链接 (Telegram)
+          {{ t('invitePage.linkTelegram') }}
         </p>
         <div class="link-content">
           <p>{{ telegramInviteLink }}</p>
           <button type="button" class="copy-btn" @click="copyText(telegramInviteLink)">
-            复制
+            {{ t('invitePage.copy') }}
           </button>
         </div>
       </div>
       <div class="link-row">
         <p class="link-title">
-          邀请链接（H5,浏览器打开）
+          {{ t('invitePage.linkH5') }}
         </p>
         <div class="link-content">
           <p>{{ webInviteLink }}</p>
           <button type="button" class="copy-btn" @click="copyText(webInviteLink)">
-            复制
+            {{ t('invitePage.copy') }}
           </button>
         </div>
       </div>
@@ -143,7 +169,7 @@ onMounted(() => {
 
     <section class="card">
       <h3 class="section-title">
-        推广收益
+        {{ t('invitePage.benefitTitle') }}
       </h3>
       <div class="benefit-grid">
         <article class="benefit-item">
@@ -151,21 +177,21 @@ onMounted(() => {
             👥
           </div>
           <p class="benefit-name">
-            游戏分成
+            {{ t('invitePage.benefitGameShare') }}
           </p>
           <p class="benefit-desc">
-            代理返水水高达40%
+            {{ t('invitePage.benefitGameShareDesc', { rate: state.inviteLuckyRebateRate }) }}
           </p>
         </article>
         <article class="benefit-item">
           <div class="benefit-icon orange">
-            ¥
+            {{ CURRENCY_SYMBOL }}
           </div>
           <p class="benefit-name">
-            佣金提现
+            {{ t('invitePage.benefitWithdraw') }}
           </p>
           <p class="benefit-desc">
-            佣金可自动到账，随时提现
+            {{ t('invitePage.benefitWithdrawDesc') }}
           </p>
         </article>
         <article class="benefit-item">
@@ -173,10 +199,10 @@ onMounted(() => {
             📈
           </div>
           <p class="benefit-name">
-            终身收益
+            {{ t('invitePage.benefitLifetime') }}
           </p>
           <p class="benefit-desc">
-            一次推广，终身享受团队收益
+            {{ t('invitePage.benefitLifetimeDesc') }}
           </p>
         </article>
         <article class="benefit-item">
@@ -184,10 +210,10 @@ onMounted(() => {
             🎁
           </div>
           <p class="benefit-name">
-            额外奖励
+            {{ t('invitePage.benefitExtra') }}
           </p>
           <p class="benefit-desc">
-            团队业绩达标，享受额外奖励
+            {{ t('invitePage.benefitExtraDesc') }}
           </p>
         </article>
       </div>
@@ -195,24 +221,35 @@ onMounted(() => {
 
     <section class="card">
       <h3 class="section-title">
-        推广步骤
+        {{ t('invitePage.ruleTitle') }}
+      </h3>
+      <ul class="rule-list">
+        <li>{{ t('invitePage.rule1', { reward: state.inviteFirstRechargeReward }) }}</li>
+        <li>{{ t('invitePage.rule2', { commission: state.luckyGrabbingCommission, rebate: state.inviteLuckyRebateRate }) }}</li>
+        <li>{{ t('invitePage.rule3', { commission: state.luckySendCommission, rebate: state.inviteThunderRebateRate }) }}</li>
+      </ul>
+    </section>
+
+    <section class="card">
+      <h3 class="section-title">
+        {{ t('invitePage.stepTitle') }}
       </h3>
       <ol class="steps">
         <li>
-          <h4>分享邀请链接或二维码</h4>
-          <p>将您的专属邀请链接或二维码分享给好友</p>
+          <h4>{{ t('invitePage.step1Title') }}</h4>
+          <p>{{ t('invitePage.step1Desc') }}</p>
         </li>
         <li>
-          <h4>好友注册并游戏</h4>
-          <p>好友通过您的链接注册并参与游戏</p>
+          <h4>{{ t('invitePage.step2Title') }}</h4>
+          <p>{{ t('invitePage.step2Desc') }}</p>
         </li>
         <li>
-          <h4>获得佣金奖励</h4>
-          <p>根据好友的游戏流水获得相应比例的佣金</p>
+          <h4>{{ t('invitePage.step3Title') }}</h4>
+          <p>{{ t('invitePage.step3Desc') }}</p>
         </li>
         <li>
-          <h4>佣金提现</h4>
-          <p>在“我的钱包”中提取您的佣金收益</p>
+          <h4>{{ t('invitePage.step4Title') }}</h4>
+          <p>{{ t('invitePage.step4Desc') }}</p>
         </li>
       </ol>
     </section>
@@ -220,7 +257,7 @@ onMounted(() => {
     <section class="card data-card">
       <div class="data-head">
         <h3 class="section-title">
-          推广数据
+          {{ t('invitePage.dataTitle') }}
         </h3>
         <van-icon name="arrow" />
       </div>
@@ -230,7 +267,7 @@ onMounted(() => {
             {{ state.inviteCount }}
           </p>
           <p class="data-label">
-            邀请人数
+            {{ t('invitePage.dataInviteCount') }}
           </p>
         </div>
         <div>
@@ -238,7 +275,7 @@ onMounted(() => {
             {{ state.todayCount }}
           </p>
           <p class="data-label">
-            今日新增
+            {{ t('invitePage.dataTodayNew') }}
           </p>
         </div>
         <div>
@@ -246,7 +283,7 @@ onMounted(() => {
             {{ formatAmount(state.totalCommission) }}
           </p>
           <p class="data-label">
-            累计佣金
+            {{ t('invitePage.dataTotalCommission') }}
           </p>
         </div>
       </div>
@@ -348,9 +385,9 @@ onMounted(() => {
   min-width: 76px;
   height: 40px;
   border-radius: 10px;
-  border: 1px solid #2dbf73;
-  background: #f0fff7;
-  color: #15a95f;
+  border: 1px solid var(--color-primary-link);
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
   font-size: 12px;
 }
 
@@ -359,6 +396,18 @@ onMounted(() => {
   font-size: 18px;
   font-weight: 500;
   color: #1f2937;
+}
+
+.rule-list {
+  margin: 10px 0 0;
+  padding-left: 18px;
+  color: #111827;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.rule-list li + li {
+  margin-top: 6px;
 }
 
 .benefit-grid {
@@ -393,7 +442,7 @@ onMounted(() => {
 }
 
 .benefit-icon.green {
-  color: #32b366;
+  color: var(--color-primary-link);
 }
 
 .benefit-icon.red {
@@ -428,7 +477,7 @@ onMounted(() => {
   top: 8px;
   bottom: 12px;
   width: 2px;
-  background: #11a75f;
+  background: var(--color-primary);
 }
 
 .steps li {
@@ -444,7 +493,7 @@ onMounted(() => {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #11a75f;
+  background: var(--color-primary);
 }
 
 .steps li:last-child::before {
@@ -455,7 +504,7 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #11a75f;
+  background: var(--color-primary);
   content: '✓';
   color: #fff;
   font-size: 12px;
@@ -497,7 +546,7 @@ onMounted(() => {
   margin: 0;
   font-size: 18px;
   line-height: 1;
-  color: #11a75f;
+  color: var(--color-primary);
   font-weight: 700;
 }
 
@@ -513,4 +562,3 @@ onMounted(() => {
   name: 'Invite'
 }
 </route>
-

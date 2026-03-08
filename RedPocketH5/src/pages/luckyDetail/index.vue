@@ -1,14 +1,20 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { showToast } from 'vant'
 import { getLuckyDetail, grabLuckyPacket } from '@/api/user'
 import AppPageHeader from '@/components/AppPageHeader.vue'
 import wsClient from '@/plugins/websocket'
+import { formatCurrency } from '@/utils/currency'
+import imgAvatarPlaceholder from '@/assets/images/avatar-placeholder.png'
+import imgRedpacketGif from '@/assets/images/redpacket.gif'
+import imgRedpacketJpg from '@/assets/images/redpacket.jpg'
 
-const DEFAULT_AVATAR = 'https://game.luckypacket.me/images/avatar-placeholder.png'
-const ONGOING_PACKET_IMAGE = 'https://game.luckypacket.me/images/redpacket.gif'
-const DONE_PACKET_IMAGE = 'https://game.luckypacket.me/images/redpacket.jpg'
+const { t } = useI18n()
+
+const DEFAULT_AVATAR = imgAvatarPlaceholder
+const ONGOING_PACKET_IMAGE = imgRedpacketGif
+const DONE_PACKET_IMAGE = imgRedpacketJpg
 
 const route = useRoute()
 const router = useRouter()
@@ -49,13 +55,14 @@ const positionList = computed(() => {
 const recordList = computed(() => {
   const participants = detail.value?.participants || []
   return participants.map((it: any) => ({
+    amount: Number(it?.amount || 0),
     id: `${it?.seqNo || 0}_${it?.userId || 0}_${it?.createdAt || ''}`,
     seqNo: Number(it?.seqNo || 0),
     avatar: it?.avatar || DEFAULT_AVATAR,
-    name: it?.firstName || `用户 #${Number(it?.seqNo || 0)}`,
+    name: it?.firstName || t('luckyDetailPage.positionUser', { seq: Number(it?.seqNo || 0) }),
     time: it?.createdAt || '',
-    amount: Number(it?.amount || 0),
-    status: Number(it?.isThunder || 0) === 1 ? '中雷' : '已参与',
+    amountText: Number(it?.amount || 0) <= 0 ? t('homeLucky.loadingLabel') : formatCurrency(Number(it?.amount || 0)),
+    status: Number(it?.isThunder || 0) === 1 ? t('luckyDetailPage.positionThunder') : t('luckyDetailPage.positionJoined'),
   }))
 })
 
@@ -83,23 +90,23 @@ const overview = computed(() => {
   const remainingText = `${mm}:${ss}`
   return {
     status,
-    statusText: status === 'ongoing' ? '进行中' : '已结束',
+    statusText: status === 'ongoing' ? t('luckyDetailPage.statusOngoing') : t('luckyDetailPage.statusDone'),
     packetImage: status === 'ongoing' ? ONGOING_PACKET_IMAGE : DONE_PACKET_IMAGE,
-    senderName: sender?.senderName || 'User',
+    senderName: sender?.senderName || t('luckyDetailPage.defaultSender'),
     senderAvatar: sender?.senderAvatar || DEFAULT_AVATAR,
-    amountText: `₱${amount.toFixed(2)}`,
-    progressText: `已抢 ${grabbedCount}/${number} 个`,
-    thunderText: status === 'ongoing' ? '雷号: ?' : `雷号: ${Number(summary?.thunder || 0)}`,
-    oddsText: `赔率: ${loseRate.toFixed(1)} x`,
-    timeText: status === 'ongoing' ? `剩余: ${remainingText}` : `过期: ${formatTime(summary?.expireTime || '')}`,
+    amountText: formatCurrency(amount),
+    progressText: t('luckyDetailPage.progress', { grabbed: grabbedCount, total: number }),
+    thunderText: status === 'ongoing' ? t('luckyDetailPage.thunderUnknown') : t('luckyDetailPage.thunderNo', { no: Number(summary?.thunder || 0) }),
+    oddsText: t('luckyDetailPage.odds', { rate: loseRate.toFixed(1) }),
+    timeText: status === 'ongoing' ? t('luckyDetailPage.timeRemaining', { time: remainingText }) : t('luckyDetailPage.timeExpired', { time: formatTime(summary?.expireTime || '') }),
     sentTime: sender?.sendTime || '-',
     summaryRows: [
-      { label: '发包金额', value: `₱${amount.toFixed(2)}` },
-      { label: '已抢金额', value: `₱${received.toFixed(2)}` },
-      { label: '剩余金额', value: `₱${remain.toFixed(2)}` },
-      { label: '中雷次数', value: `${hitCount}` },
-      { label: '中雷收益', value: `₱${Number(finance?.thunderIncome || 0).toFixed(2)}`, highlight: true },
-      { label: '未抢数量', value: `${unclaimed}` },
+      { label: t('luckyDetailPage.rowSendAmount'), value: formatCurrency(amount) },
+      { label: t('luckyDetailPage.rowGrabbedAmount'), value: formatCurrency(received) },
+      { label: t('luckyDetailPage.rowRemainAmount'), value: formatCurrency(remain) },
+      { label: t('luckyDetailPage.rowHitCount'), value: `${hitCount}` },
+      { label: t('luckyDetailPage.rowThunderIncome'), value: formatCurrency(Number(finance?.thunderIncome || 0)), highlight: true },
+      { label: t('luckyDetailPage.rowUnclaimed'), value: `${unclaimed}` },
     ],
   }
 })
@@ -118,7 +125,7 @@ function formatTime(raw: string) {
 
 async function loadDetail() {
   if (!luckyId.value) {
-    showToast('参数错误')
+    showToast(t('luckyDetailPage.toastInvalidParam'))
     return
   }
   if (loading.value)
@@ -131,7 +138,7 @@ async function loadDetail() {
     detail.value = data || null
   }
   catch {
-    showToast('详情加载失败')
+    showToast(t('luckyDetailPage.toastLoadFailed'))
   }
   finally {
     loading.value = false
@@ -169,11 +176,11 @@ async function handleGrab(seqNo: number) {
       luckyId: Number(summary?.id || luckyId.value),
       grabIndex: seqNo,
     })
-    showToast(data?.message || '抢红包成功')
+    showToast(data?.message || t('luckyDetailPage.toastGrabSuccess'))
     await loadDetail()
   }
   catch {
-    showToast('抢红包失败')
+    showToast(t('luckyDetailPage.toastGrabFailed'))
   }
   finally {
     grabbingSeq.value = 0
@@ -202,7 +209,7 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="lucky-detail-page">
-    <AppPageHeader title="红包详情" @back="goBack" @right-click="goInvite">
+    <AppPageHeader :title="t('luckyDetailPage.title')" @back="goBack" @right-click="goInvite">
       <template #right>
         <van-icon name="share-o" />
       </template>
@@ -233,7 +240,7 @@ onBeforeUnmount(() => {
           <div class="hero-main">
             <div class="hero-title-row">
               <h2 class="packet-amount">
-                红包金额 {{ overview.amountText }}
+                {{ t('luckyDetailPage.heroAmount', { amount: overview.amountText }) }}
               </h2>
               <span class="progress-chip">{{ overview.progressText }}</span>
             </div>
@@ -244,7 +251,7 @@ onBeforeUnmount(() => {
               {{ overview.timeText }}
             </p>
             <p class="hero-meta">
-              单个金额: Random
+              {{ t('luckyDetailPage.unitAmountRandom') }}
             </p>
           </div>
         </section>
@@ -256,7 +263,7 @@ onBeforeUnmount(() => {
               {{ overview.senderName }}
             </p>
             <p class="sender-time">
-              发包时间: {{ formatTime(overview.sentTime) }}
+              {{ t('luckyDetailPage.sendTime', { time: formatTime(overview.sentTime) }) }}
             </p>
           </div>
         </section>
@@ -264,10 +271,10 @@ onBeforeUnmount(() => {
         <section class="card panel-card">
           <div class="panel-title-wrap">
             <h3 class="panel-title">
-              财务明细
+              {{ t('luckyDetailPage.panelFinance') }}
             </h3>
             <p class="panel-subtitle">
-              中雷{{ detail?.finance?.hitCount || 0 }}次
+              {{ t('luckyDetailPage.panelHitCount', { count: detail?.finance?.hitCount || 0 }) }}
             </p>
           </div>
           <div class="summary-list">
@@ -282,9 +289,9 @@ onBeforeUnmount(() => {
           <div class="panel-title-row">
             <p class="panel-title with-icon">
               <van-icon name="apps-o" />
-              选择位置抢红包
+              {{ t('luckyDetailPage.panelChoosePosition') }}
             </p>
-            <span class="panel-count">{{ overview.progressText.replace('已抢 ', '') }}</span>
+            <span class="panel-count">{{ `${detail?.summary?.grabbedCount || 0}/${detail?.summary?.number || 0}` }}</span>
           </div>
           <div class="position-grid">
             <button
@@ -305,7 +312,7 @@ onBeforeUnmount(() => {
                 #{{ item.seqNo }}
               </p>
               <p class="position-status">
-                {{ grabbingSeq === item.seqNo ? '抢包中' : (item.isGrabbed ? (item.isThunder ? '中雷' : '已抢') : (overview.status !== 'ongoing' ? '已结束' : '可抢')) }}
+                {{ grabbingSeq === item.seqNo ? t('luckyDetailPage.btnGrabbing') : (item.isGrabbed ? (item.isThunder ? t('luckyDetailPage.positionThunder') : t('luckyDetailPage.btnGrabbed')) : (overview.status !== 'ongoing' ? t('luckyDetailPage.statusDone') : t('luckyDetailPage.btnCanGrab'))) }}
               </p>
             </button>
           </div>
@@ -315,9 +322,9 @@ onBeforeUnmount(() => {
           <div class="panel-title-row">
             <p class="panel-title with-icon">
               <van-icon name="friends-o" />
-              参与记录
+              {{ t('luckyDetailPage.panelParticipants') }}
             </p>
-            <span class="panel-count">共{{ recordList.length }}人参与</span>
+            <span class="panel-count">{{ t('luckyDetailPage.panelParticipantsCount', { count: recordList.length }) }}</span>
           </div>
           <div v-if="recordList.length > 0">
             <article v-for="item in recordList" :key="item.id" class="record-item">
@@ -332,7 +339,7 @@ onBeforeUnmount(() => {
               </div>
               <div class="record-right">
                 <p class="record-amount">
-                  ₱{{ item.amount.toFixed(2) }}
+                  {{ item.amountText }}
                 </p>
                 <p class="record-status">
                   {{ item.status }}
@@ -341,18 +348,18 @@ onBeforeUnmount(() => {
             </article>
           </div>
           <p class="no-more">
-            没有更多了
+            {{ t('luckyDetailPage.noMore') }}
           </p>
         </section>
       </template>
 
-      <AppEmpty v-else-if="!loading" text="暂无详情数据" :min-height="160" />
+      <AppEmpty v-else-if="!loading" :text="t('luckyDetailPage.emptyText')" :min-height="160" />
     </div>
 
     <div class="share-bar">
       <button type="button" class="share-btn" @click="goInvite">
         <van-icon name="share-o" />
-        <span>转发</span>
+        <span>{{ t('luckyDetailPage.forward') }}</span>
       </button>
     </div>
   </div>
@@ -565,7 +572,7 @@ onBeforeUnmount(() => {
 }
 
 .position-item.mine {
-  background: #16a34a;
+  background: var(--color-primary);
   color: #fff;
 }
 
@@ -684,4 +691,3 @@ onBeforeUnmount(() => {
   name: 'LuckyDetail',
 }
 </route>
-

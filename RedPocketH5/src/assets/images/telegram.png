@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" href="/images/favicon.ico" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, minimum-scale=0.5, viewport-fit=cover"/>
+    <meta name="format-detection" content="telephone=no, email=no, date=no, address=no" />
+    
+    <!-- PWA Meta Tags -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Lucky Packet Boom" />
+    <meta name="theme-color" content="#00A859" />
+    <meta name="msapplication-TileColor" content="#00A859" />
+    <meta name="msapplication-config" content="/browserconfig.xml" />
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/manifest.json" />
+
+    <!-- Font Awesome 图标库 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- 快捷方式图标 -->
+    <link rel="apple-touch-icon" href="/images/logo_76.png">
+    <link rel="apple-touch-icon" sizes="76x76" href="/images/logo_76.png">
+    <link rel="apple-touch-icon" sizes="120x120" href="/images/logo_120.png">
+    <link rel="apple-touch-icon" sizes="152x152" href="/images/logo_152.png">
+
+    <title>Lucky Packet Boom</title>
+    <script type="module" crossorigin src="/assets/index-47386d82.js"></script>
+    <link rel="stylesheet" href="/assets/index-9ceee04d.css">
+  </head>
+  <body>
+    <div id="app"></div>
+    
+    <script>
+      window.onload = function () {
+        document.addEventListener('touchstart', function (event) {
+          if (event.touches.length > 1) {
+            event.preventDefault();
+          }
+        });
+
+        var lastTouchEnd = 0;
+
+        document.addEventListener(
+          'touchend',
+          function (event) {
+            var now = new Date().getTime();
+            if (now - lastTouchEnd <= 300) {
+              event.preventDefault();
+            }
+
+            lastTouchEnd = now;
+          },
+          false,
+        );
+
+        document.addEventListener('gesturestart', function (event) {
+          event.preventDefault();
+        });
+        
+        document.addEventListener('load', function () {
+          setTimeout(() => {
+            window.scrollTo(0, 1);
+          }, 100);
+        });
+      };
+    </script>
+  </body>
+</html>
+
+<style scoped>
+
+html, body {
+  height: 101vh;
+  overflow: auto;
+}
+
+</style>

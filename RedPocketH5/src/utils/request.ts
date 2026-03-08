@@ -2,6 +2,7 @@ import type { AxiosError, AxiosInstance, AxiosRequestConfig, AxiosResponse, Inte
 import axios from 'axios'
 import { showToast } from 'vant'
 import { STORAGE_TOKEN_KEY } from '@/stores/mutation-type'
+import { i18n } from '@/utils/i18n'
 
 // 这里是用于设定请求后端时，所用的 Token KEY
 // 可以根据自己的需要修改，常见的如 Access-Token，Authorization
@@ -26,32 +27,61 @@ export type RequestError = AxiosError<{
   errorMessage?: string
 }>
 
-function getErrorMessage(payload?: Record<string, any>, fallback = '请求失败') {
+function tr(key: string, fallback: string) {
+  const value = i18n.global.t(key)
+  return typeof value === 'string' ? value : fallback
+}
+
+function getErrorMessage(payload?: Record<string, any>, fallback = tr('common.requestFailed', 'Request failed')) {
   return payload?.message || payload?.msg || payload?.errorMessage || fallback
+}
+
+function normalizeErrorPayload(payload: unknown): Record<string, any> {
+  if (!payload)
+    return {}
+
+  if (typeof payload === 'string') {
+    try {
+      const parsed = JSON.parse(payload)
+      return parsed && typeof parsed === 'object' ? parsed as Record<string, any> : { message: payload }
+    }
+    catch {
+      return { message: payload }
+    }
+  }
+
+  if (typeof payload === 'object')
+    return payload as Record<string, any>
+
+  return { message: String(payload) }
 }
 
 // 异常拦截处理器
 function errorHandler(error: RequestError): Promise<any> {
   if (error.response) {
-    const { data = {}, status, statusText } = error.response
-    const message = getErrorMessage(data as Record<string, any>, statusText || '请求失败')
+    const { data, status, statusText } = error.response
+    const payload = normalizeErrorPayload(data)
+    const message = getErrorMessage(payload, statusText || tr('common.requestFailed', 'Request failed'))
 
     // 403 无权限
     if (status === 403) {
       showToast(message)
     }
     // 401 未登录/未授权
-    if (status === 401 && data.result && data.result.isLogin) {
-      showToast('Authorization verification failed')
+    if (status === 401 && payload.result && payload.result.isLogin) {
+      showToast(tr('common.authFailed', 'Authorization verification failed'))
       // 如果你需要直接跳转登录页面
       // location.replace(loginRoutePath)
     }
-    if (status !== 401 && status !== 403) {
+    if (status === 400) {
+      showToast(getErrorMessage(payload, tr('common.badRequest', 'Invalid request parameters')))
+    }
+    if (status !== 400 && status !== 401 && status !== 403) {
       showToast(message)
     }
   }
   else {
-    showToast(error.message || '网络异常，请稍后重试')
+    showToast(error.message || tr('common.networkError', 'Network error, please try again later'))
   }
   return Promise.reject(error)
 }

@@ -1,13 +1,15 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { showToast } from 'vant'
 import { sendLuckyPacket } from '@/api/user'
 import language1Icon from '@/assets/svg/language-1.svg'
+import { CURRENCY_SYMBOL } from '@/utils/currency'
+const { t } = useI18n()
 
 const amountPresets = [100, 200, 300, 500, 1000, 2000]
-const mineOptions = [1, 2, 3, 4, 5, 6, 7, 8, 9]
+const mineOptions = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
 
 const selectedAmountPreset = ref<number | null>(null)
-const selectedMine = ref<number | null>(1)
+const selectedMine = ref<number | null>(0)
 const amountInput = ref('')
 const submitLoading = ref(false)
 const SUBMIT_THROTTLE_MS = 1000
@@ -15,7 +17,7 @@ const lastSubmitAt = ref(0)
 
 const canSubmit = computed(() => {
   const amount = Number(amountInput.value)
-  return !!selectedMine.value && Number.isFinite(amount) && amount > 0 && !submitLoading.value
+  return selectedMine.value !== null && Number.isFinite(amount) && amount > 0 && !submitLoading.value
 })
 
 function selectAmountPreset(value: number) {
@@ -43,8 +45,8 @@ async function submitPacket() {
   lastSubmitAt.value = now
   const amount = Number(amountInput.value)
   const thunder = Number(selectedMine.value)
-  if (!amount || amount <= 0 || !thunder) {
-    showToast('请输入有效金额并选择雷值')
+  if (!amount || amount <= 0 || !Number.isInteger(thunder) || thunder < 0 || thunder > 9) {
+    showToast(t('sendPacketPage.invalidInput'))
     return
   }
 
@@ -55,10 +57,10 @@ async function submitPacket() {
       thunder,
       chatId: 0,
     })
-    showToast(`红包发送成功 #${data?.id ?? '-'}`)
+    showToast(t('sendPacketPage.sendSuccess', { id: data?.id ?? '-' }))
   }
   catch {
-    showToast('发送红包失败')
+    showToast(t('sendPacketPage.sendFailed'))
   }
   finally {
     submitLoading.value = false
@@ -74,10 +76,10 @@ async function submitPacket() {
       </div>
       <div class="packet-copy">
         <h3 class="packet-title">
-          公开发红包
+          {{ t('sendPacketPage.packetTypeTitle') }}
         </h3>
         <p class="packet-subtitle">
-          所有人可见，所有人可抢
+          {{ t('sendPacketPage.packetTypeSub') }}
         </p>
       </div>
     </section>
@@ -86,23 +88,23 @@ async function submitPacket() {
       <header class="section-header">
         <span class="section-emoji" aria-hidden="true">🧨</span>
         <h3 class="section-title">
-          红包金额
+          {{ t('sendPacketPage.amountTitle') }}
         </h3>
       </header>
       <div class="soft-card amount-card">
         <div class="amount-input-row">
-          <span class="amount-label">当前金额</span>
+          <span class="amount-label">{{ t('sendPacketPage.currentAmount') }}</span>
           <div class="amount-value-wrap">
             <input
               :value="amountInput"
               type="text"
               inputmode="numeric"
               class="amount-input"
-              placeholder="请输入金额"
+              :placeholder="t('sendPacketPage.amountPlaceholder')"
               @input="onAmountInput"
             >
           </div>
-          <span class="amount-currency">₱</span>
+          <span class="amount-currency">{{ CURRENCY_SYMBOL }}</span>
         </div>
 
         <div class="preset-grid">
@@ -114,7 +116,7 @@ async function submitPacket() {
             :class="{ active: selectedAmountPreset === value }"
             @click="selectAmountPreset(value)"
           >
-            ₱{{ value }}
+            {{ CURRENCY_SYMBOL }}{{ value }}
           </button>
         </div>
       </div>
@@ -124,18 +126,18 @@ async function submitPacket() {
       <header class="section-header">
         <span class="section-emoji" aria-hidden="true">🎯</span>
         <h3 class="section-title">
-          雷值设置
+          {{ t('sendPacketPage.mineTitle') }}
         </h3>
       </header>
       <div class="soft-card mine-card">
         <div class="mine-title-row">
           <van-icon name="aim" class="mine-title-icon" />
           <h4 class="mine-title">
-            选择雷值数字
+            {{ t('sendPacketPage.mineSelectTitle') }}
           </h4>
         </div>
         <div class="mine-subtitle">
-          抢到此数字尾号的用户将中雷
+          {{ t('sendPacketPage.mineSub') }}
           <van-icon name="fire-o" />
           <strong>{{ selectedMine ?? '-' }}</strong>
         </div>
@@ -162,14 +164,14 @@ async function submitPacket() {
     >
       <van-loading v-if="submitLoading" size="14" color="#fff" />
       <van-icon name="gift-o" />
-      立即发布红包
+      {{ t('sendPacketPage.submit') }}
     </button>
 
     <p class="tips-text">
-      发红包，闯好运，赢6个取1.8倍收益！本次发包您将有机会获得最大奖励！
+      {{ t('sendPacketPage.tipsText') }}
     </p>
     <p class="notice-text">
-      注意：发红包需至少有一笔充值记录。
+      {{ t('sendPacketPage.noticeText') }}
     </p>
   </div>
 </template>
@@ -385,7 +387,7 @@ async function submitPacket() {
 }
 
 .mine-item {
-  flex: 0 0 calc((100% - 32px) / 9);
+  flex: 0 0 calc((100% - 32px) / 10);
   height: 34px;
   border: none;
   border-radius: 8px;
@@ -468,4 +470,3 @@ async function submitPacket() {
   name: 'SendPacket'
 }
 </route>
-

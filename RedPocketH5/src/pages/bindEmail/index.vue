@@ -81,12 +81,12 @@ function startCountdown() {
 
 async function sendCode() {
   if (boundEmail.value) {
-    showToast('邮箱已绑定')
+    showToast(t('bindEmailPage.boundToast'))
     return
   }
   const email = String(formData.email || '').trim()
   if (!email) {
-    showToast('请输入邮箱')
+    showToast(t('bindEmailPage.toastEnterEmail'))
     return
   }
   if (sending.value || countdown.value > 0)
@@ -94,11 +94,11 @@ async function sendCode() {
   try {
     sending.value = true
     await userStore.sendCode(email)
-    showToast('发送成功')
+    showToast(t('bindEmailPage.toastSendSuccess'))
     startCountdown()
   }
   catch (error: any) {
-    showToast(error?.message || '发送失败')
+    showToast(error?.message || t('bindEmailPage.toastSendFailed'))
   }
   finally {
     sending.value = false
@@ -107,17 +107,17 @@ async function sendCode() {
 
 async function submitBindEmail() {
   if (boundEmail.value) {
-    showToast('邮箱已绑定')
+    showToast(t('bindEmailPage.boundToast'))
     return
   }
   const email = String(formData.email || '').trim()
   const code = String(formData.code || '').trim()
   if (!email) {
-    showToast('请输入邮箱')
+    showToast(t('bindEmailPage.toastEnterEmail'))
     return
   }
   if (!code) {
-    showToast('请输入邮箱验证码')
+    showToast(t('bindEmailPage.toastEnterCode'))
     return
   }
   if (submitting.value)
@@ -125,11 +125,11 @@ async function submitBindEmail() {
   try {
     submitting.value = true
     await bindCurrentTgEmail({ email, code })
-    showToast('绑定成功')
+    showToast(t('bindEmailPage.toastBindSuccess'))
     router.back()
   }
   catch (error: any) {
-    showToast(error?.message || '绑定失败')
+    showToast(error?.message || t('bindEmailPage.toastBindFailed'))
   }
   finally {
     submitting.value = false
@@ -160,7 +160,7 @@ onMounted(() => {
 
 <template>
   <div class="bind-email-page">
-    <AppPageHeader title="邮箱" @back="goBack" @right-click="openLanguagePopup">
+    <AppPageHeader :title="t('bindEmailPage.title')" @back="goBack" @right-click="openLanguagePopup">
       <template #right>
         <img :src="languageIcon" class="lang-icon" alt="language icon">
       </template>
@@ -170,13 +170,13 @@ onMounted(() => {
       <div class="field-row">
         <label class="field-label">
           <van-icon name="friends-o" />
-          <span>邮箱</span>
+          <span>{{ t('bindEmailPage.email') }}</span>
         </label>
         <input
           v-model="formData.email"
           type="text"
           class="field-input"
-          placeholder="邮箱"
+          :placeholder="t('bindEmailPage.emailPlaceholder')"
           :readonly="!!boundEmail"
         >
       </div>
@@ -184,14 +184,14 @@ onMounted(() => {
       <div class="field-row code-row">
         <label class="field-label">
           <van-icon name="shield-o" />
-          <span>邮箱验证码</span>
+          <span>{{ t('bindEmailPage.code') }}</span>
         </label>
         <div class="code-group">
           <input
             v-model="formData.code"
             type="text"
             class="field-input"
-            placeholder="请输入邮箱验证码"
+            :placeholder="t('bindEmailPage.codePlaceholder')"
             :readonly="!!boundEmail"
           >
           <button
@@ -201,15 +201,15 @@ onMounted(() => {
             @click="sendCode"
           >
             <span v-if="countdown > 0">{{ countdown }}s</span>
-            <span v-else-if="sending">发送中</span>
-            <span v-else>发送</span>
+            <span v-else-if="sending">{{ t('bindEmailPage.sending') }}</span>
+            <span v-else>{{ t('bindEmailPage.send') }}</span>
           </button>
         </div>
       </div>
     </section>
 
     <button type="button" class="submit-btn" :disabled="!!boundEmail || submitting" @click="submitBindEmail">
-      {{ boundEmail ? '邮箱已绑定' : (submitting ? '提交中...' : '提交') }}
+      {{ boundEmail ? t('bindEmailPage.boundLabel') : (submitting ? t('bindEmailPage.submitting') : t('bindEmailPage.submit')) }}
     </button>
 
     <van-popup v-model:show="showLangPopup" round position="bottom" class="lang-popup">
@@ -276,7 +276,7 @@ onMounted(() => {
 }
 
 .field-label .van-icon {
-  color: #41b463;
+  color: var(--color-primary);
   font-size: 16px;
 }
 
@@ -324,7 +324,7 @@ onMounted(() => {
   height: 42px;
   border: 0;
   border-radius: 6px;
-  background: #49ad62;
+  background: var(--color-primary-link);
   color: #fff;
   font-size: 16px;
 }

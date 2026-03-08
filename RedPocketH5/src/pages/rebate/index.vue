@@ -1,3 +1,7 @@
+<script setup lang="ts">
+const { t } = useI18n()
+</script>
+
 <template>
-  <div>佣金</div>
+  <div>{{ t('profilePage.promoRebate') }}</div>
 </template>

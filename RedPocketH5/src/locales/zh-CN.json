@@ -3,8 +3,8 @@
     "name": "Lucky Packet Boom",
     "description": "Lucky Packet Boom"
   },
-
   "navbar": {
+    "404": "⚠️ 404 页面",
     "Home": "主页",
     "Profile": "我的",
     "Mock": "🗂️ Mock",
@@ -17,10 +17,8 @@
     "Register": "注册",
     "ForgotPassword": "❓ 忘记密码",
     "Settings": "⚙️ 设置",
-    "404": "⚠️ 404 页面",
     "Undefined": "🤷 未定义标题"
   },
-
   "tabbar": {
     "home": "首页",
     "history": "历史",
@@ -28,27 +26,23 @@
     "profile": "我的",
     "wallet": "钱包"
   },
-
   "home": {
     "darkMode": "🌗 深色模式",
     "language": "📚 多语言",
     "settings": "设置",
     "examples": "示例"
   },
-
   "profile": {
     "login": "登录",
     "settings": "设置",
     "docs": "文档"
   },
-
   "mock": {
     "fromAsyncData": "来自异步请求的数据",
     "noData": "暂无数据",
     "pull": "请求",
     "reset": "清空"
   },
-
   "charts": {
     "January": "1月",
     "February": "2月",
@@ -57,28 +51,23 @@
     "May": "5月",
     "June": "6月"
   },
-
   "counter": {
     "description": "该计数器的状态通过 Pinia 持久化。刷新页面试试看！"
   },
-
   "unocss": {
     "title": "你好, Unocss!",
     "description": "这是一个简单的 Unocss 使用示例。",
     "button": "按钮"
   },
-
   "keepAlive": {
     "label": "当前组件将会被缓存"
   },
-
   "scrollCache": {
     "sectionTitle": "段落标题",
     "sectionText": "段落内容段落内容段落内容段落内容段落内容段落内容",
     "finished": "已经到底啦 ~",
     "loading": "加载中..."
   },
-
   "login": {
     "pageTitle": "登录",
     "login": "登录",
@@ -123,7 +112,6 @@
       "autoRefresh": "语言切换后页面将自动刷新"
     }
   },
-
   "forgotPassword": {
     "pageTitle": "重置密码",
     "email": "邮箱",
@@ -144,7 +132,6 @@
     "sendCodeSuccess": "已发送，验证码为",
     "passwordResetSuccess": "密码重置成功"
   },
-
   "register": {
     "pageTitle": "注册",
     "telegramLogin": "使用Telegram授权直接登录",
@@ -172,10 +159,469 @@
     "sendCodeSuccess": "验证码已发送",
     "registerSuccess": "注册成功"
   },
-
   "settings": {
     "logout": "退出登录",
     "currentVersion": "当前版本",
     "confirmTitle": "确认退出？"
+  },
+  "appTopHeader": {
+    "brandTitle": "红包雷游戏",
+    "brandSubtitle": "Lucky Thunder",
+    "balance": "余额"
+  },
+  "grabModal": {
+    "defaultSender": "Lucky Packet",
+    "openingHint": "点击金币开启红包",
+    "loading": "抢包中...",
+    "win": "恭喜抢到红包",
+    "thunder": "很遗憾，本次中雷 盈利 {amount} 损失 {loseMoney}",
+    "invalidParam": "参数错误",
+    "grabSuccess": "抢红包成功",
+    "grabFailed": "抢红包失败",
+    "voucherTitle": "Royal Gift Voucher",
+    "open": "OPEN",
+    "thunderShort": "??",
+    "flapText": "?????"
+  },
+  "homeLucky": {
+    "bannerText1": "新手必看：快速了解玩法，轻松开启红包收益。",
+    "bannerText2": "活动频道上线：参与每日任务，领取专属奖励。",
+    "bannerText3": "幸运对战进行中：邀请好友一起冲榜赢金币。",
+    "hotPackets": "热门红包",
+    "latestWinners": "最新中奖",
+    "emptyPackets": "暂无热门红包",
+    "emptyWinners": "没有更多了",
+    "loadingLabel": "loading",
+    "statusOngoing": "进行中",
+    "statusDone": "已结束",
+    "remainingTime": "剩余时间: {time}",
+    "progress": "已抢: {grabbed} / {total} 个",
+    "thunderNo": "雷号: {no}",
+    "hitsCount": "撞雷次数: {count}",
+    "rebate": "发包者获赢: {amount}",
+    "game": "Game",
+    "grabAction": "抢红包 #{seq}",
+    "grabSuccess": "抢红包成功",
+    "grabFailed": "抢红包失败",
+    "loginFirst": "请先登录",
+    "packetLoadFailed": "红包列表加载失败",
+    "winnerLoadFailed": "最新中奖加载失败",
+    "gotPrefix": "获得",
+    "timeJustNow": "刚刚"
+  },
+  "walletPage": {
+    "title": "我的钱包",
+    "totalAsset": "总资产",
+    "recharge": "充值",
+    "withdraw": "提现",
+    "transfer": "转账",
+    "assetDetails": "资产明细",
+    "recentTx": "最近交易",
+    "noMore": "没有更多了",
+    "emptyTx": "暂无交易流水",
+    "assetBalance": "余额",
+    "assetCommission": "佣金",
+    "typeSend": "发送红包",
+    "typeGrabWin": "抢红包收益",
+    "typeGrabThunder": "抢红包中雷",
+    "typeSendThunderWin": "发包雷收益",
+    "typeRecharge": "充值到账",
+    "typeManualAdd": "手工加款",
+    "typeManualDeduct": "手工扣款",
+    "typeWithdrawApply": "提现申请",
+    "typeWithdrawReturn": "提现退回",
+    "typeRebateTransfer": "佣金转余额",
+    "typeLuckyExpiredRefund": "红包过期退回",
+    "typeAccountChange": "账户变动"
+  },
+  "rechargePage": {
+    "title": "充值",
+    "helpTip": "如有问题请联系客服",
+    "invalidAmount": "请输入有效充值金额",
+    "orderToPay": "下单成功，正在跳转支付",
+    "orderRechargeSuccess": "充值成功，订单号: {orderNo}",
+    "orderSuccess": "下单成功，订单号: {orderNo}",
+    "orderFailed": "充值下单失败",
+    "currentBalance": "当前余额",
+    "channelTitle": "充值渠道",
+    "amountTitle": "选择充值金额",
+    "custom": "自定义",
+    "customAmount": "自定义金额",
+    "customAmountPlaceholder": "请输入充值金额",
+    "payMethodTitle": "选择支付方式",
+    "submit": "确认充值",
+    "paySubQr": "扫码支付",
+    "paySubWallet": "电子钱包"
+  },
+  "withdrawPage": {
+    "title": "提现",
+    "helpTip": "如有问题请联系客服",
+    "currentBalance": "当前余额",
+    "frozenBalance": "提现中冻结: {amount}",
+    "channelTitle": "提现渠道",
+    "payMethodTitle": "支付方式",
+    "feePrefix": "手续费: {fee}",
+    "receiverTitle": "收款信息",
+    "receiverAccount": "收款账号",
+    "receiverAccountPlaceholder": "请输入您的收款账号",
+    "receiverName": "收款人姓名",
+    "receiverNamePlaceholder": "请输入收款人姓名",
+    "receiverEmail": "邮箱地址",
+    "receiverEmailPlaceholder": "请输入邮箱地址",
+    "amountTitle": "提现金额",
+    "amountLabel": "金额",
+    "amountPlaceholder": "请输入提现金额",
+    "custom": "自定义",
+    "availableBalance": "可用余额",
+    "normalBalance": "正常余额",
+    "bonusBalance": "赠金余额",
+    "codingRemain": "剩余打码量",
+    "withdrawable": "可提现",
+    "freezing": "提现中冻结",
+    "submit": "提交",
+    "serviceFee": "手续费",
+    "actualDeduct": "实际扣除",
+    "tipsTitle": "提现说明:",
+    "tips1": "提现最低金额为 {amount}",
+    "tips2": "正常余额需打满充值的 1 倍流水后方可提现",
+    "tips3": "赠金需打满 20 倍流水后提现，流水从第一笔充值开始计算",
+    "tips4": "请仔细核对收款信息，错误信息将导致提现失败",
+    "tips5": "提现将在 1-30 分钟内处理完成，如有问题请联系客服"
+  },
+  "transformPage": {
+    "title": "佣金转账",
+    "walletCommission": "佣金钱包",
+    "walletGame": "游戏钱包",
+    "walletWithdraw": "提现到账",
+    "availableBalance": "可用余额",
+    "transferAmount": "转账金额",
+    "amountPlaceholder": "请输入金额（最低 {min}）",
+    "fillAll": "全部转入",
+    "minTip": "最低转账金额为 {min}",
+    "confirmTransfer": "确认转账",
+    "recentTx": "最近交易",
+    "loading": "加载中...",
+    "noMore": "没有更多了",
+    "toastEnterAmount": "请输入转账金额",
+    "toastMinAmount": "最低转账金额为 {min}",
+    "toastExceedBalance": "转账金额不能超过佣金余额",
+    "toastSuccess": "转账成功 {amount}",
+    "txTitleDefault": "佣金转账"
+  },
+  "teamPage": {
+    "title": "我的团队",
+    "overviewTitle": "团队概览",
+    "statInviteUsers": "邀请用户数",
+    "statRechargeUsers": "充值用户数",
+    "statTodayInviteUsers": "今日邀请用户数",
+    "statTodayRechargeUsers": "今日充值用户数",
+    "commissionTitle": "佣金统计",
+    "commissionTotal": "累计佣金",
+    "commissionAvailable": "可提佣金",
+    "commissionToday": "今日佣金",
+    "ruleTitle": "佣金规则",
+    "ruleIntroTitle": "邀请佣金奖励说明：",
+    "ruleItem1": "邀请新用户首次充值100{symbol}，奖励10{symbol}佣金",
+    "ruleItem2": "邀请用户抢红包平台收益5%，平台收益40%返佣",
+    "ruleItem3": "邀请用户发红包中雷收益平台抽成5%，平台收益40%返佣",
+    "ruleText1": "抢红包和发红包系统都有收益，邀请越多人越高佣金。",
+    "exampleTitle": "收益示例",
+    "exampleText": "若好友抢红包产生平台收益50{symbol}，你可获得20{symbol}佣金；若发红包中雷平台收益30{symbol}，你可获得12{symbol}佣金。",
+    "highlightText": "邀请好友越多，长期佣金越高；建议通过专属邀请码持续推广。"
+  },
+  "sendPacketPage": {
+    "invalidInput": "请输入有效金额并选择0-9雷值",
+    "sendSuccess": "红包发送成功 #{id}",
+    "sendFailed": "发送红包失败",
+    "packetTypeTitle": "公开发红包",
+    "packetTypeSub": "所有人可见，所有人可抢",
+    "amountTitle": "红包金额",
+    "currentAmount": "当前金额",
+    "amountPlaceholder": "请输入金额",
+    "mineTitle": "雷值设置",
+    "mineSelectTitle": "选择雷值数字",
+    "mineSub": "抢到此数字尾号的用户将中雷",
+    "submit": "立即发布红包",
+    "tipsText": "发红包，闯好运，赢6个取1.8倍收益！本次发包您将有机会获得最大奖励！",
+    "noticeText": "注意：发红包需至少有一笔充值记录。"
+  },
+  "historyPage": {
+    "title": "历史记录",
+    "typeAll": "全部类型",
+    "typeSend": "我发出的",
+    "typeGrab": "我抢到的",
+    "resultAll": "全部结果",
+    "resultWin": "盈利/中奖",
+    "resultLoss": "亏损/中雷",
+    "dateToday": "今日",
+    "dateWeek": "本周",
+    "dateMonth": "本月",
+    "dateCustom": "自定义",
+    "txSendTitle": "发出红包 {amount}",
+    "txGrabTitle": "抢到{sender}的红包 {amount}",
+    "thunderNo": "雷号: {no}",
+    "badgeWin": "中奖",
+    "badgeLoss": "亏损",
+    "summaryIncome": "总收入",
+    "summaryExpense": "总支出",
+    "summaryPnl": "净盈亏",
+    "finishedText": "没有更多了",
+    "emptyText": "暂无历史记录",
+    "rangeTitle": "选择日期范围",
+    "cancel": "取消",
+    "confirm": "确认",
+    "startDate": "开始日期",
+    "endDate": "结束日期"
+  },
+  "luckyDetailPage": {
+    "title": "红包详情",
+    "statusOngoing": "进行中",
+    "statusDone": "已结束",
+    "positionUser": "用户 #{seq}",
+    "positionThunder": "中雷",
+    "positionJoined": "已参与",
+    "progress": "已抢 {grabbed}/{total} 个",
+    "thunderUnknown": "雷号: ?",
+    "thunderNo": "雷号: {no}",
+    "odds": "赔率: {rate} x",
+    "timeRemaining": "剩余: {time}",
+    "timeExpired": "过期: {time}",
+    "rowSendAmount": "发包金额",
+    "rowGrabbedAmount": "已抢金额",
+    "rowRemainAmount": "剩余金额",
+    "rowHitCount": "中雷次数",
+    "rowThunderIncome": "中雷收益",
+    "rowUnclaimed": "未抢数量",
+    "toastInvalidParam": "参数错误",
+    "toastLoadFailed": "详情加载失败",
+    "toastGrabSuccess": "抢红包成功",
+    "toastGrabFailed": "抢红包失败",
+    "heroAmount": "红包金额 {amount}",
+    "unitAmountRandom": "单个金额: Random",
+    "sendTime": "发包时间: {time}",
+    "panelFinance": "财务明细",
+    "panelHitCount": "中雷{count}次",
+    "panelChoosePosition": "选择位置抢红包",
+    "panelParticipants": "参与记录",
+    "panelParticipantsCount": "共{count}人参与",
+    "btnGrabbing": "抢包中",
+    "btnGrabbed": "已抢",
+    "btnCanGrab": "可抢",
+    "noMore": "没有更多了",
+    "emptyText": "暂无详情数据",
+    "forward": "转发",
+    "defaultSender": "??"
+  },
+  "profilePage": {
+    "accountWallet": "我的钱包",
+    "accountRecharge": "充值",
+    "accountWithdraw": "提现",
+    "accountWithdrawAccount": "提现账户",
+    "promoTeam": "我的团队",
+    "promoInvite": "邀请好友",
+    "promoInviteExtra": "奖励",
+    "promoRebate": "佣金明细",
+    "serviceLanguage": "语言（Language）",
+    "serviceRules": "游戏规则",
+    "serviceBindTg": "绑定Telegram",
+    "serviceBindEmail": "绑定邮箱",
+    "serviceChangePassword": "修改密码",
+    "serviceQuestions": "常见问题",
+    "serviceCs": "客服中心",
+    "notBound": "未绑定",
+    "toastLoadFailed": "加载用户信息失败",
+    "toastAvatarUpdated": "头像已更新",
+    "toastUploadImageOnly": "请上传图片文件",
+    "toastUploadTooLarge": "图片不能超过5MB",
+    "toastUploadFailed": "上传失败，请重试",
+    "toastLogoutSuccess": "已退出登录",
+    "balanceLabel": "余额({symbol})",
+    "commissionLabel": "佣金({symbol})",
+    "sectionAccount": "账户管理",
+    "sectionPromo": "推广中心",
+    "sectionService": "其他服务",
+    "logout": "退出登录",
+    "logoutTitle": "确认退出",
+    "logoutCancel": "取消",
+    "logoutConfirm": "确认",
+    "logoutContent": "确定要退出登录吗？",
+    "avatarPopupTitle": "更换头像",
+    "avatarPopupOr": "或",
+    "avatarUpload": "上传自定义头像",
+    "avatarUploading": "上传中..."
+  },
+  "common": {
+    "noMore": "?????",
+    "confirmTitle": "??",
+    "cancel": "??",
+    "confirm": "??",
+    "confirmAction": "??????????",
+    "requestFailed": "????",
+    "badRequest": "??????",
+    "networkError": "??????????",
+    "authFailed": "??????"
+  },
+  "bindEmailPage": {
+    "title": "??",
+    "email": "??",
+    "emailPlaceholder": "??",
+    "code": "?????",
+    "codePlaceholder": "????????",
+    "send": "??",
+    "sending": "???",
+    "submit": "??",
+    "submitting": "???...",
+    "boundLabel": "?????",
+    "boundToast": "?????",
+    "toastEnterEmail": "?????",
+    "toastSendSuccess": "????",
+    "toastSendFailed": "????",
+    "toastEnterCode": "????????",
+    "toastBindSuccess": "????",
+    "toastBindFailed": "????"
+  },
+  "bindTgPage": {
+    "title": "?? Telegram",
+    "toastAuthSuccess": "Telegram ????: {user}"
+  },
+  "invitePage": {
+    "title": "????",
+    "heroTitle": "???????",
+    "heroSubTitle": "?????????????",
+    "saveQr": "? ?????",
+    "shareToTelegram": "? ???Telegram",
+    "linkTelegram": "???? (Telegram)",
+    "linkH5": "?????H5,??????",
+    "copy": "??",
+    "benefitTitle": "????",
+    "benefitGameShare": "????",
+    "benefitGameShareDesc": "????????{rate}%",
+    "benefitWithdraw": "????",
+    "benefitWithdrawDesc": "????????????",
+    "benefitLifetime": "????",
+    "benefitLifetimeDesc": "?????????????",
+    "benefitExtra": "????",
+    "benefitExtraDesc": "?????????????",
+    "ruleTitle": "????",
+    "rule1": "???????????{reward}%",
+    "rule2": "??????????{commission}%??????{rebate}%",
+    "rule3": "??????????{commission}%??????{rebate}%",
+    "stepTitle": "????",
+    "step1Title": "??????????",
+    "step1Desc": "??????????????????",
+    "step2Title": "???????",
+    "step2Desc": "???????????????",
+    "step3Title": "??????",
+    "step3Desc": "??????????????????",
+    "step4Title": "????",
+    "step4Desc": "????????????????",
+    "dataTitle": "????",
+    "dataInviteCount": "????",
+    "dataTodayNew": "????",
+    "dataTotalCommission": "????",
+    "toastCopySuccess": "????",
+    "toastCopyFailed": "????",
+    "shareText": "?????????????????"
+  },
+  "questionsPage": {
+    "title": "????",
+    "tabHot": "????",
+    "tabFinance": "????",
+    "tabGame": "????",
+    "tabSecurity": "????",
+    "footerHint": "???????????",
+    "contactCs": "????",
+    "hot": {
+      "h1": {
+        "q": "?????????",
+        "a": "?????????????????????/???????????"
+      },
+      "h2": {
+        "q": "?????",
+        "a": "??????????????????????????????"
+      },
+      "h3": {
+        "q": "?????",
+        "a": "???????????????????????????"
+      },
+      "h4": {
+        "q": "???????",
+        "a": "??????????????????????"
+      },
+      "h5": {
+        "q": "??????",
+        "a": "???????????????????????????"
+      }
+    },
+    "finance": {
+      "f1": {
+        "q": "?????????",
+        "a": "???????????????????????????"
+      },
+      "f2": {
+        "q": "?????????",
+        "a": "????????????????????"
+      },
+      "f3": {
+        "q": "?????????",
+        "a": "?????????????????????"
+      },
+      "f4": {
+        "q": "????????",
+        "a": "??????????????????"
+      }
+    },
+    "game": {
+      "g1": {
+        "q": "????????",
+        "a": "?????????????????????"
+      },
+      "g2": {
+        "q": "?????????",
+        "a": "?????????????????"
+      },
+      "g3": {
+        "q": "???????",
+        "a": "????????????????????"
+      },
+      "g4": {
+        "q": "?????????",
+        "a": "???????????????????????"
+      },
+      "g5": {
+        "q": "????????????????",
+        "a": "?????????????????????????"
+      },
+      "g6": {
+        "q": "????????????",
+        "a": "??????????????????????????"
+      },
+      "g7": {
+        "q": "????????????",
+        "a": "??????????????????????????"
+      },
+      "g8": {
+        "q": "?????????",
+        "a": "??????????????????????????"
+      }
+    },
+    "security": {
+      "s1": {
+        "q": "?????????",
+        "a": "???????????????????????"
+      },
+      "s2": {
+        "q": "????????",
+        "a": "????????????????????????"
+      },
+      "s3": {
+        "q": "????????",
+        "a": "??????????????????"
+      },
+      "s4": {
+        "q": "?????????",
+        "a": "?????????????????????"
+      }
+    }
   }
 }

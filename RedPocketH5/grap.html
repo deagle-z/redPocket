@@ -1,0 +1,543 @@
+<!doctype html>
+<html lang="th">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Perfect Thai Ang Pao</title>
+    <style>
+      /* --- 1. 基础环境 --- */
+      body {
+        margin: 0;
+        padding: 0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        background-color: #f4e4bc;
+        font-family: 'Tahoma', sans-serif;
+        overflow: hidden;
+      }
+
+      #fireworks {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        z-index: 9999;
+      }
+
+      /* --- 2. 触发按钮 --- */
+      .trigger-btn {
+        padding: 18px 50px;
+        font-size: 22px;
+        background: linear-gradient(135deg, #800000, #b01010);
+        color: #ffd700;
+        border: 2px solid #ffd700;
+        border-radius: 50px;
+        cursor: pointer;
+        box-shadow: 0 6px 20px rgba(128, 0, 0, 0.4);
+        font-weight: bold;
+        transition: transform 0.2s;
+      }
+
+      .trigger-btn:hover {
+        transform: scale(1.05);
+      }
+
+      /* --- 3. 遮罩层 --- */
+      .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.85);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+        opacity: 0;
+        visibility: hidden;
+        transition: all 0.5s ease;
+      }
+
+      .modal-overlay.show {
+        opacity: 1;
+        visibility: visible;
+      }
+
+      /* --- 4. 红包主体 --- */
+      .ang-pao {
+        position: relative;
+        width: 320px;
+        height: 480px;
+        /* 关键：保留 3D 空间 */
+        perspective: 1500px;
+        transform-style: preserve-3d;
+        transform: scale(0.5);
+        transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+      }
+
+      .modal-overlay.show .ang-pao {
+        transform: scale(1);
+      }
+
+      /* --- 5. 层级与样式 --- */
+
+      /* [Layer 0] 背板 */
+      .layer-back {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        background-color: #700000;
+        border-radius: 12px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+        /* 防止背板遮挡 */
+        transform: translateZ(-1px);
+      }
+
+      /* [Layer 2] 礼品卡 */
+      .gift-card {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%) scale(0.8);
+        width: 90%;
+        height: 400px;
+        background: linear-gradient(135deg, #fffbf0 0%, #f3e6c0 100%);
+        border-radius: 8px;
+        box-shadow:
+          inset 0 0 0 3px #800000,
+          inset 0 0 0 6px #d4af37;
+        z-index: 2;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        box-sizing: border-box;
+        transition: all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+        opacity: 0;
+        /* 卡片在内部 */
+        transform: translate(-50%, -50%) scale(0.8) translateZ(2px);
+      }
+
+      .gift-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-image: radial-gradient(#d4af37 1px, transparent 1px);
+        background-size: 15px 15px;
+        opacity: 0.2;
+        z-index: 0;
+      }
+
+      .card-content {
+        z-index: 2;
+        text-align: center;
+        width: 100%;
+      }
+
+      .thai-header {
+        color: #800000;
+        font-size: 22px;
+        font-weight: bold;
+        margin-bottom: 5px;
+      }
+
+      .sub-header {
+        color: #b8860b;
+        font-size: 12px;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        border-bottom: 1px solid #d4af37;
+        display: inline-block;
+        padding-bottom: 5px;
+        margin-bottom: 25px;
+      }
+
+      .amount {
+        font-size: 60px;
+        font-family: 'Times New Roman', serif;
+        font-weight: bold;
+        background: linear-gradient(to bottom, #cfb53b, #8a6e14, #d4af37);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        filter: drop-shadow(0 2px 0px rgba(0, 0, 0, 0.1));
+        margin: 10px 0;
+      }
+
+      .currency {
+        font-size: 30px;
+        vertical-align: super;
+        color: #b8860b;
+        margin-right: 5px;
+      }
+
+      .blessing {
+        margin-top: 30px;
+        font-size: 14px;
+        color: #555;
+      }
+
+      .corner {
+        position: absolute;
+        width: 15px;
+        height: 15px;
+        border: 2px solid #b8860b;
+        z-index: 2;
+      }
+
+      .tl {
+        top: 12px;
+        left: 12px;
+        border-right: none;
+        border-bottom: none;
+      }
+
+      .tr {
+        top: 12px;
+        right: 12px;
+        border-left: none;
+        border-bottom: none;
+      }
+
+      .bl {
+        bottom: 12px;
+        left: 12px;
+        border-right: none;
+        border-top: none;
+      }
+
+      .br {
+        bottom: 12px;
+        right: 12px;
+        border-left: none;
+        border-top: none;
+      }
+
+      /* [Layer 5] 口袋 */
+      .layer-pocket {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        height: 75%;
+        background: linear-gradient(160deg, #900000 30%, #600000 100%);
+        border-radius: 0 0 12px 12px;
+        /* 稍微抬起一点点，防止与背板穿模 */
+        transform: translateZ(5px);
+        z-index: 5;
+        border-top: 3px solid #d4af37;
+        box-shadow: 0 -5px 15px rgba(0, 0, 0, 0.2);
+        overflow: hidden;
+        transition: filter 0.5s;
+      }
+
+      .thai-pattern {
+        position: absolute;
+        width: 120%;
+        height: 120%;
+        top: -10%;
+        left: -10%;
+        opacity: 0.1;
+        background: repeating-linear-gradient(45deg, #ffd700, #ffd700 2px, transparent 2px, transparent 10px);
+      }
+
+      /* [Layer 6] 封盖 (Flap) */
+      .layer-flap {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 140px;
+        background-color: #850000;
+        border-radius: 12px 12px 50% 50%;
+        /* 封盖也要抬起，比口袋略高 */
+        transform: translateZ(6px);
+        z-index: 6;
+        transform-origin: top;
+        transition:
+          transform 0.6s ease-in-out,
+          z-index 0.6s step-end;
+        border-bottom: 4px solid #d4af37;
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
+        padding-top: 30px;
+        box-sizing: border-box;
+        box-shadow: 0 5px 10px rgba(0, 0, 0, 0.3);
+        /* 保持 visible 防止内容裁切 */
+        overflow: visible;
+      }
+
+      .flap-text {
+        color: #d4af37;
+        font-size: 18px;
+        font-weight: bold;
+        letter-spacing: 2px;
+        text-shadow: 0 1px 1px rgba(0, 0, 0, 0.5);
+        margin-top: 10px;
+      }
+
+      /* [Layer 10] 金币按钮 - 核心修复 */
+      .coin-btn {
+        position: absolute;
+        top: 100px;
+        left: 50%;
+        width: 90px;
+        height: 90px;
+        background: radial-gradient(ellipse at center, #ffd700 0%, #b8860b 100%);
+        border: 4px solid #fff8d6;
+        border-radius: 50%;
+        z-index: 100;
+        /* 绝对最高 */
+
+        /*
+               【关键修复 1】：添加 translateZ(20px)
+               这会让金币在 Z 轴上悬浮 20px，旋转时不会碰到下面的口袋
+            */
+        transform: translateX(-50%) translateZ(20px);
+
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        cursor: pointer;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+        /* 加深阴影体现悬浮感 */
+        transition: opacity 0.3s;
+      }
+
+      .coin-symbol {
+        font-size: 36px;
+        font-weight: bold;
+        color: #6d0000;
+        line-height: 1;
+      }
+
+      .coin-label {
+        font-size: 10px;
+        color: #6d0000;
+        font-weight: bold;
+        margin-top: 2px;
+      }
+
+      /* --- 6. 动画状态 --- */
+
+      /*
+           【关键修复 2】：动画中也必须包含 translateZ
+           否则动画执行时会重置 transform，导致金币掉回去被遮挡
+        */
+      @keyframes spinCoin {
+        0% {
+          transform: translateX(-50%) translateZ(20px) rotateY(0deg);
+        }
+
+        100% {
+          transform: translateX(-50%) translateZ(20px) rotateY(360deg);
+        }
+      }
+
+      .ang-pao.active .coin-btn {
+        animation: spinCoin 0.6s linear infinite;
+      }
+
+      /* 打开状态 */
+      .ang-pao.opened .layer-flap {
+        transform: rotateX(180deg);
+        z-index: 1;
+        background-color: #600000;
+        border-bottom: none;
+        border-top: 4px solid #d4af37;
+      }
+
+      .ang-pao.opened .coin-btn {
+        opacity: 0;
+        pointer-events: none;
+        /* 消失时也保持 Z 轴位置，避免瞬间闪烁 */
+        transform: translateX(-50%) translateZ(20px) scale(0);
+        transition:
+          transform 0.4s ease-in,
+          opacity 0.2s;
+      }
+
+      .ang-pao.opened .gift-card {
+        opacity: 1;
+        /* 卡片弹出，层级最高，位置居中 */
+        transform: translate(-50%, -50%) translateZ(50px) scale(1.05);
+        z-index: 200;
+        box-shadow:
+          0 30px 60px rgba(0, 0, 0, 0.5),
+          inset 0 0 0 3px #800000,
+          inset 0 0 0 6px #d4af37;
+      }
+
+      .ang-pao.opened .layer-pocket {
+        filter: brightness(0.7);
+      }
+
+      /* 关闭按钮 */
+      .close-btn {
+        position: absolute;
+        bottom: -70px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 44px;
+        height: 44px;
+        border: 2px solid rgba(255, 255, 255, 0.4);
+        border-radius: 50%;
+        color: #fff;
+        font-size: 24px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        cursor: pointer;
+        transition: 0.3s;
+        /* 保证关闭按钮也在最上层 */
+        transform: translateX(-50%) translateZ(20px);
+      }
+    </style>
+  </head>
+
+  <body>
+    <canvas id="fireworks"></canvas>
+
+    <button class="trigger-btn" id="openBtn">🧧 รับอั่งเปา (Open)</button>
+
+    <div class="modal-overlay" id="overlay">
+      <div class="ang-pao" id="angPao">
+        <div class="layer-back"></div>
+
+        <div class="layer-flap">
+          <span class="flap-text">โชคดี (Good Luck)</span>
+        </div>
+
+        <div class="gift-card">
+          <div class="corner tl"></div>
+          <div class="corner tr"></div>
+          <div class="corner bl"></div>
+          <div class="corner br"></div>
+          <div class="card-content">
+            <div class="thai-header">สวัสดีปีใหม่</div>
+            <div class="sub-header">Royal Gift Voucher</div>
+            <div class="amount"><span class="currency">฿</span>999</div>
+            <div class="blessing">ขอให้ร่ำรวย (Rich & Wealthy)</div>
+          </div>
+        </div>
+
+        <div class="layer-pocket">
+          <div class="thai-pattern"></div>
+        </div>
+
+        <div class="coin-btn" id="coinLatch">
+          <span class="coin-symbol">฿</span>
+          <span class="coin-label">OPEN</span>
+        </div>
+
+        <div class="close-btn" id="closeModal">&times;</div>
+      </div>
+    </div>
+
+    <script>
+      const openBtn = document.getElementById('openBtn')
+      const overlay = document.getElementById('overlay')
+      const angPao = document.getElementById('angPao')
+      const coinLatch = document.getElementById('coinLatch')
+      const closeModal = document.getElementById('closeModal')
+      const canvas = document.getElementById('fireworks')
+      const ctx = canvas.getContext('2d')
+
+      openBtn.addEventListener('click', () => {
+        overlay.classList.add('show')
+        angPao.classList.remove('active', 'opened')
+      })
+
+      coinLatch.addEventListener('click', (e) => {
+        e.stopPropagation()
+        angPao.classList.add('active')
+        setTimeout(() => {
+          angPao.classList.remove('active')
+          angPao.classList.add('opened')
+          triggerFireworks()
+        }, 600)
+      })
+
+      function closeAll() {
+        overlay.classList.remove('show')
+        ctx.clearRect(0, 0, canvas.width, canvas.height)
+      }
+
+      closeModal.addEventListener('click', closeAll)
+      overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) closeAll()
+      })
+
+      // 烟花粒子逻辑
+      let particles = []
+
+      function resizeCanvas() {
+        canvas.width = window.innerWidth
+        canvas.height = window.innerHeight
+      }
+      window.addEventListener('resize', resizeCanvas)
+      resizeCanvas()
+
+      function triggerFireworks() {
+        const centerX = window.innerWidth / 2
+        const centerY = window.innerHeight / 2
+        for (let i = 0; i < 150; i++) {
+          particles.push(new Particle(centerX, centerY))
+        }
+        animate()
+      }
+
+      class Particle {
+        constructor(x, y) {
+          this.x = x
+          this.y = y
+          const angle = Math.random() * Math.PI * 2
+          const velocity = Math.random() * 8 + 3
+          this.vx = Math.cos(angle) * velocity
+          this.vy = Math.sin(angle) * velocity
+          this.gravity = 0.08
+          this.alpha = 1
+          this.decay = Math.random() * 0.02 + 0.01
+          const colors = ['#ffd700', '#fff8d6', '#ff4d4d', '#ffffff']
+          this.color = colors[Math.floor(Math.random() * colors.length)]
+          this.size = Math.random() * 5 + 2
+        }
+        draw() {
+          ctx.globalAlpha = this.alpha
+          ctx.fillStyle = this.color
+          ctx.beginPath()
+          ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2)
+          ctx.fill()
+        }
+        update() {
+          this.x += this.vx
+          this.y += this.vy
+          this.vy += this.gravity
+          this.alpha -= this.decay
+          this.draw()
+        }
+      }
+
+      function animate() {
+        if (particles.length > 0) {
+          ctx.clearRect(0, 0, canvas.width, canvas.height)
+          particles = particles.filter((p) => p.alpha > 0)
+          particles.forEach((p) => p.update())
+          requestAnimationFrame(animate)
+        } else {
+          ctx.clearRect(0, 0, canvas.width, canvas.height)
+        }
+      }
+    </script>
+  </body>
+</html>

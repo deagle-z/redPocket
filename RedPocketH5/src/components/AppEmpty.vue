@@ -1,15 +1,17 @@
 <script setup lang="ts">
-withDefaults(defineProps<{
+const props = withDefaults(defineProps<{
   text?: string
   minHeight?: number
 }>(), {
-  text: '没有更多了',
   minHeight: 220,
 })
+
+const { t } = useI18n()
+const displayText = computed(() => props.text || t('common.noMore'))
 </script>
 
 <template>
-  <div class="app-empty" :style="{ minHeight: `${minHeight}px` }">
+  <div class="app-empty" :style="{ minHeight: `${props.minHeight}px` }">
     <div class="empty-illustration" aria-hidden="true">
       <svg viewBox="0 0 160 120" class="empty-svg">
         <rect x="14" y="84" width="132" height="28" rx="2" fill="#d5d9de" />
@@ -25,7 +27,7 @@ withDefaults(defineProps<{
       </svg>
     </div>
     <p class="empty-text">
-      {{ text }}
+      {{ displayText }}
     </p>
   </div>
 </template>
@@ -44,7 +46,7 @@ withDefaults(defineProps<{
 
 .empty-illustration {
   width: 160px;
-  height: 120px;
+  height: 100px;
 }
 
 .empty-svg {
@@ -56,7 +58,7 @@ withDefaults(defineProps<{
 .empty-text {
   margin: 0;
   color: #6b7280;
-  font-size: 18px;
+  font-size: 12px;
   line-height: 1;
 }
 </style>
