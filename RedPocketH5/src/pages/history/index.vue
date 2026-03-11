@@ -519,13 +519,37 @@ onMounted(() => {
 <style scoped>
 .history-page {
   min-height: 100vh;
-  background: var(--bg-secondary);
-  padding: 0 10px calc(14px + env(safe-area-inset-bottom));
+  background-image:
+    radial-gradient(circle at 18% 12%, rgba(212, 175, 55, 0.18), transparent 28%),
+    radial-gradient(circle at 82% 84%, rgba(255, 215, 0, 0.12), transparent 24%),
+    repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 18px,
+      rgba(212, 175, 55, 0.04) 18px,
+      rgba(212, 175, 55, 0.04) 20px
+    ),
+    linear-gradient(180deg, #3e0000 0%, #240000 60%, #150000 100%);
+  padding: 0 12px calc(90px + env(safe-area-inset-bottom));
 }
 
 .card {
-  background: #fff;
-  border-radius: 10px;
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(165deg, rgba(118, 0, 0, 0.95), rgba(54, 0, 0, 0.96));
+  border-radius: 16px;
+  border: 1px solid rgba(212, 175, 55, 0.34);
+  box-shadow:
+    0 12px 24px rgba(0, 0, 0, 0.3),
+    inset 0 0 0 1px rgba(255, 248, 214, 0.08);
+}
+
+.card::after {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: 3px;
+  background: linear-gradient(90deg, transparent 0%, #b8860b 18%, #ffd700 50%, #b8860b 82%, transparent 100%);
 }
 
 .filter-bar {
@@ -543,8 +567,8 @@ onMounted(() => {
 .filter-btn {
   border: 0;
   background: transparent;
-  color: #1a1a2e;
-  font-size: 16px;
+  color: #f5dfb2;
+  font-size: 15px;
   font-weight: 700;
   display: inline-flex;
   align-items: center;
@@ -552,48 +576,49 @@ onMounted(() => {
 }
 
 .filter-btn.active {
-  color: var(--color-primary);
-  text-decoration: underline;
+  color: #ffd87f;
 }
 
 .filter-btn :deep(.van-icon) {
-  color: #d1d5db;
+  color: rgba(255, 229, 186, 0.4);
   font-size: 14px;
 }
 
 .filter-btn.active :deep(.van-icon) {
-  color: var(--color-primary);
+  color: #ffd87f;
 }
 
 .dropdown-panel {
-  background: #fff;
-  border-radius: 0 0 10px 10px;
-  border-top: 1px solid #eef1f4;
+  background: linear-gradient(180deg, rgba(126, 0, 0, 0.98), rgba(54, 0, 0, 0.98));
+  border-radius: 0 0 16px 16px;
+  border: 1px solid rgba(212, 175, 55, 0.24);
+  border-top: 0;
   overflow: hidden;
   position: relative;
   z-index: 20;
+  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.32);
 }
 
 .dropdown-option {
   height: 56px;
   width: 100%;
   border: 0;
-  background: #fff;
+  background: transparent;
   padding: 0 20px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  color: #1a1a2e;
+  color: #fff0c9;
   font-size: 16px;
   text-align: left;
 }
 
 .dropdown-option + .dropdown-option {
-  border-top: 1px solid #f3f4f6;
+  border-top: 1px solid rgba(212, 175, 55, 0.12);
 }
 
 .dropdown-option :deep(.van-icon-success) {
-  color: var(--color-primary);
+  color: #ffd87f;
   font-size: 18px;
 }
 
@@ -613,11 +638,11 @@ onMounted(() => {
 .date-tab {
   height: 36px;
   border-radius: 18px;
-  border: 1px solid #e0e0e0;
-  background: #fff;
-  color: #6b7280;
+  border: 1px solid rgba(212, 175, 55, 0.2);
+  background: rgba(255, 248, 214, 0.06);
+  color: rgba(255, 229, 186, 0.66);
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -625,29 +650,33 @@ onMounted(() => {
 }
 
 .date-tab.active {
-  border-color: #e6a800;
-  background: #e6a800;
-  color: #fff;
-  font-weight: 600;
+  border-color: rgba(255, 248, 214, 0.34);
+  background: linear-gradient(180deg, #ffdf87 0%, #d4af37 100%);
+  color: #5a1b00;
+  font-weight: 800;
 }
 
 .range-popup {
   min-height: 260px;
+  background:
+    radial-gradient(circle at top, rgba(212, 175, 55, 0.14), transparent 26%),
+    linear-gradient(180deg, #540000 0%, #280000 100%);
+  border: 1px solid rgba(212, 175, 55, 0.34);
 }
 
 .range-header {
   height: 72px;
   padding: 0 16px;
-  border-bottom: 1px solid #eef1f4;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.14);
   display: flex;
   align-items: center;
   justify-content: space-between;
 }
 
 .range-title {
-  color: #111827;
+  color: #fff0c9;
   font-size: 16px;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .range-actions {
@@ -660,31 +689,32 @@ onMounted(() => {
 .range-confirm-btn {
   min-width: 56px;
   height: 36px;
-  border-radius: 8px;
-  font-size: 16px;
-  border: 1px solid #d8dde5;
+  border-radius: 999px;
+  font-size: 14px;
+  border: 1px solid rgba(212, 175, 55, 0.24);
 }
 
 .range-cancel-btn {
-  background: #fff;
-  color: #111827;
+  background: rgba(255, 248, 214, 0.08);
+  color: #fff0c9;
 }
 
 .range-confirm-btn {
-  background: var(--color-primary);
-  border-color: var(--color-primary);
-  color: #fff;
+  background: linear-gradient(180deg, #ffdf87 0%, #d4af37 100%);
+  border-color: rgba(255, 248, 214, 0.34);
+  color: #5a1b00;
+  font-weight: 800;
 }
 
 .range-row {
   height: 62px;
   padding: 0 16px;
-  border-bottom: 1px solid #f2f4f7;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.1);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 16px;
-  color: #111827;
+  font-size: 15px;
+  color: #fff0c9;
 }
 
 .range-date-wrap {
@@ -695,12 +725,12 @@ onMounted(() => {
 }
 
 .range-date-text {
-  font-size: 16px;
-  color: #64748b;
+  font-size: 15px;
+  color: rgba(255, 229, 186, 0.62);
 }
 
 .range-date-wrap :deep(.van-icon) {
-  color: #94a3b8;
+  color: rgba(255, 229, 186, 0.56);
   font-size: 16px;
 }
 
@@ -714,9 +744,9 @@ onMounted(() => {
 
 .stat-item {
   height: 64px;
-  border-radius: 10px;
-  border: 1px solid #e8eaf0;
-  background: #fff;
+  border-radius: 12px;
+  border: 1px solid rgba(212, 175, 55, 0.16);
+  background: rgba(255, 248, 214, 0.05);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -725,14 +755,14 @@ onMounted(() => {
 }
 
 .stat-item.pnl {
-  background: #fff8e6;
-  border-color: #e6a800;
+  background: linear-gradient(180deg, rgba(255, 223, 135, 0.18), rgba(116, 24, 0, 0.24));
+  border-color: rgba(212, 175, 55, 0.34);
 }
 
 .stat-label {
   margin: 0;
   font-size: 11px;
-  color: #9ca3af;
+  color: rgba(255, 229, 186, 0.58);
 }
 
 .stat-value {
@@ -743,15 +773,15 @@ onMounted(() => {
 }
 
 .stat-value.income {
-  color: var(--color-primary);
+  color: #ffd87f;
 }
 
 .stat-value.expense {
-  color: #ff4d4f;
+  color: #ffb7a7;
 }
 
 .stat-value.pnl-text {
-  color: #e6a800;
+  color: #ffe19e;
 }
 
 .tx-list {
@@ -760,18 +790,22 @@ onMounted(() => {
 }
 
 .tx-item {
-  border-radius: 12px;
-  background: #fff;
+  border-radius: 14px;
+  background: linear-gradient(165deg, rgba(118, 0, 0, 0.95), rgba(54, 0, 0, 0.96));
   padding: 12px;
   display: grid;
   grid-template-columns: 36px 1fr auto;
   gap: 10px;
   align-items: start;
-  border-left: 3px solid var(--color-primary);
+  border: 1px solid rgba(212, 175, 55, 0.26);
+  border-left: 3px solid #d4af37;
+  box-shadow:
+    0 12px 24px rgba(0, 0, 0, 0.28),
+    inset 0 0 0 1px rgba(255, 248, 214, 0.08);
 }
 
 .tx-item.loss {
-  border-left-color: #ff4d4f;
+  border-left-color: #ff9c86;
 }
 
 .tx-left-avatar {
@@ -779,7 +813,8 @@ onMounted(() => {
   height: 36px;
   border-radius: 50%;
   overflow: hidden;
-  background: #eef2f7;
+  background: rgba(255, 248, 214, 0.1);
+  border: 1px solid rgba(212, 175, 55, 0.18);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -798,7 +833,7 @@ onMounted(() => {
 
 .tx-title {
   margin: 0;
-  color: #1a1a2e;
+  color: #fff0c9;
   font-size: 13px;
   font-weight: 600;
   line-height: 1.35;
@@ -806,7 +841,7 @@ onMounted(() => {
 
 .tx-sub {
   margin: 3px 0 5px;
-  color: #9ca3af;
+  color: rgba(255, 229, 186, 0.56);
   font-size: 11px;
 }
 
@@ -821,13 +856,13 @@ onMounted(() => {
 }
 
 .tx-badge.win {
-  background: #fff8e1;
-  color: #e6a800;
+  background: rgba(212, 175, 55, 0.16);
+  color: #ffd87f;
 }
 
 .tx-badge.loss {
-  background: #ffebee;
-  color: #ff4d4f;
+  background: rgba(255, 128, 104, 0.14);
+  color: #ffb7a7;
 }
 
 .tx-right {
@@ -836,7 +871,7 @@ onMounted(() => {
 
 .tx-time {
   margin: 0;
-  color: #9ca3af;
+  color: rgba(255, 229, 186, 0.52);
   font-size: 10px;
 }
 
@@ -848,11 +883,11 @@ onMounted(() => {
 }
 
 .tx-amount.win {
-  color: var(--color-primary);
+  color: #ffd87f;
 }
 
 .tx-amount.loss {
-  color: #ff4d4f;
+  color: #ffb7a7;
 }
 
 .empty-state {
@@ -863,12 +898,12 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  color: #9ca3af;
+  color: rgba(255, 229, 186, 0.56);
 }
 
 .empty-state :deep(.van-icon) {
   font-size: 18px;
-  color: #cbd5e1;
+  color: rgba(255, 229, 186, 0.3);
 }
 
 .empty-state p {

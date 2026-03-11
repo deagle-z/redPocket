@@ -28,30 +28,39 @@ const emit = defineEmits<{
 
 <style scoped>
 .app-page-header {
-  height: 42px;
+  height: 44px;
   display: grid;
-  grid-template-columns: 32px 1fr 32px;
+  grid-template-columns: 36px 1fr 36px;
   align-items: center;
+  padding: 0 4px;
 }
 
 .header-title {
   margin: 0;
   text-align: center;
-  font-size: var(--font-base);
-  font-weight: 500;
-  color: var(--color-text-title);
+  font-size: 16px;
+  font-weight: 700;
+  color: #ffd98b;
+  letter-spacing: 0.04em;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
 }
 
 .header-btn {
-  height: 28px;
-  width: 28px;
+  height: 32px;
+  width: 32px;
   border: none;
   background: transparent;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 0;
-  font-size: var(--font-lg);
-  color: var(--color-primary);
+  font-size: 18px;
+  color: #d4af37;
+  filter: drop-shadow(0 0 3px rgba(212, 175, 55, 0.35));
+  transition: opacity 0.15s ease;
+}
+
+.header-btn:active {
+  opacity: 0.7;
 }
 </style>

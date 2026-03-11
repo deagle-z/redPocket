@@ -107,8 +107,8 @@ declare module 'vue-router/auto-routes' {
       Record<never, never>,
       | never
     >,
-    '/rebate/': RouteRecordInfo<
-      '/rebate/',
+    'Rebate': RouteRecordInfo<
+      'Rebate',
       '/rebate',
       Record<never, never>,
       Record<never, never>,
@@ -257,7 +257,7 @@ declare module 'vue-router/auto-routes' {
     }
     'src/pages/rebate/index.vue': {
       routes:
-        | '/rebate/'
+        | 'Rebate'
       views:
         | never
     }

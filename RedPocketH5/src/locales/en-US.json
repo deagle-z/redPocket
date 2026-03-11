@@ -23,6 +23,7 @@
     "home": "HOME",
     "history": "HISTORY",
     "sendPacket": "SEND",
+    "team": "TEAM",
     "profile": "PROFILE",
     "wallet": "WALLET"
   },
@@ -181,12 +182,15 @@
     "voucherTitle": "Royal Gift Voucher",
     "open": "OPEN",
     "thunderShort": "Thunder",
-    "flapText": "?????"
+    "flapText": "Tap to reveal"
   },
   "homeLucky": {
     "bannerText1": "New here? Learn the gameplay and start earning quickly.",
     "bannerText2": "Activity channel is live. Join daily tasks for exclusive rewards.",
     "bannerText3": "Lucky battle is on. Invite friends and climb the leaderboard.",
+    "sendQuickEyebrow": "Quick Send",
+    "sendQuickText": "Set the packet amount and thunder number, then launch a public lucky packet instantly.",
+    "sendQuickAction": "Send Packet",
     "hotPackets": "Hot Packets",
     "latestWinners": "Latest Winners",
     "emptyPackets": "No hot packets",
@@ -488,8 +492,8 @@
     "title": "Invite Friends",
     "heroTitle": "Invite Friends and Earn Commission",
     "heroSubTitle": "Invite once, earn from team activity forever",
-    "saveQr": "? Save QR Code",
-    "shareToTelegram": "? Share to Telegram",
+    "saveQr": "Save QR Code",
+    "shareToTelegram": "Share to Telegram",
     "linkTelegram": "Invite Link (Telegram)",
     "linkH5": "Invite Link (H5, browser)",
     "copy": "Copy",
@@ -514,7 +518,7 @@
     "step3Title": "Earn commission rewards",
     "step3Desc": "Get commission based on your friends' game turnover",
     "step4Title": "Withdraw commission",
-    "step4Desc": "Withdraw your commission from ?My Wallet?",
+    "step4Desc": "Withdraw your commission from My Wallet",
     "dataTitle": "Promotion Data",
     "dataInviteCount": "Invited Users",
     "dataTodayNew": "Today's New",
@@ -612,7 +616,7 @@
       },
       "s2": {
         "q": "What if I forget password?",
-        "a": "Use ?Forgot Password? on login page and reset via email code."
+        "a": "Use Forgot Password on the login page and reset via email code."
       },
       "s3": {
         "q": "What if my account is stolen?",

@@ -21,6 +21,7 @@ declare module 'vue' {
     NavBar: typeof import('./../components/NavBar.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
+    SendPacketForm: typeof import('./../components/SendPacketForm.vue')['default']
     TabBar: typeof import('./../components/TabBar.vue')['default']
     TelegramLogin: typeof import('./../components/TelegramLogin.vue')['default']
     VanButton: typeof import('vant/es')['Button']

@@ -12,6 +12,7 @@ import (
 	"gorm.io/gorm"
 	"io"
 	"strings"
+	"time"
 )
 
 // SendRedPacket 发送红包
@@ -148,8 +149,19 @@ func GetLuckyDetailApp(ctx *gin.Context) {
 		return
 	}
 
+	userIDRaw, ok := ctx.Get("userId")
+	if !ok {
+		utils.UnauthorizedBack(ctx, "token is invalid")
+		return
+	}
+	userID, ok := userIDRaw.(int64)
+	if !ok || userID <= 0 {
+		utils.UnauthorizedBack(ctx, "token is invalid")
+		return
+	}
+
 	db := ctx.MustGet("db").(*gorm.DB)
-	result, err := repository.GetLuckyMoneyAppDetail(db, req.LuckyID)
+	result, err := repository.GetLuckyMoneyAppDetail(db, req.LuckyID, userID)
 	if err != nil {
 		utils.ErrorBack(ctx, err.Error())
 		return
@@ -424,9 +436,37 @@ func GrabRedPacketApp(ctx *gin.Context) {
 		} else if idx, ok := result["openNum"]; ok {
 			broadcast["grabIndex"] = idx
 		}
-		if amount, ok := result["amount"]; ok {
-			broadcast["grabAmount"] = amount
+
+		grabbedCount, _ := repository.GetLuckyHistoryCount(db, req.LuckyID)
+		hideSecondLast := shouldHideSecondLastInProgress(luckyMoney, grabbedCount, time.Now())
+
+		grabAmount := toFloat64(result["amount"])
+		if hideSecondLast {
+			grabAmount = 0
 		}
+		broadcast["grabAmount"] = grabAmount
+
+		grabSeqNo := toInt(result["grabIndex"])
+		if grabSeqNo <= 0 {
+			grabSeqNo = toInt(result["openNum"])
+		}
+		rawThunderAmount := 0.0
+		if grabSeqNo > 0 {
+			var row struct {
+				ThunderAmount float64 `gorm:"column:thunder_amount"`
+			}
+			_ = db.Table("lucky_money_item").
+				Select("COALESCE(thunder_amount, 0) as thunder_amount").
+				Where("red_packet_id = ? AND seq_no = ?", req.LuckyID, grabSeqNo).
+				Scan(&row).Error
+			rawThunderAmount = row.ThunderAmount
+		}
+		thunderAmount := rawThunderAmount
+		if hideSecondLast {
+			thunderAmount = 0
+		}
+		broadcast["thunderAmount"] = thunderAmount
+
 		if isThunder, ok := result["isThunder"]; ok {
 			broadcast["isThunder"] = isThunder
 		}
@@ -438,10 +478,95 @@ func GrabRedPacketApp(ctx *gin.Context) {
 			Select("COALESCE(SUM(thunder_amount), 0)").
 			Where("red_packet_id = ?", req.LuckyID).
 			Scan(&totalThunderAmount).Error
+		if hideSecondLast {
+			totalThunderAmount -= rawThunderAmount
+			if totalThunderAmount < 0 {
+				totalThunderAmount = 0
+			}
+		}
 		broadcast["totalThunderAmount"] = totalThunderAmount
 
 		_ = utils.BroadcastWsWithType("lucky_grabbed", broadcast)
 	}
 
 	utils.SuccessObjBack(ctx, result)
+}
+
+func shouldHideSecondLastInProgress(lucky pojo.LuckyMoney, grabbedCount int64, now time.Time) bool {
+	if lucky.Status != 1 {
+		return false
+	}
+	if lucky.Number <= 1 {
+		return false
+	}
+	if int(grabbedCount) != lucky.Number-1 {
+		return false
+	}
+	expireAt := lucky.ExpireTime
+	if expireAt.IsZero() {
+		expireAt = lucky.CreatedAt.Add(3 * time.Minute)
+	}
+	return now.Before(expireAt)
+}
+
+func toInt(v interface{}) int {
+	switch n := v.(type) {
+	case int:
+		return n
+	case int8:
+		return int(n)
+	case int16:
+		return int(n)
+	case int32:
+		return int(n)
+	case int64:
+		return int(n)
+	case uint:
+		return int(n)
+	case uint8:
+		return int(n)
+	case uint16:
+		return int(n)
+	case uint32:
+		return int(n)
+	case uint64:
+		return int(n)
+	case float32:
+		return int(n)
+	case float64:
+		return int(n)
+	default:
+		return 0
+	}
+}
+
+func toFloat64(v interface{}) float64 {
+	switch n := v.(type) {
+	case float64:
+		return n
+	case float32:
+		return float64(n)
+	case int:
+		return float64(n)
+	case int8:
+		return float64(n)
+	case int16:
+		return float64(n)
+	case int32:
+		return float64(n)
+	case int64:
+		return float64(n)
+	case uint:
+		return float64(n)
+	case uint8:
+		return float64(n)
+	case uint16:
+		return float64(n)
+	case uint32:
+		return float64(n)
+	case uint64:
+		return float64(n)
+	default:
+		return 0
+	}
 }

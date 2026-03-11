@@ -78,6 +78,7 @@ func InitTables(prefix string) (firstInit bool, err error) {
 			&pojo.LuckyHistory{},
 			&pojo.AuthGroup{},
 			&pojo.TgUser{},
+			&pojo.PlatformProfitLedger{},
 		)
 		if err != nil {
 			panic(err)
@@ -102,7 +103,7 @@ func InitTables(prefix string) (firstInit bool, err error) {
 		}
 	}
 	// 兼容增量字段/新表变更
-	if err = db.AutoMigrate(&pojo.LuckyMoney{}, &pojo.LuckyMoneyItem{}); err != nil {
+	if err = db.AutoMigrate(&pojo.LuckyMoney{}, &pojo.LuckyMoneyItem{}, &pojo.PlatformProfitLedger{}); err != nil {
 		panic(err)
 	}
 	if !db.Migrator().HasTable(pojo.AllCashHistoryShardingName) {

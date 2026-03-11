@@ -61,7 +61,8 @@ async function loadSubStatsSummary() {
   subStatsSummaryLoading.value = true;
   try {
     const { data } = await getTgUserSubStatsSummary({
-      parentId: currentUser.value.id
+      parentId: currentUser.value.id,
+      isBot: false
     });
     subStatsSummary.subRechargeAmount = Number(data?.subRechargeAmount ?? 0);
     subStatsSummary.subFlowAmount = Number(data?.subFlowAmount ?? 0);
@@ -80,6 +81,7 @@ async function loadSubStatsList() {
   try {
     const { data } = await getTgUserListWithSubStats({
       parentId: currentUser.value.id,
+      isBot: false,
       currentPage: subStatsPagination.currentPage - 1,
       pageSize: subStatsPagination.pageSize
     });

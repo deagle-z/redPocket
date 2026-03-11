@@ -4,12 +4,12 @@ import { useRouter } from 'vue-router'
 import { getCurrentTgInviteStats } from '@/api/user'
 import AppPageHeader from '@/components/AppPageHeader.vue'
 import { CURRENCY_SYMBOL, formatCurrency } from '@/utils/currency'
-import imgRedpacketJpg from '@/assets/images/redpacket.jpg'
+import imgTeamJpg from '@/assets/images/team.jpg'
 
 const { t } = useI18n()
 
 const router = useRouter()
-const teamRuleBannerImage = imgRedpacketJpg
+const teamRuleBannerImage = imgTeamJpg
 
 const stats = reactive({
   inviteUsers: 0,
@@ -151,8 +151,19 @@ onMounted(() => {
 <style scoped>
 .team-page {
   min-height: 100vh;
-  background: var(--bg-secondary);
-  padding: 0 var(--space-md) calc(18px + env(safe-area-inset-bottom));
+  background-image:
+    radial-gradient(circle at 18% 12%, rgba(212, 175, 55, 0.18), transparent 28%),
+    radial-gradient(circle at 82% 84%, rgba(255, 215, 0, 0.12), transparent 24%),
+    repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 18px,
+      rgba(212, 175, 55, 0.04) 18px,
+      rgba(212, 175, 55, 0.04) 20px
+    ),
+    linear-gradient(180deg, #3e0000 0%, #240000 60%, #150000 100%);
+  padding: 0 12px calc(90px + env(safe-area-inset-bottom));
+  color: #fff0c9;
 }
 
 .team-header {
@@ -160,20 +171,35 @@ onMounted(() => {
 }
 
 .section-card {
-  background: #fff;
-  border-radius: 12px;
-  padding: 12px;
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(165deg, rgba(118, 0, 0, 0.95), rgba(54, 0, 0, 0.96));
+  border-radius: 18px;
+  padding: 14px;
   margin-bottom: 12px;
-  border: 1px solid #edf1f5;
+  border: 1px solid rgba(212, 175, 55, 0.34);
+  box-shadow:
+    0 12px 24px rgba(0, 0, 0, 0.3),
+    inset 0 0 0 1px rgba(255, 248, 214, 0.08);
+}
+
+.section-card::after {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: 3px;
+  background: linear-gradient(90deg, transparent 0%, #b8860b 18%, #ffd700 50%, #b8860b 82%, transparent 100%);
 }
 
 .section-title {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 16px;
-  color: #0f172a;
-  font-weight: 700;
+  font-size: 14px;
+  color: #ffd98b;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   margin-bottom: 12px;
 }
 
@@ -202,9 +228,10 @@ onMounted(() => {
 }
 
 .overview-item {
-  border-radius: 12px;
-  border: 1px solid #edf1f5;
-  height: 100px;
+  border-radius: 16px;
+  border: 1px solid rgba(212, 175, 55, 0.18);
+  background: rgba(255, 248, 214, 0.05);
+  min-height: 100px;
   padding: 12px;
   display: flex;
   flex-direction: column;
@@ -214,11 +241,11 @@ onMounted(() => {
 }
 
 .overview-icon {
-  width: 24px;
-  height: 24px;
-  border-radius: 8px;
-  background: var(--color-primary-soft);
-  color: var(--color-primary-medium);
+  width: 30px;
+  height: 30px;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #ffdf87 0%, #d4af37 100%);
+  color: #5a1b00;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -227,17 +254,17 @@ onMounted(() => {
 
 .overview-value {
   margin: 10px 0 6px;
-  font-size: 18px;
+  font-size: 20px;
   line-height: 1;
-  color: #f59e0b;
-  font-weight: 700;
+  color: #ffd87f;
+  font-weight: 800;
 }
 
 .overview-label {
   margin: 0;
   font-size: 12px;
   line-height: 1.2;
-  color: #6b7280;
+  color: rgba(255, 229, 186, 0.6);
 }
 
 .commission-grid {
@@ -247,8 +274,8 @@ onMounted(() => {
 }
 
 .commission-item {
-  height: 80px;
-  border-radius: 12px;
+  min-height: 80px;
+  border-radius: 16px;
   padding: 10px 8px;
   display: flex;
   flex-direction: column;
@@ -257,16 +284,11 @@ onMounted(() => {
   text-align: center;
 }
 
-.commission-item.warm {
-  background: #fff4e5;
-}
-
-.commission-item.success {
-  background: var(--color-primary-soft);
-}
-
+.commission-item.warm,
+.commission-item.success,
 .commission-item.info {
-  background: #e6f3ff;
+  background: rgba(255, 248, 214, 0.06);
+  border: 1px solid rgba(212, 175, 55, 0.16);
 }
 
 .commission-label {
@@ -276,16 +298,8 @@ onMounted(() => {
   font-weight: 600;
 }
 
-.commission-item.warm .commission-label {
-  color: #b58a30;
-}
-
-.commission-item.success .commission-label {
-  color: var(--color-primary-link);
-}
-
-.commission-item.info .commission-label {
-  color: #4389d8;
+.commission-item .commission-label {
+  color: rgba(255, 229, 186, 0.62);
 }
 
 .commission-value {
@@ -295,16 +309,8 @@ onMounted(() => {
   font-weight: 700;
 }
 
-.commission-item.warm .commission-value {
-  color: #f59e0b;
-}
-
-.commission-item.success .commission-value {
-  color: var(--color-primary-medium);
-}
-
-.commission-item.info .commission-value {
-  color: #2563eb;
+.commission-item .commission-value {
+  color: #ffd87f;
 }
 
 .rule-banner {
@@ -323,9 +329,9 @@ onMounted(() => {
 }
 
 .rule-content {
-  background: #fff;
-  border: 1px solid #edf1f5;
-  border-radius: 12px;
+  background: rgba(255, 248, 214, 0.04);
+  border: 1px solid rgba(212, 175, 55, 0.16);
+  border-radius: 16px;
   padding: 12px;
 }
 
@@ -333,7 +339,7 @@ onMounted(() => {
   margin: 0 0 10px;
   font-size: 15px;
   line-height: 1.2;
-  color: #1f2937;
+  color: #fff0c9;
   font-weight: 700;
 }
 
@@ -349,30 +355,30 @@ onMounted(() => {
   display: flex;
   align-items: flex-start;
   gap: 6px;
-  color: #374151;
+  color: rgba(255, 229, 186, 0.78);
   font-size: 13px;
   line-height: 1.4;
 }
 
 .rule-list :deep(.van-icon) {
   margin-top: 1px;
-  color: #f59e0b;
+  color: #ffd87f;
   font-size: 14px;
 }
 
 .rule-text {
   margin: 10px 0;
-  color: #4b5563;
+  color: rgba(255, 229, 186, 0.64);
   font-size: 13px;
   line-height: 1.5;
 }
 
 .rule-highlight {
   margin-top: 8px;
-  background: #fffbe6;
-  border-radius: 8px;
+  background: rgba(212, 175, 55, 0.12);
+  border-radius: 12px;
   padding: 12px;
-  color: #92400e;
+  color: #ffd87f;
   font-size: 13px;
   line-height: 1.5;
   font-weight: 700;

@@ -16,10 +16,10 @@ const { t } = useI18n()
 const activeTab = ref<CategoryKey>('hot')
 
 const tabs = computed<Array<{ key: CategoryKey, label: string, icon: string }>>(() => [
-  { key: 'hot', label: t('questionsPage.tabHot'), icon: '★' },
-  { key: 'finance', label: t('questionsPage.tabFinance'), icon: '💳' },
-  { key: 'game', label: t('questionsPage.tabGame'), icon: '🎮' },
-  { key: 'security', label: t('questionsPage.tabSecurity'), icon: '👤' },
+  { key: 'hot', label: t('questionsPage.tabHot'), icon: 'fire-o' },
+  { key: 'finance', label: t('questionsPage.tabFinance'), icon: 'gold-coin-o' },
+  { key: 'game', label: t('questionsPage.tabGame'), icon: 'gift-o' },
+  { key: 'security', label: t('questionsPage.tabSecurity'), icon: 'shield-o' },
 ])
 
 function buildFaqItem(group: CategoryKey, key: string): FaqItem {
@@ -99,7 +99,7 @@ function goBack() {
         :class="{ active: activeTab === tab.key }"
         @click="onTabClick(tab.key)"
       >
-        <span class="tab-icon">{{ tab.icon }}</span>
+        <van-icon :name="tab.icon" class="tab-icon" />
         <span>{{ tab.label }}</span>
       </button>
     </div>
@@ -140,8 +140,18 @@ function goBack() {
 <style scoped>
 .questions-page {
   min-height: 100vh;
-  background: #fff;
-  padding: 10px 14px calc(16px + env(safe-area-inset-bottom));
+  background-image:
+    radial-gradient(circle at 18% 12%, rgba(212, 175, 55, 0.18), transparent 28%),
+    radial-gradient(circle at 82% 84%, rgba(255, 215, 0, 0.12), transparent 24%),
+    repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 18px,
+      rgba(212, 175, 55, 0.04) 18px,
+      rgba(212, 175, 55, 0.04) 20px
+    ),
+    linear-gradient(180deg, #3e0000 0%, #240000 60%, #150000 100%);
+  padding: 10px 12px calc(90px + env(safe-area-inset-bottom));
 }
 
 .faq-tabs {
@@ -153,10 +163,10 @@ function goBack() {
 
 .faq-tab {
   height: 70px;
-  border-radius: 0;
-  border: 0;
-  background: transparent;
-  color: #0f172a;
+  border-radius: 16px;
+  border: 1px solid rgba(212, 175, 55, 0.18);
+  background: rgba(255, 248, 214, 0.05);
+  color: rgba(255, 229, 186, 0.72);
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -167,8 +177,8 @@ function goBack() {
 }
 
 .faq-tab.active {
-  background: #ff5a5f;
-  color: #0b1220;
+  background: linear-gradient(180deg, #ffdf87 0%, #d4af37 100%);
+  color: #5a1b00;
 }
 
 .tab-icon {
@@ -183,9 +193,11 @@ function goBack() {
 
 .section-title {
   margin: 0 0 8px;
-  color: #0f2740;
+  color: #ffd98b;
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 :deep(.faq-collapse.van-collapse) {
@@ -193,15 +205,18 @@ function goBack() {
 }
 
 :deep(.faq-item.van-collapse-item) {
-  background: #fff;
+  background: linear-gradient(165deg, rgba(118, 0, 0, 0.95), rgba(54, 0, 0, 0.96));
+  border-radius: 16px;
+  border: 1px solid rgba(212, 175, 55, 0.2);
+  overflow: hidden;
 }
 
 :deep(.faq-item .van-cell) {
   min-height: 64px;
   padding: 0 18px;
   align-items: center;
-  background: #fff;
-  color: #1f2937;
+  background: transparent;
+  color: #fff0c9;
 }
 
 :deep(.faq-item .van-cell__title) {
@@ -212,17 +227,17 @@ function goBack() {
 
 :deep(.faq-item .van-collapse-item__content) {
   padding: 0 18px 14px;
-  background: #fff;
+  background: transparent;
 }
 
 :deep(.faq-item .van-icon-arrow) {
-  color: #a6b2c5;
+  color: rgba(255, 229, 186, 0.4);
   font-size: 16px;
 }
 
 .faq-answer {
   margin: 0;
-  color: #6b7280;
+  color: rgba(255, 229, 186, 0.64);
   font-size: 11px;
   line-height: 1.5;
 }
@@ -237,7 +252,7 @@ function goBack() {
 
 .faq-footer p {
   margin: 0;
-  color: #8c9ab0;
+  color: rgba(255, 229, 186, 0.54);
   font-size: 10px;
 }
 
@@ -245,11 +260,11 @@ function goBack() {
   width: 176px;
   height: 56px;
   border-radius: 30px;
-  border: 2px solid #0f172a;
-  background: transparent;
-  color: #0f172a;
+  border: 1px solid rgba(255, 248, 214, 0.34);
+  background: linear-gradient(180deg, #ffdf87 0%, #d4af37 100%);
+  color: #5a1b00;
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 800;
 }
 </style>
 

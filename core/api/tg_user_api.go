@@ -23,7 +23,7 @@ import (
 //	@Accept			json
 //	@Produce		json
 //	@Param			data body		pojo.TgUserSearch	true	"查询条件"
-//	@Success		200	{object}		pojo.TgUserResp
+//	@Success		200	{object}		pojo.TgUserAdminResp
 //	@Router			/api/v1/admin/tgUser/list [post]
 func GetTgUsers(ctx *gin.Context) {
 	var search pojo.TgUserSearch
@@ -44,7 +44,7 @@ func GetTgUsers(ctx *gin.Context) {
 //	@Accept			json
 //	@Produce		json
 //	@Param			data body		pojo.TgUserSet	true	"Telegram用户信息"
-//	@Success		200	{object}		pojo.TgUserBack
+//	@Success		200	{object}		pojo.TgUserAdminBack
 //	@Router			/api/v1/admin/tgUser [post]
 func SetTgUser(ctx *gin.Context) {
 	var req pojo.TgUserSet
@@ -93,7 +93,7 @@ func DelTgUser(ctx *gin.Context) {
 //	@Accept			json
 //	@Produce		json
 //	@Param			id path		int	true	"Telegram用户ID"
-//	@Success		200	{object}		pojo.TgUserBack
+//	@Success		200	{object}		pojo.TgUserAdminBack
 //	@Router			/api/v1/admin/tgUser/:id [get]
 func GetTgUserById(ctx *gin.Context) {
 	idStr := ctx.Param("id")
@@ -118,7 +118,7 @@ func GetTgUserById(ctx *gin.Context) {
 //	@Accept			json
 //	@Produce		json
 //	@Param			data body		pojo.TgUserStatusSet	true	"状态信息"
-//	@Success		200	{object}		pojo.TgUserBack
+//	@Success		200	{object}		pojo.TgUserAdminBack
 //	@Router			/api/v1/admin/tgUser/status [post]
 func SetTgUserStatus(ctx *gin.Context) {
 	var req pojo.TgUserStatusSet
@@ -136,6 +136,31 @@ func SetTgUserStatus(ctx *gin.Context) {
 	}
 	db := ctx.MustGet("db").(*gorm.DB)
 	result, err := repository.SetTgUserStatus(db, req.ID, req.Status)
+	if err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	utils.SuccessObjBack(ctx, result)
+}
+
+// BatchCreateBotTgUsers godoc
+//
+//	@Summary		批量创建机器人 Telegram 用户
+//	@Tags			Telegram用户
+//	@Accept			json
+//	@Produce		json
+//	@Param			data body		pojo.TgUserBatchCreateBotReq	true	"批量创建机器人参数"
+//	@Success		200	{object}		pojo.TgUserBatchCreateBotResp
+//	@Router			/api/v1/admin/tgUser/batchCreateBot [post]
+func BatchCreateBotTgUsers(ctx *gin.Context) {
+	var req pojo.TgUserBatchCreateBotReq
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+
+	db := ctx.MustGet("db").(*gorm.DB)
+	result, err := repository.BatchCreateBotTgUsers(db, req)
 	if err != nil {
 		utils.ErrorBack(ctx, err.Error())
 		return
@@ -162,7 +187,7 @@ func GetTgUsersWithSubStatsSummary(ctx *gin.Context) {
 		utils.ErrorBack(ctx, err.Error())
 		return
 	}
-	result := tenantRepo.GetTgUsersWithSubStatsSummary(getDB(ctx), search.ParentID)
+	result := tenantRepo.GetTgUsersWithSubStatsSummary(getDB(ctx), search)
 	utils.SuccessObjBack(ctx, result)
 }
 
@@ -413,14 +438,53 @@ func GetCurrentTgInviteStats(ctx *gin.Context) {
 	}
 
 	utils.SuccessObjBack(ctx, pojo.TgInviteStatsBack{
-		InviteCode:       inviteCode,
-		InviteCount:      inviteCount,
-		TodayInviteCount: todayInviteCount,
-		RechargeUsers:    rechargeUsers,
-		TodayRechargeUsers: todayRechargeUsers,
-		TotalCommission:  user.RebateTotalAmount,
+		InviteCode:          inviteCode,
+		InviteCount:         inviteCount,
+		TodayInviteCount:    todayInviteCount,
+		RechargeUsers:       rechargeUsers,
+		TodayRechargeUsers:  todayRechargeUsers,
+		TotalCommission:     user.RebateTotalAmount,
 		AvailableCommission: user.RebateAmount,
-		TodayCommission:  todayCommission,
+		TodayCommission:     todayCommission,
+	})
+}
+
+// GetCurrentTgInviteRuleConfig 获取邀请规则配置
+func GetCurrentTgInviteRuleConfig(ctx *gin.Context) {
+	userIDRaw, ok := ctx.Get("userId")
+	if !ok {
+		utils.UnauthorizedBack(ctx, "token is invalid")
+		return
+	}
+	userID, ok := userIDRaw.(int64)
+	if !ok || userID <= 0 {
+		utils.UnauthorizedBack(ctx, "token is invalid")
+		return
+	}
+
+	hostInfo := ctx.MustGet("hostInfo").(pojo.HostInfo)
+	tablePrefix := hostInfo.TablePrefix
+
+	parseConfigFloat := func(key string, defaultValue string) float64 {
+		val := utils.GetStringCache(tablePrefix, key, &defaultValue)
+		if val == nil || strings.TrimSpace(*val) == "" {
+			f, _ := strconv.ParseFloat(defaultValue, 64)
+			return f
+		}
+		f, err := strconv.ParseFloat(strings.TrimSpace(*val), 64)
+		if err != nil {
+			f, _ = strconv.ParseFloat(defaultValue, 64)
+			return f
+		}
+		return f
+	}
+
+	utils.SuccessObjBack(ctx, pojo.TgInviteRuleConfigBack{
+		LuckySendCommission:       parseConfigFloat("lucky_send_commission", "5"),
+		LuckyGrabbingCommission:   parseConfigFloat("lucky_grabbing_commission", "5"),
+		InviteFirstRechargeReward: parseConfigFloat("invite_first_recharge_reward", "10"),
+		InviteLuckyRebateRate:     parseConfigFloat("invite_lucky_rebate_rate", "40"),
+		InviteThunderRebateRate:   parseConfigFloat("invite_thunder_rebate_rate", "40"),
 	})
 }
 

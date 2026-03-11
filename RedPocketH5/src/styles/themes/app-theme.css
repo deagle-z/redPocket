@@ -1,32 +1,42 @@
 /**
- * App Global Theme
+ * App Global Theme — Thai Red & Gold Edition
  * 所有页面共享的 CSS 变量，在此统一维护。
  * 页面 scoped 样式中不得再出现裸色值（16进制/rgb），
  * 请直接引用这里定义的变量。
  */
 
 :root {
-  /* ─── 主色 / Primary ─────────────────────────── */
-  --color-primary: #08ad5e;
-  --color-primary-rgb: 8, 173, 94;
+  /* ─── 主色 / Primary (Thai Crimson Red) ─────── */
+  --color-primary: #c0392b;
+  --color-primary-rgb: 192, 57, 43;
   /* 激活态 / active tab underline          */
-  --color-primary-dark: #07bd63;
+  --color-primary-dark: #a93226;
   /* 图标背景 / feature icon bg             */
-  --color-primary-medium: #3d9b4f;
-  --color-primary-medium-rgb: 61, 155, 79;
+  --color-primary-medium: #e74c3c;
+  --color-primary-medium-rgb: 231, 76, 60;
   /* withdraw/recharge 主强调色             */
-  --color-primary-btn: #4cae63;
+  --color-primary-btn: #c0392b;
   /* 主操作按钮背景                          */
-  --color-primary-link: #49a86d;
+  --color-primary-link: #922b21;
   /* 链接 / 注册按钮边框                     */
-  --color-primary-gradient-end: #5dd87a;
+  --color-primary-gradient-end: #e74c3c;
   /* 主色渐变尾色                            */
-  --color-primary-soft: #e6f5ea;
-  /* 绿色浅底 / active item bg              */
-  --color-primary-active: #f2f8f4;
+  --color-primary-soft: #fdf2f0;
+  /* 红色浅底 / active item bg              */
+  --color-primary-active: #fef9f8;
   /* 语言选中浅底                            */
-  --color-border-active: #5db97b;
+  --color-border-active: #c0392b;
   /* 选中边框                                */
+
+  /* ─── 金色 / Gold Accent (from grap.html) ───── */
+  --color-gold: #d4af37;
+  /* 主金色                                  */
+  --color-gold-light: #ffd700;
+  /* 亮金 / highlight                        */
+  --color-gold-dark: #b8860b;
+  /* 暗金 / label                            */
+  --color-gold-soft: #fdf8e8;
+  /* 金色浅底                                */
 
   /* ─── 功能色 / Functional ───────────────────── */
   --color-danger: #e84040;
@@ -35,54 +45,55 @@
   /* Telegram 按钮                           */
 
   /* ─── 文字色 / Text ─────────────────────────── */
-  --color-text-title: #071a2b;
+  --color-text-title: #2c0a07;
   /* 页面大标题 / header title               */
-  --color-text-primary: #102236;
+  --color-text-primary: #1a0805;
   /* 弹窗标题 / 一级正文                     */
-  --color-text-body: #0d1b2d;
+  --color-text-body: #2d1208;
   /* 普通正文                                */
-  --color-text-form: #384f6b;
+  --color-text-form: #5c2d1e;
   /* 表单 label                              */
-  --color-text-input: #30455f;
+  --color-text-input: #4a2016;
   /* 输入框文字                              */
-  --color-text-sub: #6b7280;
+  --color-text-sub: #7a6060;
   /* 次要说明 / sub text                     */
-  --color-text-tab: #2d3f54;
+  --color-text-tab: #4a3030;
   /* 未激活 tab 文字                         */
-  --color-text-feature: #24354a;
+  --color-text-feature: #3a1e18;
   /* feature 卡片标题                        */
-  --color-text-muted: #9ca8b8;
+  --color-text-muted: #b09898;
   /* placeholder / 浅灰说明                 */
-  --color-text-light: #b7c1cc;
+  --color-text-light: #c4b0b0;
   /* 关闭按钮等极浅元素                      */
-  --color-text-en: #4b5e73;
+  --color-text-en: #6b4040;
   /* 英文副标签                              */
 
   /* ─── 背景色 / Background ───────────────────── */
-  --color-bg-page: #edf1f5;
-  /* 页面背景                                */
+  --color-bg-page: #faf6f0;
+  /* 页面背景 (warm cream / Thai parchment)  */
   --color-bg-card: #ffffff;
   /* 卡片 / 表单 / 弹窗背景                  */
-  --color-bg-feature: #eef4ee;
-  /* feature 卡片背景                        */
-  --color-bg-gradient-a: #f7f9fc;
+  --color-bg-feature: #fef3ef;
+  /* feature 卡片背景 (warm red tint)        */
+  --color-bg-gradient-a: #fff8f5;
   /* 渐变页面起始色                          */
-  --color-bg-gradient-b: #eef2f8;
+  --color-bg-gradient-b: #faf0eb;
   /* 渐变页面结束色                          */
-  --bg-secondary: #f7fafc;
+  --bg-secondary: #fdf5f2;
   /* 二级背景色 / 语言选中浅底               */
   --space-md: 12px;
 
   /* ─── 边框 / Border ─────────────────────────── */
-  --color-border: #edf1f5;
+  --color-border: #f0e8e5;
   /* 分割线 / 行间边框                       */
-  --color-stroke: #e4e9f0;
+  --color-stroke: #ead8d4;
   /* 卡片边框 / 输入框边框                   */
 
   /* ─── 阴影 / Shadow ─────────────────────────── */
-  --shadow-card: 0 12px 28px rgba(21, 32, 56, 0.08);
-  --shadow-accent: 0 6px 14px rgba(61, 155, 79, 0.2);
-  --shadow-accent-md: 0 8px 18px rgba(61, 155, 79, 0.16);
+  --shadow-card: 0 12px 28px rgba(80, 20, 10, 0.08);
+  --shadow-accent: 0 6px 14px rgba(192, 57, 43, 0.2);
+  --shadow-accent-md: 0 8px 18px rgba(192, 57, 43, 0.16);
+  --shadow-gold: 0 4px 12px rgba(212, 175, 55, 0.25);
 
   /* ─── 圆角 / Radius ─────────────────────────── */
   --radius-sm: 6px;

@@ -6,7 +6,7 @@
 export const rootRouteList: readonly string[] = [
   'Home',
   'History',
-  'SendPacket',
+  'Team',
   'Wallet',
   'Profile',
 ]

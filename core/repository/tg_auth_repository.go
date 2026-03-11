@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"golang.org/x/crypto/bcrypt"
 	"math/rand/v2"
-	"strconv"
 	"strings"
 	"time"
 
@@ -29,7 +28,7 @@ func TgAuthLogin(db *gorm.DB, hostInfo pojo.HostInfo, req pojo.TgAuthLoginReq, o
 			if !errors.Is(queryErr, gorm.ErrRecordNotFound) {
 				return queryErr
 			}
-			newUser, createErr := createTgUserFromAuth(tx, hostInfo.TablePrefix, req)
+			newUser, createErr := createTgUserFromAuth(tx, req)
 			if createErr != nil {
 				return createErr
 			}
@@ -143,12 +142,11 @@ func TgEmailLogin(db *gorm.DB, hostInfo pojo.HostInfo, req pojo.TgEmailLoginReq,
 	return result, nil
 }
 
-func createTgUserFromAuth(tx *gorm.DB, tablePrefix string, req pojo.TgAuthLoginReq) (pojo.TgUser, error) {
+func createTgUserFromAuth(tx *gorm.DB, req pojo.TgAuthLoginReq) (pojo.TgUser, error) {
 	displayName := strings.TrimSpace(req.FirstName)
 	if displayName == "" {
 		displayName = fmt.Sprintf("User_%d", req.ID)
 	}
-	registerGiftAmount := getRegisterGiftAmount(tablePrefix)
 	username := nullableString(req.Username)
 	firstName := nullableString(displayName)
 	avatar := nullableString(req.PhotoURL)
@@ -168,9 +166,6 @@ func createTgUserFromAuth(tx *gorm.DB, tablePrefix string, req pojo.TgAuthLoginR
 			FirstName:  firstName,
 			Avatar:     avatar,
 			TgID:       req.ID,
-			Balance:    registerGiftAmount,
-			GiftAmount: registerGiftAmount,
-			GiftTotal:  registerGiftAmount,
 			Status:     1,
 			InviteCode: &inviteCode,
 			TenantId:   0,
@@ -202,19 +197,6 @@ func generateInviteCode(db *gorm.DB) (string, error) {
 		}
 	}
 	return fmt.Sprintf("%06d", rand.IntN(1000000)), nil
-}
-
-func getRegisterGiftAmount(tablePrefix string) float64 {
-	defaultValue := "0"
-	val := utils.GetStringCache(tablePrefix, "register_gift_amount", &defaultValue)
-	if val == nil || *val == "" {
-		return 0
-	}
-	amount, err := strconv.ParseFloat(strings.TrimSpace(*val), 64)
-	if err != nil || amount < 0 {
-		return 0
-	}
-	return amount
 }
 
 func nullableString(v string) *string {

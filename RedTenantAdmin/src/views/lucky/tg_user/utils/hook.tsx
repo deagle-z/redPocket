@@ -202,6 +202,7 @@ export function useTgUser(tableRef: Ref) {
     loading.value = true;
     try {
       const { data } = await getTgUserList({
+        isBot: false,
         ...toRaw(form),
         ...toRaw(pagination)
       });

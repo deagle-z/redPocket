@@ -105,7 +105,9 @@ function goBack() {
       <div class="reset-form-card">
         <div class="reset-row">
           <label for="reset-email" class="reset-label">
-            <img :src="emailIcon" alt="email" class="reset-icon">
+            <span class="reset-icon-wrap">
+              <img :src="emailIcon" alt="email" class="reset-icon">
+            </span>
             <span>{{ t('forgotPassword.email') }}</span>
           </label>
           <input
@@ -119,7 +121,9 @@ function goBack() {
 
         <div class="reset-row">
           <label for="reset-code" class="reset-label">
-            <img :src="verifyIcon" alt="code" class="reset-icon">
+            <span class="reset-icon-wrap">
+              <img :src="verifyIcon" alt="code" class="reset-icon">
+            </span>
             <span>{{ t('forgotPassword.code') }}</span>
           </label>
           <div class="reset-code-wrap">
@@ -145,7 +149,9 @@ function goBack() {
 
         <div class="reset-row">
           <label for="reset-password" class="reset-label">
-            <img :src="lockIcon" alt="new password" class="reset-icon">
+            <span class="reset-icon-wrap">
+              <img :src="lockIcon" alt="new password" class="reset-icon">
+            </span>
             <span>{{ t('forgotPassword.newPassword') }}</span>
           </label>
           <input
@@ -175,9 +181,19 @@ function goBack() {
 <style scoped>
 .reset-page {
   min-height: 100vh;
-  background:
-    radial-gradient(1200px 500px at 50% -240px, rgba(var(--color-primary-rgb), 0.12), transparent 65%), var(--color-bg-page);
-  padding: 0 var(--page-padding-x) 32px;
+  background-image:
+    radial-gradient(circle at 18% 12%, rgba(212, 175, 55, 0.18), transparent 28%),
+    radial-gradient(circle at 82% 84%, rgba(255, 215, 0, 0.12), transparent 24%),
+    repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 18px,
+      rgba(212, 175, 55, 0.04) 18px,
+      rgba(212, 175, 55, 0.04) 20px
+    ),
+    linear-gradient(180deg, #3e0000 0%, #240000 60%, #150000 100%);
+  color: #fff0c9;
+  padding: 0 12px calc(90px + env(safe-area-inset-bottom));
 }
 
 .reset-shell {
@@ -187,90 +203,124 @@ function goBack() {
 }
 
 .reset-header {
-  margin: 0 calc(-1 * var(--page-padding-x));
-  padding: 0 14px;
-  background: var(--color-bg-card);
-  border-bottom: 1px solid rgba(16, 24, 40, 0.06);
+  margin-bottom: 12px;
 }
 
 .reset-form-card {
-  margin-top: 20px;
-  background: var(--color-bg-card);
-  border-radius: var(--radius-2xl);
-  border: 1px solid rgba(16, 24, 40, 0.08);
-  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.05);
-  padding: 8px 16px;
+  position: relative;
+  overflow: hidden;
+  margin-top: 8px;
+  background: linear-gradient(165deg, rgba(118, 0, 0, 0.95), rgba(54, 0, 0, 0.96));
+  border-radius: 18px;
+  border: 1px solid rgba(212, 175, 55, 0.24);
+  box-shadow:
+    0 16px 34px rgba(0, 0, 0, 0.26),
+    inset 0 1px 0 rgba(255, 248, 214, 0.08);
+  padding: 8px 14px;
+}
+
+.reset-form-card::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(255, 215, 0, 0.85), transparent);
 }
 
 .reset-row {
-  min-height: 86px;
+  min-height: 88px;
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 10px;
-  padding: 8px 0;
+  gap: 12px;
+  padding: 12px 0;
 }
 
 .reset-row + .reset-row {
-  border-top: 1px solid var(--color-border);
+  border-top: 1px solid rgba(212, 175, 55, 0.14);
 }
 
 .reset-label {
   display: flex;
   align-items: center;
-  gap: 8px;
-  color: var(--color-text-form);
-  font-size: var(--font-md);
-  font-weight: 500;
+  gap: 10px;
+  color: #ffe09a;
+  font-size: 13px;
+  font-weight: 700;
   cursor: text;
+  letter-spacing: 0.02em;
+}
+
+.reset-icon-wrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 10px;
+  background: linear-gradient(180deg, rgba(255, 223, 135, 0.18), rgba(212, 175, 55, 0.08));
+  border: 1px solid rgba(212, 175, 55, 0.26);
+  box-shadow: inset 0 1px 0 rgba(255, 248, 214, 0.08);
 }
 
 .reset-icon {
-  width: 22px;
-  height: 22px;
+  width: 16px;
+  height: 16px;
+  filter: brightness(0) saturate(100%) invert(85%) sepia(39%) saturate(649%) hue-rotate(335deg) brightness(105%) contrast(97%);
 }
 
 .reset-input {
   width: 100%;
-  border: 1px solid rgba(16, 24, 40, 0.14);
-  border-radius: 10px;
-  min-height: 46px;
+  border: 1px solid rgba(212, 175, 55, 0.22);
+  border-radius: 14px;
+  min-height: 48px;
   padding: 0 14px;
-  background: rgba(255, 255, 255, 0.96);
+  background: rgba(255, 248, 214, 0.05);
   outline: none;
-  color: var(--color-text-input);
-  font-size: var(--font-base);
+  color: #fff4d1;
+  font-size: 14px;
   transition:
     border-color 0.2s ease,
-    box-shadow 0.2s ease;
+    box-shadow 0.2s ease,
+    background-color 0.2s ease;
 }
 
 .reset-input::placeholder {
-  color: var(--color-text-muted);
+  color: rgba(255, 229, 186, 0.42);
 }
 
 .reset-input:focus {
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 4px rgba(var(--color-primary-rgb), 0.16);
+  border-color: rgba(255, 223, 135, 0.72);
+  box-shadow: 0 0 0 4px rgba(212, 175, 55, 0.14);
+  background: rgba(255, 248, 214, 0.08);
 }
 
 .reset-code-wrap {
   display: flex;
   align-items: center;
   gap: 10px;
+  width: 100%;
+}
+
+.reset-code-wrap .reset-input {
+  flex: 1;
+  min-width: 0;
 }
 
 .send-btn {
-  min-width: 96px;
-  height: 42px;
-  border: none;
-  border-radius: 10px;
-  background: var(--color-danger);
-  color: var(--color-bg-card);
-  font-size: var(--font-sm);
-  font-weight: 500;
+  min-width: 102px;
+  height: 44px;
+  border: 1px solid rgba(255, 248, 214, 0.42);
+  border-radius: 12px;
+  background: linear-gradient(180deg, #ffdf87 0%, #d4af37 100%);
+  color: #5a1b00;
+  font-size: 13px;
+  font-weight: 800;
   cursor: pointer;
-  transition: opacity 0.2s ease;
+  box-shadow: 0 8px 18px rgba(90, 27, 0, 0.22);
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease;
 }
 
 .send-btn:disabled {
@@ -278,14 +328,33 @@ function goBack() {
   cursor: not-allowed;
 }
 
-.reset-submit-btn {
+:deep(.reset-submit-btn.van-button) {
   margin-top: 18px;
-  background: var(--color-primary-btn);
-  border: none;
   height: 54px;
-  font-size: var(--font-xl);
-  font-weight: 500;
-  box-shadow: 0 10px 24px rgba(var(--color-primary-rgb), 0.34);
+  border: 1px solid rgba(255, 248, 214, 0.34);
+  background: linear-gradient(180deg, #ffdf87 0%, #d4af37 100%);
+  color: #5a1b00;
+  font-size: 16px;
+  font-weight: 800;
+  box-shadow:
+    0 14px 26px rgba(0, 0, 0, 0.18),
+    0 8px 18px rgba(90, 27, 0, 0.24);
+}
+
+:deep(.reset-submit-btn.van-button--disabled) {
+  opacity: 0.72;
+}
+
+@media (max-width: 390px) {
+  .reset-page {
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+
+  .send-btn {
+    min-width: 92px;
+    font-size: 12px;
+  }
 }
 </style>
 

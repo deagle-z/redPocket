@@ -13,18 +13,19 @@ import avatar6 from '@/assets/images/avatar6.png'
 import avatar7 from '@/assets/images/avatar7.png'
 import avatar8 from '@/assets/images/avatar8.png'
 import avatar9 from '@/assets/images/avatar9.png'
-import bankCardIcon from '@/assets/my/bank card.svg'
-import chartBarAltIcon from '@/assets/my/chart-bar-alt.svg'
-import customerServiceIcon from '@/assets/my/customer-service-fill.svg'
-import downIcon from '@/assets/my/down2.svg'
-import emailIcon from '@/assets/my/email.svg'
-import gamesIcon from '@/assets/my/games-2.svg'
-import passwordIcon from '@/assets/my/Password.svg'
-import shareIcon from '@/assets/my/share.svg'
-import teamIcon from '@/assets/my/team.svg'
-import telegramIcon from '@/assets/my/telegram.svg'
-import upIcon from '@/assets/my/up2.svg'
-import walletIcon from '@/assets/my/wallet.svg'
+import bankCardIcon from '@/assets/my/bank card.svg?raw'
+import chartBarAltIcon from '@/assets/my/chart-bar-alt.svg?raw'
+import customerServiceIcon from '@/assets/my/customer-service-fill.svg?raw'
+import downIcon from '@/assets/my/down2.svg?raw'
+import emailIcon from '@/assets/my/email.svg?raw'
+import gamesIcon from '@/assets/my/games-2.svg?raw'
+import passwordIcon from '@/assets/my/Password.svg?raw'
+import questionCircleIcon from '@/assets/my/question-circle.svg?raw'
+import shareIcon from '@/assets/my/share.svg?raw'
+import teamIcon from '@/assets/my/team.svg?raw'
+import telegramIcon from '@/assets/my/telegram.svg?raw'
+import upIcon from '@/assets/my/up2.svg?raw'
+import walletIcon from '@/assets/my/wallet.svg?raw'
 import { CURRENCY_SYMBOL } from '@/utils/currency'
 
 const { t } = useI18n()
@@ -37,6 +38,14 @@ interface MenuItem {
   icon: string
   extra?: string
   tone?: ExtraTone
+}
+
+function normalizeInlineSvg(svg: string) {
+  return svg
+    .replace(/<\?xml[\s\S]*?\?>/gi, '')
+    .replace(/<!DOCTYPE[\s\S]*?>/gi, '')
+    .replace(/fill="[^"]*"/gi, 'fill="currentColor"')
+    .trim()
 }
 
 const profileLoading = ref(false)
@@ -56,27 +65,27 @@ const profile = reactive({
 })
 
 const accountMenus = computed<MenuItem[]>(() => [
-  { key: 'wallet', label: t('profilePage.accountWallet'), icon: walletIcon },
-  { key: 'recharge', label: t('profilePage.accountRecharge'), icon: downIcon },
-  { key: 'withdraw', label: t('profilePage.accountWithdraw'), icon: upIcon },
-  { key: 'withdraw-account', label: t('profilePage.accountWithdrawAccount'), icon: bankCardIcon },
+  { key: 'wallet', label: t('profilePage.accountWallet'), icon: normalizeInlineSvg(walletIcon) },
+  { key: 'recharge', label: t('profilePage.accountRecharge'), icon: normalizeInlineSvg(downIcon) },
+  { key: 'withdraw', label: t('profilePage.accountWithdraw'), icon: normalizeInlineSvg(upIcon) },
+  { key: 'withdraw-account', label: t('profilePage.accountWithdrawAccount'), icon: normalizeInlineSvg(bankCardIcon) },
   // { key: 'lucky-reward', label: t('profilePage.accountLuckyReward'), icon: gamesIcon },
 ])
 
 const promoMenus = computed<MenuItem[]>(() => [
-  { key: 'team', label: t('profilePage.promoTeam'), icon: teamIcon },
-  { key: 'invite', label: t('profilePage.promoInvite'), icon: shareIcon, extra: t('profilePage.promoInviteExtra'), tone: 'success' },
-  { key: 'rebate', label: t('profilePage.promoRebate'), icon: chartBarAltIcon },
+  { key: 'team', label: t('profilePage.promoTeam'), icon: normalizeInlineSvg(teamIcon) },
+  { key: 'invite', label: t('profilePage.promoInvite'), icon: normalizeInlineSvg(shareIcon), extra: t('profilePage.promoInviteExtra'), tone: 'success' },
+  { key: 'rebate', label: t('profilePage.promoRebate'), icon: normalizeInlineSvg(chartBarAltIcon) },
 ])
 
 const otherMenus = computed<MenuItem[]>(() => [
-  { key: 'language', label: t('profilePage.serviceLanguage'), icon: shareIcon },
-  { key: 'rules', label: t('profilePage.serviceRules'), icon: gamesIcon },
-  { key: 'bind-tg', label: t('profilePage.serviceBindTg'), icon: telegramIcon, extra: formatMaskedNumber(profile.tgId), tone: 'muted' },
-  { key: 'bind-email', label: t('profilePage.serviceBindEmail'), icon: emailIcon, extra: formatMaskedEmail(profile.email), tone: 'muted' },
-  { key: 'change-password', label: t('profilePage.serviceChangePassword'), icon: passwordIcon },
-  { key: 'questions', label: t('profilePage.serviceQuestions'), icon: avatarPlaceholderIcon },
-  { key: 'cs', label: t('profilePage.serviceCs'), icon: customerServiceIcon },
+  { key: 'language', label: t('profilePage.serviceLanguage'), icon: normalizeInlineSvg(shareIcon) },
+  { key: 'rules', label: t('profilePage.serviceRules'), icon: normalizeInlineSvg(gamesIcon) },
+  { key: 'bind-tg', label: t('profilePage.serviceBindTg'), icon: normalizeInlineSvg(telegramIcon), extra: formatMaskedNumber(profile.tgId), tone: 'muted' },
+  { key: 'bind-email', label: t('profilePage.serviceBindEmail'), icon: normalizeInlineSvg(emailIcon), extra: formatMaskedEmail(profile.email), tone: 'muted' },
+  { key: 'change-password', label: t('profilePage.serviceChangePassword'), icon: normalizeInlineSvg(passwordIcon) },
+  { key: 'questions', label: t('profilePage.serviceQuestions'), icon: normalizeInlineSvg(questionCircleIcon) },
+  { key: 'cs', label: t('profilePage.serviceCs'), icon: normalizeInlineSvg(customerServiceIcon) },
 ])
 
 const displayName = computed(() => profile.username || '--')
@@ -371,7 +380,7 @@ async function handleConfirmLogout() {
     <section class="menu-card">
       <button v-for="item in accountMenus" :key="item.key" type="button" class="menu-row" @click="onMenuClick(item)">
         <div class="menu-left">
-          <img :src="item.icon" alt="" class="menu-icon">
+          <span class="menu-icon" v-html="item.icon" />
           <span class="menu-text">{{ item.label }}</span>
         </div>
         <div class="menu-right">
@@ -387,7 +396,7 @@ async function handleConfirmLogout() {
     <section class="menu-card">
       <button v-for="item in promoMenus" :key="item.key" type="button" class="menu-row" @click="onMenuClick(item)">
         <div class="menu-left">
-          <img :src="item.icon" alt="" class="menu-icon">
+          <span class="menu-icon" v-html="item.icon" />
           <span class="menu-text">{{ item.label }}</span>
         </div>
         <div class="menu-right">
@@ -403,7 +412,7 @@ async function handleConfirmLogout() {
     <section class="menu-card">
       <button v-for="item in otherMenus" :key="item.key" type="button" class="menu-row" @click="onMenuClick(item)">
         <div class="menu-left">
-          <img :src="item.icon" alt="" class="menu-icon">
+          <span class="menu-icon" v-html="item.icon" />
           <span class="menu-text">{{ item.label }}</span>
         </div>
         <div class="menu-right">
@@ -498,32 +507,72 @@ async function handleConfirmLogout() {
 <style scoped>
 .profile-page {
   min-height: 100vh;
-  background: #f2f3f7;
-  padding-bottom: calc(16px + env(safe-area-inset-bottom));
+  background-image:
+    radial-gradient(circle at 18% 10%, rgba(212, 175, 55, 0.18), transparent 28%),
+    radial-gradient(circle at 84% 82%, rgba(255, 215, 0, 0.1), transparent 24%),
+    repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 18px,
+      rgba(212, 175, 55, 0.04) 18px,
+      rgba(212, 175, 55, 0.04) 20px
+    ),
+    linear-gradient(180deg, #3e0000 0%, #240000 60%, #150000 100%);
+  padding: 12px 12px calc(88px + env(safe-area-inset-bottom));
+  color: #f8e8c6;
 }
 
 .profile-card {
-  border-radius: 0 0 16px 16px;
-  background: #fff;
-  padding: 16px 16px 20px;
+  position: relative;
+  overflow: hidden;
+  border-radius: 18px;
+  border: 1px solid rgba(212, 175, 55, 0.42);
+  background: linear-gradient(160deg, rgba(126, 0, 0, 0.96) 0%, rgba(82, 0, 0, 0.97) 60%, rgba(43, 0, 0, 0.98) 100%);
+  padding: 18px 16px 18px;
+  box-shadow:
+    0 14px 28px rgba(0, 0, 0, 0.34),
+    inset 0 0 0 1px rgba(255, 248, 214, 0.12);
+}
+
+.profile-card::after {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: 3px;
+  background: linear-gradient(90deg, transparent 0%, #b8860b 18%, #ffd700 50%, #b8860b 82%, transparent 100%);
+}
+
+.profile-card::before {
+  content: '';
+  position: absolute;
+  inset: 3px 0 0;
+  background-image: radial-gradient(rgba(212, 175, 55, 1) 1px, transparent 1px);
+  background-size: 18px 18px;
+  opacity: 0.05;
+  pointer-events: none;
 }
 
 .profile-top {
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
   gap: 12px;
 }
 
 .avatar-box {
-  width: 56px;
-  height: 56px;
-  border-radius: 16px;
-  background: #e8f0fe;
-  border: none;
+  width: 62px;
+  height: 62px;
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(255, 222, 138, 0.18), rgba(92, 18, 0, 0.62));
+  border: 1px solid rgba(212, 175, 55, 0.44);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 0;
+  box-shadow:
+    0 10px 18px rgba(0, 0, 0, 0.26),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18);
 }
 
 .avatar-icon {
@@ -543,36 +592,42 @@ async function handleConfirmLogout() {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-wrap: wrap;
 }
 
 .user-name {
   margin: 0;
-  color: #1a1a2e;
-  font-size: 18px;
+  color: #fff0c9;
+  font-size: 19px;
   line-height: 1.1;
-  font-weight: 700;
+  font-weight: 800;
+  letter-spacing: 0.03em;
 }
 
 .vip-tag {
-  border: 1px solid #f4bf2c;
-  border-radius: 10px;
-  color: #c08a00;
+  border: 1px solid rgba(255, 248, 214, 0.46);
+  border-radius: 999px;
+  color: #5a1b00;
   font-size: 11px;
   line-height: 1;
-  padding: 4px 6px;
-  font-weight: 500;
+  padding: 4px 8px;
+  font-weight: 700;
+  background: linear-gradient(180deg, #ffdf87 0%, #d4af37 100%);
+  box-shadow: 0 4px 10px rgba(75, 25, 0, 0.25);
 }
 
 .user-id {
   margin: 4px 0 0;
-  color: #9ca3af;
+  color: rgba(255, 229, 186, 0.68);
   font-size: 13px;
   line-height: 1;
 }
 
 .balance-row {
+  position: relative;
+  z-index: 1;
   margin-top: 16px;
-  border-top: 1px solid #f0f0f5;
+  border-top: 1px solid rgba(212, 175, 55, 0.2);
   display: flex;
   align-items: center;
   height: 60px;
@@ -591,14 +646,14 @@ async function handleConfirmLogout() {
 }
 
 .balance-value {
-  color: var(--color-primary);
-  font-size: 18px;
+  color: #ffd87f;
+  font-size: 19px;
   line-height: 1;
-  font-weight: 700;
+  font-weight: 800;
 }
 
 .balance-label {
-  color: #9ca3af;
+  color: rgba(255, 229, 186, 0.68);
   font-size: 12px;
   line-height: 1;
 }
@@ -606,58 +661,82 @@ async function handleConfirmLogout() {
 .balance-divider {
   width: 1px;
   height: 30px;
-  background: #f0f0f5;
+  background: rgba(212, 175, 55, 0.2);
 }
 
 .section-label {
-  margin: 14px 0 6px;
-  padding: 0 16px;
-  color: #9ca3af;
-  font-size: 13px;
+  margin: 16px 0 8px;
+  padding: 0 4px;
+  color: #ffd98b;
+  font-size: 11px;
   line-height: 1;
-  font-weight: 500;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
 }
 
 .menu-card {
-  margin: 0 8px;
-  border-radius: 12px;
-  background: #fff;
+  border-radius: 16px;
+  background: linear-gradient(165deg, rgba(118, 0, 0, 0.95), rgba(54, 0, 0, 0.96));
+  border: 1px solid rgba(212, 175, 55, 0.34);
   overflow: hidden;
+  box-shadow:
+    0 12px 24px rgba(0, 0, 0, 0.28),
+    inset 0 0 0 1px rgba(255, 248, 214, 0.08);
 }
 
 .menu-row {
   width: 100%;
-  height: 48px;
+  min-height: 54px;
   border: none;
-  background: #fff;
+  background: transparent;
   padding: 0 16px;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  transition: background-color 0.2s ease;
+}
+
+.menu-row:active {
+  background: rgba(255, 248, 214, 0.05);
 }
 
 .menu-row + .menu-row {
-  border-top: 1px solid #f8f8fb;
+  border-top: 1px solid rgba(212, 175, 55, 0.14);
 }
 
 .menu-left {
   display: flex;
   align-items: center;
   min-width: 0;
-  gap: 12px;
+  gap: 10px;
 }
 
 .menu-icon {
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
   flex: 0 0 auto;
+  color: #ffe7bf;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.menu-icon :deep(svg) {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.menu-icon :deep(path) {
+  fill: currentColor;
 }
 
 .menu-text {
-  color: #1a1a2e;
+  color: #fff0c9;
   font-size: 15px;
   line-height: 1;
-  font-weight: 400;
+  font-weight: 600;
 }
 
 .menu-right {
@@ -672,37 +751,44 @@ async function handleConfirmLogout() {
 }
 
 .menu-extra.success {
-  color: var(--color-primary);
+  color: #ffd87f;
 }
 
 .menu-extra.muted {
-  color: #9ca3af;
+  color: rgba(255, 229, 186, 0.66);
 }
 
 .menu-arrow {
-  color: #d1d5db;
+  color: rgba(255, 229, 186, 0.4);
   font-size: 14px;
 }
 
 .logout-wrap {
-  padding: 20px 16px 24px;
+  padding: 22px 4px 0;
 }
 
 .logout-btn {
   width: 100%;
-  height: 48px;
+  height: 46px;
   border-radius: 24px;
-  border: 1px solid #ff4d4f;
-  background: #fff;
-  color: #ff4d4f;
+  border: 1px solid rgba(212, 175, 55, 0.42);
+  background: linear-gradient(180deg, #a51515 0%, #650000 100%);
+  color: #fff0c9;
   font-size: 15px;
   line-height: 1;
-  font-weight: 500;
+  font-weight: 700;
+  box-shadow:
+    0 12px 22px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 248, 214, 0.18);
 }
 
 .language-popup {
   min-height: 430px;
   padding: 10px 0 28px;
+  background:
+    radial-gradient(circle at top, rgba(212, 175, 55, 0.14), transparent 26%),
+    linear-gradient(180deg, #540000 0%, #280000 100%);
+  border: 1px solid rgba(212, 175, 55, 0.34);
 }
 
 .language-popup-header {
@@ -711,13 +797,13 @@ async function handleConfirmLogout() {
   align-items: center;
   justify-content: center;
   position: relative;
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: 1px solid rgba(212, 175, 55, 0.18);
 }
 
 .language-popup-title {
-  font-size: var(--font-2xl);
-  font-weight: 600;
-  color: var(--color-text-primary);
+  font-size: 18px;
+  font-weight: 700;
+  color: #fff0c9;
 }
 
 .language-popup-close {
@@ -728,22 +814,22 @@ async function handleConfirmLogout() {
   border: none;
   background: transparent;
   font-size: 18px;
-  color: var(--color-text-light);
+  color: rgba(255, 229, 186, 0.7);
   line-height: 1;
   cursor: pointer;
 }
 
 .language-list {
-  padding: var(--page-padding-x);
+  padding: 14px;
 }
 
 .language-item {
   width: 100%;
-  border: 1px solid transparent;
-  border-radius: var(--radius-lg);
-  padding: 14px var(--page-padding-x);
+  border: 1px solid rgba(212, 175, 55, 0.18);
+  border-radius: 16px;
+  padding: 14px;
   margin-bottom: 12px;
-  background: var(--color-bg-card);
+  background: linear-gradient(165deg, rgba(120, 0, 0, 0.84), rgba(58, 0, 0, 0.9));
   display: grid;
   grid-template-columns: 34px 1fr 24px;
   align-items: center;
@@ -755,13 +841,14 @@ async function handleConfirmLogout() {
 }
 
 .language-item.active {
-  border-color: var(--color-border-active);
-  background: var(--color-primary-active);
+  border-color: rgba(255, 248, 214, 0.4);
+  background: linear-gradient(165deg, rgba(142, 38, 0, 0.94), rgba(88, 0, 0, 0.95));
+  box-shadow: 0 10px 18px rgba(0, 0, 0, 0.24);
 }
 
 .language-code {
-  font-size: var(--font-md);
-  color: var(--color-text-primary);
+  font-size: 15px;
+  color: #ffd98b;
 }
 
 .language-text {
@@ -771,49 +858,51 @@ async function handleConfirmLogout() {
 }
 
 .language-text .native {
-  font-size: var(--font-md);
+  font-size: 14px;
   font-weight: 600;
-  color: var(--color-text-primary);
+  color: #fff0c9;
 }
 
 .language-text .english {
-  font-size: var(--font-xs);
-  color: var(--color-text-en);
+  font-size: 11px;
+  color: rgba(255, 229, 186, 0.6);
 }
 
 .language-check {
-  font-size: var(--font-2xl);
-  color: var(--color-primary-link);
+  font-size: 20px;
+  color: #ffd87f;
   text-align: right;
 }
 
 .language-tip {
-  margin: 10px var(--page-padding-x) 0;
+  margin: 10px 16px 0;
   text-align: center;
-  color: var(--color-text-muted);
-  font-size: var(--font-sm);
+  color: rgba(255, 229, 186, 0.56);
+  font-size: 12px;
 }
 
 .avatar-popup {
   min-height: 420px;
   padding: 0 0 24px;
-  background: #edf6f6;
+  background:
+    radial-gradient(circle at top, rgba(212, 175, 55, 0.14), transparent 26%),
+    linear-gradient(180deg, #540000 0%, #280000 100%);
+  border: 1px solid rgba(212, 175, 55, 0.34);
 }
 
 .avatar-popup-header {
   height: 62px;
-  border-bottom: 1px solid #dce6e6;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.16);
   display: flex;
   align-items: center;
   justify-content: center;
   position: relative;
-  background: #fff;
 }
 
 .avatar-popup-title {
   font-size: 18px;
-  font-weight: 600;
-  color: #1a1a2e;
+  font-weight: 700;
+  color: #fff0c9;
 }
 
 .avatar-popup-close {
@@ -823,7 +912,7 @@ async function handleConfirmLogout() {
   transform: translateY(-50%);
   border: 0;
   background: transparent;
-  color: #94a3b8;
+  color: rgba(255, 229, 186, 0.7);
   font-size: 18px;
   line-height: 1;
 }
@@ -849,12 +938,13 @@ async function handleConfirmLogout() {
   height: 72px;
   border-radius: 50%;
   object-fit: cover;
-  border: 2px solid transparent;
-  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.08);
+  border: 2px solid rgba(255, 248, 214, 0.14);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.24);
 }
 
 .avatar-option.active .avatar-option-img {
-  border-color: var(--color-primary);
+  border-color: #ffd87f;
+  box-shadow: 0 0 0 4px rgba(212, 175, 55, 0.18);
 }
 
 .avatar-divider {
@@ -862,7 +952,7 @@ async function handleConfirmLogout() {
   display: flex;
   align-items: center;
   gap: 12px;
-  color: #9ca3af;
+  color: rgba(255, 229, 186, 0.56);
   font-size: 14px;
 }
 
@@ -871,7 +961,7 @@ async function handleConfirmLogout() {
   content: '';
   flex: 1;
   height: 1px;
-  background: #d9e3e3;
+  background: rgba(212, 175, 55, 0.16);
 }
 
 .avatar-upload-wrap {
@@ -881,16 +971,16 @@ async function handleConfirmLogout() {
 .avatar-upload-btn {
   width: 100%;
   height: 48px;
-  border: 1px solid var(--color-border-active);
-  border-radius: 8px;
-  background: var(--color-primary-soft);
-  color: var(--color-primary);
+  border: 1px solid rgba(212, 175, 55, 0.34);
+  border-radius: 14px;
+  background: linear-gradient(180deg, #ffdf87 0%, #d4af37 100%);
+  color: #5a1b00;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
   font-size: 16px;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .avatar-upload-btn:disabled {

@@ -251,12 +251,38 @@ onMounted(() => {
 <style scoped>
 .transform-page {
   min-height: 100vh;
-  background: #f5f6fa;
-  padding-bottom: calc(16px + env(safe-area-inset-bottom));
+  background-image:
+    radial-gradient(circle at 18% 12%, rgba(212, 175, 55, 0.18), transparent 28%),
+    radial-gradient(circle at 82% 84%, rgba(255, 215, 0, 0.12), transparent 24%),
+    repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 18px,
+      rgba(212, 175, 55, 0.04) 18px,
+      rgba(212, 175, 55, 0.04) 20px
+    ),
+    linear-gradient(180deg, #3e0000 0%, #240000 60%, #150000 100%);
+  padding: 0 12px calc(90px + env(safe-area-inset-bottom));
+  color: #fff0c9;
 }
 
 .card {
-  background: #fff;
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(165deg, rgba(118, 0, 0, 0.95), rgba(54, 0, 0, 0.96));
+  border-radius: 18px;
+  border: 1px solid rgba(212, 175, 55, 0.34);
+  box-shadow:
+    0 12px 24px rgba(0, 0, 0, 0.3),
+    inset 0 0 0 1px rgba(255, 248, 214, 0.08);
+}
+
+.card::after {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: 3px;
+  background: linear-gradient(90deg, transparent 0%, #b8860b 18%, #ffd700 50%, #b8860b 82%, transparent 100%);
 }
 
 .flow-row {
@@ -278,63 +304,49 @@ onMounted(() => {
 .flow-item p {
   margin: 0;
   font-size: 11px;
-  color: #6b7280;
+  color: rgba(255, 229, 186, 0.58);
 }
 
 .flow-icon {
   width: 44px;
   height: 44px;
-  border-radius: 50%;
+  border-radius: 14px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   font-size: 18px;
-  color: #fff;
+  color: #5a1b00;
+  background: linear-gradient(180deg, #ffdf87 0%, #d4af37 100%);
 }
 
 .flow-icon-img {
-  width: 24px;
-  height: 24px;
+  width: 22px;
+  height: 22px;
   object-fit: contain;
-  filter: brightness(0) invert(1);
-}
-
-.flow-icon.green {
-  background: var(--color-primary);
-}
-
-.flow-icon.orange {
-  background: #ff9500;
-}
-
-.flow-icon.blue {
-  background: #4a5cff;
+  filter: none;
 }
 
 .flow-arrow {
-  color: #d1d5db;
+  color: rgba(255, 229, 186, 0.34);
   font-size: 14px;
 }
 
 .cards-wrap {
-  padding: 10px 16px 0;
+  padding: 10px 0 0;
   display: grid;
   gap: 10px;
 }
 
 .wallet-card {
-  border-radius: 12px;
-  padding: 12px 14px;
+  border-radius: 18px;
+  padding: 14px;
+  border: 1px solid rgba(212, 175, 55, 0.24);
+  background: rgba(255, 248, 214, 0.05);
 }
 
-.wallet-card.commission {
-  background: var(--color-primary-soft);
-  border: 1px solid var(--color-primary);
-}
-
+.wallet-card.commission,
 .wallet-card.game {
-  background: #eef0ff;
-  border: 1px solid #4a5cff;
+  box-shadow: 0 10px 18px rgba(0, 0, 0, 0.22);
 }
 
 .wallet-row {
@@ -346,26 +358,26 @@ onMounted(() => {
 .wallet-row h3 {
   margin: 0;
   font-size: 13px;
-  color: #1a1a2e;
-  font-weight: 600;
+  color: #fff0c9;
+  font-weight: 700;
 }
 
 .wallet-row span {
   font-size: 11px;
-  color: #6b7280;
+  color: rgba(255, 229, 186, 0.58);
 }
 
 .wallet-value {
   margin: 6px 0 0;
-  color: var(--color-primary);
-  font-size: 16px;
+  color: #ffd87f;
+  font-size: 22px;
   line-height: 1;
-  font-weight: 700;
+  font-weight: 800;
 }
 
 .input-section {
   margin-top: 14px;
-  padding: 14px 16px 8px;
+  padding: 14px 16px 10px;
 }
 
 .input-row {
@@ -377,50 +389,52 @@ onMounted(() => {
 
 .input-label {
   margin: 0;
-  color: #1a1a2e;
-  font-size: 14px;
-  font-weight: 700;
+  color: #ffd98b;
+  font-size: 13px;
+  font-weight: 800;
+  text-transform: uppercase;
 }
 
 .amount-input {
   min-width: 0;
-  height: 32px;
-  border: none;
-  background: transparent;
-  color: #1a1a2e;
+  height: 40px;
+  border: 1px solid rgba(212, 175, 55, 0.18);
+  border-radius: 14px;
+  background: rgba(255, 248, 214, 0.06);
+  color: #fff0c9;
   font-size: 13px;
   outline: none;
+  padding: 0 12px;
 }
 
 .amount-input::placeholder {
-  color: #d1d5db;
+  color: rgba(255, 229, 186, 0.4);
 }
 
 .fill-btn {
-  border: 1px solid var(--color-primary);
-  color: var(--color-primary);
-  background: #fff;
-  border-radius: 16px;
-  height: 30px;
+  border: 1px solid rgba(255, 248, 214, 0.34);
+  color: #5a1b00;
+  background: linear-gradient(180deg, #ffdf87 0%, #d4af37 100%);
+  border-radius: 999px;
+  height: 34px;
   padding: 0 14px;
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 700;
 }
 
 .fill-btn:disabled {
-  border-color: #d1d5db;
-  color: #9ca3af;
+  opacity: 0.45;
 }
 
 .input-hint {
-  margin: 6px 0 0;
+  margin: 8px 0 0;
   text-align: right;
-  color: #9ca3af;
+  color: rgba(255, 229, 186, 0.56);
   font-size: 11px;
 }
 
 .confirm-wrap {
-  padding: 16px;
+  padding: 16px 0;
 }
 
 .confirm-btn {
@@ -428,10 +442,11 @@ onMounted(() => {
   height: 48px;
   border: none;
   border-radius: 24px;
-  color: #fff;
+  color: #5a1b00;
   font-size: 14px;
-  font-weight: 700;
-  background: linear-gradient(90deg, var(--color-primary) 0%, var(--color-primary-gradient-end) 100%);
+  font-weight: 800;
+  background: linear-gradient(180deg, #ffdf87 0%, #d4af37 100%);
+  box-shadow: 0 12px 22px rgba(75, 25, 0, 0.28);
 }
 
 .confirm-btn:disabled {
@@ -452,13 +467,15 @@ onMounted(() => {
 .recent-header h3 {
   margin: 0;
   font-size: 14px;
-  color: #1a1a2e;
-  font-weight: 700;
+  color: #ffd98b;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .recent-header .van-icon {
   margin-left: auto;
-  color: #d1d5db;
+  color: rgba(255, 229, 186, 0.34);
 }
 
 .state-wrap {
@@ -473,26 +490,26 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-top: 1px solid #f0f0f5;
+  border-top: 1px solid rgba(212, 175, 55, 0.12);
 }
 
 .recent-title {
   margin: 0;
-  color: #1a1a2e;
+  color: #fff0c9;
   font-size: 13px;
 }
 
 .recent-time {
   margin: 3px 0 0;
-  color: #9ca3af;
+  color: rgba(255, 229, 186, 0.54);
   font-size: 11px;
 }
 
 .recent-amount {
   margin: 0;
-  color: var(--color-primary);
+  color: #ffd87f;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .empty-state {
@@ -506,18 +523,19 @@ onMounted(() => {
 .empty-icon {
   width: 100px;
   height: 100px;
-  border-radius: 12px;
-  background: #f5f6fa;
-  color: #d1d5db;
+  border-radius: 18px;
+  background: rgba(255, 248, 214, 0.06);
+  color: rgba(255, 229, 186, 0.28);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   font-size: 18px;
+  border: 1px solid rgba(212, 175, 55, 0.16);
 }
 
 .empty-state p {
   margin: 0;
-  color: #9ca3af;
+  color: rgba(255, 229, 186, 0.56);
   font-size: 14px;
 }
 </style>

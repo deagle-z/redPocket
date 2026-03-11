@@ -14,16 +14,21 @@ const displayText = computed(() => props.text || t('common.noMore'))
   <div class="app-empty" :style="{ minHeight: `${props.minHeight}px` }">
     <div class="empty-illustration" aria-hidden="true">
       <svg viewBox="0 0 160 120" class="empty-svg">
-        <rect x="14" y="84" width="132" height="28" rx="2" fill="#d5d9de" />
-        <rect x="46" y="28" width="68" height="64" rx="3" fill="#e2e5e9" />
-        <rect x="52" y="34" width="56" height="50" rx="2" fill="#f3f5f7" />
-        <rect x="60" y="45" width="40" height="8" rx="2" fill="#d6d9de" />
-        <rect x="60" y="59" width="40" height="8" rx="2" fill="#d6d9de" />
-        <rect x="60" y="73" width="40" height="8" rx="2" fill="#d6d9de" />
-        <rect x="68" y="95" width="24" height="6" rx="1" fill="#e7eaee" />
-        <path d="M18 30l5-7 5 7z" fill="#eef1f4" />
-        <path d="M124 22l6-8 6 8z" fill="#eef1f4" />
-        <rect x="129" y="22" width="14" height="22" rx="2" fill="#eef1f4" />
+        <!-- Ground/shelf -->
+        <rect x="14" y="84" width="132" height="28" rx="2" fill="rgba(212,175,55,0.12)" />
+        <!-- Envelope body -->
+        <rect x="46" y="28" width="68" height="64" rx="3" fill="rgba(140,0,0,0.5)" />
+        <!-- Envelope front -->
+        <rect x="52" y="34" width="56" height="50" rx="2" fill="rgba(100,0,0,0.6)" />
+        <!-- Gold dot lines -->
+        <rect x="60" y="45" width="40" height="5" rx="2" fill="rgba(212,175,55,0.35)" />
+        <rect x="60" y="57" width="40" height="5" rx="2" fill="rgba(212,175,55,0.25)" />
+        <rect x="60" y="69" width="28" height="5" rx="2" fill="rgba(212,175,55,0.2)" />
+        <!-- Decorative triangles -->
+        <path d="M68 95h24v6H68z" rx="1" fill="rgba(212,175,55,0.15)" />
+        <path d="M18 30l5-7 5 7z" fill="rgba(212,175,55,0.2)" />
+        <path d="M124 22l6-8 6 8z" fill="rgba(212,175,55,0.2)" />
+        <rect x="129" y="22" width="14" height="22" rx="2" fill="rgba(212,175,55,0.12)" />
       </svg>
     </div>
     <p class="empty-text">
@@ -35,8 +40,9 @@ const displayText = computed(() => props.text || t('common.noMore'))
 <style scoped>
 .app-empty {
   width: 100%;
-  border-radius: 8px;
-  background: #f8f9fb;
+  border-radius: 12px;
+  background: rgba(80, 0, 0, 0.3);
+  border: 1px solid rgba(212, 175, 55, 0.18);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -45,8 +51,9 @@ const displayText = computed(() => props.text || t('common.noMore'))
 }
 
 .empty-illustration {
-  width: 160px;
-  height: 100px;
+  width: 130px;
+  height: 80px;
+  opacity: 0.75;
 }
 
 .empty-svg {
@@ -57,8 +64,9 @@ const displayText = computed(() => props.text || t('common.noMore'))
 
 .empty-text {
   margin: 0;
-  color: #6b7280;
+  color: rgba(255, 229, 186, 0.5);
   font-size: 12px;
   line-height: 1;
+  letter-spacing: 0.04em;
 }
 </style>

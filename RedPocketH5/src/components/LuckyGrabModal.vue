@@ -10,6 +10,7 @@ interface Props {
   grabIndex?: number
   senderName?: string
   closeOnClickOverlay?: boolean
+  showResultToast?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -17,6 +18,7 @@ const props = withDefaults(defineProps<Props>(), {
   grabIndex: 0,
   senderName: '',
   closeOnClickOverlay: true,
+  showResultToast: true,
 })
 
 const emit = defineEmits<{
@@ -117,12 +119,14 @@ async function submitGrab(): Promise<boolean> {
     resultAmountText.value = formatAmount(rawAmount)
     loseMoneyText.value = formatAmount(rawLoseMoney)
     resultReady.value = true
-    showToast(data?.message || t('grabModal.grabSuccess'))
+    if (props.showResultToast)
+      showToast(data?.message || t('grabModal.grabSuccess'))
     emit('success', { luckyId, grabIndex, data })
     return true
   }
   catch {
-    showToast(t('grabModal.grabFailed'))
+    if (props.showResultToast)
+      showToast(t('grabModal.grabFailed'))
     return false
   }
   finally {

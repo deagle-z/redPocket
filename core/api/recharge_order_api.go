@@ -131,7 +131,8 @@ func AppCreateRechargeOrder(ctx *gin.Context) {
 	}
 
 	db := ctx.MustGet("db").(*gorm.DB)
-	result, err := repository.AppCreateRechargeOrder(db, userID, req)
+	hostInfo := ctx.MustGet("hostInfo").(pojo.HostInfo)
+	result, err := repository.AppCreateRechargeOrder(db, userID, req, hostInfo.TablePrefix)
 	if err != nil {
 		utils.ErrorBack(ctx, err.Error())
 		return

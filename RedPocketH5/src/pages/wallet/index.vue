@@ -31,8 +31,8 @@ const txPageSize = 20
 const totalAsset = computed(() => wallet.balance + wallet.commission)
 
 const assetRows = computed(() => [
-  { key: 'balance', label: t('walletPage.assetBalance'), unit: CURRENCY_CODE, value: wallet.balance, emoji: '💰', tone: 'gold' },
-  { key: 'commission', label: t('walletPage.assetCommission'), unit: CURRENCY_CODE, value: wallet.commission, emoji: '💵', tone: 'green' },
+  { key: 'balance', label: t('walletPage.assetBalance'), unit: CURRENCY_CODE, value: wallet.balance, icon: 'gold-coin-o', tone: 'gold' },
+  { key: 'commission', label: t('walletPage.assetCommission'), unit: CURRENCY_CODE, value: wallet.commission, icon: 'balance-list-o', tone: 'green' },
 ])
 
 function goBack() {
@@ -207,7 +207,9 @@ onMounted(() => {
         class="list-row"
       >
         <div class="row-left">
-          <span class="row-icon" :class="item.tone">{{ item.emoji }}</span>
+          <span class="row-icon" :class="item.tone">
+            <van-icon :name="item.icon" />
+          </span>
           <div class="row-meta">
             <p>{{ item.label }}</p>
             <span>{{ item.unit }}</span>
@@ -237,7 +239,9 @@ onMounted(() => {
           class="list-row"
         >
           <div class="row-left">
-            <span class="row-icon tx">💬</span>
+            <span class="row-icon tx">
+              <van-icon name="records-o" />
+            </span>
             <div class="row-meta">
               <p>{{ item.title }}</p>
               <span>{{ item.time }}</span>
@@ -258,85 +262,116 @@ onMounted(() => {
 <style scoped>
 .wallet-page {
   min-height: 100vh;
-  background: #f4f6fa;
-  padding: 0 0 calc(14px + env(safe-area-inset-bottom));
+  background-image:
+    radial-gradient(circle at 18% 12%, rgba(212, 175, 55, 0.18), transparent 28%),
+    radial-gradient(circle at 82% 84%, rgba(255, 215, 0, 0.12), transparent 24%),
+    repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 18px,
+      rgba(212, 175, 55, 0.04) 18px,
+      rgba(212, 175, 55, 0.04) 20px
+    ),
+    linear-gradient(180deg, #3e0000 0%, #240000 60%, #150000 100%);
+  padding: 0 12px calc(90px + env(safe-area-inset-bottom));
 }
 
 .card {
-  background: #fff;
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(165deg, rgba(118, 0, 0, 0.96), rgba(54, 0, 0, 0.97));
+  border-radius: 18px;
+  border: 1px solid rgba(212, 175, 55, 0.38);
+  box-shadow:
+    0 14px 28px rgba(0, 0, 0, 0.32),
+    inset 0 0 0 1px rgba(255, 248, 214, 0.08);
+}
+
+.card::after {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: 3px;
+  background: linear-gradient(90deg, transparent 0%, #b8860b 18%, #ffd700 50%, #b8860b 82%, transparent 100%);
 }
 
 .asset-card {
   margin-top: 10px;
-  padding: 24px 16px 20px;
+  padding: 24px 16px 18px;
   text-align: center;
 }
 
 .asset-label {
   margin: 0;
-  color: #6b7280;
-  font-size: 14px;
-  font-weight: 500;
+  color: rgba(255, 229, 186, 0.66);
+  font-size: 13px;
+  font-weight: 600;
 }
 
 .asset-value {
   margin: 8px 0 0;
-  color: var(--color-primary);
-  font-size: 18px;
+  color: #ffd87f;
+  font-size: 28px;
   line-height: 1;
-  font-weight: 700;
+  font-weight: 800;
+  letter-spacing: 0.04em;
 }
 
 .action-row {
   margin-top: 20px;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
 }
 
 .asset-action {
-  border: 0;
-  background: transparent;
+  min-height: 78px;
+  border: 1px solid rgba(212, 175, 55, 0.22);
+  border-radius: 16px;
+  background: rgba(255, 248, 214, 0.05);
   display: inline-flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 6px;
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 700;
 }
 
 .asset-action.recharge {
-  color: var(--color-primary);
+  color: #ffd87f;
 }
 
 .asset-action.withdraw {
-  color: #ff9500;
+  color: #ffd3a0;
 }
 
 .asset-action.transfer {
-  color: #4a5cff;
+  color: #ffe7b4;
 }
 
 .action-icon {
   width: 44px;
   height: 44px;
-  border-radius: 12px;
+  border-radius: 14px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   font-size: 18px;
+  border: 1px solid rgba(255, 248, 214, 0.16);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
 }
 
 .asset-action.recharge .action-icon {
-  background: #f0f7ff;
+  background: linear-gradient(180deg, rgba(255, 223, 135, 0.2), rgba(94, 10, 0, 0.28));
 }
 
 .asset-action.withdraw .action-icon {
-  background: #fff4e5;
+  background: linear-gradient(180deg, rgba(255, 207, 138, 0.2), rgba(94, 10, 0, 0.28));
 }
 
 .asset-action.transfer .action-icon {
-  background: #f0f7ff;
+  background: linear-gradient(180deg, rgba(255, 248, 214, 0.18), rgba(94, 10, 0, 0.28));
 }
 
 .list-card {
@@ -353,20 +388,21 @@ onMounted(() => {
 
 .list-header p {
   margin: 0;
-  color: #1a1a2e;
+  color: #fff0c9;
   font-size: 15px;
-  font-weight: 700;
+  font-weight: 800;
+  letter-spacing: 0.04em;
 }
 
 .list-header :deep(.van-icon) {
-  color: #d1d5db;
+  color: rgba(255, 229, 186, 0.4);
   font-size: 18px;
 }
 
 .list-row {
   min-height: 58px;
   padding: 12px 16px;
-  border-top: 1px solid #f5f5f5;
+  border-top: 1px solid rgba(212, 175, 55, 0.12);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -388,15 +424,16 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   font-size: 14px;
+  border: 1px solid rgba(212, 175, 55, 0.2);
 }
 
 .row-icon.gold,
 .row-icon.tx {
-  background: #fff4e5;
+  background: linear-gradient(180deg, rgba(255, 223, 135, 0.18), rgba(94, 10, 0, 0.24));
 }
 
 .row-icon.green {
-  background: var(--color-primary-soft);
+  background: linear-gradient(180deg, rgba(255, 248, 214, 0.18), rgba(94, 10, 0, 0.24));
 }
 
 .row-meta {
@@ -405,7 +442,7 @@ onMounted(() => {
 
 .row-meta p {
   margin: 0;
-  color: #1a1a2e;
+  color: #fff0c9;
   font-size: 14px;
   font-weight: 600;
 }
@@ -413,13 +450,13 @@ onMounted(() => {
 .row-meta span {
   display: block;
   margin-top: 2px;
-  color: #9ca3af;
+  color: rgba(255, 229, 186, 0.58);
   font-size: 11px;
 }
 
 .row-value {
   margin: 0;
-  color: #1a1a2e;
+  color: #fff0c9;
   font-size: 14px;
   line-height: 1;
   font-weight: 700;
@@ -427,17 +464,17 @@ onMounted(() => {
 }
 
 .row-value.income {
-  color: var(--color-primary);
+  color: #ffd87f;
 }
 
 .row-value.expense {
-  color: #ff4d4f;
+  color: #ffb7a7;
 }
 
 .wallet-empty {
   padding: 18px 16px 22px;
   text-align: center;
-  color: #9ca3af;
+  color: rgba(255, 229, 186, 0.56);
   font-size: 13px;
 }
 </style>

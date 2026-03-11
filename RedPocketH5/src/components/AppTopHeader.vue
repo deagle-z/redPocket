@@ -201,6 +201,7 @@ function goRecharge() {
   line-height: 1;
   background: linear-gradient(to bottom, #cfb53b, #8a6e14, #d4af37);
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 

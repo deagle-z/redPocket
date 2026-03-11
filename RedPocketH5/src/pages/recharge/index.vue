@@ -232,50 +232,46 @@ onMounted(() => {
 </route>
 
 <style scoped>
-@import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&display=swap');
-
 .recharge-page {
-  --page-bg: #f3f6fb;
-  --card-bg: #ffffff;
-  --text-main: #141a22;
-  --text-sub: #6b7280;
-  --accent: var(--color-primary-medium);
-  --accent-soft: var(--color-primary-soft);
-  --stroke: #e4e9f0;
-  --shadow: 0 12px 28px rgba(21, 32, 56, 0.08);
-  font-family: 'Sora', sans-serif;
-  color: var(--text-main);
-  padding-bottom: 16px;
-  min-height: calc(100vh - 32px);
-  background:
-    radial-gradient(circle at top right, rgba(var(--color-primary-medium-rgb), 0.12), transparent 45%),
-    linear-gradient(180deg, #f7f9fc 0%, #eef2f8 100%);
-  position: relative;
-}
-
-.recharge-page::before {
-  content: '';
-  position: absolute;
-  top: 80px;
-  right: -40px;
-  width: 120px;
-  height: 120px;
-  background: rgba(var(--color-primary-medium-rgb), 0.08);
-  border-radius: 28px;
-  transform: rotate(12deg);
+  min-height: 100vh;
+  background-image:
+    radial-gradient(circle at 18% 12%, rgba(212, 175, 55, 0.18), transparent 28%),
+    radial-gradient(circle at 82% 84%, rgba(255, 215, 0, 0.12), transparent 24%),
+    repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 18px,
+      rgba(212, 175, 55, 0.04) 18px,
+      rgba(212, 175, 55, 0.04) 20px
+    ),
+    linear-gradient(180deg, #3e0000 0%, #240000 60%, #150000 100%);
+  color: #fff0c9;
+  padding: 0 12px calc(90px + env(safe-area-inset-bottom));
 }
 
 .recharge-header {
-  margin-bottom: 14px;
+  margin-bottom: 12px;
 }
 
 .card {
-  background: var(--card-bg);
-  border-radius: 14px;
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(165deg, rgba(118, 0, 0, 0.95), rgba(54, 0, 0, 0.96));
+  border-radius: 18px;
   padding: 14px 16px;
-  box-shadow: var(--shadow);
-  border: 1px solid rgba(228, 233, 240, 0.7);
-  margin-bottom: 14px;
+  border: 1px solid rgba(212, 175, 55, 0.34);
+  box-shadow:
+    0 12px 24px rgba(0, 0, 0, 0.3),
+    inset 0 0 0 1px rgba(255, 248, 214, 0.08);
+  margin-bottom: 12px;
+}
+
+.card::after {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: 3px;
+  background: linear-gradient(90deg, transparent 0%, #b8860b 18%, #ffd700 50%, #b8860b 82%, transparent 100%);
 }
 
 .balance-card {
@@ -285,96 +281,112 @@ onMounted(() => {
 }
 
 .card-label {
-  font-size: 14px;
-  color: var(--text-sub);
+  font-size: 13px;
+  color: rgba(255, 229, 186, 0.62);
   margin: 0 0 6px;
 }
 
 .card-value {
-  font-size: 16px;
-  font-weight: 600;
+  font-size: 26px;
+  font-weight: 800;
   margin: 0;
+  color: #ffd87f;
+  letter-spacing: 0.04em;
 }
 
 .card-chip {
-  width: 42px;
-  height: 42px;
-  border-radius: 12px;
-  background: var(--accent-soft);
-  color: var(--accent);
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #ffdf87 0%, #d4af37 100%);
+  color: #5a1b00;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-weight: 700;
+  font-weight: 800;
+  box-shadow: 0 8px 18px rgba(75, 25, 0, 0.24);
 }
 
 .card h2 {
-  font-size: 15px;
-  font-weight: 600;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #ffd98b;
   margin: 0 0 12px;
 }
 
 .pill-group {
   display: flex;
-  gap: 12px;
+  gap: 10px;
 }
 
 .pill {
   flex: 1;
-  border-radius: 10px;
-  border: 1px solid var(--stroke);
-  background: #fff;
-  padding: 10px 12px;
-  font-weight: 600;
-  color: var(--text-main);
+  border-radius: 14px;
+  border: 1px solid rgba(212, 175, 55, 0.2);
+  background: rgba(255, 248, 214, 0.06);
+  padding: 12px;
+  font-weight: 700;
+  color: #fff0c9;
 }
 
 .pill.active {
-  background: var(--accent);
-  color: #fff;
-  border-color: var(--accent);
-  box-shadow: 0 6px 14px rgba(var(--color-primary-medium-rgb), 0.2);
+  background: linear-gradient(180deg, #ffdf87 0%, #d4af37 100%);
+  color: #5a1b00;
+  border-color: rgba(255, 248, 214, 0.34);
+  box-shadow: 0 8px 18px rgba(75, 25, 0, 0.24);
 }
 
 .amount-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
+  gap: 10px;
 }
 
 .amount-item {
-  border-radius: 12px;
-  border: 1px solid var(--stroke);
-  background: #fff;
+  border-radius: 14px;
+  border: 1px solid rgba(212, 175, 55, 0.2);
+  background: rgba(255, 248, 214, 0.06);
   padding: 14px 0;
-  font-weight: 600;
-  color: var(--text-main);
+  font-weight: 700;
+  color: #fff0c9;
   font-size: 14px;
 }
 
 .amount-item.active {
-  border-color: var(--accent);
-  background: var(--accent-soft);
-  color: var(--accent);
+  border-color: rgba(255, 248, 214, 0.34);
+  background: linear-gradient(180deg, rgba(255, 223, 135, 0.18), rgba(116, 24, 0, 0.28));
+  color: #ffd87f;
 }
 
 .custom-input {
   margin-top: 12px;
-  border-radius: 10px;
+  border-radius: 14px;
   overflow: hidden;
-  border: 1px solid var(--stroke);
+  border: 1px solid rgba(212, 175, 55, 0.18);
+  background: rgba(255, 248, 214, 0.05);
+}
+
+:deep(.custom-input .van-field__label),
+:deep(.custom-input .van-field__control) {
+  color: #fff0c9;
+}
+
+:deep(.custom-input .van-field__control::placeholder) {
+  color: rgba(255, 229, 186, 0.4);
 }
 
 .pay-list {
   display: grid;
-  gap: 12px;
+  gap: 10px;
 }
 
 .pay-item {
   width: 100%;
-  border-radius: 12px;
-  border: 1px solid var(--stroke);
-  background: #fff;
+  border-radius: 16px;
+  border: 1px solid rgba(212, 175, 55, 0.2);
+  background: rgba(255, 248, 214, 0.05);
   padding: 12px;
   display: flex;
   align-items: center;
@@ -383,8 +395,9 @@ onMounted(() => {
 }
 
 .pay-item.active {
-  border-color: var(--accent);
-  box-shadow: 0 8px 18px rgba(var(--color-primary-medium-rgb), 0.16);
+  border-color: rgba(255, 248, 214, 0.34);
+  background: linear-gradient(180deg, rgba(255, 223, 135, 0.16), rgba(116, 24, 0, 0.24));
+  box-shadow: 0 8px 18px rgba(75, 25, 0, 0.24);
 }
 
 .pay-left {
@@ -394,38 +407,39 @@ onMounted(() => {
 }
 
 .pay-logo {
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
-  background: #101828;
-  color: #fff;
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #ffdf87 0%, #d4af37 100%);
+  color: #5a1b00;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-weight: 700;
+  font-weight: 800;
 }
 
 .pay-name {
-  font-weight: 600;
+  font-weight: 700;
   margin: 0;
+  color: #fff0c9;
 }
 
 .pay-sub {
   margin: 2px 0 0;
   font-size: 12px;
-  color: var(--text-sub);
+  color: rgba(255, 229, 186, 0.58);
 }
 
 .pay-check {
-  width: 26px;
-  height: 26px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
-  border: 1px solid var(--stroke);
+  border: 1px solid rgba(212, 175, 55, 0.24);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: var(--accent);
-  background: #fff;
+  color: #ffd87f;
+  background: rgba(255, 248, 214, 0.08);
 }
 
 .pay-item:not(.active) .pay-check {
@@ -434,9 +448,11 @@ onMounted(() => {
 
 .confirm-btn {
   margin-top: 18px;
-  background: var(--accent);
   border: none;
-  font-weight: 600;
-  letter-spacing: 0.5px;
+  background: linear-gradient(180deg, #ffdf87 0%, #d4af37 100%) !important;
+  color: #5a1b00 !important;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  box-shadow: 0 12px 22px rgba(75, 25, 0, 0.28);
 }
 </style>

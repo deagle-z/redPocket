@@ -205,6 +205,7 @@ func GetLuckyMoneyAppList(db *gorm.DB, search pojo.LuckyMoneyAppListSearch, curr
 		HitCount     int64 `gorm:"column:hit_count"`
 	}
 	luckyCountMap := map[int64]luckyCountRow{}
+	grabbedCountMap := map[int64]int64{}
 	var countRows []luckyCountRow
 	_ = db.Model(&pojo.LuckyHistory{}).
 		Select("lucky_id, COUNT(1) AS grabbed_count, SUM(CASE WHEN is_thunder = 1 THEN 1 ELSE 0 END) AS hit_count").
@@ -213,6 +214,7 @@ func GetLuckyMoneyAppList(db *gorm.DB, search pojo.LuckyMoneyAppListSearch, curr
 		Scan(&countRows).Error
 	for _, row := range countRows {
 		luckyCountMap[row.LuckyID] = row
+		grabbedCountMap[row.LuckyID] = row.GrabbedCount
 	}
 
 	itemMap := map[int64][]pojo.LuckyMoneyItem{}
@@ -222,6 +224,7 @@ func GetLuckyMoneyAppList(db *gorm.DB, search pojo.LuckyMoneyAppListSearch, curr
 		id := int64(item.RedPacketID)
 		itemMap[id] = append(itemMap[id], item)
 	}
+	hideSeqMap := buildPendingSecondLastHideSeqMap(luckyMoneyList, grabbedCountMap, itemMap, time.Now())
 
 	for _, lucky := range luckyMoneyList {
 		var itemBack pojo.LuckyMoneyAppBack
@@ -259,10 +262,16 @@ func GetLuckyMoneyAppList(db *gorm.DB, search pojo.LuckyMoneyAppListSearch, curr
 			if it.GrabbedUid != nil && uint64(currentUserID) == *it.GrabbedUid {
 				isMine = 1
 			}
+			amount := it.Amount
+			thunderAmount := it.ThunderAmount
+			if hideSeq, ok := hideSeqMap[lucky.ID]; ok && hideSeq == it.SeqNo {
+				amount = 0
+				thunderAmount = 0
+			}
 			itemBack.Items = append(itemBack.Items, pojo.LuckyMoneyAppItemBack{
 				SeqNo:         it.SeqNo,
-				Amount:        it.Amount,
-				ThunderAmount: it.ThunderAmount,
+				Amount:        amount,
+				ThunderAmount: thunderAmount,
 				IsGrabbed:     it.IsGrabbed,
 				Thunder:       it.Thunder,
 				IsGrabMine:    isMine,
@@ -278,8 +287,9 @@ func GetLuckyMoneyAppList(db *gorm.DB, search pojo.LuckyMoneyAppListSearch, curr
 }
 
 // GetLuckyMoneyAppDetail app端红包详情
-func GetLuckyMoneyAppDetail(db *gorm.DB, luckyID int64) (pojo.LuckyMoneyAppDetailResp, error) {
+func GetLuckyMoneyAppDetail(db *gorm.DB, luckyID int64, currentUserID int64) (pojo.LuckyMoneyAppDetailResp, error) {
 	var result pojo.LuckyMoneyAppDetailResp
+	_ = currentUserID
 	cacheKey := fmt.Sprintf("bgu_lucky_detail_%d", luckyID)
 	if utils.RD != nil {
 		if cacheStr, err := utils.RD.Get(context.Background(), cacheKey).Result(); err == nil && cacheStr != "" {
@@ -363,14 +373,37 @@ func GetLuckyMoneyAppDetail(db *gorm.DB, luckyID int64) (pojo.LuckyMoneyAppDetai
 		Where("i.red_packet_id = ? AND i.is_grabbed = 1", base.ID).
 		Order("i.seq_no asc").
 		Scan(&rows).Error
+	hideSeqNo := uint(0)
+	now := time.Now()
+	if shouldHidePendingSecondLastAmount(base.Status, expireAt, base.Number, len(rows), now) {
+		var (
+			latestRow participantRow
+			found     bool
+		)
+		for _, row := range rows {
+			if !found || row.CreatedAt.After(latestRow.CreatedAt) {
+				latestRow = row
+				found = true
+			}
+		}
+		if found {
+			hideSeqNo = latestRow.SeqNo
+		}
+	}
 	for _, row := range rows {
+		amount := row.Amount
+		thunderAmount := row.ThunderAmount
+		if hideSeqNo > 0 && hideSeqNo == row.SeqNo {
+			amount = 0
+			thunderAmount = 0
+		}
 		result.Participants = append(result.Participants, pojo.LuckyMoneyAppDetailParticipant{
 			SeqNo:         row.SeqNo,
 			UserID:        row.UserID,
 			FirstName:     row.FirstName,
 			Avatar:        row.Avatar,
-			Amount:        row.Amount,
-			ThunderAmount: row.ThunderAmount,
+			Amount:        amount,
+			ThunderAmount: thunderAmount,
 			IsThunder:     row.IsThunder,
 			CreatedAt:     row.CreatedAt,
 		})
@@ -415,4 +448,67 @@ func GetLuckyMoneyAppDetail(db *gorm.DB, luckyID int64) (pojo.LuckyMoneyAppDetai
 		}
 	}
 	return result, nil
+}
+
+func buildPendingSecondLastHideSeqMap(
+	luckyMoneyList []pojo.LuckyMoney,
+	grabbedCountMap map[int64]int64,
+	itemMap map[int64][]pojo.LuckyMoneyItem,
+	now time.Time,
+) map[int64]uint {
+	result := make(map[int64]uint)
+	for _, lucky := range luckyMoneyList {
+		grabbedCount, ok := grabbedCountMap[lucky.ID]
+		if !ok {
+			continue
+		}
+		expireAt := lucky.ExpireTime
+		if expireAt.IsZero() {
+			expireAt = lucky.CreatedAt.Add(3 * time.Minute)
+		}
+		if !shouldHidePendingSecondLastAmount(lucky.Status, expireAt, lucky.Number, int(grabbedCount), now) {
+			continue
+		}
+		latest, found := findLatestGrabbedItem(itemMap[lucky.ID])
+		if !found || latest.GrabbedUid == nil {
+			continue
+		}
+		result[lucky.ID] = latest.SeqNo
+	}
+	return result
+}
+
+func shouldHidePendingSecondLastAmount(status int, expireAt time.Time, totalCount int, grabbedCount int, now time.Time) bool {
+	if status != 1 {
+		return false
+	}
+	if totalCount <= 1 {
+		return false
+	}
+	if grabbedCount != totalCount-1 {
+		return false
+	}
+	return now.Before(expireAt)
+}
+
+func findLatestGrabbedItem(items []pojo.LuckyMoneyItem) (pojo.LuckyMoneyItem, bool) {
+	var latest pojo.LuckyMoneyItem
+	found := false
+	for _, it := range items {
+		if it.IsGrabbed != 1 || it.GrabbedUid == nil {
+			continue
+		}
+		if !found || itemGrabTime(it).After(itemGrabTime(latest)) {
+			latest = it
+			found = true
+		}
+	}
+	return latest, found
+}
+
+func itemGrabTime(item pojo.LuckyMoneyItem) time.Time {
+	if item.GrabbedAt != nil {
+		return *item.GrabbedAt
+	}
+	return item.UpdatedAt
 }

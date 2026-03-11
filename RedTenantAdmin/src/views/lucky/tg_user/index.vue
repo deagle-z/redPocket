@@ -58,6 +58,7 @@ function formatMoney(val?: number | null) {
 
 function buildQueryPayload() {
   const payload: Record<string, any> = {};
+  payload.isBot = false;
   if (form.username) payload.username = form.username;
   if (form.firstName) payload.firstName = form.firstName;
   if (form.parentId !== undefined) payload.parentId = form.parentId;

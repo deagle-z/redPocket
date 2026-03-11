@@ -128,6 +128,6 @@ func GetTgUsersWithSubStatsSummary(ctx *gin.Context) {
 		utils.ErrorBack(ctx, err.Error())
 		return
 	}
-	result := tenantRepo.GetTgUsersWithSubStatsSummary(getDB(ctx), search.ParentID)
+	result := tenantRepo.GetTgUsersWithSubStatsSummary(getDB(ctx), search)
 	utils.SuccessObjBack(ctx, result)
 }

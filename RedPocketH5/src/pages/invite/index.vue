@@ -294,15 +294,40 @@ onMounted(() => {
 <style scoped>
 .invite-page {
   min-height: 100vh;
-  background: #fff;
-  padding: 0 8px calc(16px + env(safe-area-inset-bottom));
+  background-image:
+    radial-gradient(circle at 18% 12%, rgba(212, 175, 55, 0.18), transparent 28%),
+    radial-gradient(circle at 82% 84%, rgba(255, 215, 0, 0.12), transparent 24%),
+    repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 18px,
+      rgba(212, 175, 55, 0.04) 18px,
+      rgba(212, 175, 55, 0.04) 20px
+    ),
+    linear-gradient(180deg, #3e0000 0%, #240000 60%, #150000 100%);
+  padding: 0 12px calc(90px + env(safe-area-inset-bottom));
+  color: #fff0c9;
 }
 
 .card {
-  background: #fff;
-  border-radius: 12px;
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(165deg, rgba(118, 0, 0, 0.95), rgba(54, 0, 0, 0.96));
+  border-radius: 18px;
   padding: 14px;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
+  border: 1px solid rgba(212, 175, 55, 0.34);
+  box-shadow:
+    0 12px 24px rgba(0, 0, 0, 0.3),
+    inset 0 0 0 1px rgba(255, 248, 214, 0.08);
+}
+
+.card::after {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: 3px;
+  background: linear-gradient(90deg, transparent 0%, #b8860b 18%, #ffd700 50%, #b8860b 82%, transparent 100%);
 }
 
 .qr-card {
@@ -311,13 +336,14 @@ onMounted(() => {
 
 .qr-card h2 {
   margin: 0;
-  font-size: 18px;
-  color: #1f2937;
+  font-size: 20px;
+  color: #ffd98b;
+  letter-spacing: 0.06em;
 }
 
 .sub-title {
   margin: 8px 0 12px;
-  color: #4b5563;
+  color: rgba(255, 229, 186, 0.62);
   font-size: 12px;
 }
 
@@ -339,10 +365,11 @@ onMounted(() => {
 .main-btn {
   height: 44px;
   border: none;
-  border-radius: 8px;
-  background: var(--color-primary);
-  color: #fff;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #ffdf87 0%, #d4af37 100%);
+  color: #5a1b00;
   font-size: 12px;
+  font-weight: 800;
 }
 
 .link-card {
@@ -355,14 +382,14 @@ onMounted(() => {
 }
 
 .link-row + .link-row {
-  border-top: 1px solid #eff2f5;
+  border-top: 1px solid rgba(212, 175, 55, 0.12);
 }
 
 .link-title {
   margin: 0;
-  color: #4b5563;
+  color: #ffd98b;
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .link-content {
@@ -375,7 +402,7 @@ onMounted(() => {
 .link-content p {
   margin: 0;
   flex: 1;
-  color: #6b8ce6;
+  color: rgba(255, 229, 186, 0.78);
   font-size: 12px;
   word-break: break-all;
 }
@@ -384,24 +411,27 @@ onMounted(() => {
   flex-shrink: 0;
   min-width: 76px;
   height: 40px;
-  border-radius: 10px;
-  border: 1px solid var(--color-primary-link);
-  background: var(--color-primary-soft);
-  color: var(--color-primary);
+  border-radius: 999px;
+  border: 1px solid rgba(255, 248, 214, 0.3);
+  background: linear-gradient(180deg, #ffdf87 0%, #d4af37 100%);
+  color: #5a1b00;
   font-size: 12px;
+  font-weight: 800;
 }
 
 .section-title {
   margin: 0;
-  font-size: 18px;
-  font-weight: 500;
-  color: #1f2937;
+  font-size: 14px;
+  font-weight: 800;
+  color: #ffd98b;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .rule-list {
   margin: 10px 0 0;
   padding-left: 18px;
-  color: #111827;
+  color: rgba(255, 229, 186, 0.78);
   font-size: 13px;
   line-height: 1.7;
 }
@@ -453,12 +483,12 @@ onMounted(() => {
   margin: 0 0 8px;
   font-size: 15px;
   font-weight: 700;
-  color: #1f2937;
+  color: #fff0c9;
 }
 
 .benefit-desc {
   margin: 0;
-  color: #6b7280;
+  color: rgba(255, 229, 186, 0.62);
   font-size: 13px;
   line-height: 1.35;
 }
@@ -477,7 +507,7 @@ onMounted(() => {
   top: 8px;
   bottom: 12px;
   width: 2px;
-  background: var(--color-primary);
+  background: rgba(212, 175, 55, 0.4);
 }
 
 .steps li {
@@ -493,7 +523,7 @@ onMounted(() => {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--color-primary);
+  background: #ffd87f;
 }
 
 .steps li:last-child::before {
@@ -504,9 +534,9 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--color-primary);
+  background: #ffd87f;
   content: '✓';
-  color: #fff;
+  color: #5a1b00;
   font-size: 12px;
   font-weight: 700;
 }
@@ -514,12 +544,12 @@ onMounted(() => {
 .steps h4 {
   margin: 0;
   font-size: 15px;
-  color: #1f2937;
+  color: #fff0c9;
 }
 
 .steps p {
   margin: 8px 0 0;
-  color: #6b7280;
+  color: rgba(255, 229, 186, 0.62);
   font-size: 13px;
   line-height: 1.35;
 }
@@ -531,7 +561,7 @@ onMounted(() => {
 }
 
 .data-head :deep(.van-icon) {
-  color: #b7bec8;
+  color: rgba(255, 229, 186, 0.32);
   font-size: 18px;
 }
 
@@ -546,13 +576,13 @@ onMounted(() => {
   margin: 0;
   font-size: 18px;
   line-height: 1;
-  color: var(--color-primary);
-  font-weight: 700;
+  color: #ffd87f;
+  font-weight: 800;
 }
 
 .data-label {
   margin: 8px 0 0;
-  color: #9ca3af;
+  color: rgba(255, 229, 186, 0.54);
   font-size: 13px;
 }
 </style>

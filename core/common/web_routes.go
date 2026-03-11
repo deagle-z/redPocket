@@ -138,6 +138,8 @@ func InitGin() {
 		adminGroup.GET("/withdrawOrderBr/:id", api.GetWithdrawOrderBrById) // 获取巴西提现订单详情
 		adminGroup.POST("/payChannel/list", api.GetPayChannels)            // 获取支付通道列表
 		adminGroup.GET("/payChannel/:id", api.GetPayChannelById)           // 获取支付通道详情
+		adminGroup.POST("/platformProfitLedger/list", api.GetPlatformProfitLedgers)
+		adminGroup.GET("/platformProfitLedger/:id", api.GetPlatformProfitLedgerById)
 		adminGroup.POST("/tgUser/listWithSubStats", api.GetTgUsersWithSubStats)
 		adminGroup.POST("/tgUser/subStatsSummary", api.GetTgUsersWithSubStatsSummary)
 	}
@@ -148,8 +150,9 @@ func InitGin() {
 		adminGroupLog.PUT("/role", api.SetRole)
 		adminGroupLog.DELETE("/role/:id", api.DelRole)
 		adminGroupLog.PUT("/user", api.SetUser)
-		adminGroupLog.POST("/upload", api.AdminUpload)                       // 文件上传（R2）
-		adminGroupLog.POST("/tgUser", api.SetTgUser)                         // 创建或更新Telegram用户
+		adminGroupLog.POST("/upload", api.AdminUpload) // 文件上传（R2）
+		adminGroupLog.POST("/tgUser", api.SetTgUser)   // 创建或更新Telegram用户
+		adminGroupLog.POST("/tgUser/batchCreateBot", api.BatchCreateBotTgUsers)
 		adminGroupLog.POST("/tgUser/status", api.SetTgUserStatus)            // 封禁/解封Telegram用户
 		adminGroupLog.DELETE("/tgUser/:id", api.DelTgUser)                   // 删除Telegram用户
 		adminGroupLog.POST("/tgUserRebate", api.SetTgUserRebateRecord)       // 创建或更新Telegram反水记录
@@ -167,6 +170,8 @@ func InitGin() {
 		adminGroupLog.DELETE("/withdrawOrderBr/:id", api.DelWithdrawOrderBr) // 删除巴西提现订单
 		adminGroupLog.POST("/payChannel", api.SetPayChannel)                 // 创建或更新支付通道
 		adminGroupLog.DELETE("/payChannel/:id", api.DelPayChannel)           // 删除支付通道
+		adminGroupLog.POST("/platformProfitLedger", api.SetPlatformProfitLedger)
+		adminGroupLog.DELETE("/platformProfitLedger/:id", api.DelPlatformProfitLedger)
 		//adminGroupLog.PUT("/host_info", api2.SetHostInfo)
 		//adminGroupLog.DELETE("/host_info/:id", api2.DelHostInfo)
 	}
@@ -230,6 +235,7 @@ func InitGin() {
 		appAuthRouter.POST("/tg/avatar", api.UpdateCurrentTgUserAvatar)
 		appAuthRouter.POST("/tg/bindEmail", api.BindCurrentTgEmail)
 		appAuthRouter.GET("/tg/inviteStats", api.GetCurrentTgInviteStats)
+		appAuthRouter.GET("/tg/inviteRuleConfig", api.GetCurrentTgInviteRuleConfig)
 		appAuthRouter.POST("/tg/rebate/transfer", api.TransferRebateToBalance)
 		appAuthRouter.POST("/tg/rebate/list", api.GetCurrentTgUserRebateRecords)
 		appAuthRouter.POST("/cashHistory/list", api.GetCurrentTgCashHistory)

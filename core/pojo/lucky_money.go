@@ -22,23 +22,23 @@ type LuckyMoney struct {
 }
 
 type LuckyMoneyBack struct {
-	ID         int64     `json:"id"`
-	CreatedAt  time.Time `json:"createdAt"`
-	UpdatedAt  time.Time `json:"updatedAt"`
-	SenderID   int64     `json:"senderId"`
-	SenderName string    `json:"senderName"`
-	SenderAvatar *string `json:"senderAvatar"`
-	Amount     float64   `json:"amount"`
-	Received   float64   `json:"received"`
-	Number     int       `json:"number"`
-	Lucky      int       `json:"lucky"`
-	Thunder    int       `json:"thunder"`
-	ChatID     int64     `json:"chatId"`
-	RedList    string    `json:"redList"`
-	LoseRate   float64   `json:"loseRate"`
-	Status     int       `json:"status"`
-	TenantId   int64     `json:"tenantId"`
-	ExpireTime time.Time `json:"expireTime"`
+	ID           int64     `json:"id"`
+	CreatedAt    time.Time `json:"createdAt"`
+	UpdatedAt    time.Time `json:"updatedAt"`
+	SenderID     int64     `json:"senderId"`
+	SenderName   string    `json:"senderName"`
+	SenderAvatar *string   `json:"senderAvatar"`
+	Amount       float64   `json:"amount"`
+	Received     float64   `json:"received"`
+	Number       int       `json:"number"`
+	Lucky        int       `json:"lucky"`
+	Thunder      int       `json:"thunder"`
+	ChatID       int64     `json:"chatId"`
+	RedList      string    `json:"redList"`
+	LoseRate     float64   `json:"loseRate"`
+	Status       int       `json:"status"`
+	TenantId     int64     `json:"tenantId"`
+	ExpireTime   time.Time `json:"expireTime"`
 }
 
 type LuckyMoneySearch struct {
@@ -50,10 +50,10 @@ type LuckyMoneySearch struct {
 }
 
 type LuckyMoneySend struct {
-	Amount   float64 `json:"amount" binding:"required,gt=0"`         // 红包金额，必填，大于0
-	Thunder  int     `json:"thunder" binding:"required,gte=1,lte=9"` // 雷号，必填，1-9
-	Number   *int    `json:"number"`                                 // 红包数量，可选
-	ChatID   int64   `json:"chatId"`                                 // 群组ID
+	Amount   float64 `json:"amount" binding:"required,gt=0"` // 红包金额，必填，大于0
+	Thunder  int     `json:"thunder"`                        // 雷号，必填，0-9
+	Number   *int    `json:"number"`                         // 红包数量，可选
+	ChatID   int64   `json:"chatId"`                         // 群组ID
 	TenantId int64   `json:"tenantId"`
 }
 
@@ -74,12 +74,12 @@ type LuckyMoneyAppListSearch struct {
 }
 
 type LuckyMoneyAppItemBack struct {
-	SeqNo      uint    `json:"seqNo"`
-	Amount     float64 `json:"amount"`
+	SeqNo         uint    `json:"seqNo"`
+	Amount        float64 `json:"amount"`
 	ThunderAmount float64 `json:"thunderAmount"`
-	IsGrabbed  int8    `json:"isGrabbed"`
-	Thunder    int8    `json:"thunder"`
-	IsGrabMine int8    `json:"isGrabMine"` // 是否本人抢到
+	IsGrabbed     int8    `json:"isGrabbed"`
+	Thunder       int8    `json:"thunder"`
+	IsGrabMine    int8    `json:"isGrabMine"` // 是否本人抢到
 }
 
 type LuckyMoneyAppBack struct {
@@ -111,18 +111,18 @@ type LuckyMoneyAppDetailReq struct {
 }
 
 type LuckyMoneyAppDetailSummary struct {
-	ID          int64     `json:"id"`
-	Status      int       `json:"status"`
-	StatusText  string    `json:"statusText"`
-	Amount      float64   `json:"amount"`
-	Thunder     int       `json:"thunder"`
-	LoseRate    float64   `json:"loseRate"`
-	ExpireTime  time.Time `json:"expireTime"`
-	GrabbedCount int64    `json:"grabbedCount"`
-	Number      int       `json:"number"`
-	GameText    string    `json:"gameText"`
-	RoomText    string    `json:"roomText"`
-	UnitAmount  string    `json:"unitAmount"`
+	ID           int64     `json:"id"`
+	Status       int       `json:"status"`
+	StatusText   string    `json:"statusText"`
+	Amount       float64   `json:"amount"`
+	Thunder      int       `json:"thunder"`
+	LoseRate     float64   `json:"loseRate"`
+	ExpireTime   time.Time `json:"expireTime"`
+	GrabbedCount int64     `json:"grabbedCount"`
+	Number       int       `json:"number"`
+	GameText     string    `json:"gameText"`
+	RoomText     string    `json:"roomText"`
+	UnitAmount   string    `json:"unitAmount"`
 }
 
 type LuckyMoneyAppDetailSender struct {
@@ -133,23 +133,23 @@ type LuckyMoneyAppDetailSender struct {
 }
 
 type LuckyMoneyAppDetailFinance struct {
-	SendAmount    float64 `json:"sendAmount"`
+	SendAmount     float64 `json:"sendAmount"`
 	ReceivedAmount float64 `json:"receivedAmount"`
-	RefundAmount  float64 `json:"refundAmount"`
-	ThunderIncome float64 `json:"thunderIncome"`
-	HitCount      int64   `json:"hitCount"`
-	FinalProfit   float64 `json:"finalProfit"`
+	RefundAmount   float64 `json:"refundAmount"`
+	ThunderIncome  float64 `json:"thunderIncome"`
+	HitCount       int64   `json:"hitCount"`
+	FinalProfit    float64 `json:"finalProfit"`
 }
 
 type LuckyMoneyAppDetailParticipant struct {
-	SeqNo     uint      `json:"seqNo"`
-	UserID    int64     `json:"userId"`
-	FirstName string    `json:"firstName"`
-	Avatar    *string   `json:"avatar"`
-	Amount    float64   `json:"amount"`
-	ThunderAmount float64 `json:"thunderAmount"`
-	IsThunder int       `json:"isThunder"`
-	CreatedAt time.Time `json:"createdAt"`
+	SeqNo         uint      `json:"seqNo"`
+	UserID        int64     `json:"userId"`
+	FirstName     string    `json:"firstName"`
+	Avatar        *string   `json:"avatar"`
+	Amount        float64   `json:"amount"`
+	ThunderAmount float64   `json:"thunderAmount"`
+	IsThunder     int       `json:"isThunder"`
+	CreatedAt     time.Time `json:"createdAt"`
 }
 
 type LuckyMoneyAppDetailResp struct {

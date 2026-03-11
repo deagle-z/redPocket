@@ -17,6 +17,7 @@ type TgUser struct {
 	Avatar   *string `gorm:"size:1024;comment:头像URL" json:"avatar"`
 	Password string  `gorm:"size:128;comment:password" json:"password"`
 	Email    string  `gorm:"size:255;comment:email" json:"email"`
+	IsBot    bool    `gorm:"column:is_bot;not null;default:false;comment:是否机器人" json:"is_bot"`
 
 	TgID int64 `gorm:"column:tg_id;uniqueIndex;not null;comment:Telegram 用户ID（唯一且稳定）" json:"tg_id"`
 
@@ -39,6 +40,7 @@ type TgUserSearch struct {
 	TgID       int64  `json:"tgId"`       // Telegram用户ID
 	Username   string `json:"username"`   // Telegram用户名
 	FirstName  string `json:"firstName"`  // 展示名
+	IsBot      *bool  `json:"isBot"`      // 是否机器人
 	Status     *int8  `json:"status"`     // 状态
 	ParentID   *int64 `json:"parentId"`   // 上级/邀请人用户ID
 	InviteCode string `json:"inviteCode"` // 邀请码
@@ -50,6 +52,7 @@ type TgUserSet struct {
 	Username   *string `json:"username"`
 	FirstName  *string `json:"firstName"`
 	Avatar     *string `json:"avatar"`
+	IsBot      bool    `json:"isBot"`
 	TgID       int64   `json:"tgId"`
 	Balance    float64 `json:"balance"`
 	GiftAmount float64 `json:"giftAmount"`
@@ -63,6 +66,18 @@ type TgUserSet struct {
 type TgUserStatusSet struct {
 	ID     int64 `json:"id"`
 	Status int8  `json:"status"` // 1=正常 0=禁用 -1=删除
+}
+
+type TgUserBatchCreateBotReq struct {
+	Num         int      `json:"num"`
+	RandomName  bool     `json:"randomName"`
+	NameFile    string   `json:"nameFile"`
+	AvatarLinks []string `json:"avatarLinks"`
+}
+
+type TgUserBatchCreateBotResp struct {
+	Count int               `json:"count"`
+	List  []TgUserAdminBack `json:"list"`
 }
 
 type TgSendEmailCodeReq struct {
@@ -107,14 +122,22 @@ type TgCurrentUserInfo struct {
 }
 
 type TgInviteStatsBack struct {
-	InviteCode       string  `json:"inviteCode"`
-	InviteCount      int64   `json:"inviteCount"`
-	TodayInviteCount int64   `json:"todayInviteCount"`
-	RechargeUsers    int64   `json:"rechargeUsers"`
-	TodayRechargeUsers int64 `json:"todayRechargeUsers"`
-	TotalCommission  float64 `json:"totalCommission"`
+	InviteCode          string  `json:"inviteCode"`
+	InviteCount         int64   `json:"inviteCount"`
+	TodayInviteCount    int64   `json:"todayInviteCount"`
+	RechargeUsers       int64   `json:"rechargeUsers"`
+	TodayRechargeUsers  int64   `json:"todayRechargeUsers"`
+	TotalCommission     float64 `json:"totalCommission"`
 	AvailableCommission float64 `json:"availableCommission"`
-	TodayCommission  float64 `json:"todayCommission"`
+	TodayCommission     float64 `json:"todayCommission"`
+}
+
+type TgInviteRuleConfigBack struct {
+	LuckySendCommission       float64 `json:"luckySendCommission"`
+	LuckyGrabbingCommission   float64 `json:"luckyGrabbingCommission"`
+	InviteFirstRechargeReward float64 `json:"inviteFirstRechargeReward"`
+	InviteLuckyRebateRate     float64 `json:"inviteLuckyRebateRate"`
+	InviteThunderRebateRate   float64 `json:"inviteThunderRebateRate"`
 }
 
 type TgUserBack struct {
@@ -136,6 +159,28 @@ type TgUserBack struct {
 
 type TgUserResp struct {
 	BasePageResponse[TgUserBack]
+}
+
+type TgUserAdminBack struct {
+	ID         int64     `json:"id"`
+	CreatedAt  time.Time `json:"createdAt"`
+	UpdatedAt  time.Time `json:"updatedAt"`
+	Username   *string   `json:"username"`
+	FirstName  *string   `json:"firstName"`
+	Avatar     *string   `json:"avatar"`
+	IsBot      bool      `json:"isBot"`
+	TgID       int64     `json:"tgId"`
+	Balance    float64   `json:"balance"`
+	GiftAmount float64   `json:"giftAmount"`
+	GiftTotal  float64   `json:"giftTotal"`
+	Status     int8      `json:"status"`
+	ParentID   *int64    `json:"parentId"`
+	InviteCode *string   `json:"inviteCode"`
+	TenantId   int64     `json:"tenantId"`
+}
+
+type TgUserAdminResp struct {
+	BasePageResponse[TgUserAdminBack]
 }
 
 var TgUserTableName = "tg_user"

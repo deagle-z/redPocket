@@ -3,6 +3,7 @@ import { showToast } from 'vant'
 import { useRouter } from 'vue-router'
 import { getLuckyPacketList, getLuckyRecentWinners } from '@/api/user'
 import LuckyGrabModal from '@/components/LuckyGrabModal.vue'
+import SendPacketForm from '@/components/SendPacketForm.vue'
 import { isLogin } from '@/utils/auth'
 import { formatCurrency } from '@/utils/currency'
 import wsClient from '@/plugins/websocket'
@@ -38,6 +39,7 @@ const router = useRouter()
 const packetList = ref<any[]>([])
 const packetLoading = ref(false)
 const grabModalVisible = ref(false)
+const sendPacketModalVisible = ref(false)
 const pendingGrabTarget = ref<{ packet: any, action: any } | null>(null)
 let countdownTimer: number | undefined
 const loggedIn = computed(() => isLogin())
@@ -228,6 +230,23 @@ function openGrabDialog(packet: any, action: any) {
   grabModalVisible.value = true
 }
 
+function openSendPacketDialog() {
+  if (!loggedIn.value) {
+    showToast(t('homeLucky.loginFirst'))
+    return
+  }
+  sendPacketModalVisible.value = true
+}
+
+function closeSendPacketDialog() {
+  sendPacketModalVisible.value = false
+}
+
+async function handleSendPacketSuccess() {
+  sendPacketModalVisible.value = false
+  await loadPacketList()
+}
+
 function closeGrabDialog() {
   grabModalVisible.value = false
   pendingGrabTarget.value = null
@@ -280,7 +299,6 @@ function applyLuckyBroadcast(message: any) {
     const nextActions = Array.isArray(packet.actions) ? [...packet.actions] : []
 
     if (nextStatus === 'ongoing') {
-      // 广播带序号时，精确更新对应子红包。
       if (grabbedSeqNo > 0) {
         const idx = nextActions.findIndex((it: any) => Number(it?.seqNo) === grabbedSeqNo)
         if (idx >= 0) {
@@ -295,7 +313,6 @@ function applyLuckyBroadcast(message: any) {
         }
       }
       else {
-        // 兼容旧广播：按顺序推进一个未抢子红包，避免再拉列表。
         const idx = nextActions.findIndex((it: any) => !it.isGrabbed)
         if (idx >= 0) {
           const seqNo = Number(nextActions[idx]?.seqNo || 0)
@@ -373,23 +390,41 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="home-page">
+    <!-- Banner Carousel -->
     <section class="home-carousel-card">
-      <van-swipe class="home-swipe" :autoplay="3200" lazy-render indicator-color="#ffffff" @change="onSwipeChange">
+      <van-swipe class="home-swipe" :autoplay="3200" lazy-render indicator-color="#d4af37" @change="onSwipeChange">
         <van-swipe-item v-for="(item, idx) in bannerList" :key="`${item.img}-${idx}`">
           <img :src="item.img" class="banner-image" :alt="`banner-${idx + 1}`">
         </van-swipe-item>
       </van-swipe>
-
+      <div class="banner-stripe" />
       <van-notice-bar class="home-marquee" :scrollable="true" :text="marqueeText" />
     </section>
 
+    <section class="send-promo-card">
+      <div class="send-promo-copy">
+        <p class="send-promo-eyebrow">
+          {{ t('homeLucky.sendQuickEyebrow') }}
+        </p>
+        <p class="send-promo-text">
+          {{ t('homeLucky.sendQuickText') }}
+        </p>
+      </div>
+      <button type="button" class="send-promo-btn" @click="openSendPacketDialog">
+        <van-icon name="gift-o" />
+        <span>{{ t('homeLucky.sendQuickAction') }}</span>
+      </button>
+    </section>
+
+    <!-- Hot Packets Section -->
     <section class="packet-section">
-      <header class="packet-header">
+      <!-- <header class="packet-header">
+        <div class="section-divider" />
         <div class="packet-title-wrap">
           <van-icon name="fire-o" />
           <span>{{ t('homeLucky.hotPackets') }}</span>
         </div>
-      </header>
+      </header> -->
 
       <div v-if="showPacketLoading" class="packet-skeleton-list">
         <article v-for="idx in 3" :key="`packet-skeleton-${idx}`" class="packet-card skeleton-card">
@@ -448,9 +483,11 @@ onBeforeUnmount(() => {
                 <p class="rebate-text">
                   {{ packet.rebateText }}
                 </p>
-                <p class="time-text">
-                  {{ packet.timeText }}
-                </p>
+                <div>
+                  <p class="time-text">
+                    {{ packet.timeText }}
+                  </p>
+                </div>
               </div>
             </div>
           </div>
@@ -476,8 +513,10 @@ onBeforeUnmount(() => {
       </template>
     </section>
 
+    <!-- Recent Winners Section -->
     <section class="winner-section">
       <header class="packet-header">
+        <div class="section-divider" />
         <div class="packet-title-wrap">
           <van-icon name="trophy-o" />
           <span>{{ t('homeLucky.latestWinners') }}</span>
@@ -516,7 +555,9 @@ onBeforeUnmount(() => {
         </div>
 
         <div class="winner-end">
-          {{ t('homeLucky.emptyWinners') }}
+          <span class="winner-end-line" />
+          <span class="winner-end-text">{{ t('homeLucky.emptyWinners') }}</span>
+          <span class="winner-end-line" />
         </div>
       </template>
     </section>
@@ -526,34 +567,77 @@ onBeforeUnmount(() => {
       :lucky-id="Number(pendingGrabTarget?.packet?.id || 0)"
       :grab-index="Number(pendingGrabTarget?.action?.seqNo || 0)"
       :sender-name="pendingGrabTarget?.packet?.username || t('grabModal.defaultSender')"
+      :show-result-toast="false"
       @success="handleGrabSuccess"
       @close="closeGrabDialog"
     />
+
+    <van-popup
+      v-model:show="sendPacketModalVisible"
+      round
+      position="bottom"
+      closeable
+      class="send-packet-popup"
+      close-icon-position="top-right"
+      @closed="closeSendPacketDialog"
+    >
+      <section class="send-packet-modal">
+        <div class="send-packet-modal__hero">
+          <p class="send-packet-modal__eyebrow">
+            {{ t('homeLucky.sendQuickEyebrow') }}
+          </p>
+          <h3 class="send-packet-modal__title">
+            {{ t('sendPacketPage.packetTypeTitle') }}
+          </h3>
+          <p class="send-packet-modal__sub">
+            {{ t('sendPacketPage.packetTypeSub') }}
+          </p>
+        </div>
+
+        <SendPacketForm
+          variant="modal"
+          :show-intro="false"
+          :show-tips="false"
+          auto-reset
+          @success="handleSendPacketSuccess"
+        />
+      </section>
+    </van-popup>
   </div>
 </template>
 
 <style scoped>
+/* ─── Page Shell ──────────────────────────────────── */
 .home-page {
   min-height: 100vh;
-  background:
+  background-image:
     radial-gradient(circle at 20% 10%, rgba(212, 175, 55, 0.18), transparent 30%),
     radial-gradient(circle at 80% 90%, rgba(255, 215, 0, 0.12), transparent 28%),
+    repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 18px,
+      rgba(212, 175, 55, 0.04) 18px,
+      rgba(212, 175, 55, 0.04) 20px
+    ),
     linear-gradient(180deg, #3e0000 0%, #230000 62%, #160000 100%);
-  padding: 12px;
+  padding: 12px 12px 90px;
   width: 100%;
   max-width: 100%;
   overflow: auto;
   color: #f9e8c6;
 }
 
+/* ─── Banner / Carousel ───────────────────────────── */
 .home-carousel-card {
   position: relative;
   border-radius: 14px;
   overflow: hidden;
-  border: 1px solid rgba(212, 175, 55, 0.45);
+  border: 1px solid rgba(212, 175, 55, 0.55);
   box-shadow:
-    0 10px 24px rgba(0, 0, 0, 0.35),
-    inset 0 0 0 1px rgba(255, 248, 214, 0.12);
+    0 12px 28px rgba(0, 0, 0, 0.45),
+    inset 0 0 0 1px rgba(255, 248, 214, 0.15),
+    0 0 0 1px rgba(128, 0, 0, 0.6);
   background: #5a0000;
 }
 
@@ -569,33 +653,127 @@ onBeforeUnmount(() => {
   object-fit: cover;
 }
 
+/* Thai diagonal stripe overlay on banner */
+.banner-stripe {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    45deg,
+    transparent,
+    transparent 16px,
+    rgba(212, 175, 55, 0.05) 16px,
+    rgba(212, 175, 55, 0.05) 18px
+  );
+  z-index: 1;
+}
+
 :deep(.home-marquee.van-notice-bar) {
   position: absolute;
   left: 0;
   right: 0;
   bottom: 0;
-  height: 24px;
-  min-height: 24px;
-  background: linear-gradient(180deg, rgba(133, 0, 0, 0) 0%, rgba(105, 0, 0, 0.95) 100%) !important;
-  color: #ffe5a8;
-  padding: 0 8px;
+  height: 26px;
+  min-height: 26px;
+  background: linear-gradient(180deg, rgba(133, 0, 0, 0) 0%, rgba(80, 0, 0, 0.96) 100%) !important;
+  color: #ffd98b;
+  padding: 0 10px;
   font-size: 11px;
-  line-height: 24px;
+  line-height: 26px;
   z-index: 2;
+  letter-spacing: 0.03em;
 }
 
 :deep(.home-marquee .van-notice-bar__wrap) {
-  height: 24px;
+  height: 26px;
   background: transparent !important;
 }
 
 :deep(.home-marquee .van-notice-bar__content) {
   font-size: 11px;
-  line-height: 24px;
+  line-height: 26px;
 }
 
+/* ─── Section Header ──────────────────────────────── */
 .packet-section {
-  margin-top: 12px;
+  margin-top: 14px;
+}
+
+.send-promo-card {
+  position: relative;
+  margin-top: 14px;
+  padding: 10px 12px;
+  border-radius: 16px;
+  border: 1px solid rgba(212, 175, 55, 0.4);
+  background:
+    radial-gradient(rgba(212, 175, 55, 1) 1px, transparent 1px),
+    linear-gradient(155deg, rgba(116, 0, 0, 0.96) 0%, rgba(70, 0, 0, 0.96) 100%);
+  background-size:
+    18px 18px,
+    100% 100%;
+  box-shadow:
+    0 10px 24px rgba(0, 0, 0, 0.35),
+    inset 0 0 0 1px rgba(255, 248, 214, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.send-promo-card::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  border-radius: 16px 16px 0 0;
+  background: linear-gradient(90deg, transparent 0%, #b8860b 16%, #ffd700 50%, #b8860b 84%, transparent 100%);
+}
+
+.send-promo-copy {
+  min-width: 0;
+  flex: 1;
+}
+
+.send-promo-eyebrow {
+  margin: 0 0 2px;
+  color: #ffd98b;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.send-promo-text {
+  margin: 0;
+  color: rgba(255, 232, 186, 0.82);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.send-promo-btn {
+  flex: 0 0 auto;
+  min-width: 98px;
+  height: 34px;
+  padding: 0 12px;
+  border: none;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #ffdf87 0%, #d4af37 100%);
+  color: #5a1b00;
+  font-size: 11px;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  box-shadow:
+    0 10px 18px rgba(75, 25, 0, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.34);
+}
+
+.send-promo-btn :deep(.van-icon) {
+  font-size: 14px;
 }
 
 .packet-skeleton-list {
@@ -605,37 +783,115 @@ onBeforeUnmount(() => {
 }
 
 .packet-header {
-  border-top: 1px solid rgba(212, 175, 55, 0.35);
-  padding-top: 10px;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
+}
+
+/* Gold gradient divider line */
+.section-divider {
+  height: 1px;
+  margin-bottom: 10px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(212, 175, 55, 0.6) 20%,
+    rgba(212, 175, 55, 0.9) 50%,
+    rgba(212, 175, 55, 0.6) 80%,
+    transparent 100%
+  );
 }
 
 .packet-title-wrap {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  font-size: 15px;
+  gap: 8px;
+  font-size: 16px;
   color: #ffd98b;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.25);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-shadow:
+    0 1px 6px rgba(0, 0, 0, 0.5),
+    0 0 10px rgba(212, 175, 55, 0.25);
 }
 
 .packet-title-wrap :deep(.van-icon) {
-  color: #f7c548;
+  font-size: 18px;
+  color: #d4af37;
+  filter: drop-shadow(0 0 5px rgba(212, 175, 55, 0.6));
+}
+
+/* ─── Packet Card ─────────────────────────────────── */
+@keyframes cardGlow {
+  0%,
+  100% {
+    box-shadow:
+      0 10px 24px rgba(0, 0, 0, 0.38),
+      inset 0 0 0 1px rgba(255, 248, 214, 0.12),
+      0 0 0 1px rgba(212, 175, 55, 0.35);
+  }
+  50% {
+    box-shadow:
+      0 10px 28px rgba(0, 0, 0, 0.42),
+      inset 0 0 0 1px rgba(255, 248, 214, 0.18),
+      0 0 0 1px rgba(212, 175, 55, 0.65),
+      0 0 12px rgba(212, 175, 55, 0.12);
+  }
 }
 
 .packet-card {
-  border-radius: 14px;
-  border: 1px solid rgba(212, 175, 55, 0.36);
-  background: linear-gradient(160deg, rgba(124, 0, 0, 0.98) 0%, rgba(80, 0, 0, 0.96) 70%, rgba(56, 0, 0, 0.96) 100%);
+  position: relative;
+  border-radius: 16px;
+  border: 1px solid rgba(212, 175, 55, 0.45);
+  background: linear-gradient(160deg, rgba(140, 0, 0, 0.98) 0%, rgba(90, 0, 0, 0.97) 55%, rgba(55, 0, 0, 0.97) 100%);
   overflow: hidden;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
   box-shadow:
-    0 8px 20px rgba(0, 0, 0, 0.32),
-    inset 0 0 0 1px rgba(255, 248, 214, 0.1);
+    0 8px 18px rgba(0, 0, 0, 0.34),
+    inset 0 0 0 1px rgba(255, 248, 214, 0.12),
+    0 0 0 1px rgba(212, 175, 55, 0.35);
 }
 
+/* Ongoing cards get a subtle pulsing gold border */
+.packet-card.ongoing {
+  animation: cardGlow 2.4s ease-in-out infinite;
+}
+
+/* Gold top accent stripe (like grap.html flap border-bottom: 4px solid #d4af37) */
+.packet-card::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    #b8860b 15%,
+    #ffd700 40%,
+    #d4af37 60%,
+    #b8860b 85%,
+    transparent 100%
+  );
+  pointer-events: none;
+  z-index: 4;
+  border-radius: 16px 16px 0 0;
+}
+
+/* Gold dot pattern watermark (from grap.html gift-card::before) */
+.packet-card::before {
+  content: '';
+  position: absolute;
+  inset: 3px 0 0;
+  background-image: radial-gradient(rgba(212, 175, 55, 1) 1px, transparent 1px);
+  background-size: 18px 18px;
+  opacity: 0.05;
+  pointer-events: none;
+  z-index: 0;
+  border-radius: 16px;
+}
+
+/* Thai corner bracket decorations (from grap.html .corner) */
 .skeleton-card {
   margin-bottom: 0;
 }
@@ -649,14 +905,16 @@ onBeforeUnmount(() => {
 }
 
 .skeleton-packet-image {
-  width: 90px;
-  height: 90px;
+  width: 60px;
+  height: 60px;
   border-radius: 6px;
   overflow: hidden;
 }
 
 .packet-main {
-  padding: 10px 12px 8px;
+  position: relative;
+  z-index: 1;
+  padding: 8px 9px 5px;
 }
 
 .packet-top {
@@ -668,80 +926,100 @@ onBeforeUnmount(() => {
 .user-wrap {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   min-width: 0;
 }
 
 .user-avatar {
-  width: 34px;
-  height: 34px;
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
   object-fit: cover;
-  border: 1px solid rgba(255, 222, 141, 0.55);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.22);
+  border: 2px solid rgba(212, 175, 55, 0.65);
+  box-shadow:
+    0 0 8px rgba(212, 175, 55, 0.25),
+    0 4px 8px rgba(0, 0, 0, 0.28);
 }
 
 .user-name {
-  font-size: 16px;
+  font-size: 12px;
   line-height: 1;
   color: #fff0c9;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 160px;
+  letter-spacing: 0.02em;
 }
 
 .amount-wrap {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
   color: rgba(255, 232, 186, 0.7);
 }
 
+/* Gold gradient amount text (like grap.html .amount) */
 .packet-amount {
-  font-size: 15px;
+  font-size: 12px;
   line-height: 1;
   font-weight: 700;
-  color: #ffd66e;
-  text-shadow: 0 0 10px rgba(255, 214, 110, 0.35);
+  background: linear-gradient(to bottom, #cfb53b, #ffd700, #d4af37);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.25));
 }
 
 .packet-card.done .packet-amount {
-  color: #efc57f;
+  background: linear-gradient(to bottom, #c8a96e, #a88c58);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 .packet-body {
-  margin-top: 6px;
+  margin-top: 4px;
   display: flex;
   align-items: flex-start;
-  gap: 8px;
+  gap: 6px;
 }
 
 .packet-image-wrap {
-  width: 90px;
-  flex: 0 0 90px;
+  width: 60px;
+  flex: 0 0 60px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
+/* Status badge — gold gradient from grap.html */
 .status-badge {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 56px;
-  height: 20px;
+  min-width: 42px;
+  height: 16px;
   border-radius: 999px;
   background: linear-gradient(180deg, #ffdf87 0%, #d4af37 100%);
   color: #5a1b00;
-  font-size: 12px;
+  font-size: 8px;
   line-height: 1;
-  margin-bottom: 4px;
+  margin: 0 auto 2px;
   font-weight: 700;
-  border: 1px solid rgba(255, 248, 214, 0.45);
+  letter-spacing: 0.03em;
+  border: 1px solid rgba(255, 248, 214, 0.5);
+  box-shadow:
+    0 2px 6px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  text-align: center;
 }
 
 .packet-card.done .status-badge {
-  background: linear-gradient(180deg, #7f7061 0%, #64574c 100%);
+  background: linear-gradient(180deg, #7f7061 0%, #575049 100%);
   color: #f6e8d2;
-  border-color: rgba(255, 255, 255, 0.18);
+  border-color: rgba(255, 255, 255, 0.15);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 .packet-image {
@@ -763,80 +1041,111 @@ onBeforeUnmount(() => {
 }
 
 .tag {
-  height: 20px;
+  height: 15px;
   display: inline-flex;
   align-items: center;
   border-radius: 999px;
-  padding: 0 6px;
-  font-size: 11px;
+  padding: 0 4px;
+  font-size: 8px;
   line-height: 1;
   border: 1px solid transparent;
+  letter-spacing: 0.02em;
 }
 
 .tag.game {
   color: #ffe7bf;
-  background: rgba(255, 215, 0, 0.12);
-  border-color: rgba(255, 215, 0, 0.35);
+  background: rgba(212, 175, 55, 0.14);
+  border-color: rgba(212, 175, 55, 0.4);
 }
 
 .tag.progress {
   color: #ffeecf;
   background: rgba(255, 248, 214, 0.1);
-  border-color: rgba(255, 248, 214, 0.3);
+  border-color: rgba(255, 248, 214, 0.28);
 }
 
 .packet-card.done .tag.game {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.09);
   color: #e8d5b2;
-  border-color: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.18);
 }
 
 .packet-card.done .tag.progress {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(255, 255, 255, 0.14);
 }
 
 .meta-row {
-  margin-top: 5px;
+  margin-top: 3px;
   display: flex;
   align-items: center;
-  gap: 6px;
-  color: rgba(255, 229, 186, 0.9);
-  font-size: 11px;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+/* Each meta item as a refined mini badge */
+.meta-row span {
+  display: inline-flex;
+  align-items: center;
+  height: 14px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: rgba(255, 248, 214, 0.07);
+  border: 1px solid rgba(255, 248, 214, 0.18);
+  color: rgba(255, 229, 186, 0.82);
+  font-size: 7px;
+  letter-spacing: 0.02em;
+  line-height: 1;
 }
 
 .rebate-text {
-  margin: 6px 0 0;
-  color: rgba(255, 248, 214, 0.78);
-  font-size: 11px;
+  margin: 3px 0 0;
+  display: inline-flex;
+  align-items: center;
+  min-height: 14px;
+  padding: 2px 5px;
+  border-radius: 999px;
+  background: rgba(212, 175, 55, 0.1);
+  border: 1px solid rgba(212, 175, 55, 0.28);
+  color: rgba(255, 232, 160, 0.85);
+  font-size: 7px;
+  letter-spacing: 0.01em;
 }
 
 .time-text {
-  margin: 6px 0 0;
+  margin: 3px 0 0;
+  display: block;
   color: #ffd87f;
-  font-size: 14px;
-  line-height: 1;
-  font-weight: 600;
+  font-size: 10px;
+  line-height: 1.2;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-shadow: 0 0 8px rgba(255, 216, 127, 0.35);
+  white-space: normal;
+  word-break: break-word;
 }
 
 .packet-card.done .time-text {
   color: #f0dbc0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  height: 24px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.12);
-  padding: 0 8px;
-  font-size: 12px;
+  display: inline-block;
+  min-height: 16px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.11);
+  padding: 2px 6px;
+  font-size: 9px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
 }
 
+/* ─── Action Pills ────────────────────────────────── */
 .packet-actions {
-  border-top: 1px solid rgba(255, 248, 214, 0.12);
-  padding: 8px 9px;
+  position: relative;
+  z-index: 1;
+  border-top: 1px solid rgba(212, 175, 55, 0.22);
+  padding: 5px 7px;
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 5px;
+  gap: 4px;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.2) 0%, rgba(0, 0, 0, 0.35) 100%);
 }
 
 .packet-actions-skeleton {
@@ -847,23 +1156,32 @@ onBeforeUnmount(() => {
   width: 100%;
 }
 
+/* From grap.html's pocket gradient (#900000 → #600000) */
 .action-pill {
   border: none;
   border-radius: 999px;
-  background: linear-gradient(180deg, #e24b2d 0%, #b12715 100%);
+  background: linear-gradient(180deg, #9e1010 0%, #6a0000 100%);
   color: #fff3de;
-  font-size: 8px;
+  font-size: 5px;
   line-height: 1;
-  min-height: 25px;
+  min-height: 18px;
   box-shadow:
-    inset 0 1px 0 rgba(255, 248, 214, 0.35),
-    0 2px 6px rgba(0, 0, 0, 0.25);
+    inset 0 1px 0 rgba(212, 175, 55, 0.45),
+    0 2px 6px rgba(0, 0, 0, 0.3);
+  letter-spacing: 0.01em;
+  transition:
+    opacity 0.15s,
+    transform 0.1s;
+}
+
+.action-pill:not(:disabled):active {
+  transform: scale(0.96);
 }
 
 .action-pill.grabbed {
-  background: rgba(255, 255, 255, 0.15);
-  color: rgba(255, 248, 214, 0.52);
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 248, 214, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.14);
   box-shadow: none;
   text-decoration: line-through;
 }
@@ -872,41 +1190,72 @@ onBeforeUnmount(() => {
   color: #ffe088;
 }
 
-.mine-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: #8b5cf6;
-  margin-right: 4px;
-  display: inline-block;
-  vertical-align: 1px;
-}
-
 .mine-text {
-  margin-right: 4px;
+  margin-right: 3px;
   color: #ffd45d;
   text-decoration: none;
 }
 
 .action-pill.done {
   grid-column: 1 / -1;
-  background: rgba(255, 255, 255, 0.13);
-  color: rgba(255, 248, 214, 0.7);
+  background: rgba(212, 175, 55, 0.08);
+  color: rgba(255, 248, 214, 0.6);
+  border: 1px solid rgba(212, 175, 55, 0.28);
   box-shadow: none;
+  letter-spacing: 0.06em;
+  font-size: 8px;
+  min-height: 19px;
 }
 
+/* ─── Winner Section ──────────────────────────────── */
 .winner-section {
-  margin-top: 12px;
+  margin-top: 14px;
 }
 
 .winner-card {
-  border: 1px solid rgba(212, 175, 55, 0.34);
-  border-radius: 14px;
-  background: linear-gradient(170deg, rgba(116, 0, 0, 0.95), rgba(68, 0, 0, 0.95));
+  border: 1px solid rgba(212, 175, 55, 0.45);
+  border-radius: 16px;
+  background: linear-gradient(170deg, rgba(125, 0, 0, 0.97), rgba(60, 0, 0, 0.97));
   overflow: hidden;
+  isolation: isolate;
   box-shadow:
-    0 8px 20px rgba(0, 0, 0, 0.28),
-    inset 0 0 0 1px rgba(255, 248, 214, 0.08);
+    0 10px 24px rgba(0, 0, 0, 0.35),
+    inset 0 0 0 1px rgba(255, 248, 214, 0.09),
+    0 0 0 1px rgba(212, 175, 55, 0.3);
+  position: relative;
+}
+
+/* Gold top accent on winner card too */
+.winner-card::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    #b8860b 15%,
+    #ffd700 40%,
+    #d4af37 60%,
+    #b8860b 85%,
+    transparent 100%
+  );
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Gold dot watermark on winner card */
+.winner-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(rgba(212, 175, 55, 1) 1px, transparent 1px);
+  background-size: 18px 18px;
+  opacity: 0.04;
+  pointer-events: none;
+  z-index: 0;
 }
 
 .winner-skeleton-card {
@@ -921,23 +1270,28 @@ onBeforeUnmount(() => {
 }
 
 .winner-item {
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: flex-start;
   gap: 10px;
-  padding: 12px;
+  padding: 13px 14px;
 }
 
 .winner-item + .winner-item {
-  border-top: 1px solid rgba(255, 248, 214, 0.13);
+  border-top: 1px solid rgba(212, 175, 55, 0.15);
 }
 
 .winner-avatar {
-  width: 44px;
-  height: 44px;
+  width: 46px;
+  height: 46px;
   border-radius: 50%;
   object-fit: cover;
   flex: 0 0 auto;
-  border: 1px solid rgba(255, 222, 141, 0.58);
+  border: 2px solid rgba(212, 175, 55, 0.7);
+  box-shadow:
+    0 0 10px rgba(212, 175, 55, 0.28),
+    0 3px 8px rgba(0, 0, 0, 0.35);
 }
 
 .winner-main {
@@ -948,18 +1302,25 @@ onBeforeUnmount(() => {
 .winner-amount {
   margin: 0;
   color: #ffefca;
-  font-size: 18px;
-  line-height: 1.2;
+  font-size: 16px;
+  line-height: 1.3;
+  letter-spacing: 0.01em;
 }
 
+/* Gold gradient on winning amount (like grap.html .amount) */
 .winner-amount strong {
   font-weight: 700;
+  background: linear-gradient(to bottom, #cfb53b, #ffd700, #d4af37);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.2));
 }
 
 .winner-name {
-  margin: 8px 0 0;
-  color: rgba(255, 229, 186, 0.72);
-  font-size: 15px;
+  margin: 6px 0 0;
+  color: rgba(255, 229, 186, 0.68);
+  font-size: 14px;
   line-height: 1;
 }
 
@@ -967,35 +1328,104 @@ onBeforeUnmount(() => {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  color: rgba(255, 229, 186, 0.7);
+  color: rgba(255, 229, 186, 0.65);
 }
 
 .winner-time {
   color: #f4d7aa;
-  font-size: 16px;
+  font-size: 15px;
   line-height: 1;
 }
 
+/* Ornamental "end" divider */
 .winner-end {
   margin-top: 12px;
-  height: 30px;
-  border-radius: 6px;
-  border: 1px solid rgba(212, 175, 55, 0.3);
-  background: rgba(123, 0, 0, 0.58);
-  color: rgba(255, 229, 186, 0.66);
-  font-size: 12px;
+  height: 28px;
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 8px;
 }
 
+.winner-end-line {
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(212, 175, 55, 0.45), transparent);
+}
+
+.winner-end-text {
+  color: rgba(255, 229, 186, 0.55);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+:deep(.send-packet-popup.van-popup) {
+  max-height: calc(100vh - 56px);
+  background:
+    radial-gradient(circle at 12% 10%, rgba(212, 175, 55, 0.18), transparent 22%),
+    linear-gradient(180deg, #540000 0%, #280000 100%);
+  border-radius: 24px 24px 0 0;
+  border: 1px solid rgba(212, 175, 55, 0.34);
+  box-shadow: 0 -12px 32px rgba(0, 0, 0, 0.48);
+}
+
+:deep(.send-packet-popup .van-popup__close-icon) {
+  color: #ffd98b;
+}
+
+.send-packet-modal {
+  padding: 18px 14px calc(14px + env(safe-area-inset-bottom));
+}
+
+.send-packet-modal__hero {
+  margin-bottom: 12px;
+  text-align: center;
+}
+
+.send-packet-modal__eyebrow {
+  margin: 0 0 6px;
+  color: #ffd98b;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.send-packet-modal__title {
+  margin: 0;
+  color: #fff0c9;
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.send-packet-modal__sub {
+  margin: 6px 0 0;
+  color: rgba(255, 229, 186, 0.7);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+/* ─── Responsive ──────────────────────────────────── */
 @media (max-width: 390px) {
+  .send-promo-card {
+    padding: 9px 10px;
+    gap: 8px;
+  }
+
+  .send-promo-btn {
+    min-width: 90px;
+    padding: 0 10px;
+  }
+
   .packet-main {
-    padding: 10px 10px 8px;
+    padding: 7px 8px 5px;
   }
 
   .user-name {
-    max-width: 132px;
+    max-width: 104px;
   }
 
   .packet-actions {

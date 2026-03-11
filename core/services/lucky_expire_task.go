@@ -81,11 +81,11 @@ func handleLuckyExpireTask(ctx context.Context, task *asynq.Task) error {
 	if db == nil {
 		return fmt.Errorf("db not ready for prefix=%s", payload.TablePrefix)
 	}
-	return refundExpiredLuckyMoney(db, payload.LuckyID)
+	return refundExpiredLuckyMoney(db, payload.TablePrefix, payload.LuckyID)
 }
 
-func refundExpiredLuckyMoney(db *gorm.DB, luckyID int64) error {
-	return db.Transaction(func(tx *gorm.DB) error {
+func refundExpiredLuckyMoney(db *gorm.DB, tablePrefix string, luckyID int64) error {
+	err := db.Transaction(func(tx *gorm.DB) error {
 		var lucky pojo.LuckyMoney
 		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ?", luckyID).First(&lucky).Error; err != nil {
 			return nil
@@ -141,4 +141,8 @@ func refundExpiredLuckyMoney(db *gorm.DB, luckyID int64) error {
 		}
 		return tx.Create(&cashHistory).Error
 	})
+	if err != nil {
+		return err
+	}
+	return EnsureMinActiveLuckyPackets(db, tablePrefix)
 }

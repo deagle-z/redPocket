@@ -86,6 +86,11 @@ func main() {
 		return
 	}
 	log.Print("init asynq success\n")
+	if dbHostInfo.TablePrefix != "" {
+		if err = services.EnsureMinActiveLuckyPackets(utils.NewPrefixDb(dbHostInfo.TablePrefix), dbHostInfo.TablePrefix); err != nil {
+			log.Printf("ensure min active lucky packets error.err=%v\n", err)
+		}
+	}
 
 	// 初始化 Telegram Bot（如果配置了）
 	//if utils.GlobalConfig.Telegram.Enabled && utils.GlobalConfig.Telegram.BotToken != "" {

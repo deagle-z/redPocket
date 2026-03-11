@@ -864,6 +864,7 @@ func (s *TelegramBotService) manualRechargeCallback(db *gorm.DB, orderID int64) 
 		tx.Rollback()
 		return err
 	}
+	isFirstRecharge := user.RechargeAmount <= 0
 
 	startAmount := user.Balance
 	endAmount := utils.ToMoney(startAmount).Add(utils.ToMoney(order.Amount)).ToDollars()
@@ -907,6 +908,12 @@ func (s *TelegramBotService) manualRechargeCallback(db *gorm.DB, orderID int64) 
 		tx.Rollback()
 		return err
 	}
+	if isFirstRecharge {
+		if err := s.applyInviteFirstRechargeReward(tx, order, user, time.Now()); err != nil {
+			tx.Rollback()
+			return err
+		}
+	}
 
 	if err := tx.Commit().Error; err != nil {
 		return err
@@ -914,6 +921,68 @@ func (s *TelegramBotService) manualRechargeCallback(db *gorm.DB, orderID int64) 
 
 	user.Balance = endAmount
 	return nil
+}
+
+func (s *TelegramBotService) applyInviteFirstRechargeReward(tx *gorm.DB, order pojo.RechargeOrder, user pojo.TgUser, now time.Time) error {
+	if user.ParentID == nil || *user.ParentID == 0 {
+		return nil
+	}
+
+	rate := s.getRebateRate("invite_first_recharge_reward")
+	if rate <= 0 {
+		return nil
+	}
+
+	parentID := *user.ParentID
+	var parent pojo.TgUser
+	if err := tx.Where("id = ?", parentID).First(&parent).Error; err != nil || parent.ID == 0 {
+		return nil
+	}
+	if parent.Status != 1 {
+		return nil
+	}
+
+	rebateAmount := utils.ToMoney(order.Amount).Multiply(rate / 100).ToDollars()
+	if rebateAmount <= 0 {
+		return nil
+	}
+
+	idempotencyKey := fmt.Sprintf("first_recharge_reward:%s:%d", order.OrderNo, parentID)
+	var existing pojo.TgUserRebateRecord
+	if err := tx.Where("idempotency_key = ?", idempotencyKey).First(&existing).Error; err == nil && existing.ID > 0 {
+		return nil
+	}
+
+	currency := strings.TrimSpace(order.Currency)
+	if currency == "" {
+		currency = "USDT"
+	}
+	remark := strPtr("first_recharge_reward")
+	record := pojo.TgUserRebateRecord{
+		TenantId:       &order.TenantId,
+		SubUserId:      user.ID,
+		ParentUserId:   parentID,
+		SourceType:     5,
+		SourceOrderId:  order.OrderNo,
+		SourceAmount:   order.Amount,
+		RebateRate:     rate,
+		RebateAmount:   rebateAmount,
+		Currency:       currency,
+		Status:         1,
+		SettledAt:      &now,
+		IdempotencyKey: idempotencyKey,
+		Remark:         remark,
+	}
+	if err := tx.Create(&record).Error; err != nil {
+		return err
+	}
+
+	return tx.Model(&pojo.TgUser{}).
+		Where("id = ?", parentID).
+		Updates(map[string]any{
+			"rebate_amount":       gorm.Expr("rebate_amount + ?", rebateAmount),
+			"rebate_total_amount": gorm.Expr("rebate_total_amount + ?", rebateAmount),
+		}).Error
 }
 
 func (s *TelegramBotService) generateRechargeOrderNo(userID int64) string {

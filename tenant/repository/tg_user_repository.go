@@ -19,6 +19,9 @@ func GetTgUsers(db *gorm.DB, tenantID int64, search pojo.TgUserSearch) (result p
 	if search.FirstName != "" {
 		query = query.Where("first_name like ?", "%"+search.FirstName+"%")
 	}
+	if search.IsBot != nil {
+		query = query.Where("is_bot = ?", *search.IsBot)
+	}
 	if search.Status != nil {
 		query = query.Where("status = ?", *search.Status)
 	}
@@ -132,7 +135,11 @@ type tgUserTreeAmount struct {
 func GetTgUsersWithSubStats(db *gorm.DB, search pojo.TgUserSearch) (result TgUserWithSubStatsResp) {
 	// 构建整棵用户树：parent -> []children
 	var allUsers []pojo.TgUser
-	_ = db.Model(&pojo.TgUser{}).Find(&allUsers).Error
+	allUsersQuery := db.Model(&pojo.TgUser{})
+	if search.IsBot != nil {
+		allUsersQuery = allUsersQuery.Where("is_bot = ?", *search.IsBot)
+	}
+	_ = allUsersQuery.Find(&allUsers).Error
 	childrenMap := make(map[int64][]int64)
 	for _, user := range allUsers {
 		if user.ParentID == nil {
@@ -168,6 +175,9 @@ func GetTgUsersWithSubStats(db *gorm.DB, search pojo.TgUserSearch) (result TgUse
 	}
 	if search.FirstName != "" {
 		query = query.Where("first_name like ?", "%"+search.FirstName+"%")
+	}
+	if search.IsBot != nil {
+		query = query.Where("is_bot = ?", *search.IsBot)
 	}
 	if search.Status != nil {
 		query = query.Where("status = ?", *search.Status)
@@ -262,11 +272,15 @@ func GetTgUsersWithSubStats(db *gorm.DB, search pojo.TgUserSearch) (result TgUse
 // GetTgUsersWithSubStatsSummary 返回下级（不限层级）的充值金额之和、流水之和、提现金额之和
 // parentID 为空：口径为全量 parent_id 非空的用户集合
 // parentID 非空：口径为该 parentID 的所有后代（不含自身）
-func GetTgUsersWithSubStatsSummary(db *gorm.DB, parentID *int64) (result TgUsersSubStatsSummary) {
+func GetTgUsersWithSubStatsSummary(db *gorm.DB, search pojo.TgUserSearch) (result TgUsersSubStatsSummary) {
+	parentID := search.ParentID
 	if parentID == nil {
 		subUsersQuery := db.Model(&pojo.TgUser{}).
 			Select("id").
 			Where("parent_id is not null")
+		if search.IsBot != nil {
+			subUsersQuery = subUsersQuery.Where("is_bot = ?", *search.IsBot)
+		}
 
 		_ = db.Model(&pojo.RechargeOrder{}).
 			Select("coalesce(sum(amount), 0)").
@@ -286,7 +300,11 @@ func GetTgUsersWithSubStatsSummary(db *gorm.DB, parentID *int64) (result TgUsers
 	}
 
 	var allUsers []pojo.TgUser
-	_ = db.Model(&pojo.TgUser{}).Find(&allUsers).Error
+	allUsersQuery := db.Model(&pojo.TgUser{})
+	if search.IsBot != nil {
+		allUsersQuery = allUsersQuery.Where("is_bot = ?", *search.IsBot)
+	}
+	_ = allUsersQuery.Find(&allUsers).Error
 
 	childrenMap := make(map[int64][]int64)
 	for _, user := range allUsers {
