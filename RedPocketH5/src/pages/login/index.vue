@@ -143,109 +143,136 @@ function goRegister() {
         </template>
       </AppPageHeader>
 
-      <div class="banner">
+      <section class="hero-card">
         <img
-          class="banner-image"
+          class="hero-image"
           :src="imgRegisterHeader"
           alt="register banner"
         >
-      </div>
+        <div class="hero-content">
+          <p class="hero-eyebrow">
+            {{ t('appTopHeader.brandSubtitle') }}
+          </p>
+          <h2 class="hero-title">
+            {{ t('appTopHeader.brandTitle') }}
+          </h2>
+          <p class="hero-desc">
+            {{ t('login.loginWithTelegram') }}
+          </p>
+        </div>
+      </section>
 
-      <div class="tabs">
-        <button
-          class="tab"
-          :class="{ active: activeTab === 'telegram' }"
-          @click="activeTab = 'telegram'"
-        >
-          Telegram
-        </button>
-        <button
-          class="tab"
-          :class="{ active: activeTab === 'email' }"
-          @click="activeTab = 'email'"
-        >
-          {{ t('login.emailTab') }}
-        </button>
-      </div>
-
-      <section v-if="activeTab === 'telegram'" class="telegram-panel">
-        <div class="tg-logo">
-          <img
-            class="tg-logo-image"
-            :src="imgTelegram"
-            alt="telegram"
+      <section class="auth-card">
+        <div class="tabs">
+          <button
+            class="tab"
+            :class="{ active: activeTab === 'telegram' }"
+            type="button"
+            @click="activeTab = 'telegram'"
           >
-        </div>
-        <p class="tg-title">
-          {{ t('login.telegramAuth') }}
-        </p>
-        <TelegramLogin
-          mode="callback"
-          :telegram-login="tgBotUsername"
-          size="large"
-          request-access="write"
-          @callback="handleTelegramAuth"
-        />
-        <van-loading v-if="loading" class="tg-loading" size="20px" />
-      </section>
-
-      <section v-else class="email-panel">
-        <div class="email-form-card">
-          <div class="email-form-row">
-            <label for="login-email" class="email-form-label">
-              <img :src="emailIcon" alt="email" class="email-form-icon">
-              <span>{{ t('login.email') }}</span>
-            </label>
-            <input
-              id="login-email"
-              v-model="postData.email"
-              type="text"
-              class="email-form-input"
-              :placeholder="t('login.emailOrUsername')"
-            >
-          </div>
-
-          <div class="email-form-row">
-            <label for="login-password" class="email-form-label">
-              <img :src="lockIcon" alt="password" class="email-form-icon">
-              <span>{{ t('login.password') }}</span>
-            </label>
-            <input
-              id="login-password"
-              v-model="postData.password"
-              type="password"
-              class="email-form-input"
-              :placeholder="t('login.password')"
-            >
-          </div>
-        </div>
-
-        <div class="email-forgot-wrap">
-          <button type="button" class="email-forgot-btn" @click="goForgotPassword">
-            {{ t('login.forgotPassword') }}
+            Telegram
+          </button>
+          <button
+            class="tab"
+            :class="{ active: activeTab === 'email' }"
+            type="button"
+            @click="activeTab = 'email'"
+          >
+            {{ t('login.emailTab') }}
           </button>
         </div>
 
-        <van-button
-          :loading="loading"
-          type="primary"
-          round block
-          class="email-login-btn"
-          @click="login"
-        >
-          {{ t('login.login') }}
-        </van-button>
+        <section v-if="activeTab === 'telegram'" class="telegram-panel">
+          <div class="telegram-badge">
+            <img
+              class="tg-logo-image"
+              :src="imgTelegram"
+              alt="telegram"
+            >
+          </div>
+          <p class="panel-title">
+            {{ t('login.telegramAuth') }}
+          </p>
+          <p class="panel-subtitle">
+            @{{ tgBotUsername }}
+          </p>
+          <div class="telegram-widget-wrap">
+            <TelegramLogin
+              mode="callback"
+              :telegram-login="tgBotUsername"
+              size="large"
+              radius="18"
+              request-access="write"
+              @callback="handleTelegramAuth"
+            />
+          </div>
+          <van-loading v-if="loading" class="tg-loading" size="20px" />
+        </section>
 
-        <p class="email-signup-text">
-          {{ t('login.noAccountYet') }}
-          <button type="button" class="email-signup-link" @click="goRegister">
-            {{ t('login.signUpNow') }}
-          </button>
-        </p>
+        <section v-else class="email-panel">
+          <div class="email-form-card">
+            <div class="email-form-row">
+              <label for="login-email" class="email-form-label">
+                <span class="icon-wrap">
+                  <img :src="emailIcon" alt="email" class="email-form-icon">
+                </span>
+                <span>{{ t('login.email') }}</span>
+              </label>
+              <input
+                id="login-email"
+                v-model="postData.email"
+                type="text"
+                autocomplete="username"
+                class="email-form-input"
+                :placeholder="t('login.emailOrUsername')"
+              >
+            </div>
+
+            <div class="email-form-row">
+              <label for="login-password" class="email-form-label">
+                <span class="icon-wrap">
+                  <img :src="lockIcon" alt="password" class="email-form-icon">
+                </span>
+                <span>{{ t('login.password') }}</span>
+              </label>
+              <input
+                id="login-password"
+                v-model="postData.password"
+                type="password"
+                autocomplete="current-password"
+                class="email-form-input"
+                :placeholder="t('login.password')"
+              >
+            </div>
+          </div>
+
+          <div class="email-actions">
+            <button type="button" class="email-forgot-btn" @click="goForgotPassword">
+              {{ t('login.forgotPassword') }}
+            </button>
+          </div>
+
+          <van-button
+            :loading="loading"
+            type="primary"
+            round block
+            class="email-login-btn"
+            @click="login"
+          >
+            {{ t('login.login') }}
+          </van-button>
+
+          <p class="email-signup-text">
+            {{ t('login.noAccountYet') }}
+            <button type="button" class="email-signup-link" @click="goRegister">
+              {{ t('login.signUpNow') }}
+            </button>
+          </p>
+        </section>
       </section>
 
-      <section class="feature-card">
-        <div class="feature-item">
+      <section class="feature-grid">
+        <article class="feature-card">
           <div class="feature-icon feature-icon-game" aria-hidden="true">
             G
           </div>
@@ -255,8 +282,8 @@ function goRegister() {
           <div class="feature-desc">
             {{ t('login.feature.game.desc') }}
           </div>
-        </div>
-        <div class="feature-item">
+        </article>
+        <article class="feature-card">
           <div class="feature-icon feature-icon-coin" aria-hidden="true">
             C
           </div>
@@ -266,8 +293,8 @@ function goRegister() {
           <div class="feature-desc">
             {{ t('login.feature.coin.desc') }}
           </div>
-        </div>
-        <div class="feature-item">
+        </article>
+        <article class="feature-card">
           <div class="feature-icon feature-icon-invite" aria-hidden="true">
             <img :src="inviteIcon" alt="" class="feature-icon-img">
           </div>
@@ -277,7 +304,7 @@ function goRegister() {
           <div class="feature-desc">
             {{ t('login.feature.invite.desc') }}
           </div>
-        </div>
+        </article>
       </section>
     </div>
 
@@ -315,197 +342,299 @@ function goRegister() {
 
 <style scoped>
 .login-page {
-  --font-xs: 11px;
-  --font-sm: 12px;
-  --font-base: 13px;
-  --font-md: 14px;
-  --font-lg: 16px;
-  --font-xl: 18px;
-  --font-2xl: 20px;
   min-height: 100vh;
-  background:
-    radial-gradient(1200px 500px at 50% -240px, rgba(var(--color-primary-rgb), 0.12), transparent 65%), var(--color-bg-page);
-  padding: 0 var(--page-padding-x) 34px;
+  background-image:
+    radial-gradient(circle at 16% 8%, rgba(212, 175, 55, 0.18), transparent 28%),
+    radial-gradient(circle at 84% 90%, rgba(255, 215, 0, 0.12), transparent 24%),
+    repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 18px,
+      rgba(212, 175, 55, 0.04) 18px,
+      rgba(212, 175, 55, 0.04) 20px
+    ),
+    linear-gradient(180deg, #3e0000 0%, #230000 60%, #160000 100%);
+  color: #fff0c9;
+  padding: 0 12px calc(28px + env(safe-area-inset-bottom));
 }
 
 .login-shell {
   width: 100%;
   max-width: 640px;
   margin: 0 auto;
+  position: relative;
 }
 
 .login-header {
-  margin: 0 calc(-1 * var(--page-padding-x));
-  padding: 0 14px;
-  background: var(--color-bg-card);
-  border-bottom: 1px solid rgba(16, 24, 40, 0.06);
+  margin-bottom: 12px;
 }
 
 .lang-icon {
   width: 24px;
   height: 24px;
+  filter: brightness(0) saturate(100%) invert(84%) sepia(39%) saturate(612%) hue-rotate(338deg) brightness(105%) contrast(96%);
 }
 
-.banner {
-  margin-top: 16px;
-  border-radius: var(--radius-3xl);
+.hero-card,
+.auth-card,
+.feature-card {
+  position: relative;
   overflow: hidden;
-  box-shadow: 0 10px 26px rgba(15, 23, 42, 0.08);
+  border-radius: 18px;
+  border: 1px solid rgba(212, 175, 55, 0.38);
+  box-shadow:
+    0 14px 28px rgba(0, 0, 0, 0.34),
+    inset 0 0 0 1px rgba(255, 248, 214, 0.08);
 }
 
-.banner-image {
+.hero-card::after,
+.auth-card::after,
+.feature-card::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent 0%, #b8860b 18%, #ffd700 50%, #b8860b 82%, transparent 100%);
+}
+
+.hero-card {
+  min-height: 188px;
+  margin-top: 8px;
+  background: linear-gradient(155deg, rgba(122, 0, 0, 0.96) 0%, rgba(70, 0, 0, 0.97) 55%, rgba(38, 0, 0, 0.98) 100%);
+}
+
+.hero-image {
+  position: absolute;
+  inset: 0;
   display: block;
   width: 100%;
-  height: auto;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.24;
+}
+
+.hero-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(105deg, rgba(62, 0, 0, 0.92) 10%, rgba(62, 0, 0, 0.6) 45%, rgba(62, 0, 0, 0.92) 100%),
+    radial-gradient(circle at 82% 18%, rgba(212, 175, 55, 0.16), transparent 22%);
+}
+
+.hero-content {
+  position: relative;
+  z-index: 1;
+  padding: 22px 20px 20px;
+}
+
+.hero-eyebrow {
+  margin: 0 0 6px;
+  color: #ffd98b;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.hero-title {
+  margin: 0;
+  color: #fff0c9;
+  font-size: 28px;
+  line-height: 1.12;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.hero-desc {
+  margin: 10px 0 0;
+  max-width: 220px;
+  color: rgba(255, 229, 186, 0.78);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.auth-card {
+  margin-top: 14px;
+  background:
+    radial-gradient(rgba(212, 175, 55, 1) 1px, transparent 1px),
+    linear-gradient(160deg, rgba(116, 0, 0, 0.96), rgba(52, 0, 0, 0.98));
+  background-size:
+    18px 18px,
+    100% 100%;
+  padding: 14px;
 }
 
 .tabs {
-  margin-top: 18px;
-  padding: 6px;
-  background: rgba(255, 255, 255, 0.78);
-  border-radius: 16px;
+  padding: 4px;
+  background: rgba(255, 248, 214, 0.08);
+  border: 1px solid rgba(212, 175, 55, 0.2);
+  border-radius: 999px;
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 6px;
-  box-shadow: 0 4px 18px rgba(15, 23, 42, 0.05);
 }
 
 .tab {
   border: 0;
   background: transparent;
-  border-radius: 12px;
-  height: 52px;
-  font-size: var(--font-md);
-  font-weight: 500;
-  color: var(--color-text-tab);
-  position: relative;
+  border-radius: 999px;
+  height: 42px;
+  font-size: 14px;
+  font-weight: 700;
+  color: rgba(255, 229, 186, 0.74);
   transition:
     color 0.2s ease,
-    background-color 0.2s ease;
+    background-color 0.2s ease,
+    transform 0.2s ease;
   cursor: pointer;
 }
 
 .tab.active {
-  color: var(--color-primary);
-  background: var(--color-bg-card);
-}
-
-.tab.active::after {
-  content: '';
-  position: absolute;
-  left: 26%;
-  right: 26%;
-  bottom: 5px;
-  height: 3px;
-  border-radius: 3px;
-  background: var(--color-primary);
+  color: #5a1b00;
+  background: linear-gradient(180deg, #ffdf87 0%, #d4af37 100%);
+  box-shadow:
+    0 10px 18px rgba(75, 25, 0, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
 }
 
 .telegram-panel,
 .email-panel {
-  margin-top: 18px;
+  margin-top: 16px;
+}
+
+.telegram-panel {
   text-align: center;
 }
 
-.tg-logo {
-  width: 108px;
-  border-radius: 0;
+.telegram-badge {
+  width: 78px;
+  height: 78px;
   margin: 0 auto;
+  border-radius: 24px;
+  border: 1px solid rgba(212, 175, 55, 0.42);
+  background: linear-gradient(180deg, rgba(255, 248, 214, 0.16), rgba(212, 175, 55, 0.08));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: inset 0 1px 0 rgba(255, 248, 214, 0.08);
 }
 
 .tg-logo-image {
   display: block;
-  width: 100%;
-  height: auto;
-}
-
-.tg-title {
-  margin: 16px 0 20px;
-  font-size: var(--font-lg);
-  font-weight: 500;
-  color: var(--color-text-muted);
-}
-
-.tg-login-btn {
-  width: 100%;
-  margin: 0 auto;
-  background: var(--color-telegram);
-  border: none;
-  color: var(--color-bg-card);
-  font-size: var(--font-base);
-  font-weight: 500;
+  width: 50px;
   height: 50px;
-  box-shadow: 0 8px 20px rgba(50, 164, 235, 0.2);
+}
+
+.panel-title {
+  margin: 16px 0 6px;
+  color: #fff0c9;
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.panel-subtitle {
+  margin: 0;
+  color: rgba(255, 229, 186, 0.68);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.telegram-widget-wrap {
+  margin-top: 16px;
+  border-radius: 16px;
+  padding: 16px 12px;
+  background: rgba(255, 248, 214, 0.05);
+  border: 1px solid rgba(212, 175, 55, 0.18);
 }
 
 .tg-loading {
-  margin-top: 12px;
+  margin-top: 14px;
 }
 
 .email-form-card {
-  background: var(--color-bg-card);
-  border-radius: var(--radius-2xl);
-  border: 1px solid rgba(16, 24, 40, 0.08);
-  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.05);
-  padding: 6px 14px;
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(165deg, rgba(118, 0, 0, 0.95), rgba(54, 0, 0, 0.96));
+  border-radius: 18px;
+  border: 1px solid rgba(212, 175, 55, 0.24);
+  box-shadow: inset 0 1px 0 rgba(255, 248, 214, 0.08);
+  padding: 8px 14px;
 }
 
 .email-form-row {
-  min-height: 72px;
+  min-height: 86px;
   display: flex;
   flex-direction: column;
   justify-content: center;
-  align-items: stretch;
-  gap: 8px;
-  padding: 6px 0;
+  gap: 12px;
+  padding: 12px 0;
 }
 
 .email-form-row + .email-form-row {
-  border-top: 1px solid var(--color-border);
+  border-top: 1px solid rgba(212, 175, 55, 0.14);
 }
 
 .email-form-label {
   display: flex;
   align-items: center;
-  gap: 8px;
-  min-width: 0;
-  font-size: var(--font-md);
-  font-weight: 500;
-  color: var(--color-text-form);
+  gap: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #ffe09a;
   cursor: text;
+  letter-spacing: 0.02em;
+}
+
+.icon-wrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 10px;
+  background: linear-gradient(180deg, rgba(255, 223, 135, 0.18), rgba(212, 175, 55, 0.08));
+  border: 1px solid rgba(212, 175, 55, 0.26);
+  box-shadow: inset 0 1px 0 rgba(255, 248, 214, 0.08);
 }
 
 .email-form-icon {
-  width: 22px;
-  height: 22px;
+  width: 16px;
+  height: 16px;
+  filter: brightness(0) saturate(100%) invert(85%) sepia(39%) saturate(649%) hue-rotate(335deg) brightness(105%) contrast(97%);
 }
 
 .email-form-input {
   width: 100%;
-  border: 1px solid rgba(16, 24, 40, 0.14);
-  background: rgba(255, 255, 255, 0.96);
-  outline: none;
-  border-radius: 10px;
-  min-height: 40px;
+  min-height: 48px;
   padding: 0 14px;
-  font-size: var(--font-base);
-  color: var(--color-text-input);
+  border: 1px solid rgba(212, 175, 55, 0.22);
+  border-radius: 14px;
+  background: rgba(255, 248, 214, 0.05);
+  outline: none;
+  color: #fff4d1;
+  font-size: 14px;
   transition:
     border-color 0.2s ease,
-    box-shadow 0.2s ease;
+    box-shadow 0.2s ease,
+    background-color 0.2s ease;
 }
 
 .email-form-input::placeholder {
-  color: var(--color-text-muted);
+  color: rgba(255, 229, 186, 0.42);
 }
 
 .email-form-input:focus {
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 4px rgba(var(--color-primary-rgb), 0.16);
+  border-color: rgba(255, 223, 135, 0.72);
+  box-shadow: 0 0 0 4px rgba(212, 175, 55, 0.14);
+  background: rgba(255, 248, 214, 0.08);
 }
 
-.email-forgot-wrap {
-  margin-top: 14px;
+.email-actions {
+  margin-top: 12px;
   display: flex;
   justify-content: flex-end;
 }
@@ -513,115 +642,129 @@ function goRegister() {
 .email-forgot-btn {
   border: none;
   background: transparent;
-  color: var(--color-primary-link);
-  font-size: var(--font-md);
-  padding: 6px 0;
+  color: #ffd98b;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 4px 0;
   cursor: pointer;
-  transition: opacity 0.2s ease;
 }
 
 .email-forgot-btn:active {
   opacity: 0.75;
 }
 
-.email-login-btn {
-  margin-top: 10px;
-  background: var(--color-primary-btn);
-  border: none;
+:deep(.email-login-btn.van-button) {
+  margin-top: 12px;
   height: 54px;
-  font-size: var(--font-xl);
-  font-weight: 500;
-  letter-spacing: 0.2px;
-  box-shadow: 0 10px 24px rgba(var(--color-primary-rgb), 0.34);
+  border: 1px solid rgba(255, 248, 214, 0.34);
+  background: linear-gradient(180deg, #ffdf87 0%, #d4af37 100%);
+  color: #5a1b00;
+  font-size: 16px;
+  font-weight: 800;
+  box-shadow:
+    0 14px 26px rgba(0, 0, 0, 0.18),
+    0 8px 18px rgba(90, 27, 0, 0.24);
+}
+
+:deep(.email-login-btn.van-button--disabled) {
+  opacity: 0.72;
 }
 
 .email-signup-text {
-  margin: 24px 0 0;
-  font-size: var(--font-md);
-  color: var(--color-text-body);
+  margin: 16px 0 0;
+  text-align: center;
+  font-size: 13px;
+  color: rgba(255, 229, 186, 0.74);
   line-height: 1.6;
 }
 
 .email-signup-link {
+  margin-left: 8px;
+  padding: 6px 14px;
   border: none;
-  background: transparent;
-  color: var(--color-primary-link);
-  font-size: var(--font-md);
-  font-weight: 600;
-  margin-left: 6px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #ffdf87 0%, #d4af37 100%);
+  color: #5a1b00;
+  font-size: 13px;
+  font-weight: 800;
   cursor: pointer;
+  box-shadow: 0 8px 16px rgba(75, 25, 0, 0.24);
+}
+
+.feature-grid {
+  margin-top: 14px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
 }
 
 .feature-card {
-  margin-top: 30px;
-  background: linear-gradient(180deg, rgba(245, 250, 246, 0.95) 0%, rgba(240, 247, 241, 0.95) 100%);
-  border: 1px solid rgba(91, 172, 106, 0.12);
-  border-radius: 20px;
-  padding: 18px 12px;
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
-}
-
-.feature-item {
-  text-align: center;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+  background: linear-gradient(165deg, rgba(118, 0, 0, 0.95), rgba(54, 0, 0, 0.96));
+  padding: 16px 10px 14px;
 }
 
 .feature-icon {
-  width: 56px;
-  height: 56px;
+  width: 48px;
+  height: 48px;
   margin: 0 auto 12px;
   border-radius: 50%;
-  background: linear-gradient(145deg, var(--color-primary-gradient-end) 0%, var(--color-primary-btn) 100%);
-  color: var(--color-bg-card);
-  font-size: 16px;
-  font-weight: 700;
+  color: #fff7df;
+  font-size: 15px;
+  font-weight: 800;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 8px 18px rgba(var(--color-primary-medium-rgb), 0.26);
+  border: 1px solid rgba(212, 175, 55, 0.45);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 248, 214, 0.18),
+    0 8px 18px rgba(0, 0, 0, 0.22);
 }
 
 .feature-icon-game {
-  background: linear-gradient(145deg, #3c3f91 0%, #2a2e7e 100%);
+  background: linear-gradient(145deg, #9a1212 0%, #6a0000 100%);
 }
 
 .feature-icon-coin {
-  background: linear-gradient(145deg, #f6be3f 0%, #e39b1f 100%);
+  background: linear-gradient(145deg, #ffdf87 0%, #d4af37 100%);
+  color: #5a1b00;
 }
 
 .feature-icon-invite {
-  background: linear-gradient(145deg, var(--color-primary-gradient-end) 0%, var(--color-primary-btn) 100%);
+  background: linear-gradient(145deg, #c21a1a 0%, #8a0505 100%);
 }
 
 .feature-icon-img {
-  width: 28px;
-  height: 28px;
+  width: 24px;
+  height: 24px;
   object-fit: contain;
-  filter: brightness(0) invert(1);
+  filter: brightness(0) saturate(100%) invert(97%) sepia(44%) saturate(534%) hue-rotate(320deg) brightness(104%) contrast(96%);
 }
 
 .feature-title {
-  font-size: var(--font-lg);
-  font-weight: 600;
-  color: var(--color-text-feature);
+  text-align: center;
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff0c9;
   line-height: 1.35;
 }
 
 .feature-desc {
   margin-top: 6px;
-  font-size: var(--font-sm);
-  color: var(--color-text-muted);
-  line-height: 1.4;
-  max-width: 10em;
+  text-align: center;
+  font-size: 11px;
+  color: rgba(255, 229, 186, 0.66);
+  line-height: 1.45;
 }
 
-.language-popup {
+:deep(.language-popup.van-popup) {
   min-height: 430px;
   padding: 10px 0 28px;
+  background:
+    radial-gradient(circle at 12% 10%, rgba(212, 175, 55, 0.18), transparent 22%),
+    linear-gradient(180deg, #540000 0%, #280000 100%);
+  border-radius: 24px 24px 0 0;
+  border: 1px solid rgba(212, 175, 55, 0.34);
+  box-shadow: 0 -12px 32px rgba(0, 0, 0, 0.48);
 }
 
 .language-popup-header {
@@ -630,13 +773,14 @@ function goRegister() {
   align-items: center;
   justify-content: center;
   position: relative;
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: 1px solid rgba(212, 175, 55, 0.15);
 }
 
 .language-popup-title {
-  font-size: var(--font-2xl);
-  font-weight: 600;
-  color: var(--color-text-primary);
+  font-size: 20px;
+  font-weight: 800;
+  color: #fff0c9;
+  letter-spacing: 0.04em;
 }
 
 .language-popup-close {
@@ -647,22 +791,22 @@ function goRegister() {
   border: none;
   background: transparent;
   font-size: 18px;
-  color: var(--color-text-light);
+  color: #ffd98b;
   line-height: 1;
   cursor: pointer;
 }
 
 .language-list {
-  padding: var(--page-padding-x);
+  padding: 16px 14px 0;
 }
 
 .language-item {
   width: 100%;
-  border: 1px solid transparent;
-  border-radius: var(--radius-lg);
-  padding: 14px var(--page-padding-x);
   margin-bottom: 12px;
-  background: var(--color-bg-card);
+  padding: 14px 16px;
+  border: 1px solid rgba(212, 175, 55, 0.14);
+  border-radius: 16px;
+  background: rgba(255, 248, 214, 0.05);
   display: grid;
   grid-template-columns: 34px 1fr 24px;
   align-items: center;
@@ -674,13 +818,15 @@ function goRegister() {
 }
 
 .language-item.active {
-  border-color: var(--color-border-active);
-  background: var(--color-primary-active);
+  border-color: rgba(212, 175, 55, 0.52);
+  background: rgba(212, 175, 55, 0.12);
+  box-shadow: inset 0 1px 0 rgba(255, 248, 214, 0.08);
 }
 
 .language-code {
-  font-size: var(--font-md);
-  color: var(--color-text-primary);
+  font-size: 14px;
+  color: #fff0c9;
+  font-weight: 700;
 }
 
 .language-text {
@@ -690,45 +836,54 @@ function goRegister() {
 }
 
 .language-text .native {
-  font-size: var(--font-md);
-  font-weight: 600;
-  color: var(--color-text-primary);
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff0c9;
 }
 
 .language-text .english {
-  font-size: var(--font-xs);
-  color: var(--color-text-en);
+  font-size: 11px;
+  color: rgba(255, 229, 186, 0.66);
 }
 
 .language-check {
-  font-size: var(--font-2xl);
-  color: var(--color-primary-link);
+  font-size: 20px;
+  color: #ffd98b;
   text-align: right;
 }
 
 .language-tip {
-  margin: 10px var(--page-padding-x) 0;
+  margin: 10px 14px 0;
   text-align: center;
-  color: var(--color-text-muted);
-  font-size: var(--font-sm);
+  color: rgba(255, 229, 186, 0.6);
+  font-size: 12px;
 }
 
 @media (max-width: 390px) {
-  .email-form-card {
-    padding: 6px 12px;
+  .hero-content {
+    padding: 20px 16px 18px;
   }
 
-  .feature-card {
-    grid-template-columns: repeat(3, 1fr);
+  .hero-title {
+    font-size: 24px;
+  }
+
+  .auth-card {
+    padding: 12px;
+  }
+
+  .email-form-card {
+    padding: 8px 12px;
+  }
+
+  .feature-grid {
     gap: 8px;
-    padding: 14px 8px;
   }
 
   .feature-icon {
     width: 40px;
     height: 40px;
     margin-bottom: 8px;
-    font-size: var(--font-sm);
   }
 
   .feature-icon-img {
@@ -736,16 +891,9 @@ function goRegister() {
     height: 20px;
   }
 
-  .feature-title {
-    font-size: var(--font-base);
-    line-height: 1.2;
-  }
-
   .feature-desc {
     margin-top: 4px;
-    font-size: var(--font-xs);
-    line-height: 1.25;
-    max-width: 7em;
+    font-size: 10px;
   }
 }
 </style>

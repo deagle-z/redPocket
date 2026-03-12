@@ -11,6 +11,7 @@ import languageIcon from '@/assets/svg/language.svg'
 import verifyIcon from '@/assets/svg/verify.svg'
 import inviteIcon from '@/assets/svg/invite.svg'
 import imgRegisterHeader from '@/assets/images/register-header.jpg'
+import imgTelegram from '@/assets/images/telegram.png'
 
 const { t } = useI18n()
 const router = useRouter()
@@ -231,127 +232,159 @@ function selectLanguage(lang: string) {
         </template>
       </AppPageHeader>
 
-      <div class="banner">
+      <section class="hero-card">
         <img
-          class="banner-image"
+          class="hero-image"
           :src="registerHeaderImage"
           alt="register banner"
         >
-      </div>
-
-      <div class="tg-link-wrap">
-        <button type="button" class="tg-link" @click="handleTelegramLogin">
-          {{ t('register.telegramLogin') }}
-        </button>
-      </div>
-
-      <div class="form-card">
-        <div class="form-row">
-          <label for="register-email" class="form-label">
-            <img :src="emailIcon" alt="email" class="form-icon">
-            <span>{{ t('register.email') }}</span>
-          </label>
-          <input
-            id="register-email"
-            v-model="postData.email"
-            type="text"
-            class="form-input"
-            :placeholder="t('register.pleaseEnterEmail')"
-          >
-        </div>
-
-        <div class="form-row form-row--code">
-          <label for="register-code" class="form-label">
-            <img :src="verifyIcon" alt="verify code" class="form-icon">
-            <span>{{ t('register.emailCode') }}</span>
-          </label>
-          <div class="code-input-group">
-            <input
-              id="register-code"
-              v-model="postData.code"
-              type="text"
-              class="form-input"
-              :placeholder="t('register.pleaseEnterCode')"
-            >
-            <button
-              type="button"
-              class="send-btn"
-              :disabled="sendLoading || countdown > 0"
-              @click="sendCode"
-            >
-              <span v-if="countdown > 0">{{ countdown }}s</span>
-              <span v-else-if="sendLoading">...</span>
-              <span v-else>{{ t('register.send') }}</span>
-            </button>
-          </div>
-          <p v-if="devCode" class="dev-code-tip">
-            dev code: {{ devCode }}
+        <div class="hero-content">
+          <p class="hero-eyebrow">
+            {{ t('appTopHeader.brandSubtitle') }}
+          </p>
+          <h2 class="hero-title">
+            {{ t('register.pageTitle') }}
+          </h2>
+          <p class="hero-desc">
+            {{ t('register.telegramLogin') }}
           </p>
         </div>
+      </section>
 
-        <div class="form-row">
-          <label for="register-password" class="form-label">
-            <img :src="lockIcon" alt="password" class="form-icon">
-            <span>{{ t('register.password') }}</span>
-          </label>
-          <input
-            id="register-password"
-            v-model="postData.password"
-            type="password"
-            class="form-input"
-            :placeholder="t('register.pleaseEnterPassword')"
-          >
-        </div>
-
-        <div class="form-row">
-          <label for="register-confirm-password" class="form-label">
-            <img :src="lockIcon" alt="confirm password" class="form-icon">
-            <span>{{ t('register.confirmPassword') }}</span>
-          </label>
-          <input
-            id="register-confirm-password"
-            v-model="postData.confirmPassword"
-            type="password"
-            class="form-input"
-            :placeholder="t('register.pleaseEnterConfirmPassword')"
-          >
-        </div>
-
-        <div class="form-row">
-          <label for="register-invite-code" class="form-label">
-            <img :src="inviteIcon" alt="invite code" class="form-icon">
-            <span>{{ t('register.inviteCode') }}</span>
-          </label>
-          <input
-            id="register-invite-code"
-            v-model="postData.inviteCode"
-            type="text"
-            class="form-input"
-            :placeholder="t('register.pleaseEnterInviteCode')"
-          >
-        </div>
-      </div>
-
-      <van-button
-        :loading="loading"
-        type="primary"
-        round
-        block
-        class="register-btn"
-        @click="register"
-      >
-        {{ t('register.confirm') }}
-      </van-button>
-
-      <p class="login-text">
-        {{ t('register.alreadyHaveAccount') }}
-        <button type="button" class="login-link" @click="goLogin">
-          {{ t('register.loginNow') }}
+      <section class="auth-card">
+        <button type="button" class="tg-entry" @click="handleTelegramLogin">
+          <span class="tg-entry__media">
+            <img :src="imgTelegram" alt="telegram" class="tg-entry__icon">
+          </span>
+          <span class="tg-entry__content">
+            <strong>{{ t('register.telegramLogin') }}</strong>
+            <span>{{ t('login.telegramAuth') }}</span>
+          </span>
+          <span class="tg-entry__arrow">→</span>
         </button>
-      </p>
 
-      <section class="feature-card">
-        <div class="feature-item">
+        <div class="form-card">
+          <div class="form-row">
+            <label for="register-email" class="form-label">
+              <span class="icon-wrap">
+                <img :src="emailIcon" alt="email" class="form-icon">
+              </span>
+              <span>{{ t('register.email') }}</span>
+            </label>
+            <input
+              id="register-email"
+              v-model="postData.email"
+              type="text"
+              autocomplete="email"
+              class="form-input"
+              :placeholder="t('register.pleaseEnterEmail')"
+            >
+          </div>
+
+          <div class="form-row form-row--code">
+            <label for="register-code" class="form-label">
+              <span class="icon-wrap">
+                <img :src="verifyIcon" alt="verify code" class="form-icon">
+              </span>
+              <span>{{ t('register.emailCode') }}</span>
+            </label>
+            <div class="code-input-group">
+              <input
+                id="register-code"
+                v-model="postData.code"
+                type="text"
+                inputmode="numeric"
+                class="form-input"
+                :placeholder="t('register.pleaseEnterCode')"
+              >
+              <button
+                type="button"
+                class="send-btn"
+                :disabled="sendLoading || countdown > 0"
+                @click="sendCode"
+              >
+                <span v-if="countdown > 0">{{ countdown }}s</span>
+                <span v-else-if="sendLoading">...</span>
+                <span v-else>{{ t('register.send') }}</span>
+              </button>
+            </div>
+            <p v-if="devCode" class="dev-code-tip">
+              dev code: {{ devCode }}
+            </p>
+          </div>
+
+          <div class="form-row">
+            <label for="register-password" class="form-label">
+              <span class="icon-wrap">
+                <img :src="lockIcon" alt="password" class="form-icon">
+              </span>
+              <span>{{ t('register.password') }}</span>
+            </label>
+            <input
+              id="register-password"
+              v-model="postData.password"
+              type="password"
+              autocomplete="new-password"
+              class="form-input"
+              :placeholder="t('register.pleaseEnterPassword')"
+            >
+          </div>
+
+          <div class="form-row">
+            <label for="register-confirm-password" class="form-label">
+              <span class="icon-wrap">
+                <img :src="lockIcon" alt="confirm password" class="form-icon">
+              </span>
+              <span>{{ t('register.confirmPassword') }}</span>
+            </label>
+            <input
+              id="register-confirm-password"
+              v-model="postData.confirmPassword"
+              type="password"
+              autocomplete="new-password"
+              class="form-input"
+              :placeholder="t('register.pleaseEnterConfirmPassword')"
+            >
+          </div>
+
+          <div class="form-row">
+            <label for="register-invite-code" class="form-label">
+              <span class="icon-wrap">
+                <img :src="inviteIcon" alt="invite code" class="form-icon">
+              </span>
+              <span>{{ t('register.inviteCode') }}</span>
+            </label>
+            <input
+              id="register-invite-code"
+              v-model="postData.inviteCode"
+              type="text"
+              class="form-input"
+              :placeholder="t('register.pleaseEnterInviteCode')"
+            >
+          </div>
+        </div>
+
+        <van-button
+          :loading="loading"
+          type="primary"
+          round
+          block
+          class="register-btn"
+          @click="register"
+        >
+          {{ t('register.confirm') }}
+        </van-button>
+
+        <p class="login-text">
+          {{ t('register.alreadyHaveAccount') }}
+          <button type="button" class="login-link" @click="goLogin">
+            {{ t('register.loginNow') }}
+          </button>
+        </p>
+      </section>
+
+      <section class="feature-grid">
+        <article class="feature-card">
           <div class="feature-icon feature-icon-game" aria-hidden="true">
             G
           </div>
@@ -361,8 +394,8 @@ function selectLanguage(lang: string) {
           <div class="feature-desc">
             {{ t('login.feature.game.desc') }}
           </div>
-        </div>
-        <div class="feature-item">
+        </article>
+        <article class="feature-card">
           <div class="feature-icon feature-icon-coin" aria-hidden="true">
             C
           </div>
@@ -372,8 +405,8 @@ function selectLanguage(lang: string) {
           <div class="feature-desc">
             {{ t('login.feature.coin.desc') }}
           </div>
-        </div>
-        <div class="feature-item">
+        </article>
+        <article class="feature-card">
           <div class="feature-icon feature-icon-invite" aria-hidden="true">
             <img :src="inviteIcon" alt="" class="feature-icon-img">
           </div>
@@ -383,7 +416,7 @@ function selectLanguage(lang: string) {
           <div class="feature-desc">
             {{ t('login.feature.invite.desc') }}
           </div>
-        </div>
+        </article>
       </section>
     </div>
 
@@ -421,136 +454,273 @@ function selectLanguage(lang: string) {
 
 <style scoped>
 .register-page {
-  --font-xs: 11px;
-  --font-sm: 12px;
-  --font-base: 13px;
-  --font-md: 14px;
-  --font-lg: 16px;
-  --font-xl: 18px;
-  --font-2xl: 20px;
   min-height: 100vh;
-  background:
-    radial-gradient(1200px 500px at 50% -240px, rgba(var(--color-primary-rgb), 0.12), transparent 65%),
-    var(--color-bg-page);
-  padding: 0 var(--page-padding-x) 34px;
+  background-image:
+    radial-gradient(circle at 16% 8%, rgba(212, 175, 55, 0.18), transparent 28%),
+    radial-gradient(circle at 84% 90%, rgba(255, 215, 0, 0.12), transparent 24%),
+    repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 18px,
+      rgba(212, 175, 55, 0.04) 18px,
+      rgba(212, 175, 55, 0.04) 20px
+    ),
+    linear-gradient(180deg, #3e0000 0%, #230000 60%, #160000 100%);
+  color: #fff0c9;
+  padding: 0 12px calc(28px + env(safe-area-inset-bottom));
 }
 
 .register-shell {
   width: 100%;
   max-width: 640px;
   margin: 0 auto;
+  position: relative;
 }
 
 .register-header {
-  margin: 0 calc(-1 * var(--page-padding-x));
-  padding: 0 14px;
-  background: var(--color-bg-card);
-  border-bottom: 1px solid rgba(16, 24, 40, 0.06);
+  margin-bottom: 12px;
 }
 
 .lang-icon {
   width: 24px;
   height: 24px;
+  filter: brightness(0) saturate(100%) invert(84%) sepia(39%) saturate(612%) hue-rotate(338deg) brightness(105%) contrast(96%);
 }
 
-.banner {
-  margin-top: 16px;
-  border-radius: var(--radius-3xl);
+.hero-card,
+.auth-card,
+.feature-card {
+  position: relative;
   overflow: hidden;
-  box-shadow: 0 10px 26px rgba(15, 23, 42, 0.08);
+  border-radius: 18px;
+  border: 1px solid rgba(212, 175, 55, 0.38);
+  box-shadow:
+    0 14px 28px rgba(0, 0, 0, 0.34),
+    inset 0 0 0 1px rgba(255, 248, 214, 0.08);
 }
 
-.banner-image {
+.hero-card::after,
+.auth-card::after,
+.feature-card::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent 0%, #b8860b 18%, #ffd700 50%, #b8860b 82%, transparent 100%);
+}
+
+.hero-card {
+  min-height: 188px;
+  margin-top: 8px;
+  background: linear-gradient(155deg, rgba(122, 0, 0, 0.96) 0%, rgba(70, 0, 0, 0.97) 55%, rgba(38, 0, 0, 0.98) 100%);
+}
+
+.hero-image {
+  position: absolute;
+  inset: 0;
   display: block;
   width: 100%;
-  height: auto;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.24;
 }
 
-.tg-link-wrap {
-  margin-top: 20px;
-  text-align: center;
+.hero-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(105deg, rgba(62, 0, 0, 0.92) 10%, rgba(62, 0, 0, 0.6) 45%, rgba(62, 0, 0, 0.92) 100%),
+    radial-gradient(circle at 82% 18%, rgba(212, 175, 55, 0.16), transparent 22%);
 }
 
-.tg-link {
-  border: 1px solid rgba(var(--color-primary-rgb), 0.4);
-  background: rgba(255, 255, 255, 0.7);
-  color: var(--color-primary-link);
-  font-size: var(--font-md);
-  font-weight: 500;
-  border-radius: 999px;
-  min-height: 42px;
-  padding: 0 18px;
+.hero-content {
+  position: relative;
+  z-index: 1;
+  padding: 22px 20px 20px;
+}
+
+.hero-eyebrow {
+  margin: 0 0 6px;
+  color: #ffd98b;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.hero-title {
+  margin: 0;
+  color: #fff0c9;
+  font-size: 28px;
+  line-height: 1.12;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.hero-desc {
+  margin: 10px 0 0;
+  max-width: 240px;
+  color: rgba(255, 229, 186, 0.78);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.auth-card {
+  margin-top: 14px;
+  background:
+    radial-gradient(rgba(212, 175, 55, 1) 1px, transparent 1px),
+    linear-gradient(160deg, rgba(116, 0, 0, 0.96), rgba(52, 0, 0, 0.98));
+  background-size:
+    18px 18px,
+    100% 100%;
+  padding: 14px;
+}
+
+.tg-entry {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid rgba(212, 175, 55, 0.24);
+  border-radius: 16px;
+  background: rgba(255, 248, 214, 0.06);
+  display: flex;
+  align-items: center;
+  gap: 12px;
   cursor: pointer;
+  box-shadow: inset 0 1px 0 rgba(255, 248, 214, 0.08);
   transition:
-    background-color 0.2s ease,
-    border-color 0.2s ease;
+    transform 0.2s ease,
+    background-color 0.2s ease;
 }
 
-.tg-link:active {
-  background: rgba(var(--color-primary-rgb), 0.14);
+.tg-entry:active {
+  transform: translateY(1px);
+}
+
+.tg-entry__media {
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(255, 248, 214, 0.16), rgba(212, 175, 55, 0.08));
+  border: 1px solid rgba(212, 175, 55, 0.24);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+
+.tg-entry__icon {
+  width: 28px;
+  height: 28px;
+}
+
+.tg-entry__content {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  text-align: left;
+}
+
+.tg-entry__content strong {
+  color: #fff0c9;
+  font-size: 14px;
+  line-height: 1.35;
+  font-weight: 800;
+}
+
+.tg-entry__content span {
+  color: rgba(255, 229, 186, 0.66);
+  font-size: 12px;
+  line-height: 1.3;
+}
+
+.tg-entry__arrow {
+  color: #ffd98b;
+  font-size: 18px;
+  line-height: 1;
 }
 
 .form-card {
-  margin-top: 18px;
-  background: var(--color-bg-card);
-  border-radius: var(--radius-2xl);
-  border: 1px solid rgba(16, 24, 40, 0.08);
-  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.05);
-  padding: 6px 14px;
+  position: relative;
+  overflow: hidden;
+  margin-top: 14px;
+  background: linear-gradient(165deg, rgba(118, 0, 0, 0.95), rgba(54, 0, 0, 0.96));
+  border-radius: 18px;
+  border: 1px solid rgba(212, 175, 55, 0.24);
+  box-shadow: inset 0 1px 0 rgba(255, 248, 214, 0.08);
+  padding: 8px 14px;
 }
 
 .form-row {
-  min-height: 72px;
+  min-height: 86px;
   display: flex;
   flex-direction: column;
   justify-content: center;
-  align-items: stretch;
-  gap: 8px;
-  padding: 6px 0;
+  gap: 12px;
+  padding: 12px 0;
 }
 
 .form-row + .form-row {
-  border-top: 1px solid var(--color-border);
+  border-top: 1px solid rgba(212, 175, 55, 0.14);
 }
 
 .form-label {
   display: flex;
   align-items: center;
-  gap: 8px;
-  min-width: 0;
-  font-size: var(--font-md);
-  font-weight: 500;
-  color: var(--color-text-form);
+  gap: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #ffe09a;
   cursor: text;
+  letter-spacing: 0.02em;
+}
+
+.icon-wrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 10px;
+  background: linear-gradient(180deg, rgba(255, 223, 135, 0.18), rgba(212, 175, 55, 0.08));
+  border: 1px solid rgba(212, 175, 55, 0.26);
+  box-shadow: inset 0 1px 0 rgba(255, 248, 214, 0.08);
 }
 
 .form-icon {
-  width: 22px;
-  height: 22px;
+  width: 16px;
+  height: 16px;
+  filter: brightness(0) saturate(100%) invert(85%) sepia(39%) saturate(649%) hue-rotate(335deg) brightness(105%) contrast(97%);
 }
 
 .form-input {
   width: 100%;
-  border: 1px solid rgba(16, 24, 40, 0.14);
-  background: rgba(255, 255, 255, 0.96);
-  outline: none;
-  border-radius: 10px;
-  min-height: 40px;
+  min-height: 48px;
   padding: 0 14px;
-  font-size: var(--font-base);
-  color: var(--color-text-input);
+  border: 1px solid rgba(212, 175, 55, 0.22);
+  border-radius: 14px;
+  background: rgba(255, 248, 214, 0.05);
+  outline: none;
+  color: #fff4d1;
+  font-size: 14px;
   transition:
     border-color 0.2s ease,
-    box-shadow 0.2s ease;
+    box-shadow 0.2s ease,
+    background-color 0.2s ease;
 }
 
 .form-input::placeholder {
-  color: var(--color-text-muted);
+  color: rgba(255, 229, 186, 0.42);
 }
 
 .form-input:focus {
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 4px rgba(var(--color-primary-rgb), 0.16);
+  border-color: rgba(255, 223, 135, 0.72);
+  box-shadow: 0 0 0 4px rgba(212, 175, 55, 0.14);
+  background: rgba(255, 248, 214, 0.08);
 }
 
 .form-row--code .code-input-group {
@@ -566,21 +736,22 @@ function selectLanguage(lang: string) {
 
 .dev-code-tip {
   margin: 4px 0 0;
-  font-size: var(--font-sm);
-  color: var(--color-danger);
+  font-size: 12px;
+  color: #ffd98b;
 }
 
 .send-btn {
   flex-shrink: 0;
-  min-width: 88px;
-  height: 38px;
-  border: none;
-  border-radius: 10px;
-  background: var(--color-danger);
-  color: var(--color-bg-card);
-  font-size: var(--font-base);
-  font-weight: 500;
+  min-width: 96px;
+  height: 44px;
+  border: 1px solid rgba(255, 248, 214, 0.42);
+  border-radius: 12px;
+  background: linear-gradient(180deg, #ffdf87 0%, #d4af37 100%);
+  color: #5a1b00;
+  font-size: 13px;
+  font-weight: 800;
   cursor: pointer;
+  box-shadow: 0 8px 18px rgba(90, 27, 0, 0.22);
   transition:
     opacity 0.2s ease,
     transform 0.2s ease;
@@ -595,112 +766,122 @@ function selectLanguage(lang: string) {
   transform: translateY(1px);
 }
 
-.register-btn {
-  margin-top: 12px;
-  background: var(--color-primary-btn);
-  border: none;
+:deep(.register-btn.van-button) {
+  margin-top: 14px;
   height: 54px;
-  font-size: var(--font-xl);
-  font-weight: 500;
-  letter-spacing: 0.2px;
-  box-shadow: 0 10px 24px rgba(var(--color-primary-rgb), 0.34);
+  border: 1px solid rgba(255, 248, 214, 0.34);
+  background: linear-gradient(180deg, #ffdf87 0%, #d4af37 100%);
+  color: #5a1b00;
+  font-size: 16px;
+  font-weight: 800;
+  box-shadow:
+    0 14px 26px rgba(0, 0, 0, 0.18),
+    0 8px 18px rgba(90, 27, 0, 0.24);
+}
+
+:deep(.register-btn.van-button--disabled) {
+  opacity: 0.72;
 }
 
 .login-text {
-  margin: 22px 0 0;
-  font-size: var(--font-md);
-  color: var(--color-text-body);
+  margin: 16px 0 0;
+  font-size: 13px;
+  color: rgba(255, 229, 186, 0.74);
   text-align: center;
   line-height: 1.6;
 }
 
 .login-link {
-  border: 1px solid var(--color-primary-link);
-  background: rgba(255, 255, 255, 0.68);
-  color: var(--color-primary-link);
-  font-size: var(--font-md);
-  font-weight: 600;
-  margin-left: 6px;
-  border-radius: 12px;
-  padding: 5px 14px;
+  margin-left: 8px;
+  padding: 6px 14px;
+  border: none;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #ffdf87 0%, #d4af37 100%);
+  color: #5a1b00;
+  font-size: 13px;
+  font-weight: 800;
   cursor: pointer;
-  transition: background-color 0.2s ease;
+  box-shadow: 0 8px 16px rgba(75, 25, 0, 0.24);
 }
 
 .login-link:active {
-  background: rgba(var(--color-primary-rgb), 0.14);
+  transform: translateY(1px);
+}
+
+.feature-grid {
+  margin-top: 14px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
 }
 
 .feature-card {
-  margin-top: 30px;
-  background: linear-gradient(180deg, rgba(245, 250, 246, 0.95) 0%, rgba(240, 247, 241, 0.95) 100%);
-  border: 1px solid rgba(91, 172, 106, 0.12);
-  border-radius: 20px;
-  padding: 18px 12px;
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
-}
-
-.feature-item {
-  text-align: center;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+  background: linear-gradient(165deg, rgba(118, 0, 0, 0.95), rgba(54, 0, 0, 0.96));
+  padding: 16px 10px 14px;
 }
 
 .feature-icon {
-  width: 56px;
-  height: 56px;
+  width: 48px;
+  height: 48px;
   margin: 0 auto 12px;
   border-radius: 50%;
-  background: linear-gradient(145deg, var(--color-primary-gradient-end) 0%, var(--color-primary-btn) 100%);
-  color: var(--color-bg-card);
-  font-size: 16px;
-  font-weight: 700;
+  color: #fff7df;
+  font-size: 15px;
+  font-weight: 800;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 8px 18px rgba(var(--color-primary-medium-rgb), 0.26);
+  border: 1px solid rgba(212, 175, 55, 0.45);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 248, 214, 0.18),
+    0 8px 18px rgba(0, 0, 0, 0.22);
 }
 
 .feature-icon-game {
-  background: linear-gradient(145deg, #3c3f91 0%, #2a2e7e 100%);
+  background: linear-gradient(145deg, #9a1212 0%, #6a0000 100%);
 }
 
 .feature-icon-coin {
-  background: linear-gradient(145deg, #f6be3f 0%, #e39b1f 100%);
+  background: linear-gradient(145deg, #ffdf87 0%, #d4af37 100%);
+  color: #5a1b00;
 }
 
 .feature-icon-invite {
-  background: linear-gradient(145deg, var(--color-primary-gradient-end) 0%, var(--color-primary-btn) 100%);
+  background: linear-gradient(145deg, #c21a1a 0%, #8a0505 100%);
 }
 
 .feature-icon-img {
-  width: 28px;
-  height: 28px;
+  width: 24px;
+  height: 24px;
   object-fit: contain;
-  filter: brightness(0) invert(1);
+  filter: brightness(0) saturate(100%) invert(97%) sepia(44%) saturate(534%) hue-rotate(320deg) brightness(104%) contrast(96%);
 }
 
 .feature-title {
-  font-size: var(--font-lg);
-  font-weight: 600;
-  color: var(--color-text-feature);
+  text-align: center;
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff0c9;
   line-height: 1.35;
 }
 
 .feature-desc {
   margin-top: 6px;
-  font-size: var(--font-sm);
-  color: var(--color-text-muted);
-  line-height: 1.4;
-  max-width: 10em;
+  text-align: center;
+  font-size: 11px;
+  color: rgba(255, 229, 186, 0.66);
+  line-height: 1.45;
 }
 
-.language-popup {
+:deep(.language-popup.van-popup) {
   min-height: 430px;
   padding: 10px 0 28px;
+  background:
+    radial-gradient(circle at 12% 10%, rgba(212, 175, 55, 0.18), transparent 22%),
+    linear-gradient(180deg, #540000 0%, #280000 100%);
+  border-radius: 24px 24px 0 0;
+  border: 1px solid rgba(212, 175, 55, 0.34);
+  box-shadow: 0 -12px 32px rgba(0, 0, 0, 0.48);
 }
 
 .language-popup-header {
@@ -709,39 +890,40 @@ function selectLanguage(lang: string) {
   align-items: center;
   justify-content: center;
   position: relative;
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: 1px solid rgba(212, 175, 55, 0.15);
 }
 
 .language-popup-title {
-  font-size: var(--font-2xl);
-  font-weight: 600;
-  color: var(--color-text-primary);
+  font-size: 20px;
+  font-weight: 800;
+  color: #fff0c9;
+  letter-spacing: 0.04em;
 }
 
 .language-popup-close {
   position: absolute;
-  right: var(--page-padding-x);
+  right: 16px;
   top: 50%;
   transform: translateY(-50%);
   border: none;
   background: transparent;
   font-size: 18px;
-  color: var(--color-text-light);
+  color: #ffd98b;
   line-height: 1;
   cursor: pointer;
 }
 
 .language-list {
-  padding: var(--page-padding-x);
+  padding: 16px 14px 0;
 }
 
 .language-item {
   width: 100%;
-  border: 1px solid transparent;
-  border-radius: var(--radius-lg);
-  padding: 14px var(--page-padding-x);
   margin-bottom: 12px;
-  background: var(--color-bg-card);
+  padding: 14px 16px;
+  border: 1px solid rgba(212, 175, 55, 0.14);
+  border-radius: 16px;
+  background: rgba(255, 248, 214, 0.05);
   display: grid;
   grid-template-columns: 34px 1fr 24px;
   align-items: center;
@@ -753,13 +935,15 @@ function selectLanguage(lang: string) {
 }
 
 .language-item.active {
-  border-color: var(--color-border-active);
-  background: var(--color-primary-active);
+  border-color: rgba(212, 175, 55, 0.52);
+  background: rgba(212, 175, 55, 0.12);
+  box-shadow: inset 0 1px 0 rgba(255, 248, 214, 0.08);
 }
 
 .language-code {
-  font-size: var(--font-md);
-  color: var(--color-text-primary);
+  font-size: 14px;
+  color: #fff0c9;
+  font-weight: 700;
 }
 
 .language-text {
@@ -769,32 +953,44 @@ function selectLanguage(lang: string) {
 }
 
 .language-text .native {
-  font-size: var(--font-md);
-  font-weight: 600;
-  color: var(--color-text-primary);
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff0c9;
 }
 
 .language-text .english {
-  font-size: var(--font-xs);
-  color: var(--color-text-en);
+  font-size: 11px;
+  color: rgba(255, 229, 186, 0.66);
 }
 
 .language-check {
-  font-size: var(--font-2xl);
-  color: var(--color-primary-link);
+  font-size: 20px;
+  color: #ffd98b;
   text-align: right;
 }
 
 .language-tip {
-  margin: 10px var(--page-padding-x) 0;
+  margin: 10px 14px 0;
   text-align: center;
-  color: var(--color-text-muted);
-  font-size: var(--font-sm);
+  color: rgba(255, 229, 186, 0.6);
+  font-size: 12px;
 }
 
 @media (max-width: 390px) {
+  .hero-content {
+    padding: 20px 16px 18px;
+  }
+
+  .hero-title {
+    font-size: 24px;
+  }
+
+  .auth-card {
+    padding: 12px;
+  }
+
   .form-card {
-    padding: 6px 12px;
+    padding: 8px 12px;
   }
 
   .form-row--code .code-input-group {
@@ -802,22 +998,19 @@ function selectLanguage(lang: string) {
   }
 
   .send-btn {
-    min-width: 84px;
+    min-width: 88px;
     height: 40px;
-    font-size: var(--font-sm);
+    font-size: 12px;
   }
 
-  .feature-card {
-    grid-template-columns: repeat(3, 1fr);
+  .feature-grid {
     gap: 8px;
-    padding: 14px 8px;
   }
 
   .feature-icon {
     width: 40px;
     height: 40px;
     margin-bottom: 8px;
-    font-size: var(--font-sm);
   }
 
   .feature-icon-img {
@@ -825,16 +1018,9 @@ function selectLanguage(lang: string) {
     height: 20px;
   }
 
-  .feature-title {
-    font-size: var(--font-base);
-    line-height: 1.2;
-  }
-
   .feature-desc {
     margin-top: 4px;
-    font-size: var(--font-xs);
-    line-height: 1.25;
-    max-width: 7em;
+    font-size: 10px;
   }
 }
 </style>
