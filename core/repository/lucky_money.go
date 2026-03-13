@@ -374,6 +374,9 @@ func GetLuckyMoneyAppDetail(db *gorm.DB, luckyID int64, currentUserID int64) (po
 		Order("i.seq_no asc").
 		Scan(&rows).Error
 	hideSeqNo := uint(0)
+	hiddenAmount := 0.0
+	hiddenThunderAmount := 0.0
+	hiddenIsThunder := 0
 	now := time.Now()
 	if shouldHidePendingSecondLastAmount(base.Status, expireAt, base.Number, len(rows), now) {
 		var (
@@ -388,6 +391,9 @@ func GetLuckyMoneyAppDetail(db *gorm.DB, luckyID int64, currentUserID int64) (po
 		}
 		if found {
 			hideSeqNo = latestRow.SeqNo
+			hiddenAmount = latestRow.Amount
+			hiddenThunderAmount = latestRow.ThunderAmount
+			hiddenIsThunder = latestRow.IsThunder
 		}
 	}
 	for _, row := range rows {
@@ -420,6 +426,19 @@ func GetLuckyMoneyAppDetail(db *gorm.DB, luckyID int64, currentUserID int64) (po
 		Select("COUNT(1) as grabbed_count, COALESCE(SUM(CASE WHEN thunder = 1 THEN 1 ELSE 0 END), 0) as hit_count, COALESCE(SUM(amount), 0) as received_amount, COALESCE(SUM(thunder_amount), 0) as thunder_income").
 		Where("red_packet_id = ? AND is_grabbed = 1", base.ID).
 		Scan(&agg).Error
+	if hideSeqNo > 0 {
+		agg.ReceivedAmount -= hiddenAmount
+		if agg.ReceivedAmount < 0 {
+			agg.ReceivedAmount = 0
+		}
+		agg.ThunderIncome -= hiddenThunderAmount
+		if agg.ThunderIncome < 0 {
+			agg.ThunderIncome = 0
+		}
+		if hiddenIsThunder == 1 && agg.HitCount > 0 {
+			agg.HitCount--
+		}
+	}
 
 	var refundRow struct {
 		RefundAmount float64 `gorm:"column:refund_amount"`

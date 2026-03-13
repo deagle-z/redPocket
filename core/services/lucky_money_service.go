@@ -220,7 +220,7 @@ func EnsureMinActiveLuckyPackets(db *gorm.DB, tablePrefix string) error {
 			return nil
 		}
 
-		amount := pickRandomLuckyBotAmount()
+		amount := pickRandomLuckyBotAmount(tablePrefix)
 		if err = ensureBotBalance(db, &botUser, amount); err != nil {
 			return err
 		}
@@ -267,9 +267,32 @@ func pickRandomLuckyBotUser(db *gorm.DB) (pojo.TgUser, error) {
 	return botUser, err
 }
 
-func pickRandomLuckyBotAmount() float64 {
-	amounts := []float64{100, 200, 500}
+func pickRandomLuckyBotAmount(tablePrefix string) float64 {
+	amounts := getBotRandomSendAmounts(tablePrefix)
 	return amounts[rand.IntN(len(amounts))]
+}
+
+func getBotRandomSendAmounts(tablePrefix string) []float64 {
+	defaultValue := "100|200|500"
+	val := utils.GetStringCache(tablePrefix, "bot_rsend_random", &defaultValue)
+	raw := defaultValue
+	if val != nil && strings.TrimSpace(*val) != "" {
+		raw = strings.TrimSpace(*val)
+	}
+
+	parts := strings.Split(raw, "|")
+	result := make([]float64, 0, len(parts))
+	for _, part := range parts {
+		amount, err := strconv.ParseFloat(strings.TrimSpace(part), 64)
+		if err != nil || amount <= 0 {
+			continue
+		}
+		result = append(result, amount)
+	}
+	if len(result) == 0 {
+		return []float64{100, 200, 500}
+	}
+	return result
 }
 
 func topUpBotBalance(db *gorm.DB, userID int64, amount float64) error {
@@ -822,11 +845,18 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 		_ = EnsureMinActiveLuckyPackets(db, tablePrefix)
 	}
 
+	displayAmount := redAmount
+	displayLoseMoney := loseMoney
+	if shouldHideSecondLastInProgressForBroadcast(luckyMoney, grabbedCount+1, time.Now()) {
+		displayAmount = 0
+		displayLoseMoney = 0
+	}
+
 	// 返回结果
 	result := map[string]interface{}{
-		"amount":    redAmount,
+		"amount":    displayAmount,
 		"isThunder": isThunder,
-		"loseMoney": loseMoney,
+		"loseMoney": displayLoseMoney,
 		"openNum":   grabIndex,
 		"grabIndex": grabIndex,
 		"luckyInfo": luckyMoney,
@@ -834,9 +864,9 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 	}
 
 	if isThunder == 1 {
-		result["message"] = fmt.Sprintf("中雷，领取 %.2f U，损失 %.2f U", redAmount, loseMoney)
+		result["message"] = fmt.Sprintf("中雷，领取 %.2f U，损失 %.2f U", displayAmount, displayLoseMoney)
 	} else {
-		result["message"] = fmt.Sprintf("未中雷，领取 %.2f U", redAmount)
+		result["message"] = fmt.Sprintf("未中雷，领取 %.2f U", displayAmount)
 	}
 
 	return result, nil

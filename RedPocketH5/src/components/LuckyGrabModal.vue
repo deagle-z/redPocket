@@ -34,11 +34,14 @@ const opened = ref(false)
 const loading = ref(false)
 const resultReady = ref(false)
 const resultAmountText = ref('')
+const resultAmountValue = ref(0)
 const isThunderHit = ref(false)
 const loseMoneyText = ref(formatCurrency(0))
 const displayAmountText = computed(() => {
   if (!resultReady.value)
     return ''
+  if (resultAmountValue.value <= 0)
+    return t('homeLucky.loadingLabel')
   return isThunderHit.value ? t('grabModal.thunderShort') : resultAmountText.value
 })
 const blessingText = computed(() => {
@@ -57,6 +60,7 @@ function resetState() {
   loading.value = false
   resultReady.value = false
   resultAmountText.value = ''
+  resultAmountValue.value = 0
   isThunderHit.value = false
   loseMoneyText.value = formatCurrency(0)
 }
@@ -90,7 +94,7 @@ async function runOpenFlow() {
   spinning.value = true
   const [ok] = await Promise.all([
     submitGrab(),
-    sleep(600),
+    sleep(300),
   ])
   spinning.value = false
   opened.value = !!ok
@@ -116,6 +120,7 @@ async function submitGrab(): Promise<boolean> {
     isThunderHit.value = data?.isThunder === 1 || data?.isThunder === '1'
     const rawAmount = Number(data?.amount ?? data?.grabAmount ?? 0)
     const rawLoseMoney = Number(data?.loseMoney ?? 0)
+    resultAmountValue.value = rawAmount
     resultAmountText.value = formatAmount(rawAmount)
     loseMoneyText.value = formatAmount(rawLoseMoney)
     resultReady.value = true

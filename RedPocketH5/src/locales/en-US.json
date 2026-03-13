@@ -202,7 +202,7 @@
     "progress": "Grabbed: {grabbed} / {total}",
     "thunderNo": "Thunder: {no}",
     "hitsCount": "Thunder hits: {count}",
-    "rebate": "Sender win: {amount}",
+    "rebate": "Win: {amount}",
     "game": "Game",
     "grabAction": "Grab #{seq}",
     "grabSuccess": "Grab succeeded",

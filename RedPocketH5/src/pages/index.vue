@@ -117,6 +117,7 @@ function refreshPacketCountdowns() {
         ...packet,
         status: 'done',
         statusText: t('homeLucky.statusDone'),
+        thunderText: t('homeLucky.thunderNo', { no: Number(packet?.thunder ?? 0) }),
         timeText: t('homeLucky.statusDone'),
         packetImage: imgRedpacketJpg,
       }
@@ -159,6 +160,7 @@ function mapPacket(item: any) {
     username: item?.senderName || 'User',
     avatar: item?.senderAvatar || DEFAULT_AVATAR,
     amount: formatAmount(item?.amount),
+    thunder: Number(item?.thunder || 0),
     status: isOngoing ? 'ongoing' : 'done',
     statusText: isOngoing ? t('homeLucky.statusOngoing') : t('homeLucky.statusDone'),
     gameText: t('homeLucky.game'),
@@ -333,6 +335,7 @@ function applyLuckyBroadcast(message: any) {
       status: nextStatus,
       statusText: nextStatus === 'ongoing' ? t('homeLucky.statusOngoing') : t('homeLucky.statusDone'),
       amount: formatAmount(lucky?.amount),
+      thunder: Number(lucky?.thunder || packet?.thunder || 0),
       rebateText: Number.isFinite(totalThunderAmount) ? t('homeLucky.rebate', { amount: formatAmount(totalThunderAmount) }) : packet.rebateText,
       thunderText: nextStatus === 'ongoing' ? '' : t('homeLucky.thunderNo', { no: Number(lucky?.thunder || 0) }),
       progressText: t('homeLucky.progress', { grabbed: grabbedCount, total: packetNumber }),
@@ -475,36 +478,36 @@ onBeforeUnmount(() => {
                 <div class="tags-row">
                   <span class="tag game">🎮 {{ packet.gameText }}</span>
                   <span class="tag progress">{{ packet.progressText }}</span>
+                  <span class="rebate-text">
+                    {{ packet.rebateText }}
+                  </span>
+                  <span class="tag meta-tag">
+                    {{ packet.hitsText }}
+                  </span>
                 </div>
                 <div class="meta-row">
                   <span v-if="packet.thunderText">{{ packet.thunderText }}</span>
-                  <span>{{ packet.hitsText }}</span>
                 </div>
-                <p class="rebate-text">
-                  {{ packet.rebateText }}
-                </p>
-                <div>
-                  <p class="time-text">
-                    {{ packet.timeText }}
-                  </p>
+                <div v-if="packet.status === 'ongoing'" class="packet-actions-inline">
+                  <button
+                    v-for="action in packet.actions" :key="`${packet.id}-${action.seqNo}`" type="button"
+                    class="action-pill" :class="{ grabbed: action.isGrabbed, mined: action.isGrabMine }"
+                    :disabled="action.isGrabbed"
+                    @click="openGrabDialog(packet, action)"
+                  >
+                    <span v-if="action.thunder" aria-hidden="true">💣</span>
+                    <span v-else-if="action.isGrabMine" class="mine-text">🎁 </span>
+                    {{ action.label }}
+                  </button>
                 </div>
               </div>
             </div>
           </div>
 
           <div class="packet-actions">
-            <template v-if="packet.status === 'ongoing'">
-              <button
-                v-for="action in packet.actions" :key="`${packet.id}-${action.seqNo}`" type="button"
-                class="action-pill" :class="{ grabbed: action.isGrabbed, mined: action.isGrabMine }"
-                :disabled="action.isGrabbed"
-                @click="openGrabDialog(packet, action)"
-              >
-                <span v-if="action.thunder" aria-hidden="true">💣</span>
-                <span v-else-if="action.isGrabMine" class="mine-text">🎁 </span>
-                {{ action.label }}
-              </button>
-            </template>
+            <span v-if="packet.status === 'ongoing'" class="time-text time-text--footer">
+              {{ packet.timeText }}
+            </span>
             <button v-else type="button" class="action-pill done">
               {{ t('homeLucky.statusDone') }}
             </button>
@@ -753,11 +756,13 @@ onBeforeUnmount(() => {
 }
 
 .send-promo-btn {
+  position: relative;
+  overflow: hidden;
   flex: 0 0 auto;
   min-width: 98px;
   height: 34px;
   padding: 0 12px;
-  border: none;
+  border: 1px solid rgba(255, 248, 214, 0.42);
   border-radius: 999px;
   background: linear-gradient(180deg, #ffdf87 0%, #d4af37 100%);
   color: #5a1b00;
@@ -769,7 +774,45 @@ onBeforeUnmount(() => {
   gap: 6px;
   box-shadow:
     0 10px 18px rgba(75, 25, 0, 0.28),
+    0 3px 0 rgba(126, 62, 0, 0.6),
     inset 0 1px 0 rgba(255, 255, 255, 0.34);
+  transition:
+    transform 0.16s ease,
+    box-shadow 0.16s ease,
+    filter 0.16s ease;
+}
+
+.send-promo-btn::before,
+.send-promo-btn::after {
+  content: '';
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  pointer-events: none;
+}
+
+.send-promo-btn::before {
+  top: 5px;
+  height: 9px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.42), rgba(255, 255, 255, 0));
+  opacity: 0.9;
+}
+
+.send-promo-btn::after {
+  bottom: 4px;
+  height: 8px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(126, 62, 0, 0), rgba(126, 62, 0, 0.28));
+}
+
+.send-promo-btn:active {
+  transform: translateY(2px);
+  filter: saturate(0.98);
+  box-shadow:
+    0 6px 12px rgba(75, 25, 0, 0.22),
+    0 1px 0 rgba(126, 62, 0, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.26);
 }
 
 .send-promo-btn :deep(.van-icon) {
@@ -1031,6 +1074,9 @@ onBeforeUnmount(() => {
 .packet-info {
   min-width: 0;
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .tags-row {
@@ -1075,8 +1121,14 @@ onBeforeUnmount(() => {
   border-color: rgba(255, 255, 255, 0.14);
 }
 
+.tag.meta-tag {
+  color: rgba(255, 229, 186, 0.82);
+  background: rgba(255, 248, 214, 0.07);
+  border-color: rgba(255, 248, 214, 0.18);
+}
+
 .meta-row {
-  margin-top: 3px;
+  margin-top: 1px;
   display: flex;
   align-items: center;
   gap: 4px;
@@ -1099,9 +1151,12 @@ onBeforeUnmount(() => {
 }
 
 .rebate-text {
-  margin: 3px 0 0;
+  margin: 0;
   display: inline-flex;
+  align-self: flex-start;
   align-items: center;
+  width: fit-content;
+  max-width: 100%;
   min-height: 14px;
   padding: 2px 5px;
   border-radius: 999px;
@@ -1110,11 +1165,17 @@ onBeforeUnmount(() => {
   color: rgba(255, 232, 160, 0.85);
   font-size: 7px;
   letter-spacing: 0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .time-text {
-  margin: 3px 0 0;
+  margin: 1px 0 0;
   display: block;
+  align-self: flex-start;
+  width: fit-content;
+  max-width: 100%;
   color: #ffd87f;
   font-size: 10px;
   line-height: 1.2;
@@ -1126,6 +1187,7 @@ onBeforeUnmount(() => {
 }
 
 .packet-card.done .time-text {
+  margin-top: 0;
   color: #f0dbc0;
   display: inline-block;
   min-height: 16px;
@@ -1137,19 +1199,26 @@ onBeforeUnmount(() => {
 }
 
 /* ─── Action Pills ────────────────────────────────── */
+.packet-actions-inline {
+  margin-top: 3px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+}
+
 .packet-actions {
   position: relative;
   z-index: 1;
   border-top: 1px solid rgba(212, 175, 55, 0.22);
-  padding: 5px 7px;
-  display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 4px;
+  padding: 6px 7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   background: linear-gradient(180deg, rgba(0, 0, 0, 0.2) 0%, rgba(0, 0, 0, 0.35) 100%);
 }
 
 .packet-actions-skeleton {
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .skeleton-pill {
@@ -1162,9 +1231,16 @@ onBeforeUnmount(() => {
   border-radius: 999px;
   background: linear-gradient(180deg, #9e1010 0%, #6a0000 100%);
   color: #fff3de;
-  font-size: 5px;
-  line-height: 1;
-  min-height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 3px;
+  font-size: 7px;
+  line-height: 1.15;
+  text-align: center;
+  white-space: normal;
+  word-break: break-word;
+  min-height: 28px;
   box-shadow:
     inset 0 1px 0 rgba(212, 175, 55, 0.45),
     0 2px 6px rgba(0, 0, 0, 0.3);
@@ -1173,6 +1249,7 @@ onBeforeUnmount(() => {
     opacity 0.15s,
     transform 0.1s;
 }
+
 
 .action-pill:not(:disabled):active {
   transform: scale(0.96);
@@ -1197,14 +1274,21 @@ onBeforeUnmount(() => {
 }
 
 .action-pill.done {
-  grid-column: 1 / -1;
+  width: 100%;
   background: rgba(212, 175, 55, 0.08);
   color: rgba(255, 248, 214, 0.6);
   border: 1px solid rgba(212, 175, 55, 0.28);
   box-shadow: none;
   letter-spacing: 0.06em;
-  font-size: 8px;
-  min-height: 19px;
+  font-size: 9px;
+  min-height: 24px;
+}
+
+.time-text--footer {
+  margin: 0;
+  align-self: auto;
+  width: 100%;
+  text-align: center;
 }
 
 /* ─── Winner Section ──────────────────────────────── */

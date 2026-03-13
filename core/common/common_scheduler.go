@@ -1,6 +1,7 @@
 package common
 
 import (
+	"BaseGoUni/core/services"
 	"BaseGoUni/core/utils"
 	"github.com/robfig/cron/v3"
 	"log"
@@ -48,6 +49,9 @@ func InitScheduler() {
 	addScheduledTask("*/10 * * * * *", "host_info_get", 1*time.Minute, func() {
 		utils.FlushTempHostInfo()
 	}, "")
+	addScheduledTask("0 * * * * *", "lucky_expire_sweep", 2*time.Minute, func() {
+		services.SweepExpiredLuckyPacketsAllHosts()
+	}, "扫描过期红包")
 	c.Start()
 	log.Println("Scheduler started successfully")
 }

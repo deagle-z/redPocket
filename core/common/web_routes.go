@@ -138,6 +138,10 @@ func InitGin() {
 		adminGroup.GET("/withdrawOrderBr/:id", api.GetWithdrawOrderBrById) // 获取巴西提现订单详情
 		adminGroup.POST("/payChannel/list", api.GetPayChannels)            // 获取支付通道列表
 		adminGroup.GET("/payChannel/:id", api.GetPayChannelById)           // 获取支付通道详情
+		adminGroup.POST("/sysCountry/list", api.GetSysCountries)
+		adminGroup.GET("/sysCountry/:id", api.GetSysCountryById)
+		adminGroup.POST("/sysCustomField/list", api.GetSysCustomFields)
+		adminGroup.GET("/sysCustomField/:id", api.GetSysCustomFieldById)
 		adminGroup.POST("/platformProfitLedger/list", api.GetPlatformProfitLedgers)
 		adminGroup.GET("/platformProfitLedger/:id", api.GetPlatformProfitLedgerById)
 		adminGroup.POST("/tgUser/listWithSubStats", api.GetTgUsersWithSubStats)
@@ -170,6 +174,10 @@ func InitGin() {
 		adminGroupLog.DELETE("/withdrawOrderBr/:id", api.DelWithdrawOrderBr) // 删除巴西提现订单
 		adminGroupLog.POST("/payChannel", api.SetPayChannel)                 // 创建或更新支付通道
 		adminGroupLog.DELETE("/payChannel/:id", api.DelPayChannel)           // 删除支付通道
+		adminGroupLog.POST("/sysCountry", api.SetSysCountry)
+		adminGroupLog.DELETE("/sysCountry/:id", api.DelSysCountry)
+		adminGroupLog.POST("/sysCustomField", api.SetSysCustomField)
+		adminGroupLog.DELETE("/sysCustomField/:id", api.DelSysCustomField)
 		adminGroupLog.POST("/platformProfitLedger", api.SetPlatformProfitLedger)
 		adminGroupLog.DELETE("/platformProfitLedger/:id", api.DelPlatformProfitLedger)
 		//adminGroupLog.PUT("/host_info", api2.SetHostInfo)
