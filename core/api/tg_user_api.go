@@ -479,12 +479,36 @@ func GetCurrentTgInviteRuleConfig(ctx *gin.Context) {
 		return f
 	}
 
+	parseSendMinMax := func(defaultValue string) (float64, float64) {
+		val := utils.GetStringCache(tablePrefix, "send_min_max", &defaultValue)
+		raw := defaultValue
+		if val != nil && strings.TrimSpace(*val) != "" {
+			raw = strings.TrimSpace(*val)
+		}
+
+		parts := strings.Split(raw, "|")
+		if len(parts) != 2 {
+			return 100, 5000
+		}
+
+		minValue, errMin := strconv.ParseFloat(strings.TrimSpace(parts[0]), 64)
+		maxValue, errMax := strconv.ParseFloat(strings.TrimSpace(parts[1]), 64)
+		if errMin != nil || errMax != nil || minValue <= 0 || maxValue <= 0 || minValue > maxValue {
+			return 100, 5000
+		}
+		return minValue, maxValue
+	}
+
+	sendMinAmount, sendMaxAmount := parseSendMinMax("100|5000")
+
 	utils.SuccessObjBack(ctx, pojo.TgInviteRuleConfigBack{
 		LuckySendCommission:       parseConfigFloat("lucky_send_commission", "5"),
 		LuckyGrabbingCommission:   parseConfigFloat("lucky_grabbing_commission", "5"),
 		InviteFirstRechargeReward: parseConfigFloat("invite_first_recharge_reward", "10"),
 		InviteLuckyRebateRate:     parseConfigFloat("invite_lucky_rebate_rate", "40"),
 		InviteThunderRebateRate:   parseConfigFloat("invite_thunder_rebate_rate", "40"),
+		SendMinAmount:             sendMinAmount,
+		SendMaxAmount:             sendMaxAmount,
 	})
 }
 

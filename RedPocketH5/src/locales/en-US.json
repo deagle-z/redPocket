@@ -335,6 +335,7 @@
   },
   "sendPacketPage": {
     "invalidInput": "Please enter valid amount and choose thunder number 0-9",
+    "amountRange": "Amount range {min}-{max}",
     "sendSuccess": "Packet sent successfully #{id}",
     "sendFailed": "Failed to send packet",
     "packetTypeTitle": "Public Packet",

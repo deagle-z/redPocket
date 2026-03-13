@@ -3,6 +3,7 @@ package api
 import (
 	"BaseGoUni/core/utils"
 	"github.com/gin-gonic/gin"
+	"strings"
 )
 
 // AdminUpload godoc
@@ -30,11 +31,24 @@ func AdminUpload(ctx *gin.Context) {
 	})
 }
 
+const (
+	appUploadMaxSize  = 5 * 1024 * 1024 // 5 MB
+)
+
 // AppUpload app端上传文件（R2）
 func AppUpload(ctx *gin.Context) {
 	file, err := ctx.FormFile("file")
 	if err != nil {
 		utils.ErrorBack(ctx, "file is required")
+		return
+	}
+	if file.Size > appUploadMaxSize {
+		utils.ErrorBack(ctx, "文件大小不能超过5MB")
+		return
+	}
+	contentType := file.Header.Get("Content-Type")
+	if !strings.HasPrefix(contentType, "image/") {
+		utils.ErrorBack(ctx, "仅支持图片格式（image/*）")
 		return
 	}
 	url, err := utils.UploadR2(ctx, file, "upload")

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { showToast } from 'vant'
-import { sendLuckyPacket } from '@/api/user'
+import { getCurrentTgInviteRuleConfig, sendLuckyPacket } from '@/api/user'
 import language1Icon from '@/assets/svg/language-1.svg'
 import { CURRENCY_SYMBOL } from '@/utils/currency'
 
@@ -29,6 +29,8 @@ const selectedMine = ref<number | null>(0)
 const amountInput = ref('')
 const submitLoading = ref(false)
 const lastSubmitAt = ref(0)
+const amountMin = ref(100)
+const amountMax = ref(5000)
 const SUBMIT_THROTTLE_MS = 1000
 
 const rootClass = computed(() => [
@@ -36,9 +38,24 @@ const rootClass = computed(() => [
   `send-packet-form--${props.variant}`,
 ])
 
+const availableAmountPresets = computed(() => {
+  return amountPresets.filter(value => value >= amountMin.value && value <= amountMax.value)
+})
+
+const amountRangeText = computed(() => {
+  return t('sendPacketPage.amountRange', {
+    min: amountMin.value,
+    max: amountMax.value,
+  })
+})
+
 const canSubmit = computed(() => {
   const amount = Number(amountInput.value)
-  return selectedMine.value !== null && Number.isFinite(amount) && amount > 0 && !submitLoading.value
+  return selectedMine.value !== null
+    && Number.isFinite(amount)
+    && amount >= amountMin.value
+    && amount <= amountMax.value
+    && !submitLoading.value
 })
 
 function resetForm() {
@@ -62,6 +79,21 @@ function selectMine(value: number) {
   selectedMine.value = value
 }
 
+async function loadSendRangeConfig() {
+  try {
+    const { data } = await getCurrentTgInviteRuleConfig()
+    const minValue = Number(data?.sendMinAmount)
+    const maxValue = Number(data?.sendMaxAmount)
+    if (Number.isFinite(minValue) && Number.isFinite(maxValue) && minValue > 0 && maxValue > 0 && minValue <= maxValue) {
+      amountMin.value = minValue
+      amountMax.value = maxValue
+    }
+  }
+  catch {
+    // Keep defaults when config loading fails.
+  }
+}
+
 async function submitPacket() {
   if (!canSubmit.value)
     return
@@ -73,6 +105,10 @@ async function submitPacket() {
 
   const amount = Number(amountInput.value)
   const thunder = Number(selectedMine.value)
+  if (!Number.isFinite(amount) || amount < amountMin.value || amount > amountMax.value) {
+    showToast(amountRangeText.value)
+    return
+  }
   if (!amount || amount <= 0 || !Number.isInteger(thunder) || thunder < 0 || thunder > 9) {
     showToast(t('sendPacketPage.invalidInput'))
     return
@@ -98,6 +134,10 @@ async function submitPacket() {
     submitLoading.value = false
   }
 }
+
+onMounted(() => {
+  void loadSendRangeConfig()
+})
 </script>
 
 <template>
@@ -137,10 +177,13 @@ async function submitPacket() {
           </div>
           <span class="amount-currency">{{ CURRENCY_SYMBOL }}</span>
         </div>
+        <p class="amount-range-tip">
+          {{ amountRangeText }}
+        </p>
 
         <div class="preset-grid">
           <button
-            v-for="value in amountPresets"
+            v-for="value in availableAmountPresets"
             :key="value"
             type="button"
             class="preset-item"
@@ -367,6 +410,13 @@ async function submitPacket() {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
+}
+
+.amount-range-tip {
+  margin: 10px 2px 0;
+  color: rgba(255, 229, 186, 0.74);
+  font-size: 12px;
+  line-height: 1.4;
 }
 
 .preset-item,

@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
+	"log"
 	"math/rand/v2"
 	"strconv"
 	"strings"
@@ -110,10 +111,21 @@ func sendRedPacket(db *gorm.DB, senderID int64, senderName string, req pojo.Luck
 		return nil, fmt.Errorf("创建红包明细失败: %v", err)
 	}
 
+	// 锁定发送者行，重新校验余额（防止并发发包导致余额为负）
+	var lockedSender pojo.TgUser
+	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ?", senderID).First(&lockedSender).Error; err != nil {
+		tx.Rollback()
+		return nil, fmt.Errorf("锁定用户失败: %v", err)
+	}
+	if lockedSender.Balance < req.Amount {
+		tx.Rollback()
+		return nil, errors.New("您的余额已不足发包")
+	}
+
 	// 扣除发送者余额，同时扣除赠送余额（不低于0）
 	giftDeduct := req.Amount
-	if user.GiftAmount < giftDeduct {
-		giftDeduct = user.GiftAmount
+	if lockedSender.GiftAmount < giftDeduct {
+		giftDeduct = lockedSender.GiftAmount
 	}
 	if err := tx.Model(&pojo.TgUser{}).
 		Where("id = ?", senderID).
@@ -128,7 +140,7 @@ func sendRedPacket(db *gorm.DB, senderID int64, senderName string, req pojo.Luck
 	// 记录余额变动
 	normalDeduct := req.Amount - giftDeduct
 	awardUniBase := fmt.Sprintf("lucky_%d", luckyMoney.ID)
-	runningBalance := user.Balance
+	runningBalance := lockedSender.Balance
 
 	if giftDeduct > 0 {
 		cashHistoryGift := pojo.CashHistory{
@@ -172,7 +184,12 @@ func sendRedPacket(db *gorm.DB, senderID int64, senderName string, req pojo.Luck
 	if err := tx.Commit().Error; err != nil {
 		return nil, fmt.Errorf("提交事务失败: %v", err)
 	}
-	_ = EnqueueLuckyExpireTask(tablePrefix, luckyMoney.ID, luckyMoney.ExpireTime)
+	if err := EnqueueLuckyExpireTask(tablePrefix, luckyMoney.ID, luckyMoney.ExpireTime); err != nil {
+		log.Printf("[lucky] EnqueueLuckyExpireTask failed: luckyID=%d err=%v", luckyMoney.ID, err)
+	}
+	if err := EnqueueLuckyBotGrabTask(db, tablePrefix, luckyMoney.ID, nil, pickRandomBotGrabCount(luckyMoney.Number)); err != nil {
+		log.Printf("[lucky] EnqueueLuckyBotGrabTask failed: luckyID=%d err=%v", luckyMoney.ID, err)
+	}
 
 	return luckyMoney, nil
 }
@@ -202,8 +219,13 @@ func EnsureMinActiveLuckyPackets(db *gorm.DB, tablePrefix string) error {
 			return nil
 		}
 
+		amount := pickRandomLuckyBotAmount()
+		if err = ensureBotBalance(db, &botUser, amount); err != nil {
+			return err
+		}
+
 		req := pojo.LuckyMoneySend{
-			Amount:  pickRandomLuckyBotAmount(),
+			Amount:  amount,
 			Thunder: rand.IntN(10),
 		}
 		if _, err = sendRedPacket(db, botUser.ID, getTgUserDisplayName(&botUser), req, tablePrefix); err != nil {
@@ -232,6 +254,190 @@ func pickRandomLuckyBotUser(db *gorm.DB) (pojo.TgUser, error) {
 func pickRandomLuckyBotAmount() float64 {
 	amounts := []float64{100, 200, 500}
 	return amounts[rand.IntN(len(amounts))]
+}
+
+func topUpBotBalance(db *gorm.DB, userID int64, amount float64) error {
+	if db == nil || userID <= 0 || amount <= 0 {
+		return nil
+	}
+	return db.Model(&pojo.TgUser{}).
+		Where("id = ? AND is_bot = ?", userID, true).
+		Update("balance", gorm.Expr("balance + ?", amount)).Error
+}
+
+func ensureBotBalance(db *gorm.DB, botUser *pojo.TgUser, minBalance float64) error {
+	if db == nil || botUser == nil || botUser.ID == 0 || minBalance <= 0 {
+		return nil
+	}
+	if botUser.Balance >= minBalance {
+		return nil
+	}
+	topUpAmount := minBalance - botUser.Balance
+	if err := topUpBotBalance(db, botUser.ID, topUpAmount); err != nil {
+		return err
+	}
+	botUser.Balance = minBalance
+	return nil
+}
+
+func BroadcastLuckyGrabResult(db *gorm.DB, luckyID int64, result map[string]interface{}) error {
+	if db == nil || luckyID <= 0 {
+		return nil
+	}
+
+	luckyMoney, err := repository.GetLuckyMoney(db, luckyID)
+	if err != nil || luckyMoney.ID == 0 {
+		return nil
+	}
+
+	broadcast := map[string]interface{}{
+		"id":         luckyMoney.ID,
+		"createdAt":  luckyMoney.CreatedAt,
+		"updatedAt":  luckyMoney.UpdatedAt,
+		"senderId":   luckyMoney.SenderID,
+		"senderName": luckyMoney.SenderName,
+		"amount":     luckyMoney.Amount,
+		"received":   luckyMoney.Received,
+		"number":     luckyMoney.Number,
+		"lucky":      luckyMoney.Lucky,
+		"thunder":    luckyMoney.Thunder,
+		"chatId":     luckyMoney.ChatID,
+		"redList":    luckyMoney.RedList,
+		"loseRate":   luckyMoney.LoseRate,
+		"status":     luckyMoney.Status,
+		"tenantId":   luckyMoney.TenantId,
+		"expireTime": luckyMoney.ExpireTime,
+	}
+	if idx, ok := result["grabIndex"]; ok {
+		broadcast["grabIndex"] = idx
+	} else if idx, ok := result["openNum"]; ok {
+		broadcast["grabIndex"] = idx
+	}
+
+	grabbedCount, _ := repository.GetLuckyHistoryCount(db, luckyID)
+	hideSecondLast := shouldHideSecondLastInProgressForBroadcast(luckyMoney, grabbedCount, time.Now())
+
+	grabAmount := toFloat64Value(result["amount"])
+	if hideSecondLast {
+		grabAmount = 0
+	}
+	broadcast["grabAmount"] = grabAmount
+
+	grabSeqNo := toIntValue(result["grabIndex"])
+	if grabSeqNo <= 0 {
+		grabSeqNo = toIntValue(result["openNum"])
+	}
+	// 单次查询同时获取当前包的 thunder_amount 和全局 SUM(thunder_amount)
+	var thunderRow struct {
+		ThisThunderAmount  float64 `gorm:"column:this_thunder_amount"`
+		TotalThunderAmount float64 `gorm:"column:total_thunder_amount"`
+	}
+	_ = db.Table("lucky_money_item").
+		Select("COALESCE(SUM(CASE WHEN seq_no = ? THEN thunder_amount ELSE 0 END), 0) as this_thunder_amount, COALESCE(SUM(thunder_amount), 0) as total_thunder_amount", grabSeqNo).
+		Where("red_packet_id = ?", luckyID).
+		Scan(&thunderRow).Error
+	rawThunderAmount := thunderRow.ThisThunderAmount
+	thunderAmount := rawThunderAmount
+	if hideSecondLast {
+		thunderAmount = 0
+	}
+	broadcast["thunderAmount"] = thunderAmount
+
+	if isThunder, ok := result["isThunder"]; ok {
+		broadcast["isThunder"] = isThunder
+	}
+	if loseMoney, ok := result["loseMoney"]; ok {
+		broadcast["loseMoney"] = loseMoney
+	}
+	totalThunderAmount := thunderRow.TotalThunderAmount
+	if hideSecondLast {
+		totalThunderAmount -= rawThunderAmount
+		if totalThunderAmount < 0 {
+			totalThunderAmount = 0
+		}
+	}
+	broadcast["totalThunderAmount"] = totalThunderAmount
+
+	return utils.BroadcastWsWithType("lucky_grabbed", broadcast)
+}
+
+func shouldHideSecondLastInProgressForBroadcast(lucky pojo.LuckyMoney, grabbedCount int64, now time.Time) bool {
+	if lucky.Status != 1 {
+		return false
+	}
+	if lucky.Number <= 1 {
+		return false
+	}
+	if int(grabbedCount) != lucky.Number-1 {
+		return false
+	}
+	expireAt := lucky.ExpireTime
+	if expireAt.IsZero() {
+		expireAt = lucky.CreatedAt.Add(3 * time.Minute)
+	}
+	return now.Before(expireAt)
+}
+
+func toIntValue(v interface{}) int {
+	switch n := v.(type) {
+	case int:
+		return n
+	case int8:
+		return int(n)
+	case int16:
+		return int(n)
+	case int32:
+		return int(n)
+	case int64:
+		return int(n)
+	case uint:
+		return int(n)
+	case uint8:
+		return int(n)
+	case uint16:
+		return int(n)
+	case uint32:
+		return int(n)
+	case uint64:
+		return int(n)
+	case float32:
+		return int(n)
+	case float64:
+		return int(n)
+	default:
+		return 0
+	}
+}
+
+func toFloat64Value(v interface{}) float64 {
+	switch n := v.(type) {
+	case float64:
+		return n
+	case float32:
+		return float64(n)
+	case int:
+		return float64(n)
+	case int8:
+		return float64(n)
+	case int16:
+		return float64(n)
+	case int32:
+		return float64(n)
+	case int64:
+		return float64(n)
+	case uint:
+		return float64(n)
+	case uint8:
+		return float64(n)
+	case uint16:
+		return float64(n)
+	case uint32:
+		return float64(n)
+	case uint64:
+		return float64(n)
+	default:
+		return 0
+	}
 }
 
 // GrabRedPacket 抢红包业务逻辑
@@ -323,6 +529,13 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 		winFee = redAmount * float64(grabbingCommission) / 100.0
 	}
 
+	lockKey := fmt.Sprintf("lucky_grab:%d", luckyID)
+	acquired, lockErr := utils.AcquireLock(lockKey, 10*time.Second)
+	if lockErr != nil || !acquired {
+		return nil, errors.New("操作频繁，请稍后再试")
+	}
+	defer utils.ReleaseLock(lockKey)
+
 	tx := db.Begin()
 	defer func() {
 		if r := recover(); r != nil {
@@ -338,10 +551,27 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 
 	if hitThunder {
 		// 中雷
+		// 锁定抢包者行，重新校验余额（防止并发抢不同红包导致余额为负）
+		var lockedUser pojo.TgUser
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ?", userID).First(&lockedUser).Error; err != nil {
+			tx.Rollback()
+			return nil, fmt.Errorf("锁定用户失败: %v", err)
+		}
+		if lockedUser.Balance < lowestAmount {
+			tx.Rollback()
+			return nil, fmt.Errorf("你至少需要有%.2fU才能抢这个红包~", lowestAmount)
+		}
+		// 锁定发送者行（在 UPDATE 前读取，得到准确的 StartAmount）
+		var lockedSender pojo.TgUser
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ?", luckyMoney.SenderID).First(&lockedSender).Error; err != nil {
+			tx.Rollback()
+			return nil, fmt.Errorf("锁定发送者失败: %v", err)
+		}
+
 		// 扣除用户余额
 		giftDeduct := loseMoney
-		if user.GiftAmount < giftDeduct {
-			giftDeduct = user.GiftAmount
+		if lockedUser.GiftAmount < giftDeduct {
+			giftDeduct = lockedUser.GiftAmount
 		}
 		if err := tx.Model(&pojo.TgUser{}).
 			Where("id = ?", userID).
@@ -369,7 +599,7 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 		// 记录余额变动（用户）
 		normalDeduct := loseMoney - giftDeduct
 		awardUniBase := fmt.Sprintf("lucky_grab_%d_%d_%d_%d", luckyID, userID, awardTs, int64(loseMoney*1000))
-		runningBalance := user.Balance
+		runningBalance := lockedUser.Balance
 
 		if giftDeduct > 0 {
 			cashHistoryGift := pojo.CashHistory{
@@ -411,17 +641,13 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 		}
 
 		// 记录余额变动（发送者）- 抽成后金额（实际到账）
-		senderUser, err := getTgUserByID(db, luckyMoney.SenderID)
-		if err != nil {
-			tx.Rollback()
-			return nil, fmt.Errorf("获取发送者失败: %v", err)
-		}
+		// 使用事务内锁定的 lockedSender（UPDATE 前的值，即准确的 StartAmount）
 		cashHistorySender := pojo.CashHistory{
 			UserId:      luckyMoney.SenderID,
 			AwardUni:    fmt.Sprintf("lucky_thunder_%d_%d_%d_%d", luckyID, userID, awardTs, int64(actualLoseMoney*1000)),
 			Amount:      actualLoseMoney,
-			StartAmount: senderUser.Balance,
-			EndAmount:   senderUser.Balance + actualLoseMoney, // 实际到账金额
+			StartAmount: lockedSender.Balance,
+			EndAmount:   lockedSender.Balance + actualLoseMoney, // 实际到账金额
 			CashMark:    "红包中雷收益",
 			CashDesc:    fmt.Sprintf("红包中雷收益，获得%.2f", actualLoseMoney),
 			Type:        pojo.CashHistoryTypeRedPacketThunderIncome,
@@ -439,8 +665,8 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 				UserId:      luckyMoney.SenderID,
 				AwardUni:    fmt.Sprintf("lucky_thunder_commission_%d_%d_%d_%d", luckyID, userID, awardTs, int64(commissionAmount*1000)),
 				Amount:      commissionAmount,
-				StartAmount: senderUser.Balance + actualLoseMoney, // 抽成后金额
-				EndAmount:   senderUser.Balance + actualLoseMoney, // 抽成后金额（不变）
+				StartAmount: lockedSender.Balance + actualLoseMoney, // 抽成后金额
+				EndAmount:   lockedSender.Balance + actualLoseMoney, // 抽成后金额（不变）
 				CashMark:    "红包中雷抽成",
 				CashDesc:    fmt.Sprintf("红包中雷抽成%.2f%%，抽成金额%.2fU", float64(sendCommission), commissionAmount),
 				Type:        pojo.CashHistoryTypeRedPacketCommission,
@@ -919,11 +1145,6 @@ func applyLuckyInviteRebate(
 	}
 
 	idempotencyKey := fmt.Sprintf("invite_rebate:%s:%d:%d:%d", scene, luckyID, grabIndex, parentID)
-	var existing pojo.TgUserRebateRecord
-	if err := tx.Where("idempotency_key = ?", idempotencyKey).First(&existing).Error; err == nil && existing.ID > 0 {
-		return nil
-	}
-
 	remark := fmt.Sprintf("lucky_%s_invite_rebate", scene)
 	sourceOrderID := fmt.Sprintf("lucky_%d_%d", luckyID, grabIndex)
 	tenant := tenantID
@@ -942,8 +1163,14 @@ func applyLuckyInviteRebate(
 		IdempotencyKey: idempotencyKey,
 		Remark:         &remark,
 	}
-	if err := tx.Create(&record).Error; err != nil {
-		return err
+	// OnConflict DoNothing：若 idempotency_key 唯一索引冲突（并发重入），静默跳过而非报错回滚
+	result := tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&record)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		// 已存在，幂等跳过
+		return nil
 	}
 
 	return tx.Model(&pojo.TgUser{}).

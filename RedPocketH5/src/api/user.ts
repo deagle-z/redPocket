@@ -67,6 +67,8 @@ export interface TgInviteRuleConfig {
   inviteFirstRechargeReward?: number
   inviteLuckyRebateRate?: number
   inviteThunderRebateRate?: number
+  sendMinAmount?: number
+  sendMaxAmount?: number
 }
 
 export interface UserState {

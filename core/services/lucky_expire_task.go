@@ -46,6 +46,7 @@ func InitLuckyExpireAsynq() error {
 		})
 		mux := asynq.NewServeMux()
 		mux.HandleFunc(TaskTypeLuckyExpire, handleLuckyExpireTask)
+		mux.HandleFunc(TaskTypeLuckyBotGrab, handleLuckyBotGrabTask)
 		go func() {
 			if err := srv.Run(mux); err != nil {
 				log.Printf("asynq server stopped: %v", err)
@@ -88,7 +89,7 @@ func refundExpiredLuckyMoney(db *gorm.DB, tablePrefix string, luckyID int64) err
 	err := db.Transaction(func(tx *gorm.DB) error {
 		var lucky pojo.LuckyMoney
 		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ?", luckyID).First(&lucky).Error; err != nil {
-			return nil
+			return err
 		}
 		if lucky.Status != 1 {
 			return nil

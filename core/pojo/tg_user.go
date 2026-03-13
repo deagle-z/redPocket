@@ -138,6 +138,8 @@ type TgInviteRuleConfigBack struct {
 	InviteFirstRechargeReward float64 `json:"inviteFirstRechargeReward"`
 	InviteLuckyRebateRate     float64 `json:"inviteLuckyRebateRate"`
 	InviteThunderRebateRate   float64 `json:"inviteThunderRebateRate"`
+	SendMinAmount             float64 `json:"sendMinAmount"`
+	SendMaxAmount             float64 `json:"sendMaxAmount"`
 }
 
 type TgUserBack struct {

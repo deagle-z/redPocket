@@ -335,6 +335,7 @@
   },
   "sendPacketPage": {
     "invalidInput": "请输入有效金额并选择0-9雷值",
+    "amountRange": "金额范围 {min}-{max}",
     "sendSuccess": "红包发送成功 #{id}",
     "sendFailed": "发送红包失败",
     "packetTypeTitle": "公开发红包",
