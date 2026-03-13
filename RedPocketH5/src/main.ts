@@ -1,5 +1,6 @@
 import { createApp } from 'vue'
 import { createHead } from '@unhead/vue/client'
+import { setToastDefaultOptions } from 'vant'
 import App from '@/App.vue'
 import router from '@/router'
 import pinia from '@/stores'
@@ -23,6 +24,10 @@ import 'vant/es/toast/style'
 import 'vant/es/dialog/style'
 import 'vant/es/notify/style'
 import 'vant/es/image-preview/style'
+
+setToastDefaultOptions({
+  zIndex: 4000,
+})
 
 const app = createApp(App)
 const head = createHead()

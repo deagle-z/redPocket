@@ -484,7 +484,22 @@ onBeforeUnmount(() => {
   justify-content: center;
   align-items: center;
   cursor: pointer;
+  overflow: hidden;
+  transform-origin: center;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  will-change: transform, filter;
   transition: opacity 0.3s ease;
+}
+
+.coin-btn::after {
+  content: '';
+  position: absolute;
+  inset: 8px;
+  border-radius: 50%;
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.28) 48%, transparent 100%);
+  opacity: 0.18;
+  pointer-events: none;
 }
 
 .coin-btn:disabled {
@@ -507,12 +522,38 @@ onBeforeUnmount(() => {
 }
 
 @keyframes spinCoin {
-  0% {
-    transform: translateX(-50%) translateZ(20px) rotateY(0deg);
+  0%,
+  100% {
+    transform: translateX(-50%) translateZ(20px) scaleX(1) rotateZ(0deg);
+    filter: brightness(1);
   }
 
+  24% {
+    transform: translateX(-50%) translateZ(20px) scaleX(0.16) rotateZ(-2deg);
+    filter: brightness(0.9);
+  }
+
+  50% {
+    transform: translateX(-50%) translateZ(20px) scaleX(1) rotateZ(-4deg);
+    filter: brightness(1.06);
+  }
+
+  74% {
+    transform: translateX(-50%) translateZ(20px) scaleX(0.16) rotateZ(2deg);
+    filter: brightness(0.9);
+  }
+}
+
+@keyframes coinShine {
+  0%,
   100% {
-    transform: translateX(-50%) translateZ(20px) rotateY(360deg);
+    transform: translateX(-14px);
+    opacity: 0.08;
+  }
+
+  50% {
+    transform: translateX(14px);
+    opacity: 0.3;
   }
 }
 
@@ -610,6 +651,10 @@ onBeforeUnmount(() => {
   animation: spinCoin 0.6s linear infinite;
 }
 
+.ang-pao.active .coin-btn::after {
+  animation: coinShine 0.6s linear infinite;
+}
+
 .ang-pao.opened .layer-flap {
   transform: rotateX(180deg);
   z-index: 1;
@@ -678,6 +723,18 @@ onBeforeUnmount(() => {
 
   .amount {
     font-size: 40px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ang-pao.active .coin-btn,
+  .ang-pao.active .coin-btn::after,
+  .ang-pao.thunder-hit .gift-card,
+  .ang-pao.win-hit .gift-card,
+  .ang-pao.win-hit .amount,
+  .thunder-mark,
+  .win-mark {
+    animation: none !important;
   }
 }
 </style>

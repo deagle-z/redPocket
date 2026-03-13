@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/jinzhu/copier"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 	"log"
@@ -228,12 +229,27 @@ func EnsureMinActiveLuckyPackets(db *gorm.DB, tablePrefix string) error {
 			Amount:  amount,
 			Thunder: rand.IntN(10),
 		}
-		if _, err = sendRedPacket(db, botUser.ID, getTgUserDisplayName(&botUser), req, tablePrefix); err != nil {
+		luckyMoney, sendErr := sendRedPacket(db, botUser.ID, getTgUserDisplayName(&botUser), req, tablePrefix)
+		if sendErr != nil {
+			err = sendErr
 			return err
 		}
+		broadcastLuckySent(luckyMoney)
 	}
 
 	return nil
+}
+
+func broadcastLuckySent(luckyMoney *pojo.LuckyMoney) {
+	if luckyMoney == nil || luckyMoney.ID <= 0 {
+		return
+	}
+
+	var result pojo.LuckyMoneyBack
+	_ = copier.Copy(&result, luckyMoney)
+	if err := utils.BroadcastWsWithType("lucky_sent", result); err != nil {
+		log.Printf("[lucky] Broadcast lucky_sent failed: luckyID=%d err=%v", luckyMoney.ID, err)
+	}
 }
 
 func countActiveLuckyMoney(db *gorm.DB) (int64, error) {
