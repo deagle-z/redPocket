@@ -3,7 +3,7 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { showToast } from 'vant'
 import AppPageHeader from '@/components/AppPageHeader.vue'
-import { CURRENCY_SYMBOL, formatCurrency } from '@/utils/currency'
+import { formatCurrency } from '@/utils/currency'
 const { t } = useI18n()
 
 const router = useRouter()
@@ -82,13 +82,13 @@ function showHelpTip() {
           {{ t('withdrawPage.currentBalance') }}
         </p>
         <p class="card-value">
-          {{ formatCurrency(balance) }}
+          <CoinAmount :text="formatCurrency(balance)" />
         </p>
         <p class="card-sub">
           {{ t('withdrawPage.frozenBalance', { amount: formatCurrency(frozen) }) }}
         </p>
       </div>
-      <span class="card-chip">{{ CURRENCY_SYMBOL }}</span>
+      <span class="card-chip"><img class="chip-coin" src="@/assets/svg/coin.svg" alt=""></span>
     </section>
 
     <section class="card">
@@ -152,7 +152,7 @@ function showHelpTip() {
           v-for="item in amountOptions" :key="item" type="button" class="amount-item"
           :class="{ active: selectedAmount === item }" @click="chooseAmount(item as number | 'custom')"
         >
-          <span v-if="item !== 'custom'">{{ CURRENCY_SYMBOL }}{{ item }}</span>
+          <span v-if="item !== 'custom'"><CoinAmount :text="`${item}`" /></span>
           <span v-else>{{ t('withdrawPage.custom') }}</span>
         </button>
       </div>
@@ -164,7 +164,7 @@ function showHelpTip() {
             {{ t('withdrawPage.availableBalance') }}
           </div>
           <div class="balance-amount">
-            {{ formatCurrency(balance) }}
+            <CoinAmount :text="formatCurrency(balance)" />
           </div>
         </div>
         <div class="balance-row">
@@ -177,7 +177,7 @@ function showHelpTip() {
             </p>
           </div>
           <div class="row-right">
-            <span>{{ CURRENCY_SYMBOL }}0.00</span>
+            <CoinAmount text="0.00" />
             <span class="row-badge">{{ t('withdrawPage.withdrawable') }}</span>
           </div>
         </div>
@@ -191,7 +191,7 @@ function showHelpTip() {
             </p>
           </div>
           <div class="row-right">
-            <span>{{ CURRENCY_SYMBOL }}0.00</span>
+            <CoinAmount text="0.00" />
             <span class="row-badge">{{ t('withdrawPage.withdrawable') }}</span>
           </div>
         </div>
@@ -202,7 +202,7 @@ function showHelpTip() {
             </p>
           </div>
           <div class="row-right">
-            <span>-{{ CURRENCY_SYMBOL }}0.00</span>
+            <CoinAmount text="-0.00" />
           </div>
         </div>
       </div>
@@ -214,11 +214,11 @@ function showHelpTip() {
       <div class="fee-card">
         <div class="fee-row">
           <span>{{ t('withdrawPage.serviceFee') }}</span>
-          <span>{{ CURRENCY_SYMBOL }}0.00</span>
+          <CoinAmount text="0.00" />
         </div>
         <div class="fee-row total">
           <span>{{ t('withdrawPage.actualDeduct') }}</span>
-          <span>{{ CURRENCY_SYMBOL }}0.00</span>
+          <CoinAmount text="0.00" />
         </div>
       </div>
     </section>
@@ -228,7 +228,7 @@ function showHelpTip() {
         {{ t('withdrawPage.tipsTitle') }}
       </h2>
       <ol>
-        <li>{{ t('withdrawPage.tips1', { amount: `${CURRENCY_SYMBOL}100` }) }}</li>
+        <li>{{ t('withdrawPage.tips1', { amount: '100' }) }}</li>
         <li>{{ t('withdrawPage.tips2') }}</li>
         <li>{{ t('withdrawPage.tips3') }}</li>
         <li>{{ t('withdrawPage.tips4') }}</li>
@@ -316,11 +316,16 @@ function showHelpTip() {
   height: 44px;
   border-radius: 14px;
   background: linear-gradient(180deg, #ffdf87 0%, #d4af37 100%);
-  color: #5a1b00;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-weight: 800;
+  padding: 6px;
+}
+
+.chip-coin {
+  width: 100%;
+  height: 100%;
+  display: block;
 }
 
 .card h2,

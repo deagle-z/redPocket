@@ -90,9 +90,9 @@ function formatAmount(value: number) {
   return formatCurrency(Number(value || 0))
 }
 
-function formatActionLabel(isGrabbed: boolean, amount: number, seqNo: number) {
+function formatActionLabel(isOngoing: boolean, isGrabbed: boolean, amount: number, seqNo: number) {
   if (!isGrabbed)
-    return t('homeLucky.grabAction', { seq: seqNo })
+    return isOngoing ? t('homeLucky.grabAction', { seq: seqNo }) : '???'
   if (Number(amount) <= 0)
     return t('homeLucky.loadingLabel')
   return formatAmount(amount)
@@ -120,6 +120,10 @@ function refreshPacketCountdowns() {
         thunderText: t('homeLucky.thunderNo', { no: Number(packet?.thunder ?? 0) }),
         timeText: t('homeLucky.statusDone'),
         packetImage: imgRedpacketJpg,
+        actions: (packet.actions || []).map((action: any) => ({
+          ...action,
+          label: formatActionLabel(false, Boolean(action?.isGrabbed), Number(action?.amount || 0), Number(action?.seqNo || 0)),
+        })),
       }
     }
     return {
@@ -141,7 +145,12 @@ function mapPacket(item: any) {
       isGrabMine: Number(it?.isGrabMine) === 1,
       amount: Number(it?.amount || 0),
       thunder: Number(it?.thunder || 0),
-      label: formatActionLabel(Number(it?.isGrabbed) === 1, Number(it?.amount || 0), Number(it?.seqNo || 0)),
+      label: formatActionLabel(
+        isOngoing,
+        Number(it?.isGrabbed) === 1,
+        Number(it?.amount || 0),
+        Number(it?.seqNo || 0),
+      ),
     }))
   if (actions.length === 0 && isOngoing) {
     const number = Number(item?.number || 0)
@@ -151,7 +160,7 @@ function mapPacket(item: any) {
       isGrabMine: false,
       amount: 0,
       thunder: 0,
-      label: t('homeLucky.grabAction', { seq: idx + 1 }),
+      label: formatActionLabel(true, false, 0, idx + 1),
     }))
   }
 
@@ -226,6 +235,8 @@ function openGrabDialog(packet: any, action: any) {
     showToast(t('homeLucky.loginFirst'))
     return
   }
+  if (packet?.status !== 'ongoing')
+    return
   if (action.isGrabbed)
     return
   pendingGrabTarget.value = { packet, action }
@@ -272,7 +283,7 @@ function handleGrabSuccess(payload: { luckyId: number, grabIndex: number, data: 
         ...nextActions[idx],
         isGrabbed: true,
         amount: rawAmount,
-        label: formatActionLabel(true, rawAmount, grabIndex),
+        label: formatActionLabel(true, true, rawAmount, grabIndex),
       }
     }
     const grabbedCount = nextActions.filter((it: any) => it.isGrabbed).length
@@ -310,7 +321,7 @@ function applyLuckyBroadcast(message: any) {
             isGrabbed: true,
             thunder: Number(lucky?.isThunder || 0),
             amount: nextAmount,
-            label: formatActionLabel(true, nextAmount, Number(nextActions[idx]?.seqNo || grabbedSeqNo)),
+            label: formatActionLabel(true, true, nextAmount, Number(nextActions[idx]?.seqNo || grabbedSeqNo)),
           }
         }
       }
@@ -321,7 +332,7 @@ function applyLuckyBroadcast(message: any) {
           nextActions[idx] = {
             ...nextActions[idx],
             isGrabbed: true,
-            label: formatActionLabel(true, Number(nextActions[idx]?.amount || 0), seqNo),
+            label: formatActionLabel(true, true, Number(nextActions[idx]?.amount || 0), seqNo),
           }
         }
       }
@@ -341,7 +352,15 @@ function applyLuckyBroadcast(message: any) {
       progressText: t('homeLucky.progress', { grabbed: grabbedCount, total: packetNumber }),
       timeText: nextStatus === 'ongoing' ? packet.timeText : t('homeLucky.statusDone'),
       packetImage: nextStatus === 'ongoing' ? imgRedpacketGif : imgRedpacketJpg,
-      actions: nextActions,
+      actions: nextActions.map((action: any) => ({
+        ...action,
+        label: formatActionLabel(
+          nextStatus === 'ongoing',
+          Boolean(action?.isGrabbed),
+          Number(action?.amount || 0),
+          Number(action?.seqNo || 0),
+        ),
+      })),
     }
   })
   refreshPacketCountdowns()
@@ -456,16 +475,16 @@ onBeforeUnmount(() => {
 
       <template v-else>
         <article v-for="packet in packetList" :key="packet.id" class="packet-card" :class="packet.status">
-          <div class="packet-main" @click="goLuckyDetail(packet)">
+          <div class="packet-main">
             <div class="packet-top">
               <div class="user-wrap">
                 <img :src="packet.avatar" alt="" class="user-avatar">
                 <strong class="user-name">{{ packet.username }}</strong>
               </div>
-              <div class="amount-wrap">
-                <span class="packet-amount">{{ packet.amount }}</span>
+              <button type="button" class="amount-wrap" @click="goLuckyDetail(packet)">
+                <CoinAmount :text="packet.amount" class="packet-amount" />
                 <van-icon name="arrow" />
-              </div>
+              </button>
             </div>
 
             <div class="packet-body">
@@ -477,6 +496,9 @@ onBeforeUnmount(() => {
               <div class="packet-info">
                 <div class="tags-row">
                   <span class="tag game">🎮 {{ packet.gameText }}</span>
+                  <span v-if="packet.thunderText" class="tag meta-tag">
+                    {{ packet.thunderText }}
+                  </span>
                   <span class="tag progress">{{ packet.progressText }}</span>
                   <span class="rebate-text">
                     {{ packet.rebateText }}
@@ -485,14 +507,12 @@ onBeforeUnmount(() => {
                     {{ packet.hitsText }}
                   </span>
                 </div>
-                <div class="meta-row">
-                  <span v-if="packet.thunderText">{{ packet.thunderText }}</span>
-                </div>
-                <div v-if="packet.status === 'ongoing'" class="packet-actions-inline">
+                <div v-if="packet.actions?.length" class="packet-actions-inline">
                   <button
                     v-for="action in packet.actions" :key="`${packet.id}-${action.seqNo}`" type="button"
-                    class="action-pill" :class="{ grabbed: action.isGrabbed, mined: action.isGrabMine }"
-                    :disabled="action.isGrabbed"
+                    class="action-pill"
+                    :class="{ grabbed: action.isGrabbed, mined: action.isGrabMine, locked: packet.status !== 'ongoing' && !action.isGrabbed }"
+                    :disabled="packet.status !== 'ongoing' || action.isGrabbed"
                     @click="openGrabDialog(packet, action)"
                   >
                     <span v-if="action.thunder" aria-hidden="true">💣</span>
@@ -544,7 +564,7 @@ onBeforeUnmount(() => {
             <img :src="item.avatar" alt="" class="winner-avatar">
             <div class="winner-main">
               <p class="winner-amount">
-                {{ t('homeLucky.gotPrefix') }} <strong>{{ item.amount }}</strong>
+                {{ t('homeLucky.gotPrefix') }} <strong><CoinAmount :text="item.amount" class="coin-amount--winner" /></strong>
               </p>
               <p class="winner-name">
                 {{ item.name }}
@@ -999,11 +1019,32 @@ onBeforeUnmount(() => {
   display: inline-flex;
   align-items: center;
   gap: 3px;
+  padding: 0;
+  border: 0;
+  background: transparent;
   color: rgba(255, 232, 186, 0.7);
+  cursor: pointer;
+}
+
+.amount-wrap:active {
+  transform: translateY(1px);
+}
+
+/* CoinAmount size overrides */
+.packet-amount :deep(.coin-amount-icon) {
+  width: 15px;
+  height: 15px;
+}
+
+.coin-amount--winner :deep(.coin-amount-icon) {
+  width: 18px;
+  height: 18px;
 }
 
 /* Gold gradient amount text (like grap.html .amount) */
 .packet-amount {
+  display: inline-flex;
+  align-items: center;
   font-size: 12px;
   line-height: 1;
   font-weight: 700;
@@ -1082,8 +1123,9 @@ onBeforeUnmount(() => {
 .tags-row {
   display: flex;
   align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
+  gap: 4px;
+  flex-wrap: nowrap;
+  overflow: hidden;
 }
 
 .tag {
@@ -1091,11 +1133,13 @@ onBeforeUnmount(() => {
   display: inline-flex;
   align-items: center;
   border-radius: 999px;
-  padding: 0 4px;
-  font-size: 8px;
+  padding: 0 3px;
+  font-size: 7px;
   line-height: 1;
   border: 1px solid transparent;
   letter-spacing: 0.02em;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .tag.game {
@@ -1263,6 +1307,14 @@ onBeforeUnmount(() => {
   text-decoration: line-through;
 }
 
+.action-pill.locked {
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 248, 214, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
 .action-pill.mined {
   color: #ffe088;
 }
@@ -1393,6 +1445,8 @@ onBeforeUnmount(() => {
 
 /* Gold gradient on winning amount (like grap.html .amount) */
 .winner-amount strong {
+  display: inline-flex;
+  align-items: center;
   font-weight: 700;
   background: linear-gradient(to bottom, #cfb53b, #ffd700, #d4af37);
   -webkit-background-clip: text;

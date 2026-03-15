@@ -10,6 +10,7 @@ import '@/styles/var.less'
 import '@/styles/themes/app-theme.css'
 import '@/styles/themes/withdraw-theme.css'
 import { i18n } from '@/utils/i18n'
+import CoinAmount from '@/components/CoinAmount.vue'
 
 // Vant 桌面端适配
 import '@vant/touch-emulator'
@@ -36,5 +37,6 @@ app.use(head)
 app.use(router)
 app.use(pinia)
 app.use(i18n)
+app.component('CoinAmount', CoinAmount)
 
 app.mount('#app')

@@ -10,6 +10,7 @@ type LuckyHistory struct {
 	FirstName string  `json:"firstName" gorm:"type:varchar(64)"`             // 用户名称
 	LuckyID   int64   `json:"luckyId" gorm:"type:bigint;index"`              // 红包ID
 	IsThunder int     `json:"isThunder" gorm:"type:int;default:0"`           // 是否中雷 0未中雷 1中雷
+	GrabType  int     `json:"grabType" gorm:"type:int;default:1"`            // 是否中雷 1抢包 2中雷返还
 	Amount    float64 `json:"amount" gorm:"type:numeric(20,3)"`              // 领取金额
 	LoseMoney float64 `json:"loseMoney" gorm:"type:numeric(20,3);default:0"` // 损失金额(中雷时)
 	TenantId  int64   `json:"tenantId" gorm:"type:bigint;"`
@@ -72,6 +73,7 @@ type LuckyAppHistoryBack struct {
 	LoseMoney   float64   `json:"loseMoney" gorm:"column:lose_money"`
 	IsThunder   int       `json:"isThunder" gorm:"column:is_thunder"`
 	Thunder     int       `json:"thunder" gorm:"column:thunder"`
+	GrabType    int       `json:"grabType" gorm:"column:grab_type"`
 	SenderID    int64     `json:"senderId" gorm:"column:sender_id"`
 	SenderName  string    `json:"senderName" gorm:"column:sender_name"`
 	Avatar      *string   `json:"avatar" gorm:"column:avatar"`

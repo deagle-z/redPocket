@@ -5,6 +5,7 @@ import AppPageHeader from '@/components/AppPageHeader.vue'
 import { getLuckyAppHistory } from '@/api/user'
 import { formatCurrency } from '@/utils/currency'
 import imgAvatarPlaceholder from '@/assets/images/avatar-placeholder.png'
+
 const { t } = useI18n()
 
 type RangeKey = 'today' | 'week' | 'month' | 'custom'
@@ -24,6 +25,7 @@ interface TxItem {
   badge: string
   type: TxType
   result: TxResult
+  grabAmount: number
 }
 
 const router = useRouter()
@@ -259,13 +261,17 @@ function mapHistoryItem(item: any): TxItem {
   return {
     id: String(item?.recordId || item?.luckyId || Date.now()),
     avatar: item?.avatar || DEFAULT_AVATAR,
-    title: isSend ? t('historyPage.txSendTitle', { amount: formatCurrency(luckyAmount) }) : t('historyPage.txGrabTitle', { sender: senderName, amount: formatCurrency(grabAmount) }),
+    title: isSend
+      ? t('historyPage.txSendTitle', { amount: formatCurrency(luckyAmount) })
+      : item?.grabType === 2 ? '中雷返利' : t('historyPage.txGrabTitle', { sender: senderName, amount: formatCurrency(grabAmount) }),
     sub: t('historyPage.thunderNo', { no: thunder }),
     time: formatTime(item?.createdAt || ''),
     amount,
     badge: isWin ? t('historyPage.badgeWin') : t('historyPage.badgeLoss'),
     type: isSend ? 'send' : 'grab',
     result: isWin ? 'win' : 'loss',
+    grabAmount,
+
   }
 }
 
@@ -318,13 +324,13 @@ function reloadHistory() {
   currentPage.value = 0
   total.value = 0
   allList.value = []
-  void loadHistory(true).catch(() => {})
+  void loadHistory(true).catch(() => { })
 }
 
 function onLoadMore() {
   if (finished.value)
     return
-  void loadHistory(false).catch(() => {})
+  void loadHistory(false).catch(() => { })
 }
 
 watch(() => [filter.type, filter.result, activeRange.value, customRange.start, customRange.end], () => {
@@ -351,7 +357,10 @@ onMounted(() => {
           <span>{{ typeLabel }}</span>
           <van-icon :name="activeMenu === 'type' ? 'arrow-up' : 'arrow-down'" />
         </button>
-        <button type="button" class="filter-btn" :class="{ active: activeMenu === 'result' }" @click="toggleMenu('result')">
+        <button
+          type="button" class="filter-btn" :class="{ active: activeMenu === 'result' }"
+          @click="toggleMenu('result')"
+        >
           <span>{{ resultLabel }}</span>
           <van-icon :name="activeMenu === 'result' ? 'arrow-up' : 'arrow-down'" />
         </button>
@@ -360,10 +369,7 @@ onMounted(() => {
       <div v-if="activeMenu" class="dropdown-panel">
         <template v-if="activeMenu === 'type'">
           <button
-            v-for="item in typeOptions"
-            :key="item.value"
-            type="button"
-            class="dropdown-option"
+            v-for="item in typeOptions" :key="item.value" type="button" class="dropdown-option"
             @click="selectType(item.value)"
           >
             <span>{{ item.label }}</span>
@@ -372,10 +378,7 @@ onMounted(() => {
         </template>
         <template v-else>
           <button
-            v-for="item in resultOptions"
-            :key="item.value"
-            type="button"
-            class="dropdown-option"
+            v-for="item in resultOptions" :key="item.value" type="button" class="dropdown-option"
             @click="selectResult(item.value)"
           >
             <span>{{ item.label }}</span>
@@ -388,12 +391,8 @@ onMounted(() => {
 
     <section class="date-tabs card">
       <button
-        v-for="tab in dateTabs"
-        :key="tab.key"
-        type="button"
-        class="date-tab"
-        :class="{ active: activeRange === tab.key }"
-        @click="onDateTabClick(tab.key)"
+        v-for="tab in dateTabs" :key="tab.key" type="button" class="date-tab"
+        :class="{ active: activeRange === tab.key }" @click="onDateTabClick(tab.key)"
       >
         <van-icon v-if="tab.key === 'custom'" name="calendar-o" />
         <span>{{ tab.label }}</span>
@@ -406,7 +405,7 @@ onMounted(() => {
           {{ t('historyPage.summaryIncome') }}
         </p>
         <p class="stat-value income">
-          {{ formatAmount(stats.income) }}
+          <CoinAmount :text="formatAmount(stats.income)" />
         </p>
       </div>
       <div class="stat-item">
@@ -414,7 +413,7 @@ onMounted(() => {
           {{ t('historyPage.summaryExpense') }}
         </p>
         <p class="stat-value expense">
-          {{ formatAmount(-stats.expense) }}
+          <CoinAmount :text="formatAmount(-stats.expense)" />
         </p>
       </div>
       <div class="stat-item pnl">
@@ -422,24 +421,17 @@ onMounted(() => {
           {{ t('historyPage.summaryPnl') }}
         </p>
         <p class="stat-value pnl-text">
-          {{ formatAmount(stats.pnl) }}
+          <CoinAmount :text="formatAmount(stats.pnl)" />
         </p>
       </div>
     </section>
 
     <van-list
-      v-model:loading="listLoading"
-      :finished="finished"
-      :finished-text="t('historyPage.finishedText')"
+      v-model:loading="listLoading" :finished="finished" :finished-text="t('historyPage.finishedText')"
       @load="onLoadMore"
     >
       <section class="tx-list">
-        <article
-          v-for="item in displayList"
-          :key="item.id"
-          class="tx-item"
-          :class="item.result"
-        >
+        <article v-for="item in displayList" :key="item.id" class="tx-item" :class="item.result">
           <div class="tx-left-avatar">
             <img :src="item.avatar" alt="" class="tx-avatar-img" @error="onAvatarError">
           </div>
@@ -448,9 +440,9 @@ onMounted(() => {
             <p class="tx-title">
               {{ item.title }}
             </p>
-            <p class="tx-sub">
+            <!-- <p class="tx-sub">
               {{ item.sub }}
-            </p>
+            </p> -->
             <span class="tx-badge" :class="item.result">{{ item.badge }}</span>
           </div>
 
@@ -458,8 +450,11 @@ onMounted(() => {
             <p class="tx-time">
               {{ item.time }}
             </p>
-            <p class="tx-amount" :class="item.result">
-              {{ formatAmount(item.amount) }}
+            <p v-if="item.result === 'loss'" class="tx-amount" :class="item.result">
+              <CoinAmount :text="formatAmount(item.amount + item.grabAmount)" />
+            </p>
+            <p v-else class="tx-amount" :class="item.result">
+              <CoinAmount :text="formatAmount(item.amount)" />
             </p>
           </div>
         </article>
@@ -503,14 +498,9 @@ onMounted(() => {
 
     <van-popup v-model:show="showDatePicker" round position="bottom">
       <van-date-picker
-        v-model="pickerValues"
-        title=""
-        :show-toolbar="true"
-        :columns-type="['year', 'month', 'day']"
-        :cancel-button-text="t('historyPage.cancel')"
-        :confirm-button-text="t('historyPage.confirm')"
-        @cancel="cancelDatePicker"
-        @confirm="confirmDatePicker"
+        v-model="pickerValues" title="" :show-toolbar="true" :columns-type="['year', 'month', 'day']"
+        :cancel-button-text="t('historyPage.cancel')" :confirm-button-text="t('historyPage.confirm')"
+        @cancel="cancelDatePicker" @confirm="confirmDatePicker"
       />
     </van-popup>
   </div>

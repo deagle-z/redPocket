@@ -44,7 +44,7 @@ type SysCustomFieldSet struct {
 	MinLength        *int    `json:"minLength"`
 	RegexRule        *string `json:"regexRule"`
 	ErrorTips        *string `json:"errorTips"`
-	OptionsJSON      *string `json:"optionsJson"`
+	OptionsJSON      string  `json:"optionsJson"`
 	Status           int8    `json:"status"`
 	Remark           *string `json:"remark"`
 }

@@ -108,18 +108,22 @@ func handleLuckyBotGrabTask(ctx context.Context, task *asynq.Task) error {
 	result, err := GrabRedPacket(db, payload.LuckyID, botUser.ID, payload.TablePrefix, grabIndex)
 	if err != nil {
 		log.Printf("bot grab skipped. luckyId=%d botId=%d err=%v", payload.LuckyID, botUser.ID, err)
-		return nil
-	}
-
-	if err = BroadcastLuckyGrabResult(db, payload.LuckyID, result); err != nil {
-		return err
+	} else {
+		if err = BroadcastLuckyGrabResult(db, payload.LuckyID, result); err != nil {
+			return err
+		}
 	}
 
 	var latestLucky pojo.LuckyMoney
 	if err = db.Where("id = ?", payload.LuckyID).First(&latestLucky).Error; err == nil && latestLucky.ID > 0 && latestLucky.Status == 1 {
-		nextCount := payload.RemainingCount - 1
-		if nextCount > 0 {
-			if err := EnqueueLuckyBotGrabTask(db, payload.TablePrefix, payload.LuckyID, nil, nextCount); err != nil {
+		var remaining int64
+		if countErr := db.Table("lucky_money_item").
+			Where("red_packet_id = ? AND is_grabbed = 0", payload.LuckyID).
+			Count(&remaining).Error; countErr != nil {
+			return countErr
+		}
+		if remaining > 0 {
+			if err := EnqueueLuckyBotGrabTask(db, payload.TablePrefix, payload.LuckyID, nil, int(remaining)); err != nil {
 				log.Printf("[lucky] EnqueueLuckyBotGrabTask chain failed: luckyID=%d err=%v", payload.LuckyID, err)
 			}
 		}
@@ -178,10 +182,10 @@ func pickRandomAvailableGrabIndex(db *gorm.DB, luckyID int64) (int, error) {
 }
 
 func pickRandomBotGrabCount(remaining int) int {
-	if remaining <= 1 {
+	if remaining <= 0 {
 		return 1
 	}
-	return rand.IntN(remaining) + 1
+	return remaining
 }
 
 func getRandomGrabDelay(db *gorm.DB) time.Duration {

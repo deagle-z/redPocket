@@ -14,6 +14,7 @@ type SysCountry struct {
 	WithdrawFields *string `json:"withdrawFields" gorm:"column:withdraw_fields;type:json;comment:提现字段配置"`
 	RechargeFields *string `json:"rechargeFields" gorm:"column:recharge_fields;type:json;comment:充值字段配置"`
 	Sort           int     `json:"sort" gorm:"column:sort;type:int;default:0;comment:排序"`
+	Rate           float64 `yaml:"rate" json:"rate" gorm:"type:numeric(20,3);"`
 	Status         int8    `json:"status" gorm:"column:status;type:tinyint;default:1;not null;comment:状态 1启用 0禁用"`
 	Remark         *string `json:"remark" gorm:"column:remark;type:varchar(255);comment:备注"`
 }
@@ -35,8 +36,8 @@ type SysCountrySet struct {
 	CurrencySymbol *string `json:"currencySymbol"`
 	Timezone       *string `json:"timezone"`
 	LanguageCode   *string `json:"languageCode"`
-	WithdrawFields *string `json:"withdrawFields"`
-	RechargeFields *string `json:"rechargeFields"`
+	WithdrawFields string  `json:"withdrawFields"`
+	RechargeFields string  `json:"rechargeFields"`
 	Sort           int     `json:"sort"`
 	Status         int8    `json:"status"`
 	Remark         *string `json:"remark"`
@@ -68,4 +69,39 @@ var SysCountryTableName = "sys_country"
 
 func (SysCountry) TableName() string {
 	return SysCountryTableName
+}
+
+// ---- App 端响应结构 ----
+
+type AppCountryItem struct {
+	ID             int64   `json:"id"`
+	CountryCode    string  `json:"countryCode"`
+	CountryNameEn  string  `json:"countryNameEn"`
+	CountryNameCn  string  `json:"countryNameCn"`
+	CurrencyCode   string  `json:"currencyCode"`
+	CurrencySymbol *string `json:"currencySymbol"`
+	Sort           int     `json:"sort"`
+}
+
+type AppPayMethodItem struct {
+	ID         int64   `json:"id"`
+	MethodCode string  `json:"methodCode"`
+	MethodName string  `json:"methodName"`
+	Icon       *string `json:"icon"`
+	Sort       int     `json:"sort"`
+}
+
+type AppRechargeChannelItem struct {
+	ID           int64              `json:"id"`
+	ChannelCode  string             `json:"channelCode"`
+	ChannelName  string             `json:"channelName"`
+	ProviderType string             `json:"providerType"`
+	Icon         *string            `json:"icon"`
+	Sort         int                `json:"sort"`
+	Methods      []AppPayMethodItem `json:"methods"`
+}
+
+type AppCountryRechargeInfo struct {
+	RechargeFields interface{}              `json:"rechargeFields"`
+	Channels       []AppRechargeChannelItem `json:"channels"`
 }

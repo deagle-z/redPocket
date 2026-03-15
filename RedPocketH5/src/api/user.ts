@@ -83,6 +83,7 @@ export interface RechargeOrderAppReq {
   payMethod?: string
   currency?: string
   merchantOrderNo?: string
+  extraFields?: Record<string, string>
 }
 
 export interface RechargeOrderAppBack {
@@ -429,4 +430,106 @@ export function register(data: RegisterData): Promise<any> {
     code: data.code,
     password: data.password,
   })
+}
+
+export interface AppCountryItem {
+  id: number
+  countryCode: string
+  countryNameEn: string
+  countryNameCn: string
+  currencyCode: string
+  currencySymbol?: string | null
+  sort: number
+}
+
+export interface AppPayMethodItem {
+  id: number
+  methodCode: string
+  methodName: string
+  icon?: string | null
+  sort: number
+}
+
+export interface AppRechargeChannelItem {
+  id: number
+  channelCode: string
+  channelName: string
+  providerType: string
+  icon?: string | null
+  sort: number
+  methods: AppPayMethodItem[]
+}
+
+export interface AppCountryRechargeInfo {
+  rechargeFields: any[]
+  channels: AppRechargeChannelItem[]
+}
+
+export interface RechargeField {
+  fieldKey: string
+  fieldLabel: string
+  fieldPlaceholder?: string | null
+  fieldType: 'input' | 'textarea' | 'number'
+  dataType: string
+  isRequired: number
+  defaultValue?: string | null
+  maxLength?: number | null
+  minLength?: number | null
+  errorTips?: string | null
+}
+
+export function getAppCountries() {
+  return request.get<ApiResult<AppCountryItem[]>>('/api/v1/app/countries')
+}
+
+export function getCountryRechargeInfo(code: string) {
+  return request.get<ApiResult<AppCountryRechargeInfo>>(`/api/v1/app/country/${code}/recharge`)
+}
+
+export function getCountryRechargeFields(code: string) {
+  return request.get<ApiResult<RechargeField[]>>(`/api/v1/app/country/${code}/rechargeFields`)
+}
+
+export function getCountryWithdrawFields(code: string) {
+  return request.get<ApiResult<RechargeField[]>>(`/api/v1/app/country/${code}/withdrawFields`)
+}
+
+export interface WithdrawAccountItem {
+  id: number
+  tenantId: number
+  userId: number
+  countryCode: string
+  accountData: string
+  isDefault: number
+  status: number
+  remark?: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface AddWithdrawAccountReq {
+  countryCode: string
+  accountData: string
+  isDefault?: number
+  remark?: string
+}
+
+export function getWithdrawAccounts() {
+  return request.get<ApiResult<WithdrawAccountItem[]>>('/api/v1/app/withdrawAccount/list')
+}
+
+export function addWithdrawAccount(data: AddWithdrawAccountReq) {
+  return request.post<ApiResult<WithdrawAccountItem>>('/api/v1/app/withdrawAccount', data)
+}
+
+export function updateWithdrawAccount(id: number, data: AddWithdrawAccountReq) {
+  return request.post<ApiResult<WithdrawAccountItem>>(`/api/v1/app/withdrawAccount/${id}/update`, data)
+}
+
+export function deleteWithdrawAccount(id: number) {
+  return request.delete<ApiResult<string>>(`/api/v1/app/withdrawAccount/${id}`)
+}
+
+export function setDefaultWithdrawAccount(id: number) {
+  return request.post<ApiResult<string>>(`/api/v1/app/withdrawAccount/${id}/setDefault`, {})
 }

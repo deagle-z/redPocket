@@ -2,7 +2,6 @@
 import { showToast } from 'vant'
 import { getCurrentTgInviteRuleConfig, sendLuckyPacket } from '@/api/user'
 import language1Icon from '@/assets/svg/language-1.svg'
-import { CURRENCY_SYMBOL } from '@/utils/currency'
 
 const props = withDefaults(defineProps<{
   variant?: 'page' | 'modal'
@@ -175,7 +174,7 @@ onMounted(() => {
               @input="onAmountInput"
             >
           </div>
-          <span class="amount-currency">{{ CURRENCY_SYMBOL }}</span>
+          <span class="amount-currency"><img class="amount-currency-coin" src="@/assets/svg/coin.svg" alt=""></span>
         </div>
         <p class="amount-range-tip">
           {{ amountRangeText }}
@@ -190,7 +189,7 @@ onMounted(() => {
             :class="{ active: selectedAmountPreset === value }"
             @click="selectAmountPreset(value)"
           >
-            {{ CURRENCY_SYMBOL }}{{ value }}
+            <CoinAmount :text="`${value}`" />
           </button>
         </div>
       </div>
@@ -399,10 +398,15 @@ onMounted(() => {
 }
 
 .amount-currency {
-  color: #ffd98b;
-  font-size: 13px;
-  font-weight: 700;
   flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+}
+
+.amount-currency-coin {
+  width: 22px;
+  height: 22px;
+  display: block;
 }
 
 .preset-grid {

@@ -4,7 +4,6 @@ import { useRouter } from 'vue-router'
 import { showToast } from 'vant'
 import { getCurrentTgInviteRuleConfig, getCurrentTgInviteStats } from '@/api/user'
 import AppPageHeader from '@/components/AppPageHeader.vue'
-import { CURRENCY_SYMBOL } from '@/utils/currency'
 
 const router = useRouter()
 const { t } = useI18n()
@@ -185,7 +184,7 @@ onMounted(() => {
         </article>
         <article class="benefit-item">
           <div class="benefit-icon orange">
-            {{ CURRENCY_SYMBOL }}
+            <img src="@/assets/svg/coin.svg" alt="" style="width:1.1em;height:1.1em;display:block;">
           </div>
           <p class="benefit-name">
             {{ t('invitePage.benefitWithdraw') }}

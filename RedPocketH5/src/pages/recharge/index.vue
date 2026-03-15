@@ -2,67 +2,64 @@
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { showToast } from 'vant'
-import { createRechargeOrder, getCurrentTgUserInfo } from '@/api/user'
+import type { AppCountryItem, AppPayMethodItem, AppRechargeChannelItem, RechargeField } from '@/api/user'
+import {
+  createRechargeOrder,
+  getAppCountries,
+  getCountryRechargeFields,
+  getCountryRechargeInfo,
+  getCurrentTgUserInfo,
+} from '@/api/user'
 import AppPageHeader from '@/components/AppPageHeader.vue'
-import { CURRENCY_CODE, CURRENCY_SYMBOL, formatCurrency } from '@/utils/currency'
-const { t } = useI18n()
+import { CURRENCY_CODE, formatCurrency } from '@/utils/currency'
 
+const { t } = useI18n()
 const router = useRouter()
 
 const balance = ref(0)
 
-const channels = [
-  { id: 'gtpay', name: 'GTPAY(maya)' },
-  { id: 'hipay', name: 'HIPAY' },
-]
+// 国家列表
+const countries = ref<AppCountryItem[]>([])
+const selectedCountry = ref<AppCountryItem | null>(null)
 
-const amountOptions = [
-  100,
-  200,
-  500,
-  1000,
-  5000,
-  10000,
-  20000,
-  50000,
-  'custom',
-]
+// 充值通道与支付方式（按国家动态加载）
+const channels = ref<AppRechargeChannelItem[]>([])
+const selectedChannel = ref<AppRechargeChannelItem | null>(null)
+const payMethods = computed<AppPayMethodItem[]>(() => selectedChannel.value?.methods ?? [])
+const selectedPay = ref<AppPayMethodItem | null>(null)
+const rechargeInfoLoading = ref(false)
 
-const payMethods = [
-  {
-    id: 'gcash',
-    name: 'GCash QR',
-    subKey: 'rechargePage.paySubQr',
-    logo: 'G',
-  },
-  {
-    id: 'maya',
-    name: 'Maya',
-    subKey: 'rechargePage.paySubWallet',
-    logo: 'M',
-  },
-]
+// 充值字段
+const rechargeFields = ref<RechargeField[]>([])
+const fieldValues = ref<Record<string, string>>({})
 
-const selectedChannel = ref(channels[0].id)
+const amountOptions = [100, 200, 500, 1000, 5000, 10000, 20000, 50000, 'custom']
 const selectedAmount = ref<number | 'custom'>(amountOptions[0] as number)
 const customAmount = ref('')
-const selectedPay = ref(payMethods[0].id)
 const submitLoading = ref(false)
 
 const displayAmount = computed(() => {
-  if (selectedAmount.value === 'custom') {
+  if (selectedAmount.value === 'custom')
     return customAmount.value ? Number(customAmount.value) : 0
-  }
   return selectedAmount.value
 })
 
-const canSubmit = computed(() => Number(displayAmount.value) > 0 && !submitLoading.value)
+const canSubmit = computed(() =>
+  Number(displayAmount.value) > 0
+  && !submitLoading.value
+  && !!selectedChannel.value
+  && !rechargeInfoLoading.value,
+)
 
 function chooseAmount(value: number | 'custom') {
   selectedAmount.value = value
-  if (value !== 'custom') {
+  if (value !== 'custom')
     customAmount.value = ''
-  }
+}
+
+function selectChannel(ch: AppRechargeChannelItem) {
+  selectedChannel.value = ch
+  selectedPay.value = ch.methods[0] ?? null
 }
 
 function goBack() {
@@ -70,12 +67,7 @@ function goBack() {
 }
 
 function showCenterToast(message: string) {
-  showToast({
-    message,
-    position: 'middle',
-    teleport: '#app',
-    wordBreak: 'break-word',
-  })
+  showToast({ message, position: 'middle', teleport: '#app', wordBreak: 'break-word' })
 }
 
 function showHelpTip() {
@@ -92,6 +84,57 @@ async function loadBalance() {
   }
 }
 
+async function loadRechargeInfo(code: string) {
+  rechargeInfoLoading.value = true
+  channels.value = []
+  selectedChannel.value = null
+  selectedPay.value = null
+  rechargeFields.value = []
+  fieldValues.value = {}
+  try {
+    const [infoRes, fieldsRes] = await Promise.all([
+      getCountryRechargeInfo(code),
+      getCountryRechargeFields(code),
+    ])
+    channels.value = infoRes.data?.channels ?? []
+    if (channels.value.length)
+      selectChannel(channels.value[0])
+    const fields = fieldsRes.data ?? []
+    rechargeFields.value = fields
+    const init: Record<string, string> = {}
+    for (const f of fields)
+      init[f.fieldKey] = f.defaultValue ?? ''
+    fieldValues.value = init
+  }
+  catch {
+    // ignore
+  }
+  finally {
+    rechargeInfoLoading.value = false
+  }
+}
+
+async function handleSelectCountry(country: AppCountryItem) {
+  if (selectedCountry.value?.countryCode === country.countryCode)
+    return
+  selectedCountry.value = country
+  await loadRechargeInfo(country.countryCode)
+}
+
+async function loadCountries() {
+  try {
+    const { data } = await getAppCountries()
+    countries.value = data ?? []
+    if (countries.value.length) {
+      selectedCountry.value = countries.value[0]
+      await loadRechargeInfo(countries.value[0].countryCode)
+    }
+  }
+  catch {
+    countries.value = []
+  }
+}
+
 async function handleSubmitRecharge() {
   if (!canSubmit.value)
     return
@@ -101,13 +144,22 @@ async function handleSubmitRecharge() {
     return
   }
 
+  // 校验必填字段
+  for (const f of rechargeFields.value) {
+    if (f.isRequired === 1 && !fieldValues.value[f.fieldKey]?.trim()) {
+      showCenterToast(f.errorTips || `${f.fieldLabel} 不能为空`)
+      return
+    }
+  }
+
   submitLoading.value = true
   try {
     const { data } = await createRechargeOrder({
       amount,
-      channel: selectedChannel.value,
-      payMethod: selectedPay.value,
+      channel: selectedChannel.value?.channelCode ?? '',
+      payMethod: selectedPay.value?.methodCode ?? '',
       currency: CURRENCY_CODE,
+      extraFields: rechargeFields.value.length ? { ...fieldValues.value } : undefined,
     })
 
     if (data?.payUrl) {
@@ -134,6 +186,7 @@ async function handleSubmitRecharge() {
 
 onMounted(() => {
   loadBalance()
+  loadCountries()
 })
 </script>
 
@@ -145,28 +198,57 @@ onMounted(() => {
       </template>
     </AppPageHeader>
 
+    <!-- 国家选择行 -->
+    <div class="country-bar">
+      <div class="country-scroll">
+        <button
+          v-for="country in countries"
+          :key="country.countryCode"
+          type="button"
+          class="country-pill"
+          :class="{ active: selectedCountry?.countryCode === country.countryCode }"
+          @click="handleSelectCountry(country)"
+        >
+          <span class="country-code">{{ country.countryCode }}</span>
+          <span class="country-name">{{ country.countryNameEn }}</span>
+        </button>
+      </div>
+    </div>
+
     <section class="card balance-card">
       <div>
         <p class="card-label">
           {{ t('rechargePage.currentBalance') }}
         </p>
         <p class="card-value">
-          {{ formatCurrency(balance) }}
+          <CoinAmount :text="formatCurrency(balance)" />
         </p>
       </div>
-      <span class="card-chip">{{ CURRENCY_SYMBOL }}</span>
+      <span class="card-chip"><img class="chip-coin" src="@/assets/svg/coin.svg" alt=""></span>
     </section>
 
+    <!-- 充值通道 -->
     <section class="card">
       <h2>{{ t('rechargePage.channelTitle') }}</h2>
-      <div class="pill-group">
-        <button
-          v-for="item in channels" :key="item.id" type="button" class="pill"
-          :class="{ active: selectedChannel === item.id }" @click="selectedChannel = item.id"
-        >
-          {{ item.name }}
-        </button>
-      </div>
+      <van-loading v-if="rechargeInfoLoading" size="20" color="#d4af37" class="section-loading" />
+      <template v-else>
+        <div v-if="channels.length" class="pill-group">
+          <button
+            v-for="ch in channels"
+            :key="ch.channelCode"
+            type="button"
+            class="pill"
+            :class="{ active: selectedChannel?.channelCode === ch.channelCode }"
+            @click="selectChannel(ch)"
+          >
+            <img v-if="ch.icon" :src="ch.icon" class="channel-icon" alt="">
+            {{ ch.channelName }}
+          </button>
+        </div>
+        <p v-else class="empty-tip">
+          {{ t('rechargePage.noChannel') || '暂无可用通道' }}
+        </p>
+      </template>
     </section>
 
     <section class="card">
@@ -186,21 +268,26 @@ onMounted(() => {
       />
     </section>
 
-    <section class="card">
+    <!-- 支付方式 -->
+    <section v-if="payMethods.length" class="card">
       <h2>{{ t('rechargePage.payMethodTitle') }}</h2>
       <div class="pay-list">
         <button
-          v-for="method in payMethods" :key="method.id" type="button" class="pay-item"
-          :class="{ active: selectedPay === method.id }" @click="selectedPay = method.id"
+          v-for="method in payMethods" :key="method.methodCode" type="button" class="pay-item"
+          :class="{ active: selectedPay?.methodCode === method.methodCode }"
+          @click="selectedPay = method"
         >
           <div class="pay-left">
-            <span class="pay-logo">{{ method.logo }}</span>
+            <div class="pay-logo">
+              <img v-if="method.icon" :src="method.icon" class="pay-logo-img" alt="">
+              <span v-else>{{ method.methodName.charAt(0) }}</span>
+            </div>
             <div>
               <p class="pay-name">
-                {{ method.name }}
+                {{ method.methodName }}
               </p>
               <p class="pay-sub">
-                {{ t(method.subKey) }}
+                {{ method.methodCode }}
               </p>
             </div>
           </div>
@@ -209,6 +296,23 @@ onMounted(() => {
           </span>
         </button>
       </div>
+    </section>
+
+    <!-- 充值字段 -->
+    <section v-if="rechargeFields.length" class="card">
+      <h2>{{ t('rechargePage.fillInfo') || '填写信息' }}</h2>
+      <template v-for="field in rechargeFields" :key="field.fieldKey">
+        <van-field
+          v-model="fieldValues[field.fieldKey]"
+          :type="field.fieldType === 'number' ? 'number' : field.fieldType === 'textarea' ? 'textarea' : 'text'"
+          :label="field.fieldLabel"
+          :placeholder="field.fieldPlaceholder || ''"
+          :required="field.isRequired === 1"
+          :maxlength="field.maxLength ?? undefined"
+          class="custom-input recharge-field"
+          rows="3"
+        />
+      </template>
     </section>
 
     <van-button
@@ -250,7 +354,57 @@ onMounted(() => {
 }
 
 .recharge-header {
+  margin-bottom: 10px;
+}
+
+/* 国家选择条 */
+.country-bar {
   margin-bottom: 12px;
+  overflow: hidden;
+}
+
+.country-scroll {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  scrollbar-width: none;
+}
+
+.country-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.country-pill {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 14px;
+  border-radius: 20px;
+  border: 1px solid rgba(212, 175, 55, 0.28);
+  background: rgba(255, 248, 214, 0.06);
+  color: rgba(255, 240, 201, 0.7);
+  font-size: 13px;
+  white-space: nowrap;
+  transition: all 0.15s;
+}
+
+.country-pill.active {
+  background: linear-gradient(180deg, #ffdf87 0%, #d4af37 100%);
+  border-color: transparent;
+  color: #5a1b00;
+  font-weight: 700;
+  box-shadow: 0 4px 12px rgba(75, 25, 0, 0.3);
+}
+
+.country-code {
+  font-weight: 700;
+  font-size: 12px;
+}
+
+.country-name {
+  font-size: 12px;
 }
 
 .card {
@@ -299,12 +453,17 @@ onMounted(() => {
   height: 44px;
   border-radius: 14px;
   background: linear-gradient(180deg, #ffdf87 0%, #d4af37 100%);
-  color: #5a1b00;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-weight: 800;
+  padding: 6px;
   box-shadow: 0 8px 18px rgba(75, 25, 0, 0.24);
+}
+
+.chip-coin {
+  width: 100%;
+  height: 100%;
+  display: block;
 }
 
 .card h2 {
@@ -316,19 +475,38 @@ onMounted(() => {
   margin: 0 0 12px;
 }
 
+.section-loading {
+  display: flex;
+  justify-content: center;
+  padding: 8px 0;
+}
+
+.empty-tip {
+  font-size: 13px;
+  color: rgba(255, 229, 186, 0.45);
+  text-align: center;
+  margin: 4px 0 0;
+}
+
 .pill-group {
   display: flex;
   gap: 10px;
+  flex-wrap: wrap;
 }
 
 .pill {
   flex: 1;
+  min-width: 80px;
   border-radius: 14px;
   border: 1px solid rgba(212, 175, 55, 0.2);
   background: rgba(255, 248, 214, 0.06);
-  padding: 12px;
+  padding: 12px 8px;
   font-weight: 700;
   color: #fff0c9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
 }
 
 .pill.active {
@@ -336,6 +514,13 @@ onMounted(() => {
   color: #5a1b00;
   border-color: rgba(255, 248, 214, 0.34);
   box-shadow: 0 8px 18px rgba(75, 25, 0, 0.24);
+}
+
+.channel-icon {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  object-fit: contain;
 }
 
 .amount-grid {
@@ -416,6 +601,14 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   font-weight: 800;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.pay-logo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 
 .pay-name {
@@ -444,6 +637,14 @@ onMounted(() => {
 
 .pay-item:not(.active) .pay-check {
   color: transparent;
+}
+
+.recharge-field {
+  margin-top: 10px;
+}
+
+.recharge-field:first-of-type {
+  margin-top: 0;
 }
 
 .confirm-btn {

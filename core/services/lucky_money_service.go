@@ -627,6 +627,20 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 		// 实际到账金额 = 显示金额 - 抽成金额
 		actualLoseMoney := loseMoney - commissionAmount
 
+		history := &pojo.LuckyHistory{
+			UserID:    luckyMoney.SenderID,
+			FirstName: "中雷返利",
+			LuckyID:   luckyID,
+			IsThunder: 0,
+			Amount:    actualLoseMoney,
+			GrabType:  2,
+		}
+
+		if err := repository.CreateLuckyHistory(tx, history); err != nil {
+			tx.Rollback()
+			return nil, fmt.Errorf("CreateLuckyHistory fail: %v", err)
+		}
+
 		// 增加发送者余额（实际到账金额）
 		if err := tx.Model(&pojo.TgUser{}).
 			Where("id = ?", luckyMoney.SenderID).
@@ -845,28 +859,27 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 		_ = EnsureMinActiveLuckyPackets(db, tablePrefix)
 	}
 
-	displayAmount := redAmount
-	displayLoseMoney := loseMoney
+	isAmountHidden := 0
 	if shouldHideSecondLastInProgressForBroadcast(luckyMoney, grabbedCount+1, time.Now()) {
-		displayAmount = 0
-		displayLoseMoney = 0
+		isAmountHidden = 1
 	}
 
 	// 返回结果
 	result := map[string]interface{}{
-		"amount":    displayAmount,
-		"isThunder": isThunder,
-		"loseMoney": displayLoseMoney,
-		"openNum":   grabIndex,
-		"grabIndex": grabIndex,
-		"luckyInfo": luckyMoney,
-		"message":   "",
+		"amount":         redAmount,
+		"isThunder":      isThunder,
+		"loseMoney":      loseMoney,
+		"openNum":        grabIndex,
+		"grabIndex":      grabIndex,
+		"isAmountHidden": isAmountHidden,
+		"luckyInfo":      luckyMoney,
+		"message":        "",
 	}
 
 	if isThunder == 1 {
-		result["message"] = fmt.Sprintf("中雷，领取 %.2f U，损失 %.2f U", displayAmount, displayLoseMoney)
+		result["message"] = fmt.Sprintf("中雷，领取 %.2f U，损失 %.2f U", redAmount, loseMoney)
 	} else {
-		result["message"] = fmt.Sprintf("未中雷，领取 %.2f U", displayAmount)
+		result["message"] = fmt.Sprintf("未中雷，领取 %.2f U", redAmount)
 	}
 
 	return result, nil

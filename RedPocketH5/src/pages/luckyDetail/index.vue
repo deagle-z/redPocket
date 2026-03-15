@@ -242,7 +242,7 @@ onBeforeUnmount(() => {
                 </div>
               </div>
               <div class="amount-wrap">
-                <span class="packet-amount">{{ overview.amountText }}</span>
+                <CoinAmount :text="overview.amountText" class="packet-amount" />
               </div>
             </div>
 
@@ -283,7 +283,10 @@ onBeforeUnmount(() => {
           <div class="summary-list">
             <div v-for="row in overview.summaryRows" :key="row.label" class="summary-row">
               <span class="summary-label">{{ row.label }}</span>
-              <span class="summary-value" :class="{ highlight: row.highlight }">{{ row.value }}</span>
+              <span class="summary-value" :class="{ highlight: row.highlight }">
+                <CoinAmount v-if="row.value.startsWith('฿')" :text="row.value" />
+                <template v-else>{{ row.value }}</template>
+              </span>
             </div>
           </div>
         </section>
@@ -341,7 +344,7 @@ onBeforeUnmount(() => {
               </div>
               <div class="record-right">
                 <p class="record-total">
-                  {{ item.amountText }}
+                  <CoinAmount :text="item.amountText" />
                 </p>
                 <p class="record-status">
                   {{ item.statusText }}

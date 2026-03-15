@@ -3,7 +3,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { getAppCashHistoryList, getCurrentTgUserInfo } from '@/api/user'
 import AppPageHeader from '@/components/AppPageHeader.vue'
-import { CURRENCY_CODE, CURRENCY_SYMBOL, formatCurrency } from '@/utils/currency'
+import { CURRENCY_CODE, formatCurrency } from '@/utils/currency'
 const { t } = useI18n()
 
 interface WalletTx {
@@ -168,10 +168,10 @@ onMounted(() => {
 
     <section class="asset-card card">
       <p class="asset-label">
-        {{ t('walletPage.totalAsset') }} ({{ CURRENCY_SYMBOL }})
+        {{ t('walletPage.totalAsset') }}
       </p>
       <p class="asset-value">
-        {{ formatPlain(totalAsset) }}
+        <CoinAmount :text="formatPlain(totalAsset)" />
       </p>
 
       <div class="action-row">
@@ -216,7 +216,7 @@ onMounted(() => {
           </div>
         </div>
         <p class="row-value">
-          {{ formatPlain(item.value) }}
+          <CoinAmount :text="formatPlain(item.value)" />
         </p>
       </article>
     </section>
@@ -248,7 +248,7 @@ onMounted(() => {
             </div>
           </div>
           <p class="row-value" :class="{ income: item.amount > 0, expense: item.amount < 0 }">
-            {{ formatTxAmount(item.amount) }}
+            <CoinAmount :text="formatTxAmount(item.amount)" />
           </p>
         </article>
       </van-list>

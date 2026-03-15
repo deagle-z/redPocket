@@ -1,0 +1,104 @@
+<svg width="300" height="300" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+    <style>
+        /* 扫光动画：模拟硬币转动时的金属反光 */
+        @keyframes goldShine {
+            0% { transform: translateX(-200px) skewX(-30deg); }
+            20% { transform: translateX(200px) skewX(-30deg); }
+            100% { transform: translateX(200px) skewX(-30deg); }
+        }
+
+        /* 旋转星光 */
+        @keyframes starGlint {
+            0%, 100% { transform: scale(0) rotate(0deg); opacity: 0; }
+            50% { transform: scale(1) rotate(180deg); opacity: 1; }
+        }
+
+        /* 整体轻微浮动 */
+        .coin-master { animation: float 4s infinite ease-in-out; }
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-5px); }
+        }
+
+        .shine-path { animation: goldShine 4s infinite ease-in-out; }
+        .glint { animation: starGlint 2s infinite; transform-origin: center; transform-box: fill-box; }
+    </style>
+
+    <defs>
+        <!-- 复杂的金属渐变 -->
+        <linearGradient id="metalRim" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style="stop-color:#FFE48E" />
+            <stop offset="20%" style="stop-color:#FFB800" />
+            <stop offset="40%" style="stop-color:#5E3200" />
+            <stop offset="60%" style="stop-color:#FFD700" />
+            <stop offset="80%" style="stop-color:#FFE48E" />
+            <stop offset="100%" style="stop-color:#8B4513" />
+        </linearGradient>
+
+        <!-- 浮雕面渐变 -->
+        <radialGradient id="faceGrad" cx="50%" cy="40%" r="50%">
+            <stop offset="0%" style="stop-color:#FFD700" />
+            <stop offset="100%" style="stop-color:#B8860B" />
+        </radialGradient>
+
+        <!-- 扫光材质 -->
+        <linearGradient id="shineGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" style="stop-color:#ffffff; stop-opacity:0" />
+            <stop offset="50%" style="stop-color:#ffffff; stop-opacity:0.6" />
+            <stop offset="100%" style="stop-color:#ffffff; stop-opacity:0" />
+        </linearGradient>
+
+        <clipPath id="coinCircle">
+            <circle cx="100" cy="100" r="90" />
+        </clipPath>
+    </defs>
+
+    <g class="coin-master">
+        <!-- 1. 侧边厚度与齿轮纹 (The Reeded Edge) -->
+        <circle cx="100" cy="108" r="90" fill="#4D2600" /> <!-- 最底阴影 -->
+        <circle cx="100" cy="104" r="90" fill="url(#metalRim)" /> <!-- 侧边厚度 -->
+        
+        <!-- 齿轮纹路模拟 -->
+        <g stroke="#5E3200" stroke-width="1" opacity="0.3">
+            <line x1="100" y1="10" x2="100" y2="198" stroke-dasharray="2,2" />
+            <line x1="10" y1="100" x2="190" y2="100" stroke-dasharray="2,2" />
+        </g>
+
+        <!-- 2. 硬币主表面 -->
+        <circle cx="100" cy="100" r="90" fill="url(#metalRim)" stroke="#331A00" stroke-width="0.5" />
+        
+        <!-- 3. 内凹区域 (形成边缘凸起感) -->
+        <circle cx="100" cy="100" r="80" fill="#4D2600" opacity="0.2" />
+        <circle cx="100" cy="98" r="78" fill="url(#faceGrad)" />
+
+        <!-- 4. 泰式浮雕图案 (Kranok Flame) -->
+        <g transform="translate(100,98)" fill="none">
+            <!-- 图案阴影 -->
+            <path d="M0 -50 Q20 -30 30 -10 Q0 0 -30 -10 Q-20 -30 0 -50" fill="#4D2600" opacity="0.3" transform="translate(2,2)" />
+            <!-- 图案主体 -->
+            <path d="M0 -50 Q20 -30 30 -10 Q0 0 -30 -10 Q-20 -30 0 -50" fill="#FFD700" stroke="#8B4513" stroke-width="1.5" />
+            <path d="M0 50 Q20 30 30 10 Q0 0 -30 10 Q-20 30 0 50" fill="#FFD700" stroke="#8B4513" stroke-width="1.5" />
+            <path d="M50 0 Q30 -20 10 -30 Q0 0 10 30 Q30 20 50 0" fill="#FFD700" stroke="#8B4513" stroke-width="1.5" />
+            <path d="M-50 0 Q-30 -20 -10 -30 Q0 0 -10 30 Q-30 20 -50 0" fill="#FFD700" stroke="#8B4513" stroke-width="1.5" />
+
+            <!-- 中心宝石 -->
+            <circle r="18" fill="#600000" />
+            <circle r="15" fill="#D40000" stroke="#FFD700" stroke-width="2" />
+            <circle r="5" cx="-4" cy="-4" fill="#FFFFFF" opacity="0.5" />
+        </g>
+
+        <!-- 5. 动态扫光层 -->
+        <rect class="shine-path" x="-100" y="0" width="150" height="200" fill="url(#shineGrad)" clip-path="url(#coinCircle)" />
+
+        <!-- 6. 边缘内侧的小圆点装饰 (常见于真实钱币) -->
+        <circle cx="100" cy="98" r="72" fill="none" stroke="#8B4513" stroke-width="2" stroke-dasharray="1, 6.2" opacity="0.4" />
+    </g>
+
+    <!-- 7. 闪烁特效 -->
+    <g class="glint" transform="translate(155, 55)">
+        <path d="M0 -15 L3 0 L18 0 L3 3 L0 18 L-3 3 L-18 0 L-3 0 Z" fill="white" filter="blur(0.5px)" />
+    </g>
+    <g class="glint" transform="translate(45, 145) scale(0.7)" style="animation-delay: 1s;">
+        <path d="M0 -15 L3 0 L18 0 L3 3 L0 18 L-3 3 L-18 0 L-3 0 Z" fill="white" />
+    </g>
+</svg>

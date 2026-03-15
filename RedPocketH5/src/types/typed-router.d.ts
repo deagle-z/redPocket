@@ -170,6 +170,13 @@ declare module 'vue-router/auto-routes' {
       Record<never, never>,
       | never
     >,
+    'WithdrawAccount': RouteRecordInfo<
+      'WithdrawAccount',
+      '/withdrawAccount',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
   }
 
   /**
@@ -306,6 +313,12 @@ declare module 'vue-router/auto-routes' {
     'src/pages/withdraw/index.vue': {
       routes:
         | 'Withdraw'
+      views:
+        | never
+    }
+    'src/pages/withdrawAccount/index.vue': {
+      routes:
+        | 'WithdrawAccount'
       views:
         | never
     }

@@ -10,13 +10,13 @@ import (
 )
 
 type hiddenLuckyGrabRecord struct {
-	HistoryID  int64
-	LuckyID    int64
-	UserID     int64
-	Amount     float64
-	LoseMoney  float64
-	IsThunder  int
-	CreatedAt  time.Time
+	HistoryID int64
+	LuckyID   int64
+	UserID    int64
+	Amount    float64
+	LoseMoney float64
+	IsThunder int
+	CreatedAt time.Time
 }
 
 // CreateLuckyHistory 创建领取记录
@@ -164,6 +164,7 @@ func GetLuckyAppHistoryUnion(db *gorm.DB, userID int64, search pojo.LuckyAppHist
 			m.thunder AS thunder,
 			m.sender_id AS sender_id,
 			m.sender_name AS sender_name,
+			0 AS grab_type,
 			u.avatar AS avatar,
 			0 AS income,
 			m.amount AS expense,
@@ -187,6 +188,7 @@ func GetLuckyAppHistoryUnion(db *gorm.DB, userID int64, search pojo.LuckyAppHist
 			m.thunder AS thunder,
 			m.sender_id AS sender_id,
 			m.sender_name AS sender_name,
+			h.grab_type AS grab_type,
 			u.avatar AS avatar,
 			CASE WHEN h.is_thunder = 0 THEN h.amount ELSE 0 END AS income,
 			CASE WHEN h.is_thunder = 1 THEN h.lose_money ELSE 0 END AS expense,
@@ -277,6 +279,7 @@ func GetLuckyAppHistoryUnion(db *gorm.DB, userID int64, search pojo.LuckyAppHist
 			t.sender_id,
 			t.sender_name,
 			t.avatar,
+			t.grab_type,
 			t.income,
 			t.expense,
 			t.net_amount,

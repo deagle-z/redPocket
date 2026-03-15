@@ -46,6 +46,9 @@ func GetSysCustomFields(db *gorm.DB, search pojo.SysCustomFieldSearch) (result p
 // SetSysCustomField 创建或更新自定义字段
 func SetSysCustomField(db *gorm.DB, req pojo.SysCustomFieldSet) (result pojo.SysCustomFieldBack, err error) {
 	var entity pojo.SysCustomField
+	if req.OptionsJSON == "" {
+		req.OptionsJSON = "[]"
+	}
 	if req.ID > 0 {
 		db.Where("id = ?", req.ID).First(&entity)
 		if entity.ID == 0 {

@@ -2,7 +2,8 @@
 import { onBeforeUnmount, watch } from 'vue'
 import { showToast } from 'vant'
 import { grabLuckyPacket } from '@/api/user'
-import { CURRENCY_SYMBOL, formatCurrency } from '@/utils/currency'
+import { formatCurrency } from '@/utils/currency'
+import imgCoin from '@/assets/svg/coin.svg'
 
 interface Props {
   show: boolean
@@ -35,13 +36,12 @@ const loading = ref(false)
 const resultReady = ref(false)
 const resultAmountText = ref('')
 const resultAmountValue = ref(0)
+const isAmountHidden = ref(false)
 const isThunderHit = ref(false)
 const loseMoneyText = ref(formatCurrency(0))
 const displayAmountText = computed(() => {
   if (!resultReady.value)
     return ''
-  if (resultAmountValue.value <= 0)
-    return t('homeLucky.loadingLabel')
   return isThunderHit.value ? t('grabModal.thunderShort') : resultAmountText.value
 })
 const blessingText = computed(() => {
@@ -61,6 +61,7 @@ function resetState() {
   resultReady.value = false
   resultAmountText.value = ''
   resultAmountValue.value = 0
+  isAmountHidden.value = false
   isThunderHit.value = false
   loseMoneyText.value = formatCurrency(0)
 }
@@ -118,6 +119,7 @@ async function submitGrab(): Promise<boolean> {
       grabIndex: grabIndex > 0 ? grabIndex : undefined,
     })
     isThunderHit.value = data?.isThunder === 1 || data?.isThunder === '1'
+    isAmountHidden.value = data?.isAmountHidden === 1 || data?.isAmountHidden === '1'
     const rawAmount = Number(data?.amount ?? data?.grabAmount ?? 0)
     const rawLoseMoney = Number(data?.loseMoney ?? 0)
     resultAmountValue.value = rawAmount
@@ -126,7 +128,14 @@ async function submitGrab(): Promise<boolean> {
     resultReady.value = true
     if (props.showResultToast)
       showToast(data?.message || t('grabModal.grabSuccess'))
-    emit('success', { luckyId, grabIndex, data })
+    const emitData = isAmountHidden.value
+      ? {
+          ...data,
+          amount: 0,
+          grabAmount: 0,
+        }
+      : data
+    emit('success', { luckyId, grabIndex, data: emitData })
     return true
   }
   catch {
@@ -191,7 +200,8 @@ onBeforeUnmount(() => {
                 {{ t('grabModal.voucherTitle') }}
               </div>
               <div class="amount">
-                {{ displayAmountText }}
+                <CoinAmount v-if="resultReady && !isThunderHit && displayAmountText" :text="displayAmountText" class="amount-coin" />
+                <template v-else>{{ displayAmountText }}</template>
               </div>
               <div class="blessing">
                 {{ blessingText }}
@@ -204,7 +214,7 @@ onBeforeUnmount(() => {
           </div>
 
           <button type="button" class="coin-btn" :disabled="loading || resultReady" @click="handleOpen">
-            <span class="coin-symbol">{{ CURRENCY_SYMBOL }}</span>
+            <img class="coin-btn-icon" :src="imgCoin" alt="">
             <span class="coin-label">{{ t('grabModal.open') }}</span>
           </button>
 
@@ -343,9 +353,18 @@ onBeforeUnmount(() => {
   line-height: 1.1;
   font-family: 'Times New Roman', serif;
   font-weight: 700;
+}
+
+.amount-coin :deep(.coin-amount-text) {
   background: linear-gradient(to bottom, #cfb53b, #8a6e14, #d4af37);
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
+}
+
+.amount-coin :deep(.coin-amount-icon) {
+  width: 1em;
+  height: 1em;
 }
 
 .ang-pao.thunder-hit .amount {
@@ -512,11 +531,11 @@ onBeforeUnmount(() => {
   opacity: 0.8;
 }
 
-.coin-symbol {
-  font-size: 34px;
-  line-height: 1;
-  font-weight: 700;
-  color: #6d0000;
+.coin-btn-icon {
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  display: block;
 }
 
 .coin-label {

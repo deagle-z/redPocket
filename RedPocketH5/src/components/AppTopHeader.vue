@@ -81,7 +81,7 @@ function goRecharge() {
 
     <button type="button" class="balance-wrap" @click="goRecharge">
       <span class="balance-label">{{ t('appTopHeader.balance') }}</span>
-      <span class="balance-value">{{ balanceText }}</span>
+      <CoinAmount :text="balanceText" class="balance-value" />
       <img class="user-avatar" :src="profile.avatar || defaultAvatar" alt="avatar">
     </button>
   </header>
@@ -199,10 +199,18 @@ function goRecharge() {
   font-size: clamp(13px, 3vw, 16px);
   font-weight: 700;
   line-height: 1;
+}
+
+.balance-value :deep(.coin-amount-text) {
   background: linear-gradient(to bottom, #cfb53b, #8a6e14, #d4af37);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
+}
+
+.balance-value :deep(.coin-amount-icon) {
+  width: 1em;
+  height: 1em;
 }
 
 .user-avatar {

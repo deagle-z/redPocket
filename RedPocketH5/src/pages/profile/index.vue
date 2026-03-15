@@ -279,7 +279,7 @@ function onMenuClick(item: MenuItem) {
       goByPath('/withdraw')
       break
     case 'withdraw-account':
-      goByPath('/bindTg')
+      goByPath('/withdrawAccount')
       break
     case 'lucky-reward':
       goByPath('/history')

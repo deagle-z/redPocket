@@ -28,6 +28,14 @@ function parseCustomFields(value?: string | null) {
   }
 }
 
+function serializeCustomFields(fields: SysCustomField[]): string {
+  if (fields.length === 0) return "";
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  return JSON.stringify(
+    fields.map(({ id, remark, status, updatedAt, createdAt, ...rest }) => rest)
+  );
+}
+
 export function useCountry(tableRef: Ref) {
   const form = reactive({
     countryCode: "",
@@ -183,14 +191,8 @@ export function useCountry(tableRef: Ref) {
                 currencySymbol: toOptionalString(curData.currencySymbol),
                 timezone: toOptionalString(curData.timezone),
                 languageCode: toOptionalString(curData.languageCode),
-                withdrawFields:
-                  curData.withdrawFields.length > 0
-                    ? JSON.stringify(curData.withdrawFields)
-                    : "",
-                rechargeFields:
-                  curData.rechargeFields.length > 0
-                    ? JSON.stringify(curData.rechargeFields)
-                    : "",
+                withdrawFields: serializeCustomFields(curData.withdrawFields),
+                rechargeFields: serializeCustomFields(curData.rechargeFields),
                 sort: Number(curData.sort || 0),
                 status: curData.status,
                 remark: toOptionalString(curData.remark)
