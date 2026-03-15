@@ -145,6 +145,7 @@ func refundExpiredLuckyMoney(db *gorm.DB, tablePrefix string, luckyID int64) err
 	if err != nil {
 		return err
 	}
+	go BroadcastLuckyFinished(db, luckyID)
 	return EnsureMinActiveLuckyPackets(db, tablePrefix)
 }
 

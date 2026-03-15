@@ -319,6 +319,26 @@ func ensureBotBalance(db *gorm.DB, botUser *pojo.TgUser, minBalance float64) err
 	return nil
 }
 
+// BroadcastLuckyFinished 广播红包完整信息（最后一包抢完 或 红包过期后调用）
+// 消息类型 lucky_finished，payload 为 LuckyMoneyAppDetailResp
+func BroadcastLuckyFinished(db *gorm.DB, luckyID int64) {
+	if db == nil || luckyID <= 0 {
+		return
+	}
+	// 清除详情缓存，确保读到最新状态
+	cacheKey := fmt.Sprintf("bgu_lucky_detail_%d", luckyID)
+	_ = utils.RD.Del(context.Background(), cacheKey)
+
+	detail, err := repository.GetLuckyMoneyAppDetail(db, luckyID, 0)
+	if err != nil {
+		log.Printf("[lucky] BroadcastLuckyFinished: get detail failed luckyID=%d err=%v", luckyID, err)
+		return
+	}
+	if err := utils.BroadcastWsWithType("lucky_finished", detail); err != nil {
+		log.Printf("[lucky] BroadcastLuckyFinished: broadcast failed luckyID=%d err=%v", luckyID, err)
+	}
+}
+
 func BroadcastLuckyGrabResult(db *gorm.DB, luckyID int64, result map[string]interface{}) error {
 	if db == nil || luckyID <= 0 {
 		return nil
@@ -857,6 +877,7 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 	}
 	if completedAfterGrab {
 		_ = EnsureMinActiveLuckyPackets(db, tablePrefix)
+		go BroadcastLuckyFinished(db, luckyID)
 	}
 
 	isAmountHidden := 0

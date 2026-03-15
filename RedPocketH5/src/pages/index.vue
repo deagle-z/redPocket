@@ -91,11 +91,11 @@ function formatAmount(value: number) {
 }
 
 function formatActionLabel(isOngoing: boolean, isGrabbed: boolean, amount: number, seqNo: number) {
-  if (!isGrabbed)
-    return isOngoing ? t('homeLucky.grabAction', { seq: seqNo }) : '???'
-  if (Number(amount) <= 0)
+  if (!isGrabbed && isOngoing)
+    return t('homeLucky.grabAction', { seq: seqNo })
+  if (isGrabbed && isOngoing && amount <= 0)
     return t('homeLucky.loadingLabel')
-  return formatAmount(amount)
+  return Number(amount || 0).toFixed(2)
 }
 
 function formatRemainText(seconds: number) {
@@ -174,7 +174,7 @@ function mapPacket(item: any) {
     statusText: isOngoing ? t('homeLucky.statusOngoing') : t('homeLucky.statusDone'),
     gameText: t('homeLucky.game'),
     progressText: t('homeLucky.progress', { grabbed: Number(item?.grabbedCount || 0), total: Number(item?.number || 0) }),
-    thunderText: isOngoing ? '' : t('homeLucky.thunderNo', { no: Number(item?.thunder || 0) }),
+    thunderText: t('homeLucky.thunderNo', { no: Number(item?.thunder || 0) }),
     hitsText: t('homeLucky.hitsCount', { count: Number(item?.hitCount || 0) }),
     rebateText: t('homeLucky.rebate', { amount: formatAmount(senderWinAmount) }),
     timeText: isOngoing ? t('homeLucky.remainingTime', { time: item?.remainingText || '00:00' }) : t('homeLucky.statusDone'),
@@ -348,7 +348,7 @@ function applyLuckyBroadcast(message: any) {
       amount: formatAmount(lucky?.amount),
       thunder: Number(lucky?.thunder || packet?.thunder || 0),
       rebateText: Number.isFinite(totalThunderAmount) ? t('homeLucky.rebate', { amount: formatAmount(totalThunderAmount) }) : packet.rebateText,
-      thunderText: nextStatus === 'ongoing' ? '' : t('homeLucky.thunderNo', { no: Number(lucky?.thunder || 0) }),
+      thunderText: t('homeLucky.thunderNo', { no: Number(lucky?.thunder || 0) }),
       progressText: t('homeLucky.progress', { grabbed: grabbedCount, total: packetNumber }),
       timeText: nextStatus === 'ongoing' ? packet.timeText : t('homeLucky.statusDone'),
       packetImage: nextStatus === 'ongoing' ? imgRedpacketGif : imgRedpacketJpg,
@@ -364,6 +364,74 @@ function applyLuckyBroadcast(message: any) {
     }
   })
   refreshPacketCountdowns()
+}
+
+function applyLuckyFinished(message: any) {
+  const detail = message?.data || message
+  const summary = detail?.summary
+  const finance = detail?.finance
+  const participants: any[] = detail?.participants || []
+
+  const luckyId = Number(summary?.id || 0)
+  if (!luckyId)
+    return
+
+  // 按 seqNo 建立参与记录索引
+  const participantMap = new Map<number, any>()
+  for (const p of participants)
+    participantMap.set(Number(p.seqNo), p)
+
+  packetList.value = packetList.value.map((packet) => {
+    if (Number(packet.id) !== luckyId)
+      return packet
+
+    const total = Number(summary?.number || packet.actions?.length || 0)
+    const existingActions: any[] = Array.isArray(packet.actions) ? [...packet.actions] : []
+
+    // 确保每个 seqNo 都有槽位
+    if (existingActions.length === 0) {
+      for (let i = 1; i <= total; i++)
+        existingActions.push({ seqNo: i, isGrabbed: false, isGrabMine: false, amount: 0, thunder: 0, label: '' })
+    }
+
+    const updatedActions = existingActions.map((action: any) => {
+      const seqNo = Number(action.seqNo)
+      const participant = participantMap.get(seqNo)
+      if (participant) {
+        const amount = Number(participant.amount || 0)
+        return {
+          ...action,
+          isGrabbed: true,
+          amount,
+          thunder: Number(participant.isThunder || 0),
+          label: formatActionLabel(false, true, amount, seqNo),
+        }
+      }
+      return {
+        ...action,
+        isGrabbed: false,
+        label: formatActionLabel(false, false, Number(action.amount || 0), seqNo),
+      }
+    })
+
+    const grabbedCount = Number(summary?.grabbedCount ?? updatedActions.filter((a: any) => a.isGrabbed).length)
+    const thunderIncome = Number(finance?.thunderIncome || 0)
+
+    return {
+      ...packet,
+      status: 'done',
+      statusText: t('homeLucky.statusDone'),
+      amount: formatAmount(Number(summary?.amount || 0)),
+      thunder: Number(summary?.thunder ?? packet.thunder),
+      progressText: t('homeLucky.progress', { grabbed: grabbedCount, total }),
+      hitsText: t('homeLucky.hitsCount', { count: Number(finance?.hitCount || 0) }),
+      rebateText: t('homeLucky.rebate', { amount: formatAmount(thunderIncome) }),
+      thunderText: t('homeLucky.thunderNo', { no: Number(summary?.thunder || 0) }),
+      timeText: t('homeLucky.statusDone'),
+      packetImage: imgRedpacketJpg,
+      actions: updatedActions,
+    }
+  })
 }
 
 async function loadRecentWinners() {
@@ -400,6 +468,7 @@ onMounted(() => {
   countdownTimer = window.setInterval(refreshPacketCountdowns, 1000)
   wsClient.on('lucky_sent', applyLuckySent)
   wsClient.on('lucky_grabbed', applyLuckyBroadcast)
+  wsClient.on('lucky_finished', applyLuckyFinished)
 })
 
 onBeforeUnmount(() => {
@@ -407,6 +476,7 @@ onBeforeUnmount(() => {
     window.clearInterval(countdownTimer)
   wsClient.off('lucky_sent', applyLuckySent)
   wsClient.off('lucky_grabbed', applyLuckyBroadcast)
+  wsClient.off('lucky_finished', applyLuckyFinished)
 })
 </script>
 
