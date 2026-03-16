@@ -124,15 +124,11 @@ func GetRedPacketListApp(ctx *gin.Context) {
 		return
 	}
 
-	userIDRaw, ok := ctx.Get("userId")
-	if !ok {
-		utils.UnauthorizedBack(ctx, "token is invalid")
-		return
-	}
-	userID, ok := userIDRaw.(int64)
-	if !ok || userID <= 0 {
-		utils.UnauthorizedBack(ctx, "token is invalid")
-		return
+	var userID int64
+	if raw, ok := ctx.Get("userId"); ok {
+		if id, ok := raw.(int64); ok {
+			userID = id
+		}
 	}
 
 	db := ctx.MustGet("db").(*gorm.DB)
@@ -148,15 +144,11 @@ func GetLuckyDetailApp(ctx *gin.Context) {
 		return
 	}
 
-	userIDRaw, ok := ctx.Get("userId")
-	if !ok {
-		utils.UnauthorizedBack(ctx, "token is invalid")
-		return
-	}
-	userID, ok := userIDRaw.(int64)
-	if !ok || userID <= 0 {
-		utils.UnauthorizedBack(ctx, "token is invalid")
-		return
+	var userID int64
+	if raw, ok := ctx.Get("userId"); ok {
+		if id, ok := raw.(int64); ok {
+			userID = id
+		}
 	}
 
 	db := ctx.MustGet("db").(*gorm.DB)
@@ -189,16 +181,7 @@ func GetLuckyAppHistory(ctx *gin.Context) {
 		return
 	}
 
-	userIDRaw, ok := ctx.Get("userId")
-	if !ok {
-		utils.UnauthorizedBack(ctx, "token is invalid")
-		return
-	}
-	userID, ok := userIDRaw.(int64)
-	if !ok || userID <= 0 {
-		utils.UnauthorizedBack(ctx, "token is invalid")
-		return
-	}
+	userID := ctx.MustGet("userId").(int64)
 
 	db := ctx.MustGet("db").(*gorm.DB)
 	result := repository.GetLuckyAppHistoryUnion(db, userID, search)

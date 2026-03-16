@@ -682,7 +682,7 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 				StartAmount: runningBalance,
 				EndAmount:   runningBalance - giftDeduct,
 				CashMark:    "抢红包中雷",
-				CashDesc:    fmt.Sprintf("抢红包中雷，损失%.2fU（赠送金额%.2fU）", loseMoney, giftDeduct),
+				CashDesc:    fmt.Sprintf("抢红包中雷，损失%.2f（赠送金额%.2f）", loseMoney, giftDeduct),
 				Type:        pojo.CashHistoryTypeGrabRedPacketThunder,
 				IsGift:      1,
 				FromUserId:  luckyMoney.SenderID,
@@ -898,9 +898,9 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 	}
 
 	if isThunder == 1 {
-		result["message"] = fmt.Sprintf("中雷，领取 %.2f U，损失 %.2f U", redAmount, loseMoney)
+		result["message"] = fmt.Sprintf("中雷，领取 %.2f ，损失 %.2f ", redAmount, loseMoney)
 	} else {
-		result["message"] = fmt.Sprintf("未中雷，领取 %.2f U", redAmount)
+		result["message"] = fmt.Sprintf("未中雷，领取 %.2f ", redAmount)
 	}
 
 	return result, nil

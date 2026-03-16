@@ -1,5 +1,5 @@
 export const CURRENCY_SYMBOL = '฿'
-export const CURRENCY_CODE = 'THB'
+export const CURRENCY_CODE = 'GOLD'
 
 interface FormatCurrencyOptions {
   signed?: boolean

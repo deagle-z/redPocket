@@ -26,7 +26,6 @@ import teamIcon from '@/assets/my/team.svg?raw'
 import telegramIcon from '@/assets/my/telegram.svg?raw'
 import upIcon from '@/assets/my/up2.svg?raw'
 import walletIcon from '@/assets/my/wallet.svg?raw'
-import { CURRENCY_SYMBOL } from '@/utils/currency'
 
 const { t } = useI18n()
 
@@ -364,12 +363,12 @@ async function handleConfirmLogout() {
       <div class="balance-row">
         <button class="balance-item" type="button" @click="goWallet">
           <strong class="balance-value">{{ displayBalance }}</strong>
-          <span class="balance-label">{{ t('profilePage.balanceLabel', { symbol: CURRENCY_SYMBOL }) }}</span>
+          <span class="balance-label"><span>{{ t('profilePage.balanceLabel') }}</span><img src="@/assets/svg/coin.svg" class="label-coin" alt=""></span>
         </button>
         <div class="balance-divider" />
         <button class="balance-item" type="button" @click="goTransform">
           <strong class="balance-value">{{ displayRebateAmount }}</strong>
-          <span class="balance-label">{{ t('profilePage.commissionLabel', { symbol: CURRENCY_SYMBOL }) }}</span>
+          <span class="balance-label"><span>{{ t('profilePage.commissionLabel') }}</span><img src="@/assets/svg/coin.svg" class="label-coin" alt=""></span>
         </button>
       </div>
     </section>
@@ -653,9 +652,20 @@ async function handleConfirmLogout() {
 }
 
 .balance-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
   color: rgba(255, 229, 186, 0.68);
   font-size: 12px;
   line-height: 1;
+}
+
+.label-coin {
+  width: 13px;
+  height: 13px;
+  flex-shrink: 0;
+  display: block;
 }
 
 .balance-divider {

@@ -3,7 +3,7 @@ import { computed, onMounted, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { getCurrentTgInviteStats } from '@/api/user'
 import AppPageHeader from '@/components/AppPageHeader.vue'
-import { CURRENCY_SYMBOL, formatCurrency } from '@/utils/currency'
+import { formatCurrency } from '@/utils/currency'
 import imgTeamJpg from '@/assets/images/team.jpg'
 
 const { t } = useI18n()
@@ -98,7 +98,7 @@ onMounted(() => {
             {{ item.label }}
           </p>
           <p class="commission-value">
-            {{ formatAmount(item.value) }}
+            <CoinAmount :text="formatAmount(item.value)" />
           </p>
         </article>
       </div>
@@ -119,7 +119,7 @@ onMounted(() => {
         <ul class="rule-list">
           <li>
             <van-icon name="friends-o" />
-            {{ t('teamPage.ruleItem1', { symbol: CURRENCY_SYMBOL }) }}
+            {{ t('teamPage.ruleItem1') }}
           </li>
           <li>
             <van-icon name="gift-o" />
@@ -137,7 +137,7 @@ onMounted(() => {
 
         <h3>{{ t('teamPage.exampleTitle') }}</h3>
         <p class="rule-text">
-          {{ t('teamPage.exampleText', { symbol: CURRENCY_SYMBOL }) }}
+          {{ t('teamPage.exampleText') }}
         </p>
 
         <div class="rule-highlight">

@@ -29,7 +29,7 @@ interface TxItem {
 }
 
 const router = useRouter()
-const activeRange = ref<RangeKey>('custom')
+const activeRange = ref<RangeKey>('today')
 const showRangePopup = ref(false)
 const showDatePicker = ref(false)
 const editingField = ref<'start' | 'end'>('start')
@@ -733,7 +733,8 @@ onMounted(() => {
 }
 
 .stat-item {
-  height: 64px;
+  min-height: 64px;
+  padding: 8px 4px;
   border-radius: 12px;
   border: 1px solid rgba(212, 175, 55, 0.16);
   background: rgba(255, 248, 214, 0.05);
@@ -757,9 +758,17 @@ onMounted(() => {
 
 .stat-value {
   margin: 0;
-  font-size: 16px;
-  line-height: 1;
+  font-size: 14px;
+  line-height: 1.2;
   font-weight: 700;
+  text-align: center;
+  width: 100%;
+}
+
+.stat-value :deep(.coin-amount-wrap) {
+  flex-wrap: wrap;
+  justify-content: center;
+  row-gap: 2px;
 }
 
 .stat-value.income {

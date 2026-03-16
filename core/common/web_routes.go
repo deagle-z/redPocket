@@ -242,6 +242,8 @@ func InitGin() {
 		appRouter.POST("/tg/sendEmailCode", api.SendTgEmailCode)
 		appRouter.POST("/tg/registerByEmail", api.RegisterTgByEmail)
 		appRouter.POST("/tg/forgotPasswordByEmail", api.ForgotPasswordByEmail)
+		appRouter.POST("/lucky/list", api.GetRedPacketListApp)   // 不校验token
+		appRouter.POST("/lucky/detail", api.GetLuckyDetailApp)  // 不校验token
 	}
 
 	appAuthRouter := router.Group("/api/v1/app")
@@ -249,10 +251,8 @@ func InitGin() {
 	{
 		appAuthRouter.POST("/rechargeOrder", api.AppCreateRechargeOrder)
 		appAuthRouter.POST("/lucky/send", api.SendRedPacketApp)
-		appAuthRouter.POST("/lucky/list", api.GetRedPacketListApp)
-		appAuthRouter.POST("/lucky/detail", api.GetLuckyDetailApp)
 		appAuthRouter.POST("/lucky/history", api.GetLuckyAppHistory)
-		appAuthRouter.POST("/lucky/recentWinners", api.GetRecentLuckyWinnersApp)
+		appRouter.POST("/lucky/recentWinners", api.GetRecentLuckyWinnersApp) // 不校验token
 		appAuthRouter.POST("/tg/logout", api.TgLogout)
 		appAuthRouter.GET("/tg/currentUserInfo", api.GetCurrentTgUserInfo)
 		appAuthRouter.POST("/tg/avatar", api.UpdateCurrentTgUserAvatar)

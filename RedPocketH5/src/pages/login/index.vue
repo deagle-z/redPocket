@@ -52,7 +52,7 @@ async function login() {
     await userStore.login({ ...postData })
     const { redirect, ...othersQuery } = router.currentRoute.value.query
     const redirectPath = typeof redirect === 'string' && redirect ? redirect : '/'
-    router.push({
+    router.replace({
       path: redirectPath,
       query: {
         ...othersQuery,
@@ -372,7 +372,8 @@ function goRegister() {
 .lang-icon {
   width: 24px;
   height: 24px;
-  filter: brightness(0) saturate(100%) invert(84%) sepia(39%) saturate(612%) hue-rotate(338deg) brightness(105%) contrast(96%);
+  filter: brightness(0) saturate(100%) invert(84%) sepia(39%) saturate(612%) hue-rotate(338deg) brightness(105%)
+    contrast(96%);
 }
 
 .hero-card,
@@ -604,7 +605,8 @@ function goRegister() {
 .email-form-icon {
   width: 16px;
   height: 16px;
-  filter: brightness(0) saturate(100%) invert(85%) sepia(39%) saturate(649%) hue-rotate(335deg) brightness(105%) contrast(97%);
+  filter: brightness(0) saturate(100%) invert(85%) sepia(39%) saturate(649%) hue-rotate(335deg) brightness(105%)
+    contrast(97%);
 }
 
 .email-form-input {
@@ -737,7 +739,8 @@ function goRegister() {
   width: 24px;
   height: 24px;
   object-fit: contain;
-  filter: brightness(0) saturate(100%) invert(97%) sepia(44%) saturate(534%) hue-rotate(320deg) brightness(104%) contrast(96%);
+  filter: brightness(0) saturate(100%) invert(97%) sepia(44%) saturate(534%) hue-rotate(320deg) brightness(104%)
+    contrast(96%);
 }
 
 .feature-title {

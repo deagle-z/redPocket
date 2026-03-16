@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { showToast } from 'vant'
+import { showConfirmDialog, showToast } from 'vant'
 import { useRouter } from 'vue-router'
 import { getLuckyPacketList, getLuckyRecentWinners } from '@/api/user'
 import LuckyGrabModal from '@/components/LuckyGrabModal.vue'
@@ -47,25 +47,12 @@ const recentWinnersLoading = ref(false)
 
 const recentWinners = ref<any[]>([])
 
-const visibleWinners = computed(() => {
-  if (!loggedIn.value)
-    return []
-  return recentWinners.value
-})
+const visibleWinners = computed(() => recentWinners.value)
 
-const showPacketEmpty = computed(() => {
-  return !loggedIn.value || (!packetLoading.value && packetList.value.length === 0)
-})
-const showPacketLoading = computed(() => {
-  return loggedIn.value && packetLoading.value && packetList.value.length === 0
-})
-const showWinnerLoading = computed(() => {
-  return loggedIn.value && recentWinnersLoading.value && visibleWinners.value.length === 0
-})
-
-const showWinnerEmpty = computed(() => {
-  return !loggedIn.value || visibleWinners.value.length === 0
-})
+const showPacketEmpty = computed(() => !packetLoading.value && packetList.value.length === 0)
+const showPacketLoading = computed(() => packetLoading.value && packetList.value.length === 0)
+const showWinnerLoading = computed(() => recentWinnersLoading.value && visibleWinners.value.length === 0)
+const showWinnerEmpty = computed(() => visibleWinners.value.length === 0)
 
 const marqueeText = computed(() => {
   const current = bannerList.value[activeIndex.value]
@@ -207,10 +194,6 @@ function applyLuckySent(message: any) {
 }
 
 async function loadPacketList() {
-  if (!loggedIn.value) {
-    packetList.value = []
-    return
-  }
   if (packetLoading.value)
     return
   try {
@@ -230,9 +213,20 @@ async function loadPacketList() {
   }
 }
 
+function promptLogin() {
+  showConfirmDialog({
+    title: t('homeLucky.loginDialogTitle'),
+    message: t('homeLucky.loginDialogMsg'),
+    confirmButtonText: t('homeLucky.loginDialogConfirm'),
+    cancelButtonText: t('common.cancel'),
+  }).then(() => {
+    router.push('/login')
+  }).catch(() => {})
+}
+
 function openGrabDialog(packet: any, action: any) {
   if (!loggedIn.value) {
-    showToast(t('homeLucky.loginFirst'))
+    promptLogin()
     return
   }
   if (packet?.status !== 'ongoing')
@@ -245,7 +239,7 @@ function openGrabDialog(packet: any, action: any) {
 
 function openSendPacketDialog() {
   if (!loggedIn.value) {
-    showToast(t('homeLucky.loginFirst'))
+    promptLogin()
     return
   }
   sendPacketModalVisible.value = true
@@ -435,10 +429,6 @@ function applyLuckyFinished(message: any) {
 }
 
 async function loadRecentWinners() {
-  if (!loggedIn.value) {
-    recentWinners.value = []
-    return
-  }
   if (recentWinnersLoading.value)
     return
   try {
@@ -461,8 +451,6 @@ async function loadRecentWinners() {
 }
 
 onMounted(() => {
-  if (!loggedIn.value)
-    return
   loadPacketList()
   loadRecentWinners()
   countdownTimer = window.setInterval(refreshPacketCountdowns, 1000)

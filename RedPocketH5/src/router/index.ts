@@ -12,8 +12,8 @@ import setPageTitle from '@/utils/set-page-title'
 
 NProgress.configure({ showSpinner: true, parent: '#app' })
 
-const publicRouteNames = new Set(['Home', 'Login', 'Register', 'ForgotPassword'])
-const publicRoutePaths = new Set(['/', '/login', '/register', '/resetpwd', '/resetpwd/'])
+const publicRouteNames = new Set(['Home', 'Login', 'Register', 'ForgotPassword', 'luckyDetail'])
+const publicRoutePaths = new Set(['/', '/login', '/register', '/resetpwd', '/resetpwd/', '/luckyDetail'])
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.VITE_APP_PUBLIC_PATH),

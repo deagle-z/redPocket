@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { getAppCashHistoryList, getCurrentTgUserInfo } from '@/api/user'
 import AppPageHeader from '@/components/AppPageHeader.vue'
 import { CURRENCY_CODE, formatCurrency } from '@/utils/currency'
+
 const { t } = useI18n()
 
 interface WalletTx {
@@ -201,11 +202,7 @@ onMounted(() => {
         <p>{{ t('walletPage.assetDetails') }}</p>
         <van-icon name="arrow" />
       </div>
-      <article
-        v-for="item in assetRows"
-        :key="item.key"
-        class="list-row"
-      >
+      <article v-for="item in assetRows" :key="item.key" class="list-row">
         <div class="row-left">
           <span class="row-icon" :class="item.tone">
             <van-icon :name="item.icon" />
@@ -227,17 +224,10 @@ onMounted(() => {
         <van-icon name="arrow" />
       </div>
       <van-list
-        v-model:loading="txLoading"
-        :finished="txFinished"
-        :immediate-check="false"
-        :finished-text="t('walletPage.noMore')"
-        @load="onLoadTxMore"
+        v-model:loading="txLoading" :finished="txFinished" :immediate-check="false"
+        :finished-text="t('walletPage.noMore')" @load="onLoadTxMore"
       >
-        <article
-          v-for="item in txList"
-          :key="item.id"
-          class="list-row"
-        >
+        <article v-for="item in txList" :key="item.id" class="list-row">
           <div class="row-left">
             <span class="row-icon tx">
               <van-icon name="records-o" />

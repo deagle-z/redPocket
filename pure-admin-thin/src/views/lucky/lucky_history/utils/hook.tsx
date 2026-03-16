@@ -44,7 +44,7 @@ export function useLuckyHistory(tableRef: Ref) {
       label: "领取金额",
       prop: "amount",
       minWidth: 100,
-      formatter: ({ amount }) => `${amount.toFixed(3)} U`
+      formatter: ({ amount }) => `${amount.toFixed(3)} `
     },
     {
       label: "是否中雷",
@@ -66,7 +66,7 @@ export function useLuckyHistory(tableRef: Ref) {
       cellRenderer: scope => {
         const loseMoney = scope.row.loseMoney;
         return loseMoney > 0 ? (
-          <span class="text-red-500">-{loseMoney.toFixed(3)} U</span>
+          <span class="text-red-500">-{loseMoney.toFixed(3)} </span>
         ) : (
           <span>-</span>
         );

@@ -5,7 +5,8 @@ import { useRouter } from 'vue-router'
 import { getAppCashHistoryList, getCurrentTgUserInfo, transferRebateToBalance } from '@/api/user'
 import AppPageHeader from '@/components/AppPageHeader.vue'
 import gameIcon from '@/assets/my/game.svg'
-import { CURRENCY_SYMBOL, formatCurrency } from '@/utils/currency'
+import { formatCurrency } from '@/utils/currency'
+import imgCoin from '@/assets/svg/coin.svg'
 
 const { t } = useI18n()
 
@@ -112,7 +113,7 @@ async function handleConfirm() {
     return
   }
   if (amount < 1) {
-    showToast(t('transformPage.toastMinAmount', { min: `${CURRENCY_SYMBOL}1` }))
+    showToast(t('transformPage.toastMinAmount', { min: '1' }))
     return
   }
   if (amount > wallet.commission) {
@@ -174,7 +175,7 @@ onMounted(() => {
           <span>{{ t('transformPage.availableBalance') }}</span>
         </div>
         <p class="wallet-value">
-          {{ commissionText }}
+          <CoinAmount :text="commissionText" />
         </p>
       </article>
 
@@ -184,7 +185,7 @@ onMounted(() => {
           <span>{{ t('transformPage.availableBalance') }}</span>
         </div>
         <p class="wallet-value">
-          {{ gameText }}
+          <CoinAmount :text="gameText" />
         </p>
       </article>
     </section>
@@ -194,13 +195,13 @@ onMounted(() => {
         <p class="input-label">
           {{ t('transformPage.transferAmount') }}
         </p>
-        <input v-model="amountInput" class="amount-input" type="number" min="1" :placeholder="t('transformPage.amountPlaceholder', { min: `${CURRENCY_SYMBOL}1` })">
+        <input v-model="amountInput" class="amount-input" type="number" min="1" :placeholder="t('transformPage.amountPlaceholder', { min: '1' })">
         <button type="button" class="fill-btn" :disabled="!canTransferAll" @click="fillAll">
           {{ t('transformPage.fillAll') }}
         </button>
       </div>
       <p class="input-hint">
-        {{ t('transformPage.minTip', { min: `${CURRENCY_SYMBOL}1` }) }}
+        {{ t('transformPage.minTip') }} <img :src="imgCoin" class="hint-coin" alt=""> 1
       </p>
     </section>
 
@@ -233,7 +234,7 @@ onMounted(() => {
             </p>
           </div>
           <p class="recent-amount">
-            {{ formatAmount(item.amount) }}
+            <CoinAmount :text="formatAmount(item.amount)" />
           </p>
         </article>
       </template>
@@ -428,9 +429,19 @@ onMounted(() => {
 
 .input-hint {
   margin: 8px 0 0;
-  text-align: right;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 3px;
   color: rgba(255, 229, 186, 0.56);
   font-size: 11px;
+}
+
+.hint-coin {
+  width: 13px;
+  height: 13px;
+  flex-shrink: 0;
+  display: block;
 }
 
 .confirm-wrap {

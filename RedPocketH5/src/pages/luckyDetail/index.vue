@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { showToast } from 'vant'
+import { showConfirmDialog, showToast } from 'vant'
 import { getLuckyDetail } from '@/api/user'
 import AppPageHeader from '@/components/AppPageHeader.vue'
 import LuckyGrabModal from '@/components/LuckyGrabModal.vue'
@@ -162,9 +162,20 @@ async function loadDetail() {
   }
 }
 
+function promptLogin() {
+  showConfirmDialog({
+    title: t('homeLucky.loginDialogTitle'),
+    message: t('homeLucky.loginDialogMsg'),
+    confirmButtonText: t('homeLucky.loginDialogConfirm'),
+    cancelButtonText: t('common.cancel'),
+  }).then(() => {
+    router.push('/login')
+  }).catch(() => {})
+}
+
 function openGrabDialog(item: { seqNo: number, isGrabbed: boolean }) {
   if (!loggedIn.value) {
-    showToast(t('homeLucky.loginFirst'))
+    promptLogin()
     return
   }
   if (overview.value?.status !== 'ongoing' || item.isGrabbed)
