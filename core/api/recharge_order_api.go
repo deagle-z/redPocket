@@ -104,6 +104,24 @@ func GetRechargeOrderById(ctx *gin.Context) {
 	utils.SuccessObjBack(ctx, result)
 }
 
+// AdminRechargeOrderCallback 管理员手动触发充值回调
+func AdminRechargeOrderCallback(ctx *gin.Context) {
+	idStr := ctx.Param("id")
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil || id <= 0 {
+		utils.ErrorBack(ctx, "参数格式错误")
+		return
+	}
+	db := ctx.MustGet("db").(*gorm.DB)
+	hostInfo := ctx.MustGet("hostInfo").(pojo.HostInfo)
+	result, err := repository.AdminRechargeOrderCallback(db, id, hostInfo.TablePrefix)
+	if err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	utils.SuccessObjBack(ctx, result)
+}
+
 // AppCreateRechargeOrder godoc
 //
 //	@Summary		app端创建充值订单

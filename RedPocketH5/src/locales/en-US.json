@@ -256,6 +256,8 @@
     "customAmount": "Custom Amount",
     "customAmountPlaceholder": "Please enter recharge amount",
     "payMethodTitle": "Payment Method",
+    "noChannel": "No recharge channel available",
+    "fillInfo": "Fill in Info",
     "submit": "Confirm Recharge",
     "paySubQr": "Scan to pay",
     "paySubWallet": "E-wallet"

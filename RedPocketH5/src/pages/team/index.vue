@@ -1,14 +1,11 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive } from 'vue'
-import { useRouter } from 'vue-router'
 import { getCurrentTgInviteStats } from '@/api/user'
-import AppPageHeader from '@/components/AppPageHeader.vue'
 import { formatCurrency } from '@/utils/currency'
 import imgTeamJpg from '@/assets/images/team.jpg'
 
 const { t } = useI18n()
 
-const router = useRouter()
 const teamRuleBannerImage = imgTeamJpg
 
 const stats = reactive({
@@ -34,9 +31,6 @@ const commissionCards = computed(() => [
   { key: 'today', label: t('teamPage.commissionToday'), value: stats.todayCommission, tone: 'info' },
 ])
 
-function goBack() {
-  router.back()
-}
 
 function formatAmount(value: number) {
   return formatCurrency(Number(value || 0))
@@ -65,8 +59,6 @@ onMounted(() => {
 
 <template>
   <div class="team-page">
-    <AppPageHeader class="team-header" :title="t('teamPage.title')" @back="goBack" />
-
     <section class="section-card">
       <div class="section-title">
         <span class="dot green" />

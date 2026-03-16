@@ -3,10 +3,11 @@ import { message } from "@/utils/message";
 import type { PaginationProps } from "@pureadmin/table";
 import {
   getRechargeOrderListAdmin,
+  adminRechargeOrderCallback,
   type RechargeOrder
 } from "@/api/rechargeOrder";
 import { type Ref, reactive, ref, onMounted, toRaw } from "vue";
-import { ElTag } from "element-plus";
+import { ElTag, ElButton, ElMessageBox } from "element-plus";
 
 const statusOptions = [
   { label: "待支付", value: 0 },
@@ -31,6 +32,8 @@ function getStatusType(status: number) {
   if (status === 4 || status === 5 || status === 7) return "info";
   return "info";
 }
+
+const callbackLoadingIds = ref<Set<number>>(new Set());
 
 export function useRechargeOrder(tableRef: Ref) {
   const form = reactive({
@@ -116,8 +119,50 @@ export function useRechargeOrder(tableRef: Ref) {
       minWidth: 160,
       formatter: ({ createdAt }) =>
         dayjs(createdAt).format("YYYY-MM-DD HH:mm:ss")
+    },
+    {
+      label: "操作",
+      fixed: "right",
+      width: 130,
+      cellRenderer: scope => {
+        if (scope.row.status !== 1) return null;
+        const id: number = scope.row.id;
+        const isLoading = callbackLoadingIds.value.has(id);
+        return (
+          <ElButton
+            type="warning"
+            size="small"
+            loading={isLoading}
+            onClick={() => handleCallback(scope.row)}
+          >
+            手动回调
+          </ElButton>
+        );
+      }
     }
   ];
+
+  async function handleCallback(row: RechargeOrder) {
+    try {
+      await ElMessageBox.confirm(
+        `确认对订单 ${row.orderNo} 执行手动回调入账？`,
+        "手动回调确认",
+        { type: "warning", confirmButtonText: "确认", cancelButtonText: "取消" }
+      );
+    } catch {
+      return;
+    }
+    callbackLoadingIds.value.add(row.id);
+    try {
+      await adminRechargeOrderCallback(row.id);
+      message("回调成功，订单已入账", { type: "success" });
+      onSearch();
+    } catch {
+      message("回调失败，请重试", { type: "error" });
+    } finally {
+      callbackLoadingIds.value.delete(row.id);
+    }
+  }
 
   function handleSizeChange(val: number) {
     pagination.pageSize = val;

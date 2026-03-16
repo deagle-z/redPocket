@@ -31,6 +31,7 @@ type RechargeOrder struct { // 充值记录/充值订单表
 	Title           *string    `json:"title" gorm:"column:title;type:varchar(128)"`                         // 充值标题/套餐名（可选）
 	Remark          *string    `json:"remark" gorm:"column:remark;type:varchar(255)"`                       // 备注（可选）
 	Extra           *string    `json:"extra" gorm:"column:extra;type:json"`                                 // 扩展信息（可选）
+	IsDev           *int8      `json:"isDev" gorm:"column:is_dev;type:tinyint(1);comment:是否手动回调 0否 1是"`    // 是否手动回调
 	DeletedAt       *time.Time `json:"deletedAt" gorm:"column:deleted_at;type:datetime(3)"`                 // 软删除时间（可选）
 }
 
@@ -108,6 +109,7 @@ type RechargeOrderBack struct {
 	Title           *string    `json:"title"`
 	Remark          *string    `json:"remark"`
 	Extra           *string    `json:"extra"`
+	IsDev           *int8      `json:"isDev"`
 }
 
 type RechargeOrderResp struct {
@@ -115,11 +117,13 @@ type RechargeOrderResp struct {
 }
 
 type RechargeOrderAppReq struct {
-	Amount          float64 `json:"amount"`          // 充值金额
-	Channel         string  `json:"channel"`         // 充值渠道（必填）
-	PayMethod       string  `json:"payMethod"`       // 支付方式（可选）
-	Currency        string  `json:"currency"`        // 币种（默认BRL）
-	MerchantOrderNo string  `json:"merchantOrderNo"` // 商户订单号（可选）
+	Amount          float64           `json:"amount"`          // 充值金额
+	Channel         string            `json:"channel"`         // 充值渠道（必填）
+	PayMethod       string            `json:"payMethod"`       // 支付方式（可选）
+	Currency        string            `json:"currency"`        // 币种（默认BRL）
+	CountryCode     string            `json:"countryCode"`     // 国家编码（可选，用于校验额外字段）
+	MerchantOrderNo string            `json:"merchantOrderNo"` // 商户订单号（可选）
+	ExtraFields     map[string]string `json:"extraFields"`     // 国家自定义字段
 }
 
 type RechargeOrderAppBack struct {
@@ -131,8 +135,7 @@ type RechargeOrderAppBack struct {
 	Amount          float64  `json:"amount"`          // 充值金额
 	Status          int      `json:"status"`          // 订单状态
 	CreditAmount    *float64 `json:"creditAmount"`    // 入账金额
-	PayURL          string   `json:"payUrl"`          // 支付链接（预留）
-	DevCallback     bool     `json:"devCallback"`     // 是否触发了dev自动回调
+	PayURL          string   `json:"payUrl"`          // 支付链接
 }
 
 var RechargeOrderTableName = "recharge_order"

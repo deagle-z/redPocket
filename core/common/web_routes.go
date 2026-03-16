@@ -175,8 +175,9 @@ func InitGin() {
 		adminGroupLog.DELETE("/tenant/:id", api.DelSysTenant)                // 删除租户
 		adminGroupLog.POST("/tenantUser", api.SetSysTenantUser)              // 创建或更新租户用户
 		adminGroupLog.DELETE("/tenantUser/:id", api.DelSysTenantUser)        // 删除租户用户
-		adminGroupLog.POST("/rechargeOrder", api.SetRechargeOrder)           // 创建或更新充值订单
-		adminGroupLog.DELETE("/rechargeOrder/:id", api.DelRechargeOrder)     // 删除充值订单
+		adminGroupLog.POST("/rechargeOrder", api.SetRechargeOrder)                    // 创建或更新充值订单
+		adminGroupLog.DELETE("/rechargeOrder/:id", api.DelRechargeOrder)             // 删除充值订单
+		adminGroupLog.POST("/rechargeOrder/:id/callback", api.AdminRechargeOrderCallback) // 手动回调充值订单
 		adminGroupLog.POST("/withdrawOrderBr", api.SetWithdrawOrderBr)       // 创建或更新巴西提现订单
 		adminGroupLog.DELETE("/withdrawOrderBr/:id", api.DelWithdrawOrderBr) // 删除巴西提现订单
 		adminGroupLog.POST("/payChannel", api.SetPayChannel)                 // 创建或更新支付通道
@@ -232,6 +233,12 @@ func InitGin() {
 		tenantGroup.GET("/withdrawOrderBr/:id", tenantApi.GetWithdrawOrderBrById)
 		tenantGroup.POST("/withdrawOrderBr", tenantApi.SetWithdrawOrderBr)
 		tenantGroup.DELETE("/withdrawOrderBr/:id", tenantApi.DelWithdrawOrderBr)
+	}
+
+	// 支付回调（公开，三方主动调用，无 token）
+	payCallbackRouter := router.Group("/api/v1/pay")
+	{
+		payCallbackRouter.POST("/gctpk/notify", api.GctpkPayinCallback) // GCTPK 代收回调
 	}
 
 	appRouter := router.Group("/api/v1/app")

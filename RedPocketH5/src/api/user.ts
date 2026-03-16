@@ -82,6 +82,7 @@ export interface RechargeOrderAppReq {
   channel: string
   payMethod?: string
   currency?: string
+  countryCode?: string
   merchantOrderNo?: string
   extraFields?: Record<string, string>
 }
@@ -440,6 +441,7 @@ export interface AppCountryItem {
   currencyCode: string
   currencySymbol?: string | null
   sort: number
+  rate: number
 }
 
 export interface AppPayMethodItem {
@@ -475,6 +477,7 @@ export interface RechargeField {
   defaultValue?: string | null
   maxLength?: number | null
   minLength?: number | null
+  regexRule?: string | null
   errorTips?: string | null
 }
 

@@ -1,17 +1,29 @@
 package repository
 
 import (
+	"BaseGoUni/core/pay"
 	"BaseGoUni/core/pojo"
 	"BaseGoUni/core/utils"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/jinzhu/copier"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
 )
+
+// rechargeFieldDef 充值字段配置（对应 sys_country.recharge_fields JSON 元素）
+type rechargeFieldDef struct {
+	FieldKey   string  `json:"fieldKey"`
+	FieldLabel string  `json:"fieldLabel"`
+	IsRequired int     `json:"isRequired"`
+	RegexRule  *string `json:"regexRule"`
+	ErrorTips  *string `json:"errorTips"`
+}
 
 // GetRechargeOrders 充值订单列表（分页）
 func GetRechargeOrders(db *gorm.DB, search pojo.RechargeOrderSearch) (result pojo.RechargeOrderResp) {
@@ -119,6 +131,47 @@ func AppCreateRechargeOrder(db *gorm.DB, userID int64, req pojo.RechargeOrderApp
 	if req.Currency == "" {
 		req.Currency = "BRL"
 	}
+	req.CountryCode = strings.TrimSpace(req.CountryCode)
+
+	// 若提供了 countryCode，根据国家字段配置校验 extraFields
+	if req.CountryCode != "" {
+		var country pojo.SysCountry
+		db.Where("country_code = ? AND status = 1", req.CountryCode).First(&country)
+		if country.ID == 0 {
+			return result, errors.New("国家不存在或已禁用")
+		}
+		if country.RechargeFields != nil && *country.RechargeFields != "" {
+			var fieldDefs []rechargeFieldDef
+			if jsonErr := json.Unmarshal([]byte(*country.RechargeFields), &fieldDefs); jsonErr == nil {
+				for _, fd := range fieldDefs {
+					val := strings.TrimSpace(req.ExtraFields[fd.FieldKey])
+					tip := ""
+					if fd.ErrorTips != nil && *fd.ErrorTips != "" {
+						tip = *fd.ErrorTips
+					}
+
+					// 必填校验
+					if fd.IsRequired == 1 && val == "" {
+						if tip == "" {
+							tip = fd.FieldLabel + " 不能为空"
+						}
+						return result, errors.New(tip)
+					}
+
+					// 正则校验（有值才校验）
+					if val != "" && fd.RegexRule != nil && *fd.RegexRule != "" {
+						matched, regErr := regexp.MatchString(*fd.RegexRule, val)
+						if regErr != nil || !matched {
+							if tip == "" {
+								tip = fd.FieldLabel + " 格式不正确"
+							}
+							return result, errors.New(tip)
+						}
+					}
+				}
+			}
+		}
+	}
 
 	var tgUser pojo.TgUser
 	if err = db.Where("id = ?", userID).First(&tgUser).Error; err != nil || tgUser.ID == 0 {
@@ -128,7 +181,30 @@ func AppCreateRechargeOrder(db *gorm.DB, userID int64, req pojo.RechargeOrderApp
 		return result, errors.New("用户已禁用，请联系管理员处理")
 	}
 
+	// 延迟写库策略：先解析渠道、调用三方，成功后再落库，失败不留脏数据
+	provider, providerErr := pay.MustGet(req.Channel)
+	if providerErr != nil {
+		// 渠道未注册时降级为 MANUAL
+		provider = pay.Get("MANUAL")
+	}
+	if provider == nil {
+		return result, errors.New("支付渠道配置错误")
+	}
+
 	orderNo := buildRechargeOrderNo()
+	payResp, err := provider.CreateOrder(pay.PayRequest{
+		OrderNo:     orderNo,
+		Amount:      req.Amount,
+		Currency:    req.Currency,
+		PayMethod:   req.PayMethod,
+		CountryCode: req.CountryCode,
+		ExtraFields: req.ExtraFields,
+	})
+	if err != nil {
+		return result, err
+	}
+
+	// 三方调用成功，写库（含三方流水号，无需二次 Update）
 	var merchantOrderNo *string
 	if req.MerchantOrderNo != "" {
 		merchantOrderNo = &req.MerchantOrderNo
@@ -136,6 +212,10 @@ func AppCreateRechargeOrder(db *gorm.DB, userID int64, req pojo.RechargeOrderApp
 	var payMethod *string
 	if req.PayMethod != "" {
 		payMethod = &req.PayMethod
+	}
+	var providerTradeNo *string
+	if payResp.ProviderTradeNo != "" {
+		providerTradeNo = &payResp.ProviderTradeNo
 	}
 
 	order := pojo.RechargeOrder{
@@ -150,18 +230,10 @@ func AppCreateRechargeOrder(db *gorm.DB, userID int64, req pojo.RechargeOrderApp
 		Fee:             0,
 		BonusAmount:     0,
 		Status:          0, // 待支付
+		ProviderTradeNo: providerTradeNo,
 	}
 	if err = db.Create(&order).Error; err != nil {
 		return result, err
-	}
-
-	devCallback := false
-	if utils.IsDev() {
-		if err = rechargeOrderDevCallback(db, orderNo, tablePrefix); err != nil {
-			return result, err
-		}
-		devCallback = true
-		_ = db.Where("id = ?", order.ID).First(&order).Error
 	}
 
 	result = pojo.RechargeOrderAppBack{
@@ -173,9 +245,158 @@ func AppCreateRechargeOrder(db *gorm.DB, userID int64, req pojo.RechargeOrderApp
 		Amount:          order.Amount,
 		Status:          order.Status,
 		CreditAmount:    order.CreditAmount,
-		PayURL:          "",
-		DevCallback:     devCallback,
+		PayURL:          payResp.PayURL,
 	}
+	return result, nil
+}
+
+// ProcessRechargeOrderSuccess 处理代收支付成功回调，入账并更新订单状态
+// providerTradeNo: 三方交易号；payAmount: 三方实际支付金额（仅记录，入账按订单 amount 计算）
+func ProcessRechargeOrderSuccess(db *gorm.DB, orderNo string, providerTradeNo string, payAmount float64, tablePrefix string) error {
+	return db.Transaction(func(tx *gorm.DB) error {
+		var order pojo.RechargeOrder
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("order_no = ?", orderNo).First(&order).Error; err != nil {
+			return err
+		}
+		if order.ID == 0 {
+			return fmt.Errorf("订单不存在: %s", orderNo)
+		}
+		// 幂等：已成功则直接返回
+		if order.Status == 1 {
+			return nil
+		}
+		if order.Status != 0 {
+			return fmt.Errorf("订单状态不支持入账: %d", order.Status)
+		}
+
+		var user pojo.TgUser
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ?", order.UserId).First(&user).Error; err != nil {
+			return err
+		}
+		if user.ID == 0 {
+			return fmt.Errorf("用户不存在: %d", order.UserId)
+		}
+		isFirstRecharge := user.RechargeAmount <= 0
+		bonusAmount := 0.0
+		if isFirstRecharge {
+			bonusAmount = getRechargeGiftAmount(tablePrefix)
+		}
+
+		now := time.Now()
+		creditAmount := order.Amount - order.Fee + bonusAmount
+		if creditAmount < 0 {
+			creditAmount = 0
+		}
+
+		updates := map[string]any{
+			"status":            1,
+			"credit_amount":     creditAmount,
+			"bonus_amount":      bonusAmount,
+			"pay_time":          now,
+			"notify_time":       now,
+			"notify_last_at":    now,
+			"notify_count":      gorm.Expr("notify_count + 1"),
+			"provider_status":   "SUCCESS",
+			"provider_trade_no": providerTradeNo,
+		}
+		if err := tx.Model(&pojo.RechargeOrder{}).Where("id = ?", order.ID).Updates(updates).Error; err != nil {
+			return err
+		}
+
+		if err := tx.Model(&pojo.TgUser{}).Where("id = ?", user.ID).Updates(map[string]any{
+			"balance":         gorm.Expr("balance + ?", creditAmount),
+			"gift_amount":     gorm.Expr("gift_amount + ?", bonusAmount),
+			"gift_total":      gorm.Expr("gift_total + ?", bonusAmount),
+			"recharge_amount": gorm.Expr("recharge_amount + ?", order.Amount),
+		}).Error; err != nil {
+			return err
+		}
+
+		cashHistory := pojo.CashHistory{
+			UserId:      user.ID,
+			AwardUni:    fmt.Sprintf("recharge_%s", order.OrderNo),
+			Amount:      creditAmount,
+			StartAmount: user.Balance,
+			EndAmount:   user.Balance + creditAmount,
+			CashMark:    "充值到账",
+			CashDesc:    fmt.Sprintf("充值订单%s到账", order.OrderNo),
+			Type:        pojo.CashHistoryTypeRechargeCredit,
+			IsGift:      0,
+			FromUserId:  0,
+		}
+		if err := tx.Create(&cashHistory).Error; err != nil {
+			return err
+		}
+
+		if bonusAmount > 0 {
+			giftHistory := pojo.CashHistory{
+				UserId:      user.ID,
+				AwardUni:    fmt.Sprintf("recharge_gift_%s", order.OrderNo),
+				Amount:      bonusAmount,
+				StartAmount: user.Balance + order.Amount - order.Fee,
+				EndAmount:   user.Balance + creditAmount,
+				CashMark:    "首充赠送",
+				CashDesc:    fmt.Sprintf("首充赠送彩金%s，赠送%.3f", order.OrderNo, bonusAmount),
+				Type:        pojo.CashHistoryTypeRechargeCredit,
+				IsGift:      1,
+				FromUserId:  0,
+			}
+			if err := tx.Create(&giftHistory).Error; err != nil {
+				return err
+			}
+			if err := CreatePlatformProfitLedgerIfAbsent(tx, pojo.PlatformProfitLedger{
+				TenantId:      order.TenantId,
+				UserId:        user.ID,
+				SourceType:    pojo.PlatformProfitSourceRechargeGift,
+				SourceId:      giftHistory.AwardUni,
+				IncomeAmount:  0,
+				ExpenseAmount: bonusAmount,
+				Remark:        giftHistory.CashDesc,
+			}); err != nil {
+				return err
+			}
+		}
+
+		if isFirstRecharge {
+			if err := applyInviteFirstRechargeReward(tx, order, user, tablePrefix, now); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
+
+// ProcessRechargeOrderClosed 处理支付渠道通知订单关闭/取消
+func ProcessRechargeOrderClosed(db *gorm.DB, orderNo string) error {
+	return db.Model(&pojo.RechargeOrder{}).
+		Where("order_no = ? AND status = 0", orderNo).
+		Updates(map[string]any{
+			"status":          5, // 关闭/超时
+			"provider_status": "CLOSED",
+			"notify_count":    gorm.Expr("notify_count + 1"),
+			"notify_last_at":  time.Now(),
+		}).Error
+}
+
+// AdminRechargeOrderCallback 管理员手动触发充值回调（将待支付订单标为成功并入账）
+func AdminRechargeOrderCallback(db *gorm.DB, id int64, tablePrefix string) (result pojo.RechargeOrderBack, err error) {
+	var order pojo.RechargeOrder
+	if err = db.Where("id = ?", id).First(&order).Error; err != nil || order.ID == 0 {
+		return result, errors.New("订单不存在")
+	}
+	if order.Status != 0 {
+		return result, errors.New("订单状态不是待支付，无法回调")
+	}
+
+	isDev := int8(1)
+	if err = rechargeOrderDevCallback(db, order.OrderNo, tablePrefix); err != nil {
+		return result, err
+	}
+	// 标记为手动回调
+	_ = db.Model(&pojo.RechargeOrder{}).Where("id = ?", id).Update("is_dev", isDev).Error
+
+	_ = db.Where("id = ?", id).First(&order).Error
+	_ = copier.Copy(&result, &order)
 	return result, nil
 }
 
@@ -216,19 +437,17 @@ func rechargeOrderDevCallback(db *gorm.DB, orderNo string, tablePrefix string) (
 			creditAmount = 0
 		}
 		providerStatus := "SUCCESS"
-		providerTradeNo := fmt.Sprintf("DEV%s", utils.RandomString(10))
 		if err = tx.Model(&pojo.RechargeOrder{}).
 			Where("id = ?", order.ID).
 			Updates(map[string]any{
-				"status":            1,
-				"credit_amount":     creditAmount,
-				"bonus_amount":      bonusAmount,
-				"pay_time":          now,
-				"notify_time":       now,
-				"notify_last_at":    now,
-				"notify_count":      gorm.Expr("notify_count + 1"),
-				"provider_status":   providerStatus,
-				"provider_trade_no": providerTradeNo,
+				"status":          1,
+				"credit_amount":   creditAmount,
+				"bonus_amount":    bonusAmount,
+				"pay_time":        now,
+				"notify_time":     now,
+				"notify_last_at":  now,
+				"notify_count":    gorm.Expr("notify_count + 1"),
+				"provider_status": providerStatus,
 			}).Error; err != nil {
 			return err
 		}

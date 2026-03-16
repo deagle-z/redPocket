@@ -2,7 +2,6 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { getAppCashHistoryList, getCurrentTgUserInfo } from '@/api/user'
-import AppPageHeader from '@/components/AppPageHeader.vue'
 import { CURRENCY_CODE, formatCurrency } from '@/utils/currency'
 
 const { t } = useI18n()
@@ -35,10 +34,6 @@ const assetRows = computed(() => [
   { key: 'balance', label: t('walletPage.assetBalance'), unit: CURRENCY_CODE, value: wallet.balance, icon: 'gold-coin-o', tone: 'gold' },
   { key: 'commission', label: t('walletPage.assetCommission'), unit: CURRENCY_CODE, value: wallet.commission, icon: 'balance-list-o', tone: 'green' },
 ])
-
-function goBack() {
-  router.back()
-}
 
 function goRecharge() {
   router.push('/recharge')
@@ -161,11 +156,6 @@ onMounted(() => {
 
 <template>
   <div class="wallet-page">
-    <AppPageHeader :title="t('walletPage.title')" @back="goBack">
-      <template #right>
-        <van-icon name="ellipsis" />
-      </template>
-    </AppPageHeader>
 
     <section class="asset-card card">
       <p class="asset-label">

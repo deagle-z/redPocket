@@ -79,6 +79,12 @@ export function useCountry(tableRef: Ref) {
       minWidth: 160,
       formatter: ({ timezone }) => timezone || "-"
     },
+    {
+      label: "汇率",
+      prop: "rate",
+      minWidth: 100,
+      formatter: ({ rate }) => (rate > 0 ? rate.toString() : "-")
+    },
     { label: "排序", prop: "sort", minWidth: 80 },
     {
       label: "状态",
@@ -164,6 +170,7 @@ export function useCountry(tableRef: Ref) {
           languageCode: row?.languageCode ?? "",
           withdrawFields: parseCustomFields(row?.withdrawFields),
           rechargeFields: parseCustomFields(row?.rechargeFields),
+          rate: row?.rate ?? 0,
           sort: row?.sort ?? 0,
           status: row?.status ?? 1,
           remark: row?.remark ?? ""
@@ -193,6 +200,7 @@ export function useCountry(tableRef: Ref) {
                 languageCode: toOptionalString(curData.languageCode),
                 withdrawFields: serializeCustomFields(curData.withdrawFields),
                 rechargeFields: serializeCustomFields(curData.rechargeFields),
+                rate: Number(curData.rate || 0),
                 sort: Number(curData.sort || 0),
                 status: curData.status,
                 remark: toOptionalString(curData.remark)

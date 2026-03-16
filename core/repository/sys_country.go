@@ -113,6 +113,7 @@ func GetAppCountries(db *gorm.DB, detectedCode string) []pojo.AppCountryItem {
 			CurrencyCode:   item.CurrencyCode,
 			CurrencySymbol: item.CurrencySymbol,
 			Sort:           item.Sort,
+			Rate:           item.Rate,
 		}
 		if detectedCode != "" && strings.EqualFold(item.CountryCode, detectedCode) {
 			detected = &ci

@@ -4,6 +4,7 @@ import (
 	utils2 "BaseGoUni/app/utils"
 	"BaseGoUni/core/base"
 	"BaseGoUni/core/common"
+	_ "BaseGoUni/core/pay/gctpk" // 注册 GCTPK 支付渠道
 	"BaseGoUni/core/pojo"
 	"BaseGoUni/core/services"
 	"BaseGoUni/core/utils"

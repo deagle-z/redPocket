@@ -13,6 +13,7 @@ export type SysCountry = {
   languageCode?: string | null;
   withdrawFields?: string | null;
   rechargeFields?: string | null;
+  rate: number;
   sort: number;
   status: number;
   remark?: string | null;
@@ -38,6 +39,7 @@ export type SysCountrySet = {
   languageCode?: string | null;
   withdrawFields?: string | null;
   rechargeFields?: string | null;
+  rate: number;
   sort: number;
   status: number;
   remark?: string | null;

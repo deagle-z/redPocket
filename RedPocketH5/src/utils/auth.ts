@@ -4,7 +4,7 @@ import { useLocalStorage } from '@vueuse/core'
 const token = useLocalStorage(STORAGE_TOKEN_KEY, '')
 
 function isLogin() {
-  return !!token.value
+  return !!localStorage.getItem(STORAGE_TOKEN_KEY)
 }
 
 function getToken() {

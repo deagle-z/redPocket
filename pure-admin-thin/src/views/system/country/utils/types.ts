@@ -12,6 +12,7 @@ interface FormItemProps {
   languageCode: string;
   withdrawFields: SysCustomField[];
   rechargeFields: SysCustomField[];
+  rate: number;
   sort: number;
   status: number;
   remark: string;

@@ -38,6 +38,7 @@ type SysCountrySet struct {
 	LanguageCode   *string `json:"languageCode"`
 	WithdrawFields string  `json:"withdrawFields"`
 	RechargeFields string  `json:"rechargeFields"`
+	Rate           float64 `json:"rate"`
 	Sort           int     `json:"sort"`
 	Status         int8    `json:"status"`
 	Remark         *string `json:"remark"`
@@ -56,6 +57,7 @@ type SysCountryBack struct {
 	LanguageCode   *string   `json:"languageCode"`
 	WithdrawFields *string   `json:"withdrawFields"`
 	RechargeFields *string   `json:"rechargeFields"`
+	Rate           float64   `json:"rate"`
 	Sort           int       `json:"sort"`
 	Status         int8      `json:"status"`
 	Remark         *string   `json:"remark"`
@@ -81,6 +83,7 @@ type AppCountryItem struct {
 	CurrencyCode   string  `json:"currencyCode"`
 	CurrencySymbol *string `json:"currencySymbol"`
 	Sort           int     `json:"sort"`
+	Rate           float64 `json:"rate"`
 }
 
 type AppPayMethodItem struct {

@@ -31,6 +31,7 @@ export type RechargeOrder = {
   title?: string | null;
   remark?: string | null;
   extra?: string | null;
+  isDev?: number | null;
 };
 
 export type RechargeOrderSearch = {
@@ -63,5 +64,12 @@ export const getRechargeOrderListAdmin = (data: RechargeOrderSearch) => {
     "post",
     "/api/v1/admin/rechargeOrder/list",
     { data }
+  );
+};
+
+export const adminRechargeOrderCallback = (id: number) => {
+  return http.request<{ code: number; message: string; success: boolean }>(
+    "post",
+    `/api/v1/admin/rechargeOrder/${id}/callback`
   );
 };

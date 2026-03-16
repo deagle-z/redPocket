@@ -256,6 +256,8 @@
     "customAmount": "自定义金额",
     "customAmountPlaceholder": "请输入充值金额",
     "payMethodTitle": "选择支付方式",
+    "noChannel": "暂无可用充值渠道",
+    "fillInfo": "填写信息",
     "submit": "确认充值",
     "paySubQr": "扫码支付",
     "paySubWallet": "电子钱包"

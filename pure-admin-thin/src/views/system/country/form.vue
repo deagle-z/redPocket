@@ -18,6 +18,7 @@ const props = withDefaults(defineProps<FormProps>(), {
     languageCode: "",
     withdrawFields: [],
     rechargeFields: [],
+    rate: 0,
     sort: 0,
     status: 1,
     remark: ""
@@ -114,6 +115,11 @@ onMounted(() => {
       <el-col :span="12">
         <el-form-item label="时区">
           <el-input v-model="newFormInline.timezone" clearable placeholder="请输入时区" />
+        </el-form-item>
+      </el-col>
+      <el-col :span="12">
+        <el-form-item label="汇率">
+          <el-input-number v-model="newFormInline.rate" :min="0" :precision="3" :step="0.1" class="!w-full" controls-position="right" placeholder="金币换算比例" />
         </el-form-item>
       </el-col>
       <el-col :span="12">

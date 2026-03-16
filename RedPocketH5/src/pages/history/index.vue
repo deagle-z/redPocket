@@ -1,7 +1,5 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
-import AppPageHeader from '@/components/AppPageHeader.vue'
 import { getLuckyAppHistory } from '@/api/user'
 import { formatCurrency } from '@/utils/currency'
 import imgAvatarPlaceholder from '@/assets/images/avatar-placeholder.png'
@@ -28,7 +26,6 @@ interface TxItem {
   grabAmount: number
 }
 
-const router = useRouter()
 const activeRange = ref<RangeKey>('today')
 const showRangePopup = ref(false)
 const showDatePicker = ref(false)
@@ -100,6 +97,7 @@ const currentPage = ref(0)
 const total = ref(0)
 const listLoading = ref(false)
 const fetching = ref(false)
+const hasFetched = ref(false)
 const summary = reactive({
   income: 0,
   expense: 0,
@@ -107,7 +105,7 @@ const summary = reactive({
 })
 
 const displayList = computed(() => allList.value)
-const finished = computed(() => total.value > 0 && allList.value.length >= total.value)
+const finished = computed(() => hasFetched.value && allList.value.length >= total.value)
 const showEmpty = computed(() => !listLoading.value && allList.value.length === 0)
 
 const stats = computed(() => {
@@ -129,9 +127,6 @@ function formatAmount(value: number) {
   return formatCurrency(value, { signed: true })
 }
 
-function goBack() {
-  router.back()
-}
 
 function getActiveRange() {
   const today = new Date()
@@ -317,6 +312,7 @@ async function loadHistory(reset = false) {
   finally {
     fetching.value = false
     listLoading.value = false
+    hasFetched.value = true
   }
 }
 
@@ -324,6 +320,7 @@ function reloadHistory() {
   currentPage.value = 0
   total.value = 0
   allList.value = []
+  hasFetched.value = false
   void loadHistory(true).catch(() => { })
 }
 
@@ -349,8 +346,6 @@ onMounted(() => {
 
 <template>
   <div class="history-page">
-    <AppPageHeader :title="t('historyPage.title')" @back="goBack" />
-
     <div class="filter-wrap">
       <section class="filter-bar card">
         <button type="button" class="filter-btn" :class="{ active: activeMenu === 'type' }" @click="toggleMenu('type')">
@@ -428,6 +423,7 @@ onMounted(() => {
 
     <van-list
       v-model:loading="listLoading" :finished="finished" :finished-text="t('historyPage.finishedText')"
+      :immediate-check="false"
       @load="onLoadMore"
     >
       <section class="tx-list">

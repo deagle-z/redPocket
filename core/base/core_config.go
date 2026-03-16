@@ -15,11 +15,24 @@ type Config struct {
 		Master     string `yaml:"master"`
 		Slave      string `yaml:"slave"`
 	} `yaml:"mysql"`
-	Redis    Redis         `yaml:"redis"`
-	RabbitMq RabbitMq      `yaml:"rabbitMq"`
-	AliOss   AliOssConfig  `yaml:"aliOss"`
+	Redis    Redis          `yaml:"redis"`
+	RabbitMq RabbitMq       `yaml:"rabbitMq"`
+	AliOss   AliOssConfig   `yaml:"aliOss"`
 	Telegram TelegramConfig `yaml:"telegram"`
-	R2       R2Config      `yaml:"r2"`
+	R2       R2Config       `yaml:"r2"`
+	Pay      PayConfig      `yaml:"pay"`
+}
+
+type PayConfig struct {
+	Gctpk GctpkPayConfig `yaml:"gctpk"`
+}
+
+type GctpkPayConfig struct {
+	MerNo     string `yaml:"merNo"`     // 商户号
+	Secret    string `yaml:"secret"`    // HmacSHA256 密钥
+	BaseURL   string `yaml:"baseUrl"`   // API 根地址，如 https://naskl.gctpk.com
+	NotifyURL string `yaml:"notifyUrl"` // 异步回调地址
+	PageURL   string `yaml:"pageUrl"`   // 支付成功跳转地址
 }
 
 type TelegramConfig struct {

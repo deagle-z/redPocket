@@ -51,6 +51,14 @@ const canSubmit = computed(() =>
   && !rechargeInfoLoading.value,
 )
 
+const localAmount = computed(() => {
+  const coins = Number(displayAmount.value) || 0
+  const rate = selectedCountry.value?.rate || 1
+  return (coins * rate).toFixed(2)
+})
+
+const localCurrencySymbol = computed(() => selectedCountry.value?.currencySymbol || '')
+
 function chooseAmount(value: number | 'custom') {
   selectedAmount.value = value
   if (value !== 'custom')
@@ -144,11 +152,20 @@ async function handleSubmitRecharge() {
     return
   }
 
-  // 校验必填字段
+  // 校验必填 + 正则
   for (const f of rechargeFields.value) {
-    if (f.isRequired === 1 && !fieldValues.value[f.fieldKey]?.trim()) {
-      showCenterToast(f.errorTips || `${f.fieldLabel} 不能为空`)
+    const val = fieldValues.value[f.fieldKey]?.trim() ?? ''
+    const tip = f.errorTips || ''
+    if (f.isRequired === 1 && !val) {
+      showCenterToast(tip || `${f.fieldLabel} 不能为空`)
       return
+    }
+    if (val && f.regexRule) {
+      const regex = new RegExp(f.regexRule)
+      if (!regex.test(val)) {
+        showCenterToast(tip || `${f.fieldLabel} 格式不正确`)
+        return
+      }
     }
   }
 
@@ -159,6 +176,7 @@ async function handleSubmitRecharge() {
       channel: selectedChannel.value?.channelCode ?? '',
       payMethod: selectedPay.value?.methodCode ?? '',
       currency: CURRENCY_CODE,
+      countryCode: selectedCountry.value?.countryCode ?? '',
       extraFields: rechargeFields.value.length ? { ...fieldValues.value } : undefined,
     })
 
@@ -246,7 +264,7 @@ onMounted(() => {
           </button>
         </div>
         <p v-else class="empty-tip">
-          {{ t('rechargePage.noChannel') || '暂无可用通道' }}
+          {{ t('rechargePage.noChannel') }}
         </p>
       </template>
     </section>
@@ -260,6 +278,12 @@ onMounted(() => {
         >
           <span v-if="item !== 'custom'">{{ item }}</span>
           <span v-else>{{ t('rechargePage.custom') }}</span>
+          <span v-if="item !== 'custom' && selectedCountry?.rate" class="amount-local">
+            {{ localCurrencySymbol }} {{ (Number(item) * selectedCountry.rate).toFixed(2) }}
+          </span>
+          <span v-if="item === 'custom' && selectedCountry?.rate && Number(customAmount) > 0" class="amount-local">
+            {{ localCurrencySymbol }} {{ (Number(customAmount) * selectedCountry.rate).toFixed(2) }}
+          </span>
         </button>
       </div>
       <van-field
@@ -300,7 +324,7 @@ onMounted(() => {
 
     <!-- 充值字段 -->
     <section v-if="rechargeFields.length" class="card">
-      <h2>{{ t('rechargePage.fillInfo') || '填写信息' }}</h2>
+      <h2>{{ t('rechargePage.fillInfo') }}</h2>
       <template v-for="field in rechargeFields" :key="field.fieldKey">
         <van-field
           v-model="fieldValues[field.fieldKey]"
@@ -314,6 +338,10 @@ onMounted(() => {
         />
       </template>
     </section>
+
+    <div v-if="displayAmount && selectedCountry?.rate" class="local-amount-hint">
+      ≈ {{ localCurrencySymbol }}{{ localAmount }} {{ selectedCountry?.currencyCode }}
+    </div>
 
     <van-button
       type="primary"
@@ -533,10 +561,25 @@ onMounted(() => {
   border-radius: 14px;
   border: 1px solid rgba(212, 175, 55, 0.2);
   background: rgba(255, 248, 214, 0.06);
-  padding: 14px 0;
+  padding: 12px 0;
   font-weight: 700;
   color: #fff0c9;
   font-size: 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+
+.amount-local {
+  font-size: 11px;
+  font-weight: 400;
+  color: rgba(255, 229, 186, 0.55);
+  line-height: 1;
+}
+
+.amount-item.active .amount-local {
+  color: rgba(255, 229, 186, 0.7);
 }
 
 .amount-item.active {
@@ -647,8 +690,16 @@ onMounted(() => {
   margin-top: 0;
 }
 
+.local-amount-hint {
+  text-align: center;
+  margin-top: 14px;
+  font-size: 14px;
+  color: rgba(255, 229, 186, 0.75);
+  letter-spacing: 0.04em;
+}
+
 .confirm-btn {
-  margin-top: 18px;
+  margin-top: 10px;
   border: none;
   background: linear-gradient(180deg, #ffdf87 0%, #d4af37 100%) !important;
   color: #5a1b00 !important;
