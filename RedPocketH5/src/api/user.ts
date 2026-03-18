@@ -226,6 +226,7 @@ export interface LuckyDetailFinance {
 
 export interface LuckyDetailParticipant {
   seqNo: number
+  isGrabbed: number
   userId: number
   firstName: string
   avatar?: string

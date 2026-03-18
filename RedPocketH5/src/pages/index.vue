@@ -83,7 +83,7 @@ function formatActionLabel(isOngoing: boolean, isGrabbed: boolean, amount: numbe
   if (isGrabbed && isOngoing && amount <= 0)
     return t('homeLucky.loadingLabel')
   if (!isGrabbed && !isOngoing)
-    return '—'
+    return amount > 0 ? Number(amount).toFixed(2) : '—'
   return Number(amount || 0).toFixed(2)
 }
 
@@ -275,19 +275,25 @@ function handleGrabSuccess(payload: { luckyId: number, grabIndex: number, data: 
     const nextActions = Array.isArray(packet.actions) ? [...packet.actions] : []
     const idx = nextActions.findIndex((it: any) => Number(it?.seqNo) === grabIndex)
     if (idx >= 0) {
-      nextActions[idx] = {
-        ...nextActions[idx],
-        isGrabbed: true,
-        amount: rawAmount,
-        label: formatActionLabel(true, true, rawAmount, grabIndex),
-      }
+      nextActions[idx] = { ...nextActions[idx], isGrabbed: true, amount: rawAmount }
     }
     const grabbedCount = nextActions.filter((it: any) => it.isGrabbed).length
     const packetNumber = Number(packet?.actions?.length || 0)
+    const remaining = packetNumber - grabbedCount
     return {
       ...packet,
       progressText: t('homeLucky.progress', { grabbed: grabbedCount, total: packetNumber }),
-      actions: nextActions,
+      actions: nextActions.map((action: any) => {
+        const isNewGrab = Number(action?.seqNo) === grabIndex && action.isGrabbed
+        const showLoading = isNewGrab && remaining === 1
+        return {
+          ...action,
+          displayLoading: showLoading,
+          label: showLoading
+            ? t('homeLucky.loadingLabel')
+            : formatActionLabel(true, Boolean(action?.isGrabbed), Number(action?.amount || 0), Number(action?.seqNo || 0)),
+        }
+      }),
     }
   })
 }
@@ -348,15 +354,19 @@ function applyLuckyBroadcast(message: any) {
       progressText: t('homeLucky.progress', { grabbed: grabbedCount, total: packetNumber }),
       timeText: nextStatus === 'ongoing' ? packet.timeText : t('homeLucky.statusDone'),
       packetImage: nextStatus === 'ongoing' ? imgRedpacketGif : imgRedpacketJpg,
-      actions: nextActions.map((action: any) => ({
-        ...action,
-        label: formatActionLabel(
-          nextStatus === 'ongoing',
-          Boolean(action?.isGrabbed),
-          Number(action?.amount || 0),
-          Number(action?.seqNo || 0),
-        ),
-      })),
+      actions: nextActions.map((action: any) => {
+        const seqNo = Number(action?.seqNo || 0)
+        const isNewGrab = nextStatus === 'ongoing' && seqNo === grabbedSeqNo && action.isGrabbed
+        const remaining = packetNumber - grabbedCount
+        const showLoading = isNewGrab && remaining === 1
+        return {
+          ...action,
+          displayLoading: showLoading,
+          label: showLoading
+            ? t('homeLucky.loadingLabel')
+            : formatActionLabel(nextStatus === 'ongoing', Boolean(action?.isGrabbed), Number(action?.amount || 0), seqNo),
+        }
+      }),
     }
   })
   refreshPacketCountdowns()
@@ -394,18 +404,21 @@ function applyLuckyFinished(message: any) {
       const seqNo = Number(action.seqNo)
       const participant = participantMap.get(seqNo)
       if (participant) {
+        const grabbed = Number(participant.isGrabbed ?? 1) === 1
         const amount = Number(participant.amount || 0)
         return {
           ...action,
-          isGrabbed: true,
+          isGrabbed: grabbed,
           amount,
-          thunder: Number(participant.isThunder || 0),
-          label: formatActionLabel(false, true, amount, seqNo),
+          thunder: grabbed ? Number(participant.isThunder || 0) : 0,
+          displayLoading: false,
+          label: formatActionLabel(false, grabbed, amount, seqNo),
         }
       }
       return {
         ...action,
         isGrabbed: false,
+        displayLoading: false,
         label: formatActionLabel(false, false, Number(action.amount || 0), seqNo),
       }
     })
@@ -584,7 +597,8 @@ onBeforeUnmount(() => {
                   >
                     <span v-if="action.thunder" aria-hidden="true">💣</span>
                     <span v-else-if="action.isGrabMine" class="mine-text">🎁 </span>
-                    {{ action.label }}
+                    <CoinAmount v-if="action.amount > 0 && !action.thunder && !action.displayLoading && (action.isGrabbed || packet.status !== 'ongoing')" :text="`${action.amount.toFixed(2)}`" />
+                    <template v-else>{{ action.label }}</template>
                   </button>
                 </div>
               </div>

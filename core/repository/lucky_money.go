@@ -405,6 +405,7 @@ func GetLuckyMoneyAppDetail(db *gorm.DB, luckyID int64, currentUserID int64) (po
 		}
 		result.Participants = append(result.Participants, pojo.LuckyMoneyAppDetailParticipant{
 			SeqNo:         row.SeqNo,
+			IsGrabbed:     1,
 			UserID:        row.UserID,
 			FirstName:     row.FirstName,
 			Avatar:        row.Avatar,
@@ -413,6 +414,27 @@ func GetLuckyMoneyAppDetail(db *gorm.DB, luckyID int64, currentUserID int64) (po
 			IsThunder:     row.IsThunder,
 			CreatedAt:     row.CreatedAt,
 		})
+	}
+
+	// 红包已结束时，补入未被抢的槽位，前端可展示预分配金额
+	if base.Status != 1 {
+		type ungrabRow struct {
+			SeqNo  uint    `gorm:"column:seq_no"`
+			Amount float64 `gorm:"column:amount"`
+		}
+		var ungrabRows []ungrabRow
+		_ = db.Table("lucky_money_item").
+			Select("seq_no, amount").
+			Where("red_packet_id = ? AND is_grabbed = 0", base.ID).
+			Order("seq_no asc").
+			Scan(&ungrabRows).Error
+		for _, r := range ungrabRows {
+			result.Participants = append(result.Participants, pojo.LuckyMoneyAppDetailParticipant{
+				SeqNo:     r.SeqNo,
+				IsGrabbed: 0,
+				Amount:    r.Amount,
+			})
+		}
 	}
 
 	// 统计统一从子红包聚合

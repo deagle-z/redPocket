@@ -143,6 +143,7 @@ type LuckyMoneyAppDetailFinance struct {
 
 type LuckyMoneyAppDetailParticipant struct {
 	SeqNo         uint      `json:"seqNo"`
+	IsGrabbed     int       `json:"isGrabbed"` // 1=已抢 0=未抢(超时未被抢)
 	UserID        int64     `json:"userId"`
 	FirstName     string    `json:"firstName"`
 	Avatar        *string   `json:"avatar"`

@@ -22,6 +22,8 @@ const detail = ref<any | null>(null)
 const loading = ref(false)
 const grabModalVisible = ref(false)
 const pendingGrabTarget = ref<{ seqNo: number } | null>(null)
+// 倒数第二个被抢的格子 seqNo，需隐藏金额显示 loading
+const secondToLastSeqNo = ref(0)
 
 const luckyId = computed(() => Number(route.query.id || 0))
 const loggedIn = computed(() => isLogin())
@@ -94,9 +96,11 @@ const positionList = computed(() => {
     const isThunder = Number(participant?.isThunder || 0) === 1
     const amount = Number(participant?.amount || 0)
 
+    const isSecondToLast = isGrabbed && isOngoing && seqNo === secondToLastSeqNo.value
+
     let label = ''
     if (isGrabbed)
-      label = amount > 0 ? formatCurrency(amount) : t('homeLucky.loadingLabel')
+      label = (isSecondToLast || amount <= 0) ? t('homeLucky.loadingLabel') : formatCurrency(amount)
     else if (isOngoing)
       label = t('homeLucky.grabAction', { seq: seqNo })
     else
@@ -119,7 +123,9 @@ const recordList = computed(() => {
     avatar: item?.avatar || DEFAULT_AVATAR,
     name: item?.firstName || t('luckyDetailPage.positionUser', { seq: Number(item?.seqNo || 0) }),
     time: formatTime(item?.createdAt || ''),
-    amountText: Number(item?.amount || 0) <= 0 ? t('homeLucky.loadingLabel') : formatCurrency(Number(item?.amount || 0)),
+    amountText: (Number(item?.amount || 0) <= 0 || (Number(item?.seqNo) === secondToLastSeqNo.value && Number(detail.value?.summary?.status) === 1))
+      ? t('homeLucky.loadingLabel')
+      : formatCurrency(Number(item?.amount || 0)),
     statusText: Number(item?.isThunder || 0) === 1 ? t('luckyDetailPage.positionThunder') : t('luckyDetailPage.positionJoined'),
   }))
 })
@@ -153,6 +159,9 @@ async function loadDetail() {
   try {
     const { data } = await getLuckyDetail({ luckyId: luckyId.value })
     detail.value = data || null
+    // 红包已结束则清除 loading 遮罩，此时金额已确定
+    if (Number(data?.summary?.status) !== 1)
+      secondToLastSeqNo.value = 0
   }
   catch {
     showToast(t('luckyDetailPage.toastLoadFailed'))
@@ -197,6 +206,14 @@ function handleLuckyWsMessage(message: any) {
   const payload = message?.data || message
   if (Number(payload?.id || 0) !== luckyId.value)
     return
+
+  // 检测倒数第二个被抢：剩余 1 个未抢时，当前抢的格子显示 loading
+  const grabIndex = Number(payload?.grabIndex || 0)
+  const total = Number(detail.value?.summary?.number || 0)
+  const newGrabbedCount = Number(payload?.grabbedCount || 0)
+  if (grabIndex > 0 && total > 0 && total - newGrabbedCount === 1)
+    secondToLastSeqNo.value = grabIndex
+
   void loadDetail()
 }
 
