@@ -295,7 +295,12 @@
     "tips2": "Normal balance can be withdrawn after 1x turnover of recharge",
     "tips3": "Bonus requires 20x turnover, counted from the first recharge",
     "tips4": "Please verify receiver info carefully to avoid failures",
-    "tips5": "Withdrawals are processed within 1-30 minutes. Contact support if needed"
+    "tips5": "Withdrawals are processed within 1-30 minutes. Contact support if needed",
+    "invalidAmount": "Please enter a valid withdrawal amount",
+    "orderSuccess": "Withdrawal submitted, order: {orderNo}",
+    "orderFailed": "Withdrawal failed, please try again",
+    "bindAccount": "Bind Account",
+    "noFields": "No receiver fields available, please bind an account first"
   },
   "transformPage": {
     "title": "Commission Transfer",

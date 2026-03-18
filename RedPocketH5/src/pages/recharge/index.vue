@@ -2,7 +2,7 @@
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { showToast } from 'vant'
-import type { AppCountryItem, AppPayMethodItem, AppRechargeChannelItem, RechargeField } from '@/api/user'
+import type { AppCountryItem, AppPayMethodItem, AppRechargeChannelItem, RechargeField, RechargeFieldOption } from '@/api/user'
 import {
   createRechargeOrder,
   getAppCountries,
@@ -11,7 +11,7 @@ import {
   getCurrentTgUserInfo,
 } from '@/api/user'
 import AppPageHeader from '@/components/AppPageHeader.vue'
-import { CURRENCY_CODE, formatCurrency } from '@/utils/currency'
+import { formatCurrency } from '@/utils/currency'
 
 const { t } = useI18n()
 const router = useRouter()
@@ -32,6 +32,42 @@ const rechargeInfoLoading = ref(false)
 // 充值字段
 const rechargeFields = ref<RechargeField[]>([])
 const fieldValues = ref<Record<string, string>>({})
+
+// select 选择器
+const pickerVisible = ref(false)
+const pickerField = ref<RechargeField | null>(null)
+const pickerColumns = computed(() =>
+  parseFieldOptions(pickerField.value).map(o => ({ text: o.label, value: o.value })),
+)
+
+function parseFieldOptions(field: RechargeField | null): RechargeFieldOption[] {
+  if (!field?.optionsJson)
+    return []
+  try {
+    return JSON.parse(field.optionsJson)
+  }
+  catch {
+    return []
+  }
+}
+
+function getSelectLabel(field: RechargeField): string {
+  const opts = parseFieldOptions(field)
+  return opts.find(o => o.value === fieldValues.value[field.fieldKey])?.label
+    ?? fieldValues.value[field.fieldKey]
+    ?? ''
+}
+
+function openPicker(field: RechargeField) {
+  pickerField.value = field
+  pickerVisible.value = true
+}
+
+function onPickerConfirm({ selectedOptions }: { selectedOptions: Array<{ text: string, value: string }> }) {
+  if (pickerField.value)
+    fieldValues.value[pickerField.value.fieldKey] = selectedOptions[0]?.value ?? ''
+  pickerVisible.value = false
+}
 
 const amountOptions = [100, 200, 500, 1000, 5000, 10000, 20000, 50000, 'custom']
 const selectedAmount = ref<number | 'custom'>(amountOptions[0] as number)
@@ -175,7 +211,7 @@ async function handleSubmitRecharge() {
       amount,
       channel: selectedChannel.value?.channelCode ?? '',
       payMethod: selectedPay.value?.methodCode ?? '',
-      currency: CURRENCY_CODE,
+      currency: selectedCountry.value?.currencyCode,
       countryCode: selectedCountry.value?.countryCode ?? '',
       extraFields: rechargeFields.value.length ? { ...fieldValues.value } : undefined,
     })
@@ -220,10 +256,7 @@ onMounted(() => {
     <div class="country-bar">
       <div class="country-scroll">
         <button
-          v-for="country in countries"
-          :key="country.countryCode"
-          type="button"
-          class="country-pill"
+          v-for="country in countries" :key="country.countryCode" type="button" class="country-pill"
           :class="{ active: selectedCountry?.countryCode === country.countryCode }"
           @click="handleSelectCountry(country)"
         >
@@ -252,12 +285,8 @@ onMounted(() => {
       <template v-else>
         <div v-if="channels.length" class="pill-group">
           <button
-            v-for="ch in channels"
-            :key="ch.channelCode"
-            type="button"
-            class="pill"
-            :class="{ active: selectedChannel?.channelCode === ch.channelCode }"
-            @click="selectChannel(ch)"
+            v-for="ch in channels" :key="ch.channelCode" type="button" class="pill"
+            :class="{ active: selectedChannel?.channelCode === ch.channelCode }" @click="selectChannel(ch)"
           >
             <img v-if="ch.icon" :src="ch.icon" class="channel-icon" alt="">
             {{ ch.channelName }}
@@ -287,8 +316,9 @@ onMounted(() => {
         </button>
       </div>
       <van-field
-        v-if="selectedAmount === 'custom'" v-model="customAmount" type="number" :label="t('rechargePage.customAmount')"
-        :placeholder="t('rechargePage.customAmountPlaceholder')" class="custom-input"
+        v-if="selectedAmount === 'custom'" v-model="customAmount" type="number"
+        :label="t('rechargePage.customAmount')" :placeholder="t('rechargePage.customAmountPlaceholder')"
+        class="custom-input"
       />
     </section>
 
@@ -298,8 +328,7 @@ onMounted(() => {
       <div class="pay-list">
         <button
           v-for="method in payMethods" :key="method.methodCode" type="button" class="pay-item"
-          :class="{ active: selectedPay?.methodCode === method.methodCode }"
-          @click="selectedPay = method"
+          :class="{ active: selectedPay?.methodCode === method.methodCode }" @click="selectedPay = method"
         >
           <div class="pay-left">
             <div class="pay-logo">
@@ -327,29 +356,41 @@ onMounted(() => {
       <h2>{{ t('rechargePage.fillInfo') }}</h2>
       <template v-for="field in rechargeFields" :key="field.fieldKey">
         <van-field
-          v-model="fieldValues[field.fieldKey]"
-          :type="field.fieldType === 'number' ? 'number' : field.fieldType === 'textarea' ? 'textarea' : 'text'"
+          v-if="field.fieldType === 'select'"
+          :model-value="getSelectLabel(field)"
           :label="field.fieldLabel"
           :placeholder="field.fieldPlaceholder || ''"
           :required="field.isRequired === 1"
-          :maxlength="field.maxLength ?? undefined"
+          is-link
+          readonly
           class="custom-input recharge-field"
-          rows="3"
+          @click="openPicker(field)"
+        />
+        <van-field
+          v-else
+          v-model="fieldValues[field.fieldKey]"
+          :type="field.fieldType === 'number' ? 'number' : field.fieldType === 'textarea' ? 'textarea' : 'text'"
+          :label="field.fieldLabel" :placeholder="field.fieldPlaceholder || ''" :required="field.isRequired === 1"
+          :maxlength="field.maxLength ?? undefined" class="custom-input recharge-field" rows="3"
         />
       </template>
     </section>
+
+    <!-- select 选择器弹窗 -->
+    <van-popup v-model:show="pickerVisible" position="bottom" teleport="#app">
+      <van-picker
+        :columns="pickerColumns"
+        @confirm="onPickerConfirm"
+        @cancel="pickerVisible = false"
+      />
+    </van-popup>
 
     <div v-if="displayAmount && selectedCountry?.rate" class="local-amount-hint">
       ≈ {{ localCurrencySymbol }}{{ localAmount }} {{ selectedCountry?.currencyCode }}
     </div>
 
     <van-button
-      type="primary"
-      round
-      block
-      class="confirm-btn"
-      :loading="submitLoading"
-      :disabled="!canSubmit"
+      type="primary" round block class="confirm-btn" :loading="submitLoading" :disabled="!canSubmit"
       @click="handleSubmitRecharge"
     >
       {{ t('rechargePage.submit') }}

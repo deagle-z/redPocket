@@ -2,7 +2,7 @@
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { showConfirmDialog, showToast } from 'vant'
-import type { AppCountryItem, RechargeField, WithdrawAccountItem } from '@/api/user'
+import type { AppCountryItem, RechargeField, RechargeFieldOption, WithdrawAccountItem } from '@/api/user'
 import {
   addWithdrawAccount,
   deleteWithdrawAccount,
@@ -37,6 +37,42 @@ const showForm = ref(false)
 const editingId = ref<number | null>(null) // null = 新增
 const fieldValues = ref<Record<string, string>>({})
 const submitLoading = ref(false)
+
+// select 选择器
+const pickerVisible = ref(false)
+const pickerField = ref<RechargeField | null>(null)
+const pickerColumns = computed(() =>
+  parseFieldOptions(pickerField.value).map(o => ({ text: o.label, value: o.value })),
+)
+
+function parseFieldOptions(field: RechargeField | null): RechargeFieldOption[] {
+  if (!field?.optionsJson)
+    return []
+  try {
+    return JSON.parse(field.optionsJson)
+  }
+  catch {
+    return []
+  }
+}
+
+function getSelectLabel(field: RechargeField): string {
+  const opts = parseFieldOptions(field)
+  return opts.find(o => o.value === fieldValues.value[field.fieldKey])?.label
+    ?? fieldValues.value[field.fieldKey]
+    ?? ''
+}
+
+function openPicker(field: RechargeField) {
+  pickerField.value = field
+  pickerVisible.value = true
+}
+
+function onPickerConfirm({ selectedOptions }: { selectedOptions: Array<{ text: string, value: string }> }) {
+  if (pickerField.value)
+    fieldValues.value[pickerField.value.fieldKey] = selectedOptions[0]?.value ?? ''
+  pickerVisible.value = false
+}
 
 const formTitle = computed(() => editingId.value ? '修改账户' : '绑定账户')
 
@@ -331,18 +367,30 @@ onMounted(() => {
       <van-loading v-if="fieldsLoading" size="20" color="#d4af37" class="section-loading" />
 
       <template v-else-if="withdrawFields.length">
-        <van-field
-          v-for="field in withdrawFields"
-          :key="field.fieldKey"
-          v-model="fieldValues[field.fieldKey]"
-          :type="field.fieldType === 'number' ? 'number' : field.fieldType === 'textarea' ? 'textarea' : 'text'"
-          :label="field.fieldLabel"
-          :placeholder="field.fieldPlaceholder || ''"
-          :required="field.isRequired === 1"
-          :maxlength="field.maxLength ?? undefined"
-          class="custom-input wa-field"
-          rows="3"
-        />
+        <template v-for="field in withdrawFields" :key="field.fieldKey">
+          <van-field
+            v-if="field.fieldType === 'select'"
+            :model-value="getSelectLabel(field)"
+            :label="field.fieldLabel"
+            :placeholder="field.fieldPlaceholder || ''"
+            :required="field.isRequired === 1"
+            is-link
+            readonly
+            class="custom-input wa-field"
+            @click="openPicker(field)"
+          />
+          <van-field
+            v-else
+            v-model="fieldValues[field.fieldKey]"
+            :type="field.fieldType === 'number' ? 'number' : field.fieldType === 'textarea' ? 'textarea' : 'text'"
+            :label="field.fieldLabel"
+            :placeholder="field.fieldPlaceholder || ''"
+            :required="field.isRequired === 1"
+            :maxlength="field.maxLength ?? undefined"
+            class="custom-input wa-field"
+            rows="3"
+          />
+        </template>
 
         <van-button
           type="primary"
@@ -360,6 +408,15 @@ onMounted(() => {
         该国家暂未配置提现字段
       </p>
     </section>
+
+    <!-- select 选择器弹窗 -->
+    <van-popup v-model:show="pickerVisible" position="bottom" teleport="#app">
+      <van-picker
+        :columns="pickerColumns"
+        @confirm="onPickerConfirm"
+        @cancel="pickerVisible = false"
+      />
+    </van-popup>
   </div>
 </template>
 

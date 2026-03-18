@@ -428,6 +428,8 @@ func GetCurrentTgUserInfo(db *gorm.DB, accessSecret string, token string) (pojo.
 		GiftAmount:   user.GiftAmount,
 		RebateAmount: user.RebateAmount,
 		Email:        user.Email,
+		VipLevel:     user.VipLevel,
+		VipLevelName: user.VipLevelName,
 	}, nil
 }
 

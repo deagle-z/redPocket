@@ -34,7 +34,7 @@ const statusOptions = [
   { label: "停用", value: true }
 ];
 
-const fieldTypeOptions = ["input", "textarea", "number"];
+const fieldTypeOptions = ["input", "textarea", "number", "select"];
 
 const dataTypeOptions = ["string", "int", "decimal", "bool", "json", "date"];
 

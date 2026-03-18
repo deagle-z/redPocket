@@ -28,11 +28,14 @@ type PayConfig struct {
 }
 
 type GctpkPayConfig struct {
-	MerNo     string `yaml:"merNo"`     // 商户号
-	Secret    string `yaml:"secret"`    // HmacSHA256 密钥
-	BaseURL   string `yaml:"baseUrl"`   // API 根地址，如 https://naskl.gctpk.com
-	NotifyURL string `yaml:"notifyUrl"` // 异步回调地址
-	PageURL   string `yaml:"pageUrl"`   // 支付成功跳转地址
+	MerNo          string `yaml:"merNo"`          // 商户号
+	Secret         string `yaml:"secret"`         // HmacSHA256 密钥
+	BaseURL        string `yaml:"baseUrl"`        // 代收 API 根地址，如 https://naskl.gctpk.com
+	NotifyURL      string `yaml:"notifyUrl"`      // 代收异步回调地址
+	PageURL        string `yaml:"pageUrl"`        // 支付成功跳转地址
+	PayoutBaseURL  string `yaml:"payoutBaseUrl"`  // 代付 API 根地址，如 https://taslk.gctpk.com
+	PayoutNotifyURL string `yaml:"payoutNotifyUrl"` // 代付异步回调地址
+	PrivateKey     string `yaml:"privateKey"`     // RSA-1024 PKCS#8 私钥（PEM，用于代付签名）
 }
 
 type TelegramConfig struct {

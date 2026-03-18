@@ -1,62 +1,105 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { showToast } from 'vant'
+import type { AppCountryItem, CreateWithdrawOrderReq, RechargeField, RechargeFieldOption, WithdrawAccountItem } from '@/api/user'
+import {
+  createWithdrawOrder,
+  getAppCountries,
+  getCountryWithdrawFields,
+  getCurrentTgUserInfo,
+  getWithdrawAccounts,
+} from '@/api/user'
 import AppPageHeader from '@/components/AppPageHeader.vue'
 import { formatCurrency } from '@/utils/currency'
-const { t } = useI18n()
 
+const { t } = useI18n()
 const router = useRouter()
 
 const balance = ref(0)
 const frozen = ref(0)
 
-const channels = [
-  { id: 'hipay', name: 'HIPAY' },
-  { id: 'gtpay', name: 'GTPAY(maya)' },
-]
+// 国家列表
+const countries = ref<AppCountryItem[]>([])
+const selectedCountry = ref<AppCountryItem | null>(null)
+const countriesLoading = ref(false)
 
-const payMethods = [
-  {
-    id: 'gcash',
-    name: 'GCash Wallet',
-    fee: '0.0% + 10.00',
-    logo: 'G',
-  },
-  {
-    id: 'maya',
-    name: 'Maya',
-    fee: '0.5% + 5.00',
-    logo: 'M',
-  },
-]
+// 提现字段
+const withdrawFields = ref<RechargeField[]>([])
+const fieldValues = ref<Record<string, string>>({})
+const fieldsLoading = ref(false)
 
-const amountOptions = [
-  100,
-  200,
-  500,
-  1000,
-  5000,
-  10000,
-  20000,
-  50000,
-  'custom',
-]
+// 当前国家绑定的账户
+const boundAccounts = ref<WithdrawAccountItem[]>([])
+const selectedAccountId = ref<number | undefined>(undefined)
 
-const selectedChannel = ref(channels[0].id)
-const selectedPay = ref(payMethods[0].id)
+// 金额
+const amountOptions = [100, 200, 500, 1000, 5000, 10000, 20000, 50000, 'custom']
 const selectedAmount = ref<number | 'custom'>(amountOptions[0] as number)
 const customAmount = ref('')
+const submitLoading = ref(false)
 
-const receiverAccount = ref('')
-const receiverName = ref('')
-const receiverEmail = ref('')
+const displayAmount = computed(() => {
+  if (selectedAmount.value === 'custom')
+    return customAmount.value ? Number(customAmount.value) : 0
+  return selectedAmount.value
+})
+
+const localAmount = computed(() => {
+  const coins = Number(displayAmount.value) || 0
+  const rate = selectedCountry.value?.rate || 1
+  return (coins * rate).toFixed(2)
+})
+
+const localCurrencySymbol = computed(() => selectedCountry.value?.currencySymbol || '')
+
+const canSubmit = computed(() =>
+  Number(displayAmount.value) > 0
+  && !submitLoading.value
+  && !!selectedCountry.value
+  && !fieldsLoading.value,
+)
+
+// select 选择器
+const pickerVisible = ref(false)
+const pickerField = ref<RechargeField | null>(null)
+const pickerColumns = computed(() =>
+  parseFieldOptions(pickerField.value).map(o => ({ text: o.label, value: o.value })),
+)
+
+function parseFieldOptions(field: RechargeField | null): RechargeFieldOption[] {
+  if (!field?.optionsJson)
+    return []
+  try {
+    return JSON.parse(field.optionsJson)
+  }
+  catch {
+    return []
+  }
+}
+
+function getSelectLabel(field: RechargeField): string {
+  const opts = parseFieldOptions(field)
+  return opts.find(o => o.value === fieldValues.value[field.fieldKey])?.label
+    ?? fieldValues.value[field.fieldKey]
+    ?? ''
+}
+
+function openPicker(field: RechargeField) {
+  pickerField.value = field
+  pickerVisible.value = true
+}
+
+function onPickerConfirm({ selectedOptions }: { selectedOptions: Array<{ text: string, value: string }> }) {
+  if (pickerField.value)
+    fieldValues.value[pickerField.value.fieldKey] = selectedOptions[0]?.value ?? ''
+  pickerVisible.value = false
+}
 
 function chooseAmount(value: number | 'custom') {
   selectedAmount.value = value
-  if (value !== 'custom') {
+  if (value !== 'custom')
     customAmount.value = ''
-  }
 }
 
 function goBack() {
@@ -66,6 +109,154 @@ function goBack() {
 function showHelpTip() {
   showToast(t('withdrawPage.helpTip'))
 }
+
+function showCenterToast(message: string) {
+  showToast({ message, position: 'middle', teleport: '#app', wordBreak: 'break-word' })
+}
+
+function parseAccountData(raw: string): Record<string, string> {
+  try {
+    return JSON.parse(raw) ?? {}
+  }
+  catch {
+    return {}
+  }
+}
+
+async function loadBalance() {
+  try {
+    const { data } = await getCurrentTgUserInfo()
+    balance.value = Number(data?.balance ?? 0)
+    frozen.value = Number((data as any)?.frozen ?? 0)
+  }
+  catch {
+    balance.value = 0
+  }
+}
+
+async function loadWithdrawFields(code: string) {
+  fieldsLoading.value = true
+  withdrawFields.value = []
+  fieldValues.value = {}
+  try {
+    const { data } = await getCountryWithdrawFields(code)
+    withdrawFields.value = data ?? []
+    // 初始化字段默认值
+    const init: Record<string, string> = {}
+    for (const f of withdrawFields.value)
+      init[f.fieldKey] = f.defaultValue ?? ''
+    fieldValues.value = init
+  }
+  catch {
+    withdrawFields.value = []
+  }
+  finally {
+    fieldsLoading.value = false
+  }
+}
+
+async function loadBoundAccount(code: string) {
+  try {
+    const { data } = await getWithdrawAccounts()
+    const all = data ?? []
+    boundAccounts.value = all.filter(a => a.countryCode === code)
+    // 优先默认账户，否则取第一个
+    const account = boundAccounts.value.find(a => a.isDefault === 1) ?? boundAccounts.value[0]
+    if (account) {
+      selectedAccountId.value = account.id
+      const parsed = parseAccountData(account.accountData)
+      // 用账户数据覆盖字段值
+      for (const key of Object.keys(parsed)) {
+        if (key in fieldValues.value)
+          fieldValues.value[key] = parsed[key]
+      }
+    }
+    else {
+      selectedAccountId.value = undefined
+    }
+  }
+  catch {
+    boundAccounts.value = []
+    selectedAccountId.value = undefined
+  }
+}
+
+async function handleSelectCountry(country: AppCountryItem) {
+  if (selectedCountry.value?.countryCode === country.countryCode)
+    return
+  selectedCountry.value = country
+  await loadWithdrawFields(country.countryCode)
+  await loadBoundAccount(country.countryCode)
+}
+
+async function loadCountries() {
+  countriesLoading.value = true
+  try {
+    const { data } = await getAppCountries()
+    countries.value = data ?? []
+    if (countries.value.length) {
+      selectedCountry.value = countries.value[0]
+      await loadWithdrawFields(countries.value[0].countryCode)
+      await loadBoundAccount(countries.value[0].countryCode)
+    }
+  }
+  catch {
+    countries.value = []
+  }
+  finally {
+    countriesLoading.value = false
+  }
+}
+
+async function handleSubmitWithdraw() {
+  if (!canSubmit.value)
+    return
+  const amount = Number(displayAmount.value)
+  if (!amount || amount <= 0) {
+    showCenterToast(t('withdrawPage.invalidAmount'))
+    return
+  }
+
+  // 必填 + 正则校验
+  for (const f of withdrawFields.value) {
+    const val = fieldValues.value[f.fieldKey]?.trim() ?? ''
+    if (f.isRequired === 1 && !val) {
+      showCenterToast(f.errorTips || `${f.fieldLabel} 不能为空`)
+      return
+    }
+    if (val && f.regexRule) {
+      const regex = new RegExp(f.regexRule)
+      if (!regex.test(val)) {
+        showCenterToast(f.errorTips || `${f.fieldLabel} 格式不正确`)
+        return
+      }
+    }
+  }
+
+  submitLoading.value = true
+  try {
+    const req: CreateWithdrawOrderReq = {
+      amount,
+      countryCode: selectedCountry.value?.countryCode ?? '',
+      accountId: selectedAccountId.value,
+      fieldValues: withdrawFields.value.length ? { ...fieldValues.value } : undefined,
+    }
+    const { data } = await createWithdrawOrder(req)
+    showCenterToast(t('withdrawPage.orderSuccess', { orderNo: data?.orderNo || '--' }))
+    await loadBalance()
+  }
+  catch {
+    showCenterToast(t('withdrawPage.orderFailed'))
+  }
+  finally {
+    submitLoading.value = false
+  }
+}
+
+onMounted(() => {
+  loadBalance()
+  loadCountries()
+})
 </script>
 
 <template>
@@ -91,54 +282,24 @@ function showHelpTip() {
       <span class="card-chip"><img class="chip-coin" src="@/assets/svg/coin.svg" alt=""></span>
     </section>
 
-    <section class="card">
-      <h2>{{ t('withdrawPage.channelTitle') }}</h2>
-      <div class="pill-group">
+    <!-- 国家选择行 -->
+    <div class="country-bar">
+      <div class="country-scroll">
         <button
-          v-for="item in channels" :key="item.id" type="button" class="pill"
-          :class="{ active: selectedChannel === item.id }" @click="selectedChannel = item.id"
+          v-for="country in countries" :key="country.countryCode" type="button" class="country-pill"
+          :class="{ active: selectedCountry?.countryCode === country.countryCode }"
+          @click="handleSelectCountry(country)"
         >
-          {{ item.name }}
+          <span class="country-code">{{ country.countryCode }}</span>
+          <span class="country-name">{{ country.countryNameEn }}</span>
         </button>
+        <div v-if="countriesLoading" class="country-pill-loading">
+          <van-loading size="16" color="#d4af37" />
+        </div>
       </div>
-    </section>
+    </div>
 
-    <section class="card">
-      <h2>{{ t('withdrawPage.payMethodTitle') }}</h2>
-      <div class="pay-list">
-        <button
-          v-for="method in payMethods" :key="method.id" type="button" class="pay-item"
-          :class="{ active: selectedPay === method.id }" @click="selectedPay = method.id"
-        >
-          <div class="pay-left">
-            <span class="pay-logo">{{ method.logo }}</span>
-            <div>
-              <p class="pay-name">
-                {{ method.name }}
-              </p>
-              <p class="pay-sub">
-                {{ t('withdrawPage.feePrefix', { fee: method.fee }) }}
-              </p>
-            </div>
-          </div>
-          <span class="pay-check">
-            <van-icon name="success" />
-          </span>
-        </button>
-      </div>
-    </section>
-
-    <section class="card">
-      <h2 class="section-title">
-        {{ t('withdrawPage.receiverTitle') }}
-      </h2>
-      <div class="form-list">
-        <van-field v-model="receiverAccount" :label="t('withdrawPage.receiverAccount')" :placeholder="t('withdrawPage.receiverAccountPlaceholder')" class="form-item" />
-        <van-field v-model="receiverName" :label="t('withdrawPage.receiverName')" :placeholder="t('withdrawPage.receiverNamePlaceholder')" class="form-item" />
-        <van-field v-model="receiverEmail" :label="t('withdrawPage.receiverEmail')" :placeholder="t('withdrawPage.receiverEmailPlaceholder')" class="form-item" />
-      </div>
-    </section>
-
+    <!-- 提现金额 -->
     <section class="card">
       <h2 class="section-title">
         {{ t('withdrawPage.amountTitle') }}
@@ -154,7 +315,14 @@ function showHelpTip() {
         >
           <span v-if="item !== 'custom'"><CoinAmount :text="`${item}`" /></span>
           <span v-else>{{ t('withdrawPage.custom') }}</span>
+          <span v-if="item !== 'custom' && selectedCountry?.rate" class="amount-local">
+            {{ localCurrencySymbol }} {{ (Number(item) * (selectedCountry?.rate ?? 1)).toFixed(2) }}
+          </span>
         </button>
+      </div>
+
+      <div v-if="displayAmount && selectedCountry?.rate" class="local-amount-hint">
+        ≈ {{ localCurrencySymbol }}{{ localAmount }} {{ selectedCountry?.currencyCode }}
       </div>
 
       <div class="balance-breakdown">
@@ -170,44 +338,16 @@ function showHelpTip() {
         <div class="balance-row">
           <div>
             <p class="row-title">
-              {{ t('withdrawPage.normalBalance') }}
-            </p>
-            <p class="row-sub">
-              {{ t('withdrawPage.codingRemain') }}
-            </p>
-          </div>
-          <div class="row-right">
-            <CoinAmount text="0.00" />
-            <span class="row-badge">{{ t('withdrawPage.withdrawable') }}</span>
-          </div>
-        </div>
-        <div class="balance-row">
-          <div>
-            <p class="row-title">
-              {{ t('withdrawPage.bonusBalance') }}
-            </p>
-            <p class="row-sub">
-              {{ t('withdrawPage.codingRemain') }}
-            </p>
-          </div>
-          <div class="row-right">
-            <CoinAmount text="0.00" />
-            <span class="row-badge">{{ t('withdrawPage.withdrawable') }}</span>
-          </div>
-        </div>
-        <div class="balance-row">
-          <div>
-            <p class="row-title">
               {{ t('withdrawPage.freezing') }}
             </p>
           </div>
           <div class="row-right">
-            <CoinAmount text="-0.00" />
+            <CoinAmount :text="formatCurrency(frozen)" />
           </div>
         </div>
       </div>
 
-      <van-button type="primary" round block class="submit-btn">
+      <van-button type="primary" round block class="submit-btn" :loading="submitLoading" :disabled="!canSubmit" @click="handleSubmitWithdraw">
         {{ t('withdrawPage.submit') }}
       </van-button>
 
@@ -218,11 +358,60 @@ function showHelpTip() {
         </div>
         <div class="fee-row total">
           <span>{{ t('withdrawPage.actualDeduct') }}</span>
-          <CoinAmount text="0.00" />
+          <CoinAmount :text="`${displayAmount || 0}`" />
         </div>
       </div>
     </section>
 
+    <!-- 收款信息 -->
+    <section class="card">
+      <div class="section-head">
+        <h2 class="section-title">
+          {{ t('withdrawPage.receiverTitle') }}
+        </h2>
+        <button type="button" class="bind-btn" @click="router.push('/withdrawAccount')">
+          {{ t('withdrawPage.bindAccount') }}
+        </button>
+      </div>
+
+      <van-loading v-if="fieldsLoading" size="20" color="#d4af37" class="section-loading" />
+
+      <template v-else-if="withdrawFields.length">
+        <template v-for="field in withdrawFields" :key="field.fieldKey">
+          <van-field
+            v-if="field.fieldType === 'select'"
+            :model-value="getSelectLabel(field)"
+            :label="field.fieldLabel"
+            :placeholder="field.fieldPlaceholder || ''"
+            :required="field.isRequired === 1"
+            is-link
+            readonly
+            class="custom-input withdraw-field"
+            @click="openPicker(field)"
+          />
+          <van-field
+            v-else
+            v-model="fieldValues[field.fieldKey]"
+            :type="field.fieldType === 'number' ? 'number' : field.fieldType === 'textarea' ? 'textarea' : 'text'"
+            :label="field.fieldLabel"
+            :placeholder="field.fieldPlaceholder || ''"
+            :required="field.isRequired === 1"
+            :maxlength="field.maxLength ?? undefined"
+            class="custom-input withdraw-field"
+            rows="3"
+          />
+        </template>
+      </template>
+
+      <p v-else-if="!fieldsLoading && selectedCountry" class="empty-tip">
+        {{ t('withdrawPage.noFields') }}
+        <button type="button" class="bind-btn-block" @click="router.push('/withdrawAccount')">
+          {{ t('withdrawPage.bindAccount') }}
+        </button>
+      </p>
+    </section>
+
+    <!-- 提示 -->
     <section class="card tips">
       <h2 class="tips-title">
         {{ t('withdrawPage.tipsTitle') }}
@@ -235,6 +424,15 @@ function showHelpTip() {
         <li>{{ t('withdrawPage.tips5') }}</li>
       </ol>
     </section>
+
+    <!-- select 选择器弹窗 -->
+    <van-popup v-model:show="pickerVisible" position="bottom" teleport="#app">
+      <van-picker
+        :columns="pickerColumns"
+        @confirm="onPickerConfirm"
+        @cancel="pickerVisible = false"
+      />
+    </van-popup>
   </div>
 </template>
 
@@ -290,10 +488,7 @@ function showHelpTip() {
 }
 
 .card-label,
-.card-sub,
-.row-sub,
-.tips li,
-.pay-sub {
+.card-sub {
   color: rgba(255, 229, 186, 0.6);
 }
 
@@ -328,6 +523,63 @@ function showHelpTip() {
   display: block;
 }
 
+/* 国家选择条 */
+.country-bar {
+  margin-bottom: 12px;
+  overflow: hidden;
+}
+
+.country-scroll {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  scrollbar-width: none;
+  align-items: center;
+}
+
+.country-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.country-pill {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 14px;
+  border-radius: 20px;
+  border: 1px solid rgba(212, 175, 55, 0.28);
+  background: rgba(255, 248, 214, 0.06);
+  color: rgba(255, 240, 201, 0.7);
+  font-size: 13px;
+  white-space: nowrap;
+  transition: all 0.15s;
+}
+
+.country-pill.active {
+  background: linear-gradient(180deg, #ffdf87 0%, #d4af37 100%);
+  border-color: transparent;
+  color: #5a1b00;
+  font-weight: 700;
+  box-shadow: 0 4px 12px rgba(75, 25, 0, 0.3);
+}
+
+.country-code {
+  font-weight: 700;
+  font-size: 12px;
+}
+
+.country-name {
+  font-size: 12px;
+}
+
+.country-pill-loading {
+  display: flex;
+  align-items: center;
+  padding: 4px 8px;
+}
+
 .card h2,
 .section-title,
 .tips-title {
@@ -339,113 +591,54 @@ function showHelpTip() {
   color: #ffd98b;
 }
 
-.pill-group,
-.pay-list,
-.form-list {
-  display: grid;
-  gap: 10px;
-}
-
-.pill-group {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-.pill,
-.pay-item,
-.amount-item,
-.balance-breakdown,
-.fee-card {
-  border-radius: 14px;
-  border: 1px solid rgba(212, 175, 55, 0.2);
-  background: rgba(255, 248, 214, 0.06);
-}
-
-.pill,
-.amount-item {
-  padding: 12px;
-  font-weight: 700;
-  color: #fff0c9;
-}
-
-.pill.active,
-.amount-item.active,
-.pay-item.active {
-  border-color: rgba(255, 248, 214, 0.34);
-  background: linear-gradient(180deg, rgba(255, 223, 135, 0.16), rgba(116, 24, 0, 0.24));
-  box-shadow: 0 8px 18px rgba(75, 25, 0, 0.24);
-}
-
-.pay-item {
-  width: 100%;
-  padding: 12px;
+.section-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  text-align: left;
+  margin-bottom: 12px;
 }
 
-.pay-left {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.pay-logo {
-  width: 38px;
-  height: 38px;
-  border-radius: 12px;
-  background: linear-gradient(180deg, #ffdf87 0%, #d4af37 100%);
-  color: #5a1b00;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 800;
-}
-
-.pay-name,
-.row-title {
+.section-head .section-title {
   margin: 0;
-  color: #fff0c9;
+}
+
+.bind-btn {
+  padding: 5px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(212, 175, 55, 0.5);
+  background: rgba(255, 248, 214, 0.08);
+  color: #ffd87f;
+  font-size: 12px;
   font-weight: 700;
 }
 
-.pay-check {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  border: 1px solid rgba(212, 175, 55, 0.24);
-  display: inline-flex;
+.section-loading {
+  display: flex;
+  justify-content: center;
+  padding: 8px 0;
+}
+
+.empty-tip {
+  font-size: 13px;
+  color: rgba(255, 229, 186, 0.45);
+  text-align: center;
+  margin: 4px 0 8px;
+}
+
+.bind-btn-block {
+  display: flex;
   align-items: center;
   justify-content: center;
-  color: #ffd87f;
-}
-
-.pay-item:not(.active) .pay-check {
-  color: transparent;
-}
-
-:deep(.form-item),
-:deep(.custom-input) {
-  border-radius: 14px;
-  overflow: hidden;
-  border: 1px solid rgba(212, 175, 55, 0.16);
-  background: rgba(255, 248, 214, 0.05);
-}
-
-:deep(.form-item + .form-item) {
+  gap: 6px;
+  width: 100%;
+  padding: 14px;
   margin-top: 10px;
-}
-
-:deep(.form-item .van-field__label),
-:deep(.form-item .van-field__control),
-:deep(.custom-input .van-field__label),
-:deep(.custom-input .van-field__control) {
-  color: #fff0c9;
-}
-
-:deep(.form-item .van-field__control::placeholder),
-:deep(.custom-input .van-field__control::placeholder) {
-  color: rgba(255, 229, 186, 0.4);
+  border-radius: 14px;
+  border: 1.5px dashed rgba(212, 175, 55, 0.4);
+  background: rgba(255, 248, 214, 0.04);
+  color: rgba(255, 216, 127, 0.75);
+  font-size: 14px;
+  font-weight: 700;
 }
 
 .amount-grid {
@@ -456,13 +649,51 @@ function showHelpTip() {
 }
 
 .amount-item {
-  padding: 14px 0;
+  border-radius: 14px;
+  border: 1px solid rgba(212, 175, 55, 0.2);
+  background: rgba(255, 248, 214, 0.06);
+  padding: 12px 0;
+  font-weight: 700;
+  color: #fff0c9;
+  font-size: 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+
+.amount-local {
+  font-size: 11px;
+  font-weight: 400;
+  color: rgba(255, 229, 186, 0.55);
+  line-height: 1;
+}
+
+.amount-item.active {
+  border-color: rgba(255, 248, 214, 0.34);
+  background: linear-gradient(180deg, rgba(255, 223, 135, 0.18), rgba(116, 24, 0, 0.28));
+  color: #ffd87f;
+}
+
+.amount-item.active .amount-local {
+  color: rgba(255, 229, 186, 0.7);
+}
+
+.local-amount-hint {
+  text-align: center;
+  margin-top: 14px;
+  font-size: 14px;
+  color: rgba(255, 229, 186, 0.75);
+  letter-spacing: 0.04em;
 }
 
 .balance-breakdown,
 .fee-card {
   margin-top: 14px;
   padding: 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(212, 175, 55, 0.2);
+  background: rgba(255, 248, 214, 0.06);
 }
 
 .balance-header,
@@ -485,17 +716,13 @@ function showHelpTip() {
   font-weight: 700;
 }
 
-.balance-icon,
-.row-badge {
+.balance-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 999px;
-}
-
-.balance-icon {
   width: 22px;
   height: 22px;
+  border-radius: 999px;
   background: rgba(212, 175, 55, 0.16);
 }
 
@@ -512,11 +739,38 @@ function showHelpTip() {
   gap: 8px;
 }
 
-.row-badge {
-  padding: 4px 8px;
-  background: rgba(212, 175, 55, 0.14);
-  color: #ffd87f;
-  font-size: 11px;
+.row-title {
+  margin: 0;
+  color: #fff0c9;
+  font-weight: 700;
+}
+
+:deep(.custom-input),
+:deep(.withdraw-field) {
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid rgba(212, 175, 55, 0.16);
+  background: rgba(255, 248, 214, 0.05);
+}
+
+:deep(.withdraw-field) {
+  margin-top: 10px;
+}
+
+:deep(.withdraw-field:first-of-type) {
+  margin-top: 0;
+}
+
+:deep(.custom-input .van-field__label),
+:deep(.custom-input .van-field__control),
+:deep(.withdraw-field .van-field__label),
+:deep(.withdraw-field .van-field__control) {
+  color: #fff0c9;
+}
+
+:deep(.custom-input .van-field__control::placeholder),
+:deep(.withdraw-field .van-field__control::placeholder) {
+  color: rgba(255, 229, 186, 0.4);
 }
 
 .submit-btn {
@@ -540,5 +794,11 @@ function showHelpTip() {
 
 .tips li + li {
   margin-top: 6px;
+}
+
+.tips li,
+.card-sub {
+  color: rgba(255, 229, 186, 0.6);
+  font-size: 13px;
 }
 </style>

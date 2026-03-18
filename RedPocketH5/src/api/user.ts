@@ -48,6 +48,34 @@ export interface TgCurrentUserInfo {
   tg_id?: number
   gift_amount?: number
   rebate_amount?: number
+  vip_level?: number | null
+  vip_level_name?: string | null
+}
+
+export interface VipLevelSimple {
+  level: number
+  levelName: string
+  upgradeBonusAmount: number
+}
+
+export interface VipProgressInfo {
+  currentLevel: VipLevelSimple | null
+  prevLevel: VipLevelSimple | null
+  nextLevel: VipLevelSimple | null
+  progress: number
+  currentValue: number
+  targetValue: number
+  nextBonusAmount: number
+}
+
+export interface VipRewardLog {
+  id: number
+  vipLevel: number
+  levelName: string
+  rewardType: number
+  bonusAmount: number
+  status: number
+  createdAt: string
 }
 
 export interface TgInviteStats {
@@ -348,6 +376,18 @@ export function getCurrentTgUserInfo() {
   return request.get<ApiResult<TgCurrentUserInfo>>('/api/v1/app/tg/currentUserInfo')
 }
 
+export function getVipProgress() {
+  return request.get<ApiResult<VipProgressInfo>>('/api/v1/app/vip/progress')
+}
+
+export function getClaimableVipRewards() {
+  return request.get<ApiResult<VipRewardLog[]>>('/api/v1/app/vip/rewards')
+}
+
+export function claimVipReward(id: number) {
+  return request.post<ApiResult<string>>(`/api/v1/app/vip/rewards/${id}/claim`)
+}
+
 export function getCurrentTgInviteStats() {
   return request.get<ApiResult<TgInviteStats>>('/api/v1/app/tg/inviteStats')
 }
@@ -467,11 +507,16 @@ export interface AppCountryRechargeInfo {
   channels: AppRechargeChannelItem[]
 }
 
+export interface RechargeFieldOption {
+  label: string
+  value: string
+}
+
 export interface RechargeField {
   fieldKey: string
   fieldLabel: string
   fieldPlaceholder?: string | null
-  fieldType: 'input' | 'textarea' | 'number'
+  fieldType: 'input' | 'textarea' | 'number' | 'select'
   dataType: string
   isRequired: number
   defaultValue?: string | null
@@ -479,6 +524,7 @@ export interface RechargeField {
   minLength?: number | null
   regexRule?: string | null
   errorTips?: string | null
+  optionsJson?: string | null
 }
 
 export function getAppCountries() {
@@ -535,4 +581,15 @@ export function deleteWithdrawAccount(id: number) {
 
 export function setDefaultWithdrawAccount(id: number) {
   return request.post<ApiResult<string>>(`/api/v1/app/withdrawAccount/${id}/setDefault`, {})
+}
+
+export interface CreateWithdrawOrderReq {
+  amount: number
+  countryCode: string
+  accountId?: number
+  fieldValues?: Record<string, string>
+}
+
+export function createWithdrawOrder(data: CreateWithdrawOrderReq) {
+  return request.post<ApiResult<{ orderNo: string }>>('/api/v1/app/withdraw', data)
 }

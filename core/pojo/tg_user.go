@@ -28,7 +28,9 @@ type TgUser struct {
 	RebateAmount      float64 `gorm:"type:decimal(20,3);not null;default:0.000;comment:可用返水余额" json:"rebate_amount"`
 	RebateTotalAmount float64 `gorm:"type:decimal(20,3);not null;default:0.000;comment:累计返水金额" json:"rebate_total_amount"`
 
-	Status int8 `gorm:"not null;default:1;index;comment:状态 1=正常 0=禁用 -1=删除" json:"status"`
+	Status   int8 `gorm:"not null;default:1;index;comment:状态 1=正常 0=禁用 -1=删除" json:"status"`
+	VipLevel     *int    `gorm:"column:vip_level;default:null;comment:当前VIP等级（对应sys_vip_level.level）" json:"vip_level"`
+	VipLevelName *string `gorm:"column:vip_level_name;size:32;default:null;comment:当前VIP等级名称（如VIP0/VIP1）" json:"vip_level_name"`
 
 	ParentID   *int64  `gorm:"index;comment:上级/邀请人用户ID" json:"parent_id"`
 	InviteCode *string `gorm:"size:32;index;comment:邀请码（用户自身的邀请码）" json:"invite_code"`
@@ -111,14 +113,16 @@ type TgUpdateAvatarReq struct {
 }
 
 type TgCurrentUserInfo struct {
-	Avatar       *string `json:"avatar"`
-	Balance      float64 `json:"balance"`
-	Uid          string  `json:"uid"`
-	Username     *string `json:"username"`
-	TgID         int64   `json:"tg_id"`
-	GiftAmount   float64 `json:"gift_amount"`
-	RebateAmount float64 `json:"rebate_amount"`
-	Email        string  `json:"email"`
+	Avatar        *string `json:"avatar"`
+	Balance       float64 `json:"balance"`
+	Uid           string  `json:"uid"`
+	Username      *string `json:"username"`
+	TgID          int64   `json:"tg_id"`
+	GiftAmount    float64 `json:"gift_amount"`
+	RebateAmount  float64 `json:"rebate_amount"`
+	Email         string  `json:"email"`
+	VipLevel      *int    `json:"vip_level"`
+	VipLevelName  *string `json:"vip_level_name"`
 }
 
 type TgInviteStatsBack struct {

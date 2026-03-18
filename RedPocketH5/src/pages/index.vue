@@ -82,6 +82,8 @@ function formatActionLabel(isOngoing: boolean, isGrabbed: boolean, amount: numbe
     return t('homeLucky.grabAction', { seq: seqNo })
   if (isGrabbed && isOngoing && amount <= 0)
     return t('homeLucky.loadingLabel')
+  if (!isGrabbed && !isOngoing)
+    return '—'
   return Number(amount || 0).toFixed(2)
 }
 
@@ -450,6 +452,9 @@ async function loadRecentWinners() {
   }
 }
 
+let unregisterOnOpen: (() => void) | undefined
+let unregisterOnSyncExpired: (() => void) | undefined
+
 onMounted(() => {
   loadPacketList()
   loadRecentWinners()
@@ -457,6 +462,8 @@ onMounted(() => {
   wsClient.on('lucky_sent', applyLuckySent)
   wsClient.on('lucky_grabbed', applyLuckyBroadcast)
   wsClient.on('lucky_finished', applyLuckyFinished)
+  unregisterOnOpen = wsClient.onOpen(() => loadPacketList())
+  unregisterOnSyncExpired = wsClient.onSyncExpired(() => loadPacketList())
 })
 
 onBeforeUnmount(() => {
@@ -465,6 +472,8 @@ onBeforeUnmount(() => {
   wsClient.off('lucky_sent', applyLuckySent)
   wsClient.off('lucky_grabbed', applyLuckyBroadcast)
   wsClient.off('lucky_finished', applyLuckyFinished)
+  unregisterOnOpen?.()
+  unregisterOnSyncExpired?.()
 })
 </script>
 

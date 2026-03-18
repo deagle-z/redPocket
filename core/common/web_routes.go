@@ -140,19 +140,21 @@ func InitGin() {
 		adminGroup.GET("/payChannel/:id", api.GetPayChannelById)           // 获取支付通道详情
 		adminGroup.POST("/sysCountry/list", api.GetSysCountries)
 		adminGroup.GET("/sysCountry/:id", api.GetSysCountryById)
-		adminGroup.POST("/sysPayChannel/list", api.GetSysPayChannels)          // 获取支付通道列表
-		adminGroup.GET("/sysPayChannel/:id", api.GetSysPayChannelById)         // 获取支付通道详情
-		adminGroup.POST("/sysPayMethod/list", api.GetSysPayMethods)            // 获取支付方式列表
-		adminGroup.GET("/sysPayMethod/:id", api.GetSysPayMethodById)           // 获取支付方式详情
+		adminGroup.POST("/sysPayChannel/list", api.GetSysPayChannels)                  // 获取支付通道列表
+		adminGroup.GET("/sysPayChannel/:id", api.GetSysPayChannelById)                 // 获取支付通道详情
+		adminGroup.POST("/sysPayMethod/list", api.GetSysPayMethods)                    // 获取支付方式列表
+		adminGroup.GET("/sysPayMethod/:id", api.GetSysPayMethodById)                   // 获取支付方式详情
 		adminGroup.GET("/sysPayChannelMethod/:channelId", api.GetSysPayChannelMethods) // 获取通道绑定的支付方式
+		adminGroup.POST("/sysVipLevel/list", api.GetSysVipLevels)   // 获取VIP等级列表
+		adminGroup.GET("/sysVipLevel/:id", api.GetSysVipLevelById) // 获取VIP等级详情
 		adminGroup.POST("/sysCustomField/list", api.GetSysCustomFields)
 		adminGroup.GET("/sysCustomField/:id", api.GetSysCustomFieldById)
 		adminGroup.POST("/platformProfitLedger/list", api.GetPlatformProfitLedgers)
 		adminGroup.GET("/platformProfitLedger/:id", api.GetPlatformProfitLedgerById)
 		adminGroup.POST("/tgUser/listWithSubStats", api.GetTgUsersWithSubStats)
 		adminGroup.POST("/tgUser/subStatsSummary", api.GetTgUsersWithSubStatsSummary)
-		adminGroup.POST("/userWithdrawAccount/list", api.GetSysUserWithdrawAccounts)    // 获取用户提现账户列表
-		adminGroup.GET("/userWithdrawAccount/:id", api.GetSysUserWithdrawAccountById)   // 获取用户提现账户详情
+		adminGroup.POST("/userWithdrawAccount/list", api.GetSysUserWithdrawAccounts)  // 获取用户提现账户列表
+		adminGroup.GET("/userWithdrawAccount/:id", api.GetSysUserWithdrawAccountById) // 获取用户提现账户详情
 	}
 	adminGroupLog := router.Group("/api/v1/admin")
 	adminGroupLog.Use(authMiddleware([]int{1}, false, true), manageLog())
@@ -172,22 +174,24 @@ func InitGin() {
 		adminGroupLog.DELETE("/luckyItem/:id", api.DelLuckyMoneyItem)        // 删除红包明细
 		adminGroupLog.POST("/tenant", api.SetSysTenant)                      // 创建或更新租户
 		adminGroupLog.POST("/tenant/resetPassword", api.ResetSysTenantPassword)
-		adminGroupLog.DELETE("/tenant/:id", api.DelSysTenant)                // 删除租户
-		adminGroupLog.POST("/tenantUser", api.SetSysTenantUser)              // 创建或更新租户用户
-		adminGroupLog.DELETE("/tenantUser/:id", api.DelSysTenantUser)        // 删除租户用户
-		adminGroupLog.POST("/rechargeOrder", api.SetRechargeOrder)                    // 创建或更新充值订单
-		adminGroupLog.DELETE("/rechargeOrder/:id", api.DelRechargeOrder)             // 删除充值订单
+		adminGroupLog.DELETE("/tenant/:id", api.DelSysTenant)                             // 删除租户
+		adminGroupLog.POST("/tenantUser", api.SetSysTenantUser)                           // 创建或更新租户用户
+		adminGroupLog.DELETE("/tenantUser/:id", api.DelSysTenantUser)                     // 删除租户用户
+		adminGroupLog.POST("/rechargeOrder", api.SetRechargeOrder)                        // 创建或更新充值订单
+		adminGroupLog.DELETE("/rechargeOrder/:id", api.DelRechargeOrder)                  // 删除充值订单
 		adminGroupLog.POST("/rechargeOrder/:id/callback", api.AdminRechargeOrderCallback) // 手动回调充值订单
-		adminGroupLog.POST("/withdrawOrderBr", api.SetWithdrawOrderBr)       // 创建或更新巴西提现订单
-		adminGroupLog.DELETE("/withdrawOrderBr/:id", api.DelWithdrawOrderBr) // 删除巴西提现订单
-		adminGroupLog.POST("/payChannel", api.SetPayChannel)                 // 创建或更新支付通道
-		adminGroupLog.DELETE("/payChannel/:id", api.DelPayChannel)           // 删除支付通道
+		adminGroupLog.POST("/withdrawOrderBr", api.SetWithdrawOrderBr)                    // 创建或更新巴西提现订单
+		adminGroupLog.DELETE("/withdrawOrderBr/:id", api.DelWithdrawOrderBr)              // 删除巴西提现订单
+		adminGroupLog.POST("/payChannel", api.SetPayChannel)                              // 创建或更新支付通道
+		adminGroupLog.DELETE("/payChannel/:id", api.DelPayChannel)                        // 删除支付通道
 		adminGroupLog.POST("/sysPayChannel", api.SetSysPayChannel)                        // 创建或更新支付通道
 		adminGroupLog.DELETE("/sysPayChannel/:id", api.DelSysPayChannel)                  // 删除支付通道
 		adminGroupLog.POST("/sysPayMethod", api.SetSysPayMethod)                          // 创建或更新支付方式
 		adminGroupLog.DELETE("/sysPayMethod/:id", api.DelSysPayMethod)                    // 删除支付方式
 		adminGroupLog.POST("/sysPayChannelMethod", api.SetSysPayChannelMethods)           // 设置通道支付方式
 		adminGroupLog.DELETE("/sysPayChannelMethod/:id", api.DelSysPayChannelMethod)      // 删除通道-方式绑定
+		adminGroupLog.POST("/sysVipLevel", api.SetSysVipLevel)          // 创建或更新VIP等级
+		adminGroupLog.DELETE("/sysVipLevel/:id", api.DelSysVipLevel)    // 删除VIP等级
 		adminGroupLog.POST("/sysCountry", api.SetSysCountry)
 		adminGroupLog.DELETE("/sysCountry/:id", api.DelSysCountry)
 		adminGroupLog.POST("/sysCustomField", api.SetSysCustomField)
@@ -249,8 +253,8 @@ func InitGin() {
 		appRouter.POST("/tg/sendEmailCode", api.SendTgEmailCode)
 		appRouter.POST("/tg/registerByEmail", api.RegisterTgByEmail)
 		appRouter.POST("/tg/forgotPasswordByEmail", api.ForgotPasswordByEmail)
-		appRouter.POST("/lucky/list", api.GetRedPacketListApp)   // 不校验token
-		appRouter.POST("/lucky/detail", api.GetLuckyDetailApp)  // 不校验token
+		appRouter.POST("/lucky/list", api.GetRedPacketListApp) // 不校验token
+		appRouter.POST("/lucky/detail", api.GetLuckyDetailApp) // 不校验token
 	}
 
 	appAuthRouter := router.Group("/api/v1/app")
@@ -271,15 +275,19 @@ func InitGin() {
 		appAuthRouter.POST("/cashHistory/list", api.GetCurrentTgCashHistory)
 		appAuthRouter.POST("/upload", api.AppUpload)
 		appAuthRouter.POST("/lucky/grab", api.GrabRedPacketApp)
-		appAuthRouter.GET("/countries", api.GetAppCountries)                              // App端获取可用国家列表（IP置顶）
-		appAuthRouter.GET("/country/:code/recharge", api.GetCountryRechargeInfo)          // App端获取国家充值信息（字段+通道+方式）
-		appAuthRouter.GET("/country/:code/withdrawFields", api.GetCountryWithdrawFields)         // App端获取国家提现字段配置
-		appAuthRouter.GET("/country/:code/rechargeFields", api.GetCountryRechargeFields)         // App端获取国家充值字段配置
-		appAuthRouter.GET("/withdrawAccount/list", api.GetAppWithdrawAccounts)                   // App端获取当前用户提现账户列表
-		appAuthRouter.POST("/withdrawAccount", api.AppAddWithdrawAccount)                        // App端新增提现账户
-		appAuthRouter.POST("/withdrawAccount/:id/update", api.AppUpdateWithdrawAccount)          // App端修改提现账户
-		appAuthRouter.DELETE("/withdrawAccount/:id", api.AppDelWithdrawAccount)                  // App端删除提现账户
-		appAuthRouter.POST("/withdrawAccount/:id/setDefault", api.AppSetDefaultWithdrawAccount)  // App端设置默认提现账户
+		appAuthRouter.GET("/countries", api.GetAppCountries)                     // App端获取可用国家列表（IP置顶）
+		appAuthRouter.GET("/country/:code/recharge", api.GetCountryRechargeInfo) // App端获取国家充值信息（字段+通道+方式）
+		
+		appAuthRouter.GET("/country/:code/withdrawFields", api.GetCountryWithdrawFields)        // App端获取国家提现字段配置
+		appAuthRouter.GET("/country/:code/rechargeFields", api.GetCountryRechargeFields)        // App端获取国家充值字段配置
+		appAuthRouter.GET("/withdrawAccount/list", api.GetAppWithdrawAccounts)                  // App端获取当前用户提现账户列表
+		appAuthRouter.POST("/withdrawAccount", api.AppAddWithdrawAccount)                       // App端新增提现账户
+		appAuthRouter.POST("/withdrawAccount/:id/update", api.AppUpdateWithdrawAccount)         // App端修改提现账户
+		appAuthRouter.DELETE("/withdrawAccount/:id", api.AppDelWithdrawAccount)                 // App端删除提现账户
+		appAuthRouter.POST("/withdrawAccount/:id/setDefault", api.AppSetDefaultWithdrawAccount) // App端设置默认提现账户
+		appAuthRouter.GET("/vip/progress", api.AppGetVipProgress)                                 // App端获取当前用户VIP进度
+		appAuthRouter.GET("/vip/rewards", api.AppGetClaimableVipRewards)                           // App端查询可领取VIP奖励列表
+		appAuthRouter.POST("/vip/rewards/:id/claim", api.AppClaimVipReward)                        // App端领取VIP奖励（id=0领取全部）
 	}
 
 	log.Printf("Start server at %s:%d ", utils.GlobalConfig.Host, utils.GlobalConfig.Port)

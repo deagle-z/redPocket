@@ -5,10 +5,16 @@ import (
 	"BaseGoUni/core/pay"
 	"BaseGoUni/core/utils"
 	"bytes"
+	"crypto"
 	"crypto/hmac"
+	"crypto/rand"
+	"crypto/rsa"
 	"crypto/sha256"
+	"crypto/x509"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"encoding/pem"
 	"fmt"
 	"io"
 	"net/http"
@@ -127,6 +133,101 @@ func postJSON(url string, payload map[string]string) ([]byte, error) {
 	return io.ReadAll(resp.Body)
 }
 
+// CreatePayoutOrder 调用 GCTPK 代付下单接口
+// POST https://taslk.gctpk.com/payout/singleOrder
+// 签名：HmacSHA256 → signA → RSA-1024 私钥加密 → Base64
+func (g *Provider) CreatePayoutOrder(req pay.PayoutRequest) (pay.PayoutResponse, error) {
+	cfg := utils.GlobalConfig.Pay.Gctpk
+	if cfg.MerNo == "" || cfg.Secret == "" || cfg.PrivateKey == "" {
+		return pay.PayoutResponse{}, fmt.Errorf("GCTPK 代付配置不完整，请检查 core.yaml pay.gctpk 节点")
+	}
+
+	baseURL := strings.TrimRight(cfg.PayoutBaseURL, "/")
+	if baseURL == "" {
+		baseURL = "https://taslk.gctpk.com"
+	}
+	notifyURL := cfg.PayoutNotifyURL
+	if notifyURL == "" {
+		notifyURL = cfg.NotifyURL
+	}
+
+	timestamp := fmt.Sprintf("%d", time.Now().UnixMilli())
+
+	params := map[string]string{
+		"merNo":       cfg.MerNo,
+		"merOrderNo":  req.OrderNo,
+		"accName":     req.AccName,
+		"accNo":       req.AccNo,
+		"bankCode":    req.BankCode,
+		"busiCode":    "202001",
+		"currency":    req.Currency,
+		"email":       req.Email,
+		"notifyUrl":   notifyURL,
+		"orderAmount": fmt.Sprintf("%.2f", req.Amount),
+		"phone":       req.Phone,
+		"timestamp":   timestamp,
+	}
+	// 可选扩展字段（extend / province 等）
+	for _, k := range []string{"extend", "province"} {
+		if v := strings.TrimSpace(req.ExtraFields[k]); v != "" {
+			params[k] = v
+		}
+	}
+
+	// 签名：HmacSHA256 → signA → RSA 私钥加密 → Base64
+	signA := BuildSign(params, cfg.Secret)
+	rsaSign, err := rsaPrivateKeyEncrypt([]byte(signA), cfg.PrivateKey)
+	if err != nil {
+		return pay.PayoutResponse{}, fmt.Errorf("GCTPK 代付签名失败: %w", err)
+	}
+	params["sign"] = rsaSign
+
+	respBody, err := postJSON(baseURL+"/payout/singleOrder", params)
+	if err != nil {
+		return pay.PayoutResponse{}, fmt.Errorf("GCTPK 代付请求失败: %w", err)
+	}
+
+	var apiResp payoutOrderResp
+	if err = json.Unmarshal(respBody, &apiResp); err != nil {
+		return pay.PayoutResponse{}, fmt.Errorf("GCTPK 代付响应解析失败: %w", err)
+	}
+	// code=200 或 code=500 均表示请求成功（订单已入库），以 data.status 为准
+	if apiResp.Code != 200 && apiResp.Code != 500 {
+		return pay.PayoutResponse{}, fmt.Errorf("GCTPK 代付下单失败 code=%d msg=%s", apiResp.Code, apiResp.Msg)
+	}
+
+	resp := pay.PayoutResponse{}
+	if apiResp.Data != nil {
+		resp.ProviderOrderNo = apiResp.Data.OrderNo
+		resp.Status = apiResp.Data.Status
+	}
+	return resp, nil
+}
+
+// rsaPrivateKeyEncrypt 使用 PKCS#8 RSA-1024 私钥对 data 进行 PKCS1v15 加密（即私钥签名），返回 Base64 字符串
+func rsaPrivateKeyEncrypt(data []byte, pemKey string) (string, error) {
+	block, _ := pem.Decode([]byte(pemKey))
+	if block == nil {
+		return "", fmt.Errorf("PEM 解码失败，请确认私钥格式正确（PKCS#8）")
+	}
+
+	key, err := x509.ParsePKCS8PrivateKey(block.Bytes)
+	if err != nil {
+		return "", fmt.Errorf("解析 PKCS#8 私钥失败: %w", err)
+	}
+	rsaKey, ok := key.(*rsa.PrivateKey)
+	if !ok {
+		return "", fmt.Errorf("私钥不是 RSA 类型")
+	}
+
+	// 代付签名：RSA PKCS1v15，hash=0 表示 data 直接作为消息体（不再 hash）
+	sig, err := rsa.SignPKCS1v15(rand.Reader, rsaKey, crypto.Hash(0), data)
+	if err != nil {
+		return "", fmt.Errorf("RSA 签名失败: %w", err)
+	}
+	return base64.StdEncoding.EncodeToString(sig), nil
+}
+
 // ---- 响应结构 ----
 
 type createOrderResp struct {
@@ -137,4 +238,15 @@ type createOrderResp struct {
 
 type createOrderData struct {
 	PayURL string `json:"payUrl"`
+}
+
+type payoutOrderResp struct {
+	Code int              `json:"code"`
+	Msg  string           `json:"msg"`
+	Data *payoutOrderData `json:"data"`
+}
+
+type payoutOrderData struct {
+	OrderNo string `json:"orderNo"`
+	Status  int    `json:"status"`
 }

@@ -253,7 +253,8 @@ func AppCreateRechargeOrder(db *gorm.DB, userID int64, req pojo.RechargeOrderApp
 // ProcessRechargeOrderSuccess 处理代收支付成功回调，入账并更新订单状态
 // providerTradeNo: 三方交易号；payAmount: 三方实际支付金额（仅记录，入账按订单 amount 计算）
 func ProcessRechargeOrderSuccess(db *gorm.DB, orderNo string, providerTradeNo string, payAmount float64, tablePrefix string) error {
-	return db.Transaction(func(tx *gorm.DB) error {
+	var successUserID int64
+	err := db.Transaction(func(tx *gorm.DB) error {
 		var order pojo.RechargeOrder
 		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("order_no = ?", orderNo).First(&order).Error; err != nil {
 			return err
@@ -362,8 +363,13 @@ func ProcessRechargeOrderSuccess(db *gorm.DB, orderNo string, providerTradeNo st
 				return err
 			}
 		}
+		successUserID = order.UserId
 		return nil
 	})
+	if err == nil && successUserID > 0 {
+		go CheckAndUpgradeVipLevel(utils.NewPrefixDb(tablePrefix), successUserID)
+	}
+	return err
 }
 
 // ProcessRechargeOrderClosed 处理支付渠道通知订单关闭/取消
@@ -405,10 +411,11 @@ func buildRechargeOrderNo() string {
 }
 
 // rechargeOrderDevCallback 在dev环境模拟三方回调并完成入账
-func rechargeOrderDevCallback(db *gorm.DB, orderNo string, tablePrefix string) (err error) {
-	return db.Transaction(func(tx *gorm.DB) error {
+func rechargeOrderDevCallback(db *gorm.DB, orderNo string, tablePrefix string) error {
+	var successUserID int64
+	err := db.Transaction(func(tx *gorm.DB) error {
 		var order pojo.RechargeOrder
-		if err = tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("order_no = ?", orderNo).First(&order).Error; err != nil {
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("order_no = ?", orderNo).First(&order).Error; err != nil {
 			return err
 		}
 		if order.Status == 1 {
@@ -419,7 +426,7 @@ func rechargeOrderDevCallback(db *gorm.DB, orderNo string, tablePrefix string) (
 		}
 
 		var user pojo.TgUser
-		if err = tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ?", order.UserId).First(&user).Error; err != nil {
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ?", order.UserId).First(&user).Error; err != nil {
 			return err
 		}
 		if user.ID == 0 {
@@ -437,7 +444,7 @@ func rechargeOrderDevCallback(db *gorm.DB, orderNo string, tablePrefix string) (
 			creditAmount = 0
 		}
 		providerStatus := "SUCCESS"
-		if err = tx.Model(&pojo.RechargeOrder{}).
+		if err := tx.Model(&pojo.RechargeOrder{}).
 			Where("id = ?", order.ID).
 			Updates(map[string]any{
 				"status":          1,
@@ -452,7 +459,7 @@ func rechargeOrderDevCallback(db *gorm.DB, orderNo string, tablePrefix string) (
 			return err
 		}
 
-		if err = tx.Model(&pojo.TgUser{}).
+		if err := tx.Model(&pojo.TgUser{}).
 			Where("id = ?", user.ID).
 			Updates(map[string]any{
 				"balance":         gorm.Expr("balance + ?", creditAmount),
@@ -475,7 +482,7 @@ func rechargeOrderDevCallback(db *gorm.DB, orderNo string, tablePrefix string) (
 			IsGift:      0,
 			FromUserId:  0,
 		}
-		if err = tx.Create(&cashHistory).Error; err != nil {
+		if err := tx.Create(&cashHistory).Error; err != nil {
 			return err
 		}
 
@@ -492,10 +499,10 @@ func rechargeOrderDevCallback(db *gorm.DB, orderNo string, tablePrefix string) (
 				IsGift:      1,
 				FromUserId:  0,
 			}
-			if err = tx.Create(&giftCashHistory).Error; err != nil {
+			if err := tx.Create(&giftCashHistory).Error; err != nil {
 				return err
 			}
-			if err = CreatePlatformProfitLedgerIfAbsent(tx, pojo.PlatformProfitLedger{
+			if err := CreatePlatformProfitLedgerIfAbsent(tx, pojo.PlatformProfitLedger{
 				TenantId:      order.TenantId,
 				UserId:        user.ID,
 				SourceType:    pojo.PlatformProfitSourceRechargeGift,
@@ -509,12 +516,17 @@ func rechargeOrderDevCallback(db *gorm.DB, orderNo string, tablePrefix string) (
 		}
 
 		if isFirstRecharge {
-			if err = applyInviteFirstRechargeReward(tx, order, user, tablePrefix, now); err != nil {
+			if err := applyInviteFirstRechargeReward(tx, order, user, tablePrefix, now); err != nil {
 				return err
 			}
 		}
+		successUserID = order.UserId
 		return nil
 	})
+	if err == nil && successUserID > 0 {
+		go CheckAndUpgradeVipLevel(utils.NewPrefixDb(tablePrefix), successUserID)
+	}
+	return err
 }
 
 func applyInviteFirstRechargeReward(tx *gorm.DB, order pojo.RechargeOrder, subUser pojo.TgUser, tablePrefix string, now time.Time) error {

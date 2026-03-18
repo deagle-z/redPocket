@@ -7,6 +7,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"sort"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -18,24 +19,38 @@ import (
 )
 
 const (
-	wsPingInterval = 25 * time.Second
-	wsPongTimeout  = 60 * time.Second
-	wsSendBuffer   = 64
-	wsConnWindow   = 60 * time.Second
-	wsConnMax      = 30
-	wsReconnectMin = 2 * time.Second
+	wsPingInterval  = 25 * time.Second
+	wsPongTimeout   = 60 * time.Second
+	wsSendBuffer    = 64
+	wsConnWindow    = 60 * time.Second
+	wsConnMax       = 30
+	wsReconnectMin  = 2 * time.Second
+	wsMsgBufMax     = 200
+	wsMsgBufExpire  = 5 * time.Minute
+	wsMsgBufKey     = "ws:msgbuf:"
+	wsMsgSeqKey     = "ws:seq:"
+	wsDefaultScope  = "all"
 )
 
 type wsMessage struct {
-	Type string      `json:"type"`
-	Data interface{} `json:"data,omitempty"`
-	Ts   int64       `json:"ts"`
+	Type  string      `json:"type"`
+	Seq   int64       `json:"seq,omitempty"`
+	Scope string      `json:"scope,omitempty"`
+	Data  interface{} `json:"data,omitempty"`
+	Ts    int64       `json:"ts"`
 }
 
 type wsIncoming struct {
-	Type string          `json:"type"`
-	Data json.RawMessage `json:"data,omitempty"`
-	Ts   int64           `json:"ts"`
+	Type  string          `json:"type"`
+	Seq   int64           `json:"seq"`
+	Scope string          `json:"scope"`
+	Data  json.RawMessage `json:"data,omitempty"`
+	Ts    int64           `json:"ts"`
+}
+
+type syncReqData struct {
+	LastSeq int64  `json:"lastSeq"`
+	Scope   string `json:"scope"`
 }
 
 type helloData struct {
@@ -146,17 +161,46 @@ func NotifyAll(data interface{}) {
 	BroadcastAllWithType("notify", data)
 }
 
+// wsPushToBuffer assigns a seq, writes to Redis buffer, and returns the serialized payload.
+func wsPushToBuffer(scope string, msg *wsMessage) []byte {
+	if utils.RD == nil {
+		payload, _ := json.Marshal(msg)
+		return payload
+	}
+	ctx := context.Background()
+	seq, err := utils.RD.Incr(ctx, wsMsgSeqKey+scope).Result()
+	if err != nil {
+		log.Printf("[ws] seq incr error: %v", err)
+		payload, _ := json.Marshal(msg)
+		return payload
+	}
+	msg.Seq = seq
+	payload, err := json.Marshal(msg)
+	if err != nil {
+		log.Printf("[ws] marshal error: %v", err)
+		return nil
+	}
+	pipe := utils.RD.Pipeline()
+	pipe.RPush(ctx, wsMsgBufKey+scope, string(payload))
+	pipe.LTrim(ctx, wsMsgBufKey+scope, -int64(wsMsgBufMax), -1)
+	pipe.Expire(ctx, wsMsgBufKey+scope, wsMsgBufExpire)
+	if _, err := pipe.Exec(ctx); err != nil {
+		log.Printf("[ws] buffer push error: %v", err)
+	}
+	return payload
+}
+
 // BroadcastAllWithType broadcasts a typed message to all connected clients.
 func BroadcastAllWithType(msgType string, data interface{}) {
 	startWsHub()
 	msg := wsMessage{
-		Type: msgType,
-		Data: data,
-		Ts:   time.Now().Unix(),
+		Type:  msgType,
+		Scope: wsDefaultScope,
+		Data:  data,
+		Ts:    time.Now().Unix(),
 	}
-	payload, err := json.Marshal(msg)
-	if err != nil {
-		log.Printf("ws notify marshal error: %v", err)
+	payload := wsPushToBuffer(wsDefaultScope, &msg)
+	if payload == nil {
 		return
 	}
 	hub.broadcast <- payload
@@ -418,6 +462,65 @@ func (c *wsClient) readPump() {
 				}
 				utils.UpdateOnlineDevice(c.deviceID, c.deviceName, c.ip)
 			}
+			continue
+		}
+		if msg.Type == "ack" {
+			// 客户端确认已收到 seq，更新 lastPong 保持连接活跃
+			atomic.StoreInt64(&c.lastPong, time.Now().UnixNano())
+			continue
+		}
+		if msg.Type == "sync" {
+			var syncReq syncReqData
+			if err := json.Unmarshal(msg.Data, &syncReq); err == nil {
+				scope := syncReq.Scope
+				if scope == "" {
+					scope = wsDefaultScope
+				}
+				go c.handleSync(syncReq.LastSeq, scope)
+			}
+		}
+	}
+}
+
+// handleSync 从 Redis 缓冲中取出 seq > lastSeq 的消息，逐条补发给客户端。
+func (c *wsClient) handleSync(lastSeq int64, scope string) {
+	if utils.RD == nil {
+		return
+	}
+	ctx := context.Background()
+	items, err := utils.RD.LRange(ctx, wsMsgBufKey+scope, 0, -1).Result()
+	if err != nil || len(items) == 0 {
+		// 缓冲已过期或为空，通知前端做 HTTP 全量刷新
+		payload, _ := json.Marshal(wsMessage{Type: "sync_expired", Ts: time.Now().Unix()})
+		select {
+		case c.send <- payload:
+		default:
+		}
+		return
+	}
+
+	type seqItem struct {
+		seq int64
+		raw []byte
+	}
+	var pending []seqItem
+	for _, item := range items {
+		var m struct {
+			Seq int64 `json:"seq"`
+		}
+		if err := json.Unmarshal([]byte(item), &m); err == nil && m.Seq > lastSeq {
+			pending = append(pending, seqItem{seq: m.Seq, raw: []byte(item)})
+		}
+	}
+	if len(pending) == 0 {
+		return
+	}
+	sort.Slice(pending, func(i, j int) bool { return pending[i].seq < pending[j].seq })
+	for _, item := range pending {
+		select {
+		case c.send <- item.raw:
+		default:
+			return // 客户端发送缓冲满，停止补发
 		}
 	}
 }

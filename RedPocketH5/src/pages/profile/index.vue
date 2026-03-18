@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { appUpload, getCurrentTgUserInfo, tgLogout, updateCurrentTgAvatar } from '@/api/user'
+import { appUpload, claimVipReward, getClaimableVipRewards, getCurrentTgUserInfo, getVipProgress, tgLogout, updateCurrentTgAvatar } from '@/api/user'
+import type { VipProgressInfo, VipRewardLog } from '@/api/user'
 import { showToast } from 'vant'
 import { clearToken, isLogin } from '@/utils/auth'
 import { locale } from '@/utils/i18n'
@@ -48,6 +49,67 @@ function normalizeInlineSvg(svg: string) {
 }
 
 const profileLoading = ref(false)
+const showVipPopup = ref(false)
+const vipLoading = ref(false)
+const claimingId = ref<number | null>(null)
+const vipProgress = ref<VipProgressInfo | null>(null)
+const vipRewards = ref<VipRewardLog[]>([])
+
+async function openVipPopup() {
+  showVipPopup.value = true
+  if (vipLoading.value) return
+  vipLoading.value = true
+  try {
+    const [progressRes, rewardsRes] = await Promise.all([
+      getVipProgress(),
+      getClaimableVipRewards(),
+    ])
+    vipProgress.value = progressRes.data ?? null
+    vipRewards.value = rewardsRes.data ?? []
+  }
+  catch {
+    // toast shown by interceptor
+  }
+  finally {
+    vipLoading.value = false
+  }
+}
+
+async function handleClaimReward(id: number) {
+  if (claimingId.value !== null) return
+  claimingId.value = id
+  try {
+    await claimVipReward(id)
+    showToast('领取成功')
+    vipRewards.value = vipRewards.value.filter(r => r.id !== id)
+    // refresh balance
+    await loadCurrentTgUserInfo()
+  }
+  catch {
+    // toast shown by interceptor
+  }
+  finally {
+    claimingId.value = null
+  }
+}
+
+async function handleClaimAll() {
+  if (claimingId.value !== null) return
+  claimingId.value = 0
+  try {
+    await claimVipReward(0)
+    showToast('全部领取成功')
+    vipRewards.value = []
+    await loadCurrentTgUserInfo()
+  }
+  catch {
+    // toast shown by interceptor
+  }
+  finally {
+    claimingId.value = null
+  }
+}
+
 const showAvatarPopup = ref(false)
 const uploadingAvatar = ref(false)
 const avatarFileInput = ref<HTMLInputElement>()
@@ -61,6 +123,7 @@ const profile = reactive({
   email: '',
   balance: 0,
   rebateAmount: 0,
+  vipLevelName: '',
 })
 
 const accountMenus = computed<MenuItem[]>(() => [
@@ -128,6 +191,7 @@ async function loadCurrentTgUserInfo() {
     profile.email = data?.email || ''
     profile.balance = Number(data?.balance || 0)
     profile.rebateAmount = Number(data?.rebate_amount || 0)
+    profile.vipLevelName = data?.vip_level_name || ''
     const customAvatar = localStorage.getItem(PROFILE_AVATAR_KEY) || ''
     if (customAvatar)
       profile.avatar = customAvatar
@@ -352,7 +416,9 @@ async function handleConfirmLogout() {
             <h3 class="user-name">
               {{ displayName }}
             </h3>
-            <span class="vip-tag">VIP 0</span>
+            <button type="button" class="vip-tag" @click="openVipPopup">
+              {{ profile.vipLevelName || 'VIP 0' }}
+            </button>
           </div>
           <p class="user-id">
             ID: {{ displayUid }}
@@ -426,6 +492,88 @@ async function handleConfirmLogout() {
         {{ t('profilePage.logout') }}
       </button>
     </div>
+
+    <!-- VIP Progress Popup -->
+    <van-popup v-model:show="showVipPopup" round position="bottom" class="vip-popup">
+      <div class="vip-popup-header">
+        <span class="vip-popup-title">VIP 等级</span>
+        <button class="vip-popup-close" @click="showVipPopup = false">×</button>
+      </div>
+
+      <div v-if="vipLoading" class="vip-loading">
+        <van-loading color="#ffd87f" />
+      </div>
+
+      <template v-else-if="vipProgress">
+        <!-- Level badges row -->
+        <div class="vip-levels-row">
+          <div class="vip-level-badge" :class="{ active: false }">
+            <span class="vip-badge-name">{{ vipProgress.prevLevel?.levelName || '—' }}</span>
+            <span class="vip-badge-label">上一等级</span>
+          </div>
+          <div class="vip-level-badge current">
+            <span class="vip-badge-name">{{ vipProgress.currentLevel?.levelName || 'VIP 0' }}</span>
+            <span class="vip-badge-label">当前等级</span>
+          </div>
+          <div class="vip-level-badge">
+            <span class="vip-badge-name">{{ vipProgress.nextLevel?.levelName || '—' }}</span>
+            <span class="vip-badge-label">下一等级</span>
+          </div>
+        </div>
+
+        <!-- Progress bar -->
+        <div class="vip-progress-wrap">
+          <div class="vip-progress-labels">
+            <span class="vip-progress-cur">{{ vipProgress.currentValue.toFixed(2) }}</span>
+            <span class="vip-progress-pct">{{ vipProgress.progress.toFixed(0) }}%</span>
+            <span class="vip-progress-target">{{ vipProgress.targetValue > 0 ? vipProgress.targetValue.toFixed(2) : '—' }}</span>
+          </div>
+          <div class="vip-progress-bar">
+            <div class="vip-progress-fill" :style="{ width: `${vipProgress.progress}%` }" />
+          </div>
+          <p v-if="vipProgress.nextLevel" class="vip-progress-hint">
+            距 {{ vipProgress.nextLevel.levelName }} 还需充值
+            <strong>{{ Math.max(0, vipProgress.targetValue - vipProgress.currentValue).toFixed(2) }}</strong>
+          </p>
+          <p v-else class="vip-progress-hint">
+            已达最高等级
+          </p>
+        </div>
+
+        <!-- Next level bonus -->
+        <div v-if="vipProgress.nextLevel && vipProgress.nextBonusAmount > 0" class="vip-next-bonus">
+          <span class="vip-next-bonus-label">升级奖励</span>
+          <span class="vip-next-bonus-amount">+{{ vipProgress.nextBonusAmount.toFixed(2) }}</span>
+        </div>
+
+        <!-- Claimable rewards -->
+        <div v-if="vipRewards.length > 0" class="vip-rewards-section">
+          <div class="vip-rewards-header">
+            <span class="vip-rewards-title">待领取奖励</span>
+            <button
+              class="vip-claim-all-btn"
+              :disabled="claimingId !== null"
+              @click="handleClaimAll"
+            >
+              {{ claimingId === 0 ? '领取中...' : '全部领取' }}
+            </button>
+          </div>
+          <div v-for="reward in vipRewards" :key="reward.id" class="vip-reward-item">
+            <div class="vip-reward-info">
+              <span class="vip-reward-name">{{ reward.levelName }} 升级奖励</span>
+              <span class="vip-reward-amount">+{{ reward.bonusAmount.toFixed(2) }}</span>
+            </div>
+            <button
+              class="vip-claim-btn"
+              :disabled="claimingId !== null"
+              @click="handleClaimReward(reward.id)"
+            >
+              {{ claimingId === reward.id ? '领取中...' : '领取' }}
+            </button>
+          </div>
+        </div>
+      </template>
+    </van-popup>
 
     <AppConfirmDialog
       v-model:show="showLogoutDialog"
@@ -613,6 +761,227 @@ async function handleConfirmLogout() {
   font-weight: 700;
   background: linear-gradient(180deg, #ffdf87 0%, #d4af37 100%);
   box-shadow: 0 4px 10px rgba(75, 25, 0, 0.25);
+  cursor: pointer;
+}
+
+/* ── VIP Popup ── */
+.vip-popup {
+  padding: 0 0 32px;
+  background:
+    radial-gradient(circle at top, rgba(212, 175, 55, 0.14), transparent 26%),
+    linear-gradient(180deg, #540000 0%, #280000 100%);
+  border: 1px solid rgba(212, 175, 55, 0.34);
+}
+
+.vip-popup-header {
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.18);
+}
+
+.vip-popup-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #fff0c9;
+}
+
+.vip-popup-close {
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  border: none;
+  background: transparent;
+  font-size: 20px;
+  color: rgba(255, 229, 186, 0.7);
+  line-height: 1;
+}
+
+.vip-loading {
+  display: flex;
+  justify-content: center;
+  padding: 40px 0;
+}
+
+.vip-levels-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 20px 20px 0;
+  gap: 8px;
+}
+
+.vip-level-badge {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 8px;
+  border-radius: 12px;
+  border: 1px solid rgba(212, 175, 55, 0.2);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.vip-level-badge.current {
+  border-color: rgba(255, 216, 127, 0.6);
+  background: linear-gradient(160deg, rgba(140, 30, 0, 0.7), rgba(80, 0, 0, 0.7));
+  box-shadow: 0 0 14px rgba(212, 175, 55, 0.18);
+}
+
+.vip-badge-name {
+  font-size: 14px;
+  font-weight: 800;
+  color: #ffd87f;
+  line-height: 1;
+}
+
+.vip-badge-label {
+  font-size: 10px;
+  color: rgba(255, 229, 186, 0.56);
+  line-height: 1;
+}
+
+.vip-progress-wrap {
+  padding: 20px 20px 0;
+}
+
+.vip-progress-labels {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 6px;
+  font-size: 11px;
+  color: rgba(255, 229, 186, 0.6);
+}
+
+.vip-progress-pct {
+  font-weight: 700;
+  color: #ffd87f;
+  font-size: 12px;
+}
+
+.vip-progress-bar {
+  height: 8px;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+}
+
+.vip-progress-fill {
+  height: 100%;
+  border-radius: 99px;
+  background: linear-gradient(90deg, #d4af37 0%, #ffd700 100%);
+  transition: width 0.5s ease;
+  min-width: 4px;
+}
+
+.vip-progress-hint {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: rgba(255, 229, 186, 0.6);
+  text-align: center;
+}
+
+.vip-progress-hint strong {
+  color: #ffd87f;
+}
+
+.vip-next-bonus {
+  margin: 16px 20px 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: rgba(212, 175, 55, 0.08);
+  border: 1px solid rgba(212, 175, 55, 0.22);
+}
+
+.vip-next-bonus-label {
+  font-size: 13px;
+  color: rgba(255, 229, 186, 0.7);
+}
+
+.vip-next-bonus-amount {
+  font-size: 16px;
+  font-weight: 800;
+  color: #ffd87f;
+}
+
+.vip-rewards-section {
+  margin: 16px 20px 0;
+}
+
+.vip-rewards-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.vip-rewards-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff0c9;
+}
+
+.vip-claim-all-btn {
+  padding: 5px 14px;
+  border-radius: 99px;
+  border: 1px solid rgba(255, 216, 127, 0.5);
+  background: linear-gradient(180deg, #ffdf87 0%, #d4af37 100%);
+  color: #5a1b00;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.vip-claim-all-btn:disabled {
+  opacity: 0.5;
+}
+
+.vip-reward-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(212, 175, 55, 0.18);
+  background: rgba(255, 255, 255, 0.04);
+  margin-bottom: 8px;
+}
+
+.vip-reward-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.vip-reward-name {
+  font-size: 13px;
+  color: #fff0c9;
+  font-weight: 600;
+}
+
+.vip-reward-amount {
+  font-size: 15px;
+  font-weight: 800;
+  color: #ffd87f;
+}
+
+.vip-claim-btn {
+  padding: 7px 18px;
+  border-radius: 99px;
+  border: 1px solid rgba(255, 216, 127, 0.5);
+  background: linear-gradient(180deg, #ffdf87 0%, #d4af37 100%);
+  color: #5a1b00;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.vip-claim-btn:disabled {
+  opacity: 0.5;
 }
 
 .user-id {

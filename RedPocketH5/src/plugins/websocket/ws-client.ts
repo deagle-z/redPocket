@@ -16,8 +16,11 @@ type WsStatusHandler = (event?: Event | CloseEvent) => void
 interface ParsedMessage {
   event?: string
   data?: any
+  seq?: number
   origin: any
 }
+
+const WS_LAST_SEQ_KEY = 'ws_last_seq'
 
 const defaultOptions: Required<Omit<WsClientOptions, 'url'>> = {
   uid: '',
@@ -39,6 +42,9 @@ export class WsClient {
   private reconnectAttemptsLeft: number
   private reconnectLock = false
 
+  private lastSeq = 0
+  private syncExpiredHandlers = new Set<() => void>()
+
   private eventHandlers = new Map<string, Set<WsEventHandler>>()
   private openHandlers = new Set<WsStatusHandler>()
   private closeHandlers = new Set<WsStatusHandler>()
@@ -47,6 +53,9 @@ export class WsClient {
   constructor(options: WsClientOptions) {
     this.options = { ...defaultOptions, ...options }
     this.reconnectAttemptsLeft = this.options.maxReconnectAttempts
+    const stored = Number(localStorage.getItem(WS_LAST_SEQ_KEY) || '0')
+    if (stored > 0)
+      this.lastSeq = stored
   }
 
   on(event: string, handler: WsEventHandler) {
@@ -78,6 +87,11 @@ export class WsClient {
   onError(handler: WsStatusHandler) {
     this.errorHandlers.add(handler)
     return () => this.errorHandlers.delete(handler)
+  }
+
+  onSyncExpired(handler: () => void) {
+    this.syncExpiredHandlers.add(handler)
+    return () => this.syncExpiredHandlers.delete(handler)
   }
 
   connect() {
@@ -142,6 +156,8 @@ export class WsClient {
     this.reconnectLock = false
     this.startHeartbeat()
     console.warn('[ws] connected:', this.maskToken(this.latestUrl))
+    // Send sync request so server can replay any missed messages
+    this.send({ type: 'sync', lastSeq: this.lastSeq, scope: '' })
     this.openHandlers.forEach(handler => handler(evt))
   }
 
@@ -186,6 +202,22 @@ export class WsClient {
       })
       return
     }
+
+    // Handle sync_expired: server buffer is gone, trigger HTTP full refresh
+    if (parsed.event === 'sync_expired') {
+      this.syncExpiredHandlers.forEach(h => h())
+      return
+    }
+
+    // Track seq and send ACK
+    if (parsed.seq && parsed.seq > 0) {
+      if (parsed.seq > this.lastSeq) {
+        this.lastSeq = parsed.seq
+        localStorage.setItem(WS_LAST_SEQ_KEY, String(parsed.seq))
+      }
+      this.send({ type: 'ack', seq: parsed.seq })
+    }
+
     if (!parsed.event)
       return
 
@@ -202,6 +234,7 @@ export class WsClient {
       return {
         event: obj?.type || obj?.event,
         data: obj?.data,
+        seq: obj?.seq ? Number(obj.seq) : undefined,
         origin: obj,
       }
     }

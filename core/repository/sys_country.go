@@ -215,6 +215,7 @@ func GetCountryWithdrawFields(db *gorm.DB, countryCode string) (interface{}, err
 	if country.ID == 0 {
 		return nil, errors.New("国家不存在或已禁用")
 	}
+	log.Printf("WithdrawFields:%v\n", *country.WithdrawFields)
 	return parseFieldsJSON(country.WithdrawFields), nil
 }
 
