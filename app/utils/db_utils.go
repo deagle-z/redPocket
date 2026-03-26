@@ -74,10 +74,14 @@ func InitTables(prefix string) (firstInit bool, err error) {
 			&pojo.SysRole{},
 			&pojo.SysMenu{},
 			&pojo.ManageLog{},
+			&pojo.SysSourceChannel{},
 			&pojo.LuckyMoney{},
 			&pojo.LuckyHistory{},
 			&pojo.AuthGroup{},
 			&pojo.TgUser{},
+			&pojo.RechargeOrder{},
+			&pojo.WithdrawOrderBr{},
+			&pojo.TgUserRebateRecord{},
 			&pojo.PlatformProfitLedger{},
 		)
 		if err != nil {
@@ -102,17 +106,31 @@ func InitTables(prefix string) (firstInit bool, err error) {
 			_ = db.Exec("UPDATE `lucky_money_item` SET `win_fee` = 0").Error
 		}
 	}
+	// 修复 is_bot 列可能存在的 NULL 值，避免 AutoMigrate NOT NULL 报错
+	if db.Migrator().HasColumn(&pojo.TgUser{}, "is_bot") {
+		_ = db.Exec("UPDATE `tg_user` SET `is_bot` = false WHERE `is_bot` IS NULL").Error
+	}
 	// 兼容增量字段/新表变更
-	if err = db.AutoMigrate(&pojo.LuckyMoney{}, &pojo.LuckyMoneyItem{}, &pojo.PlatformProfitLedger{}); err != nil {
+	if err = db.AutoMigrate(
+		&pojo.SysSourceChannel{},
+		&pojo.TgUser{},
+		&pojo.RechargeOrder{},
+		&pojo.WithdrawOrderBr{},
+		&pojo.LuckyMoney{},
+		&pojo.LuckyHistory{},
+		&pojo.LuckyMoneyItem{},
+		&pojo.TgUserRebateRecord{},
+		&pojo.PlatformProfitLedger{},
+	); err != nil {
 		panic(err)
 	}
+	err = InitShardingDataBase(db, pojo.CashHistory{}, pojo.CashHistoryTableName, pojo.CashHistoryShards)
+	if err != nil {
+		panic(fmt.Sprintf("Failed to init table: %v", err))
+	}
 	if !db.Migrator().HasTable(pojo.AllCashHistoryShardingName) {
-		err = InitShardingDataBase(db, pojo.CashHistory{}, pojo.CashHistoryTableName, pojo.CashHistoryShards)
-		if err != nil {
-			panic(fmt.Sprintf("Failed to init table: %v", err))
-		}
-		CreateView(uint(pojo.CashHistoryShards), pojo.AllCashHistoryShardingName, pojo.CashHistoryTableName)
 		log.Printf("Init cash history success...\n")
 	}
+	CreateView(uint(pojo.CashHistoryShards), pojo.AllCashHistoryShardingName, pojo.CashHistoryTableName)
 	return firstInit, nil
 }

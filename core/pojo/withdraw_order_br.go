@@ -7,6 +7,7 @@ type WithdrawOrderBr struct { // 巴西地区提现订单（Pix/TED/DOC）
 	TenantId             int64      `json:"tenantId" gorm:"column:tenant_id;type:bigint"`                              // 租户ID
 	AppId                *int64     `json:"appId" gorm:"column:app_id;type:bigint"`                                    // 应用/项目ID（可选）
 	UserId               int64      `json:"userId" gorm:"column:user_id;type:bigint"`                                  // 用户ID
+	SourceChannelID      *int64     `json:"sourceChannelId" gorm:"column:source_channel_id;type:bigint;index"`         // 来源渠道ID
 	AccountId            *string    `json:"accountId" gorm:"column:account_id;type:varchar(64)"`                       // 账号ID/外部账号标识（可选）
 	OrderNo              string     `json:"orderNo" gorm:"column:order_no;type:varchar(64);uniqueIndex"`               // 平台提现订单号（唯一）
 	MerchantOrderNo      *string    `json:"merchantOrderNo" gorm:"column:merchant_order_no;type:varchar(64)"`          // 商户侧订单号/前端单号（可选）
@@ -63,6 +64,7 @@ type WithdrawOrderBrSet struct {
 	TenantId             int64      `json:"tenantId"`
 	AppId                *int64     `json:"appId"`
 	UserId               int64      `json:"userId"`
+	SourceChannelID      *int64     `json:"sourceChannelId"`
 	AccountId            *string    `json:"accountId"`
 	OrderNo              string     `json:"orderNo"`
 	MerchantOrderNo      *string    `json:"merchantOrderNo"`
@@ -106,6 +108,7 @@ type WithdrawOrderBrBack struct {
 	TenantId             int64      `json:"tenantId"`
 	AppId                *int64     `json:"appId"`
 	UserId               int64      `json:"userId"`
+	SourceChannelID      *int64     `json:"sourceChannelId"`
 	AccountId            *string    `json:"accountId"`
 	OrderNo              string     `json:"orderNo"`
 	MerchantOrderNo      *string    `json:"merchantOrderNo"`

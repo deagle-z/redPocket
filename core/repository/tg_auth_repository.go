@@ -150,6 +150,10 @@ func createTgUserFromAuth(tx *gorm.DB, req pojo.TgAuthLoginReq) (pojo.TgUser, er
 	username := nullableString(req.Username)
 	firstName := nullableString(displayName)
 	avatar := nullableString(req.PhotoURL)
+	sourceChannel, err := ResolveSourceChannelByCode(tx, 0, req.SourceChannelCode)
+	if err != nil {
+		return pojo.TgUser{}, err
+	}
 
 	for i := 0; i < 5; i++ {
 		inviteCode, err := generateInviteCode(tx)
@@ -161,14 +165,20 @@ func createTgUserFromAuth(tx *gorm.DB, req pojo.TgAuthLoginReq) (pojo.TgUser, er
 			return pojo.TgUser{}, err
 		}
 		newUser := pojo.TgUser{
-			Uid:        uid,
-			Username:   username,
-			FirstName:  firstName,
-			Avatar:     avatar,
-			TgID:       req.ID,
-			Status:     1,
-			InviteCode: &inviteCode,
-			TenantId:   0,
+			Uid:               uid,
+			Username:          username,
+			FirstName:         firstName,
+			Avatar:            avatar,
+			TgID:              req.ID,
+			Status:            1,
+			InviteCode:        &inviteCode,
+			SourceChannelID:   nil,
+			SourceChannelCode: nil,
+			TenantId:          0,
+		}
+		if sourceChannel != nil {
+			newUser.SourceChannelID = &sourceChannel.ID
+			newUser.SourceChannelCode = &sourceChannel.ChannelCode
 		}
 		if err := tx.Create(&newUser).Error; err != nil {
 			if strings.Contains(err.Error(), "Duplicate entry") || strings.Contains(err.Error(), "1062") {
@@ -251,7 +261,7 @@ func SendTgEmailCode(email string, ip string, isDev bool) (string, error) {
 }
 
 // RegisterTgByEmail 邮箱注册。
-func RegisterTgByEmail(db *gorm.DB, email string, password string, code string) (pojo.TgUser, error) {
+func RegisterTgByEmail(db *gorm.DB, email string, password string, code string, sourceChannelCode string) (pojo.TgUser, error) {
 	email = strings.TrimSpace(strings.ToLower(email))
 	code = strings.TrimSpace(code)
 	if !utils.IsEmail(email) {
@@ -298,6 +308,10 @@ func RegisterTgByEmail(db *gorm.DB, email string, password string, code string) 
 
 	var newUser pojo.TgUser
 	err = db.Transaction(func(tx *gorm.DB) error {
+		sourceChannel, err := ResolveSourceChannelByCode(tx, 0, sourceChannelCode)
+		if err != nil {
+			return err
+		}
 		for i := 0; i < 5; i++ {
 			//tgID := time.Now().UnixNano()/1e3 + int64(rand.IntN(1000))
 			inviteCode := fmt.Sprintf("%06d", rand.IntN(1000000))
@@ -306,14 +320,20 @@ func RegisterTgByEmail(db *gorm.DB, email string, password string, code string) 
 				return uidErr
 			}
 			user := pojo.TgUser{
-				Uid:        uid,
-				Username:   &username,
-				FirstName:  &displayName,
-				Password:   string(passwordHash),
-				Email:      email,
-				Status:     1,
-				InviteCode: &inviteCode,
-				TenantId:   0,
+				Uid:               uid,
+				Username:          &username,
+				FirstName:         &displayName,
+				Password:          string(passwordHash),
+				Email:             email,
+				Status:            1,
+				InviteCode:        &inviteCode,
+				SourceChannelID:   nil,
+				SourceChannelCode: nil,
+				TenantId:          0,
+			}
+			if sourceChannel != nil {
+				user.SourceChannelID = &sourceChannel.ID
+				user.SourceChannelCode = &sourceChannel.ChannelCode
 			}
 			if createErr := tx.Create(&user).Error; createErr != nil {
 				if strings.Contains(createErr.Error(), "Duplicate entry") || strings.Contains(createErr.Error(), "1062") {

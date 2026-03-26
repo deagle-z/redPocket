@@ -129,16 +129,17 @@ func refundExpiredLuckyMoney(db *gorm.DB, tablePrefix string, luckyID int64) err
 		}
 
 		cashHistory := pojo.CashHistory{
-			UserId:      sender.ID,
-			AwardUni:    fmt.Sprintf("lucky_expire_refund_%d", lucky.ID),
-			Amount:      refundAmount,
-			StartAmount: sender.Balance,
-			EndAmount:   sender.Balance + refundAmount,
-			CashMark:    "红包过期退回",
-			CashDesc:    fmt.Sprintf("红包#%d过期，退回未抢金额%.3f", lucky.ID, refundAmount),
-			Type:        pojo.CashHistoryTypeLuckyExpireRefund,
-			IsGift:      0,
-			FromUserId:  0,
+			UserId:          sender.ID,
+			AwardUni:        fmt.Sprintf("lucky_expire_refund_%d", lucky.ID),
+			Amount:          refundAmount,
+			StartAmount:     sender.Balance,
+			EndAmount:       sender.Balance + refundAmount,
+			CashMark:        "红包过期退回",
+			CashDesc:        fmt.Sprintf("红包#%d过期，退回未抢金额%.3f", lucky.ID, refundAmount),
+			Type:            pojo.CashHistoryTypeLuckyExpireRefund,
+			IsGift:          0,
+			FromUserId:      0,
+			SourceChannelID: lucky.SourceChannelID,
 		}
 		return tx.Create(&cashHistory).Error
 	})

@@ -142,11 +142,13 @@ func InitGin() {
 		adminGroup.GET("/sysCountry/:id", api.GetSysCountryById)
 		adminGroup.POST("/sysPayChannel/list", api.GetSysPayChannels)                  // 获取支付通道列表
 		adminGroup.GET("/sysPayChannel/:id", api.GetSysPayChannelById)                 // 获取支付通道详情
+		adminGroup.POST("/sysSourceChannel/list", api.GetSysSourceChannels)            // 获取投流来源渠道列表
+		adminGroup.GET("/sysSourceChannel/:id", api.GetSysSourceChannelById)           // 获取投流来源渠道详情
 		adminGroup.POST("/sysPayMethod/list", api.GetSysPayMethods)                    // 获取支付方式列表
 		adminGroup.GET("/sysPayMethod/:id", api.GetSysPayMethodById)                   // 获取支付方式详情
 		adminGroup.GET("/sysPayChannelMethod/:channelId", api.GetSysPayChannelMethods) // 获取通道绑定的支付方式
-		adminGroup.POST("/sysVipLevel/list", api.GetSysVipLevels)   // 获取VIP等级列表
-		adminGroup.GET("/sysVipLevel/:id", api.GetSysVipLevelById) // 获取VIP等级详情
+		adminGroup.POST("/sysVipLevel/list", api.GetSysVipLevels)                      // 获取VIP等级列表
+		adminGroup.GET("/sysVipLevel/:id", api.GetSysVipLevelById)                     // 获取VIP等级详情
 		adminGroup.POST("/sysCustomField/list", api.GetSysCustomFields)
 		adminGroup.GET("/sysCustomField/:id", api.GetSysCustomFieldById)
 		adminGroup.POST("/platformProfitLedger/list", api.GetPlatformProfitLedgers)
@@ -186,12 +188,14 @@ func InitGin() {
 		adminGroupLog.DELETE("/payChannel/:id", api.DelPayChannel)                        // 删除支付通道
 		adminGroupLog.POST("/sysPayChannel", api.SetSysPayChannel)                        // 创建或更新支付通道
 		adminGroupLog.DELETE("/sysPayChannel/:id", api.DelSysPayChannel)                  // 删除支付通道
+		adminGroupLog.POST("/sysSourceChannel", api.SetSysSourceChannel)                  // 创建或更新投流来源渠道
+		adminGroupLog.DELETE("/sysSourceChannel/:id", api.DelSysSourceChannel)            // 删除投流来源渠道
 		adminGroupLog.POST("/sysPayMethod", api.SetSysPayMethod)                          // 创建或更新支付方式
 		adminGroupLog.DELETE("/sysPayMethod/:id", api.DelSysPayMethod)                    // 删除支付方式
 		adminGroupLog.POST("/sysPayChannelMethod", api.SetSysPayChannelMethods)           // 设置通道支付方式
 		adminGroupLog.DELETE("/sysPayChannelMethod/:id", api.DelSysPayChannelMethod)      // 删除通道-方式绑定
-		adminGroupLog.POST("/sysVipLevel", api.SetSysVipLevel)          // 创建或更新VIP等级
-		adminGroupLog.DELETE("/sysVipLevel/:id", api.DelSysVipLevel)    // 删除VIP等级
+		adminGroupLog.POST("/sysVipLevel", api.SetSysVipLevel)                            // 创建或更新VIP等级
+		adminGroupLog.DELETE("/sysVipLevel/:id", api.DelSysVipLevel)                      // 删除VIP等级
 		adminGroupLog.POST("/sysCountry", api.SetSysCountry)
 		adminGroupLog.DELETE("/sysCountry/:id", api.DelSysCountry)
 		adminGroupLog.POST("/sysCustomField", api.SetSysCustomField)
@@ -277,7 +281,7 @@ func InitGin() {
 		appAuthRouter.POST("/lucky/grab", api.GrabRedPacketApp)
 		appAuthRouter.GET("/countries", api.GetAppCountries)                     // App端获取可用国家列表（IP置顶）
 		appAuthRouter.GET("/country/:code/recharge", api.GetCountryRechargeInfo) // App端获取国家充值信息（字段+通道+方式）
-		
+
 		appAuthRouter.GET("/country/:code/withdrawFields", api.GetCountryWithdrawFields)        // App端获取国家提现字段配置
 		appAuthRouter.GET("/country/:code/rechargeFields", api.GetCountryRechargeFields)        // App端获取国家充值字段配置
 		appAuthRouter.GET("/withdrawAccount/list", api.GetAppWithdrawAccounts)                  // App端获取当前用户提现账户列表
@@ -285,9 +289,9 @@ func InitGin() {
 		appAuthRouter.POST("/withdrawAccount/:id/update", api.AppUpdateWithdrawAccount)         // App端修改提现账户
 		appAuthRouter.DELETE("/withdrawAccount/:id", api.AppDelWithdrawAccount)                 // App端删除提现账户
 		appAuthRouter.POST("/withdrawAccount/:id/setDefault", api.AppSetDefaultWithdrawAccount) // App端设置默认提现账户
-		appAuthRouter.GET("/vip/progress", api.AppGetVipProgress)                                 // App端获取当前用户VIP进度
-		appAuthRouter.GET("/vip/rewards", api.AppGetClaimableVipRewards)                           // App端查询可领取VIP奖励列表
-		appAuthRouter.POST("/vip/rewards/:id/claim", api.AppClaimVipReward)                        // App端领取VIP奖励（id=0领取全部）
+		appAuthRouter.GET("/vip/progress", api.AppGetVipProgress)                               // App端获取当前用户VIP进度
+		appAuthRouter.GET("/vip/rewards", api.AppGetClaimableVipRewards)                        // App端查询可领取VIP奖励列表
+		appAuthRouter.POST("/vip/rewards/:id/claim", api.AppClaimVipReward)                     // App端领取VIP奖励（id=0领取全部）
 	}
 
 	log.Printf("Start server at %s:%d ", utils.GlobalConfig.Host, utils.GlobalConfig.Port)

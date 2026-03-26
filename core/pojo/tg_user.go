@@ -19,7 +19,7 @@ type TgUser struct {
 	Email    string  `gorm:"size:255;comment:email" json:"email"`
 	IsBot    bool    `gorm:"column:is_bot;not null;default:false;comment:是否机器人" json:"is_bot"`
 
-	TgID int64 `gorm:"column:tg_id;uniqueIndex;not null;comment:Telegram 用户ID（唯一且稳定）" json:"tg_id"`
+	TgID int64 `gorm:"column:tg_id;index;comment:Telegram 用户ID（唯一且稳定）" json:"tg_id"`
 
 	Balance           float64 `gorm:"type:decimal(20,3);not null;default:0.000;comment:账户可用余额" json:"balance"`
 	GiftAmount        float64 `gorm:"type:decimal(20,3);not null;default:0.000;comment:赠送余额（可用）" json:"gift_amount"`
@@ -28,41 +28,47 @@ type TgUser struct {
 	RebateAmount      float64 `gorm:"type:decimal(20,3);not null;default:0.000;comment:可用返水余额" json:"rebate_amount"`
 	RebateTotalAmount float64 `gorm:"type:decimal(20,3);not null;default:0.000;comment:累计返水金额" json:"rebate_total_amount"`
 
-	Status   int8 `gorm:"not null;default:1;index;comment:状态 1=正常 0=禁用 -1=删除" json:"status"`
+	Status       int8    `gorm:"not null;default:1;index;comment:状态 1=正常 0=禁用 -1=删除" json:"status"`
 	VipLevel     *int    `gorm:"column:vip_level;default:null;comment:当前VIP等级（对应sys_vip_level.level）" json:"vip_level"`
 	VipLevelName *string `gorm:"column:vip_level_name;size:32;default:null;comment:当前VIP等级名称（如VIP0/VIP1）" json:"vip_level_name"`
 
-	ParentID   *int64  `gorm:"index;comment:上级/邀请人用户ID" json:"parent_id"`
-	InviteCode *string `gorm:"size:32;index;comment:邀请码（用户自身的邀请码）" json:"invite_code"`
-	TenantId   int64   `json:"tenantId" gorm:"type:bigint;"`
+	ParentID          *int64  `gorm:"index;comment:上级/邀请人用户ID" json:"parent_id"`
+	InviteCode        *string `gorm:"size:32;index;comment:邀请码（用户自身的邀请码）" json:"invite_code"`
+	SourceChannelID   *int64  `gorm:"column:source_channel_id;type:bigint;index;comment:来源渠道ID" json:"source_channel_id"`
+	SourceChannelCode *string `gorm:"column:source_channel_code;size:64;index;comment:来源渠道编码快照" json:"source_channel_code"`
+	TenantId          int64   `json:"tenantId" gorm:"type:bigint;"`
 }
 
 type TgUserSearch struct {
 	PageInfo
-	TgID       int64  `json:"tgId"`       // Telegram用户ID
-	Username   string `json:"username"`   // Telegram用户名
-	FirstName  string `json:"firstName"`  // 展示名
-	IsBot      *bool  `json:"isBot"`      // 是否机器人
-	Status     *int8  `json:"status"`     // 状态
-	ParentID   *int64 `json:"parentId"`   // 上级/邀请人用户ID
-	InviteCode string `json:"inviteCode"` // 邀请码
-	TenantId   int64  `json:"tenantId"`
+	TgID              int64  `json:"tgId"`       // Telegram用户ID
+	Username          string `json:"username"`   // Telegram用户名
+	FirstName         string `json:"firstName"`  // 展示名
+	IsBot             *bool  `json:"isBot"`      // 是否机器人
+	Status            *int8  `json:"status"`     // 状态
+	ParentID          *int64 `json:"parentId"`   // 上级/邀请人用户ID
+	InviteCode        string `json:"inviteCode"` // 邀请码
+	SourceChannelID   int64  `json:"sourceChannelId"`
+	SourceChannelCode string `json:"sourceChannelCode"`
+	TenantId          int64  `json:"tenantId"`
 }
 
 type TgUserSet struct {
-	ID         int64   `json:"id"` // ID
-	Username   *string `json:"username"`
-	FirstName  *string `json:"firstName"`
-	Avatar     *string `json:"avatar"`
-	IsBot      bool    `json:"isBot"`
-	TgID       int64   `json:"tgId"`
-	Balance    float64 `json:"balance"`
-	GiftAmount float64 `json:"giftAmount"`
-	GiftTotal  float64 `json:"giftTotal"`
-	Status     int8    `json:"status"`
-	ParentID   *int64  `json:"parentId"`
-	InviteCode *string `json:"inviteCode"`
-	TenantId   int64   `json:"tenantId"`
+	ID                int64   `json:"id"` // ID
+	Username          *string `json:"username"`
+	FirstName         *string `json:"firstName"`
+	Avatar            *string `json:"avatar"`
+	IsBot             bool    `json:"isBot"`
+	TgID              int64   `json:"tgId"`
+	Balance           float64 `json:"balance"`
+	GiftAmount        float64 `json:"giftAmount"`
+	GiftTotal         float64 `json:"giftTotal"`
+	Status            int8    `json:"status"`
+	ParentID          *int64  `json:"parentId"`
+	InviteCode        *string `json:"inviteCode"`
+	SourceChannelID   *int64  `json:"sourceChannelId"`
+	SourceChannelCode *string `json:"sourceChannelCode"`
+	TenantId          int64   `json:"tenantId"`
 }
 
 type TgUserStatusSet struct {
@@ -87,9 +93,10 @@ type TgSendEmailCodeReq struct {
 }
 
 type TgEmailRegisterReq struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
-	Code     string `json:"code"`
+	Email             string `json:"email"`
+	Password          string `json:"password"`
+	Code              string `json:"code"`
+	SourceChannelCode string `json:"sourceChannelCode"`
 }
 
 type TgEmailLoginReq struct {
@@ -113,16 +120,16 @@ type TgUpdateAvatarReq struct {
 }
 
 type TgCurrentUserInfo struct {
-	Avatar        *string `json:"avatar"`
-	Balance       float64 `json:"balance"`
-	Uid           string  `json:"uid"`
-	Username      *string `json:"username"`
-	TgID          int64   `json:"tg_id"`
-	GiftAmount    float64 `json:"gift_amount"`
-	RebateAmount  float64 `json:"rebate_amount"`
-	Email         string  `json:"email"`
-	VipLevel      *int    `json:"vip_level"`
-	VipLevelName  *string `json:"vip_level_name"`
+	Avatar       *string `json:"avatar"`
+	Balance      float64 `json:"balance"`
+	Uid          string  `json:"uid"`
+	Username     *string `json:"username"`
+	TgID         int64   `json:"tg_id"`
+	GiftAmount   float64 `json:"gift_amount"`
+	RebateAmount float64 `json:"rebate_amount"`
+	Email        string  `json:"email"`
+	VipLevel     *int    `json:"vip_level"`
+	VipLevelName *string `json:"vip_level_name"`
 }
 
 type TgInviteStatsBack struct {
@@ -147,20 +154,22 @@ type TgInviteRuleConfigBack struct {
 }
 
 type TgUserBack struct {
-	ID         int64     `json:"id"`
-	CreatedAt  time.Time `json:"createdAt"`
-	UpdatedAt  time.Time `json:"updatedAt"`
-	Username   *string   `json:"username"`
-	FirstName  *string   `json:"firstName"`
-	Avatar     *string   `json:"avatar"`
-	TgID       int64     `json:"tgId"`
-	Balance    float64   `json:"balance"`
-	GiftAmount float64   `json:"giftAmount"`
-	GiftTotal  float64   `json:"giftTotal"`
-	Status     int8      `json:"status"`
-	ParentID   *int64    `json:"parentId"`
-	InviteCode *string   `json:"inviteCode"`
-	TenantId   int64     `json:"tenantId"`
+	ID                int64     `json:"id"`
+	CreatedAt         time.Time `json:"createdAt"`
+	UpdatedAt         time.Time `json:"updatedAt"`
+	Username          *string   `json:"username"`
+	FirstName         *string   `json:"firstName"`
+	Avatar            *string   `json:"avatar"`
+	TgID              int64     `json:"tgId"`
+	Balance           float64   `json:"balance"`
+	GiftAmount        float64   `json:"giftAmount"`
+	GiftTotal         float64   `json:"giftTotal"`
+	Status            int8      `json:"status"`
+	ParentID          *int64    `json:"parentId"`
+	InviteCode        *string   `json:"inviteCode"`
+	SourceChannelID   *int64    `json:"sourceChannelId"`
+	SourceChannelCode *string   `json:"sourceChannelCode"`
+	TenantId          int64     `json:"tenantId"`
 }
 
 type TgUserResp struct {
@@ -168,21 +177,23 @@ type TgUserResp struct {
 }
 
 type TgUserAdminBack struct {
-	ID         int64     `json:"id"`
-	CreatedAt  time.Time `json:"createdAt"`
-	UpdatedAt  time.Time `json:"updatedAt"`
-	Username   *string   `json:"username"`
-	FirstName  *string   `json:"firstName"`
-	Avatar     *string   `json:"avatar"`
-	IsBot      bool      `json:"isBot"`
-	TgID       int64     `json:"tgId"`
-	Balance    float64   `json:"balance"`
-	GiftAmount float64   `json:"giftAmount"`
-	GiftTotal  float64   `json:"giftTotal"`
-	Status     int8      `json:"status"`
-	ParentID   *int64    `json:"parentId"`
-	InviteCode *string   `json:"inviteCode"`
-	TenantId   int64     `json:"tenantId"`
+	ID                int64     `json:"id"`
+	CreatedAt         time.Time `json:"createdAt"`
+	UpdatedAt         time.Time `json:"updatedAt"`
+	Username          *string   `json:"username"`
+	FirstName         *string   `json:"firstName"`
+	Avatar            *string   `json:"avatar"`
+	IsBot             bool      `json:"isBot"`
+	TgID              int64     `json:"tgId"`
+	Balance           float64   `json:"balance"`
+	GiftAmount        float64   `json:"giftAmount"`
+	GiftTotal         float64   `json:"giftTotal"`
+	Status            int8      `json:"status"`
+	ParentID          *int64    `json:"parentId"`
+	InviteCode        *string   `json:"inviteCode"`
+	SourceChannelID   *int64    `json:"sourceChannelId"`
+	SourceChannelCode *string   `json:"sourceChannelCode"`
+	TenantId          int64     `json:"tenantId"`
 }
 
 type TgUserAdminResp struct {

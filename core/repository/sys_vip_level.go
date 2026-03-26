@@ -105,6 +105,13 @@ func GetAppVipProgress(db *gorm.DB, userID int64) (pojo.AppVipProgressBack, erro
 		Where("user_id = ? AND status = 1 AND pay_time >= ?", userID, monthStart).
 		Scan(&monthRechargeAmount)
 
+	// 累计下注流水（lucky_history 中 amount + lose_money 之和）
+	var totalBetAmount float64
+	db.Model(&pojo.LuckyHistory{}).
+		Select("COALESCE(SUM(amount + lose_money), 0)").
+		Where("user_id = ?", userID).
+		Scan(&totalBetAmount)
+
 	currentLevel := 0
 	if user.VipLevel != nil {
 		currentLevel = *user.VipLevel
@@ -157,28 +164,51 @@ func GetAppVipProgress(db *gorm.DB, userID int64) (pojo.AppVipProgressBack, erro
 		upgradeType = int(*nextRow.UpgradeType)
 	}
 
-	var currentVal, targetVal float64
 	if upgradeType == 2 {
-		currentVal = monthRechargeAmount
+		// 当月模式：仅看充值金额
+		result.CurrentValue = monthRechargeAmount
 		if nextRow.MonthRechargeAmount != nil {
-			targetVal = *nextRow.MonthRechargeAmount
+			result.TargetValue = *nextRow.MonthRechargeAmount
+		}
+		if result.TargetValue > 0 {
+			p := result.CurrentValue / result.TargetValue * 100
+			if p > 100 {
+				p = 100
+			}
+			result.Progress = p
 		}
 	} else {
-		currentVal = user.RechargeAmount
+		// 累计模式：充值金额和下注流水各占50%，两项进度的均值
+		var rechargeTarget, betTarget float64
 		if nextRow.TotalRechargeAmount != nil {
-			targetVal = *nextRow.TotalRechargeAmount
+			rechargeTarget = *nextRow.TotalRechargeAmount
 		}
-	}
-
-	result.CurrentValue = currentVal
-	result.TargetValue = targetVal
-
-	if targetVal > 0 {
-		p := currentVal / targetVal * 100
-		if p > 100 {
-			p = 100
+		if nextRow.TotalValidBet != nil {
+			betTarget = *nextRow.TotalValidBet
 		}
-		result.Progress = p
+
+		var rechargeProgress, betProgress float64
+		if rechargeTarget > 0 {
+			rechargeProgress = user.RechargeAmount / rechargeTarget * 100
+			if rechargeProgress > 100 {
+				rechargeProgress = 100
+			}
+		} else {
+			rechargeProgress = 100
+		}
+		if betTarget > 0 {
+			betProgress = totalBetAmount / betTarget * 100
+			if betProgress > 100 {
+				betProgress = 100
+			}
+		} else {
+			betProgress = 100
+		}
+
+		result.Progress = (rechargeProgress + betProgress) / 2
+		// CurrentValue / TargetValue 展示充值维度（主要指标）
+		result.CurrentValue = user.RechargeAmount
+		result.TargetValue = rechargeTarget
 	}
 
 	return result, nil
@@ -213,7 +243,14 @@ func CheckAndUpgradeVipLevel(db *gorm.DB, userID int64) {
 		Where("user_id = ? AND status = 1 AND pay_time >= ?", userID, monthStart).
 		Scan(&monthRechargeAmount)
 
-	// 5. 找出用户能达到的最高等级
+	// 5. 统计累计下注流水（lucky_history 中 amount + lose_money 之和）
+	var totalBetAmount float64
+	db.Model(&pojo.LuckyHistory{}).
+		Select("COALESCE(SUM(amount + lose_money), 0)").
+		Where("user_id = ?", userID).
+		Scan(&totalBetAmount)
+
+	// 6. 找出用户能达到的最高等级
 	currentLevel := 0
 	if user.VipLevel != nil {
 		currentLevel = *user.VipLevel
@@ -222,7 +259,7 @@ func CheckAndUpgradeVipLevel(db *gorm.DB, userID int64) {
 	var targetRow *pojo.SysVipLevel
 	for i := range levels {
 		lv := &levels[i]
-		if vipLevelQualifies(lv, user.RechargeAmount, int(totalRechargeCount), monthRechargeAmount) {
+		if vipLevelQualifies(lv, user.RechargeAmount, int(totalRechargeCount), monthRechargeAmount, totalBetAmount) {
 			if lv.Level > targetLevel {
 				targetLevel = lv.Level
 				targetRow = lv
@@ -360,7 +397,8 @@ func ClaimVipReward(db *gorm.DB, userID int64, rewardLogID int64, tablePrefix st
 
 // vipLevelQualifies 判断用户当前数据是否满足某 VIP 等级的升级条件。
 // nil 条件表示"无要求"，直接跳过。
-func vipLevelQualifies(lv *pojo.SysVipLevel, totalRecharge float64, totalCount int, monthRecharge float64) bool {
+// 累计模式：充值金额（占50%）与下注流水（占50%）必须同时满足。
+func vipLevelQualifies(lv *pojo.SysVipLevel, totalRecharge float64, totalCount int, monthRecharge float64, totalBet float64) bool {
 	upgradeType := 1
 	if lv.UpgradeType != nil {
 		upgradeType = int(*lv.UpgradeType)
@@ -371,11 +409,14 @@ func vipLevelQualifies(lv *pojo.SysVipLevel, totalRecharge float64, totalCount i
 			return false
 		}
 	} else {
-		// 累计条件
+		// 累计条件：充值次数、充值金额、下注流水必须同时满足
 		if lv.TotalRechargeCount != nil && totalCount < *lv.TotalRechargeCount {
 			return false
 		}
 		if lv.TotalRechargeAmount != nil && totalRecharge < *lv.TotalRechargeAmount {
+			return false
+		}
+		if lv.TotalValidBet != nil && totalBet < *lv.TotalValidBet {
 			return false
 		}
 	}

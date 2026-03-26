@@ -166,8 +166,8 @@
     "confirmTitle": "Confirm Exit?"
   },
   "appTopHeader": {
-    "brandTitle": "Lucky Packet Boom",
-    "brandSubtitle": "Lucky Thunder",
+    "brandTitle": "Lucky coins",
+    "brandSubtitle": "Lucky coins",
     "balance": "Balance"
   },
   "grabModal": {
@@ -454,6 +454,9 @@
     "commissionLabel": "Commission",
     "sectionAccount": "Account",
     "sectionPromo": "Promotion",
+    "sectionActivity": "Activities",
+    "activityRanking": "Leaderboard",
+    "activitySpin": "Lucky Spin",
     "sectionService": "Services",
     "logout": "Log Out",
     "logoutTitle": "Confirm Logout",
@@ -638,5 +641,11 @@
         "a": "Enable via platform entry once the feature is available."
       }
     }
+  },
+  "pwaInstall": {
+    "title": "Add to Home Screen",
+    "message": "Add this app to your home screen for quick access and a smoother experience.",
+    "confirm": "Install",
+    "cancel": "Not Now"
   }
 }

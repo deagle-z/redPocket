@@ -166,8 +166,8 @@
     "confirmTitle": "确认退出？"
   },
   "appTopHeader": {
-    "brandTitle": "红包雷游戏",
-    "brandSubtitle": "Lucky Thunder",
+    "brandTitle": "幸运数字",
+    "brandSubtitle": "Lucky coins",
     "balance": "余额"
   },
   "grabModal": {
@@ -374,7 +374,7 @@
     "dateCustom": "自定义",
     "txSendTitle": "发出红包 {amount}",
     "txGrabTitle": "抢到{sender}的红包 {amount}",
-    "thunderNo": "雷号: {no}",
+    "thunderNo": "尾号: {no}",
     "badgeWin": "中奖",
     "badgeLoss": "亏损",
     "summaryIncome": "总收入",
@@ -396,8 +396,8 @@
     "positionThunder": "中雷",
     "positionJoined": "已参与",
     "progress": "已抢 {grabbed}/{total} 个",
-    "thunderUnknown": "雷号: ?",
-    "thunderNo": "雷号: {no}",
+    "thunderUnknown": "尾号: ?",
+    "thunderNo": "尾号: {no}",
     "odds": "赔率: {rate} x",
     "timeRemaining": "剩余: {time}",
     "timeExpired": "过期: {time}",
@@ -454,6 +454,9 @@
     "commissionLabel": "佣金",
     "sectionAccount": "账户管理",
     "sectionPromo": "推广中心",
+    "sectionActivity": "活动中心",
+    "activityRanking": "排行榜",
+    "activitySpin": "幸运转盘",
     "sectionService": "其他服务",
     "logout": "退出登录",
     "logoutTitle": "确认退出",
@@ -638,5 +641,11 @@
         "a": "如果平台开放该功能，可在对应安全设置入口中启用。"
       }
     }
+  },
+  "pwaInstall": {
+    "title": "添加到主屏幕",
+    "message": "将应用添加到主屏幕，随时快速访问，体验更流畅。",
+    "confirm": "立即安装",
+    "cancel": "暂不安装"
   }
 }

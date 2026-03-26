@@ -105,7 +105,7 @@ func handleLuckyBotGrabTask(ctx context.Context, task *asynq.Task) error {
 		}
 	}
 
-	result, err := GrabRedPacket(db, payload.LuckyID, botUser.ID, payload.TablePrefix, grabIndex)
+	result, err := GrabRedPacket(db, payload.LuckyID, botUser.ID, payload.TablePrefix, grabIndex, nil)
 	if err != nil {
 		log.Printf("bot grab skipped. luckyId=%d botId=%d err=%v", payload.LuckyID, botUser.ID, err)
 	} else {

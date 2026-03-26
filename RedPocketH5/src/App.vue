@@ -5,6 +5,11 @@ import { STORAGE_TOKEN_KEY } from '@/stores/mutation-type'
 import wsClient, { connectWebSocket } from '@/plugins/websocket'
 import AppTopHeader from '@/components/AppTopHeader.vue'
 import TabBar from '@/components/TabBar.vue'
+import AppConfirmDialog from '@/components/AppConfirmDialog.vue'
+import { usePwaInstall } from '@/composables/usePwaInstall'
+
+const { t } = useI18n()
+const { showDialog: showPwaDialog, triggerInstall, dismiss: dismissPwa } = usePwaInstall()
 
 const routeCacheStore = useRouteCacheStore()
 const accessToken = useLocalStorage<string | null>(STORAGE_TOKEN_KEY, '')
@@ -75,6 +80,18 @@ watch(accessToken, (token, oldToken) => {
       </section>
     </router-view>
   </van-config-provider>
+
+  <AppConfirmDialog
+    v-model:show="showPwaDialog"
+    :title="t('pwaInstall.title')"
+    :confirm-text="t('pwaInstall.confirm')"
+    :cancel-text="t('pwaInstall.cancel')"
+    :close-on-click-overlay="false"
+    @confirm="triggerInstall"
+    @cancel="dismissPwa"
+  >
+    {{ t('pwaInstall.message') }}
+  </AppConfirmDialog>
 </template>
 
 <style scoped>

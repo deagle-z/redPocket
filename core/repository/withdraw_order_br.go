@@ -85,6 +85,13 @@ func SetWithdrawOrderBr(db *gorm.DB, req pojo.WithdrawOrderBrSet) (result pojo.W
 		}
 
 		_ = copier.Copy(&dbOrder, &req)
+		if dbOrder.SourceChannelID == nil && dbOrder.UserId > 0 {
+			sourceChannelID, _, sourceErr := LoadUserSourceChannelSnapshot(tx, dbOrder.UserId)
+			if sourceErr != nil {
+				return sourceErr
+			}
+			dbOrder.SourceChannelID = sourceChannelID
+		}
 		if err := tx.Create(&dbOrder).Error; err != nil {
 			return err
 		}
@@ -159,16 +166,17 @@ func deductWithdrawAmount(tx *gorm.DB, order pojo.WithdrawOrderBr) error {
 		return err
 	}
 	cashHistory := pojo.CashHistory{
-		UserId:      user.ID,
-		AwardUni:    fmt.Sprintf("withdraw_apply_%s", order.OrderNo),
-		Amount:      -order.Amount,
-		StartAmount: user.Balance,
-		EndAmount:   user.Balance - order.Amount,
-		CashMark:    "提现申请",
-		CashDesc:    fmt.Sprintf("提现申请%s，冻结/扣减%.2f", order.OrderNo, order.Amount),
-		Type:        pojo.CashHistoryTypeWithdrawApply,
-		IsGift:      0,
-		FromUserId:  0,
+		UserId:          user.ID,
+		AwardUni:        fmt.Sprintf("withdraw_apply_%s", order.OrderNo),
+		Amount:          -order.Amount,
+		StartAmount:     user.Balance,
+		EndAmount:       user.Balance - order.Amount,
+		CashMark:        "提现申请",
+		CashDesc:        fmt.Sprintf("提现申请%s，冻结/扣减%.2f", order.OrderNo, order.Amount),
+		Type:            pojo.CashHistoryTypeWithdrawApply,
+		IsGift:          0,
+		FromUserId:      0,
+		SourceChannelID: order.SourceChannelID,
 	}
 	return tx.Create(&cashHistory).Error
 }
@@ -190,16 +198,17 @@ func refundWithdrawAmount(tx *gorm.DB, order pojo.WithdrawOrderBr) error {
 		return err
 	}
 	cashHistory := pojo.CashHistory{
-		UserId:      user.ID,
-		AwardUni:    fmt.Sprintf("withdraw_refund_%s", order.OrderNo),
-		Amount:      order.Amount,
-		StartAmount: user.Balance,
-		EndAmount:   user.Balance + order.Amount,
-		CashMark:    "提现退回",
-		CashDesc:    fmt.Sprintf("提现订单%s失败/取消/退回，返还%.2f", order.OrderNo, order.Amount),
-		Type:        pojo.CashHistoryTypeWithdrawRefund,
-		IsGift:      0,
-		FromUserId:  0,
+		UserId:          user.ID,
+		AwardUni:        fmt.Sprintf("withdraw_refund_%s", order.OrderNo),
+		Amount:          order.Amount,
+		StartAmount:     user.Balance,
+		EndAmount:       user.Balance + order.Amount,
+		CashMark:        "提现退回",
+		CashDesc:        fmt.Sprintf("提现订单%s失败/取消/退回，返还%.2f", order.OrderNo, order.Amount),
+		Type:            pojo.CashHistoryTypeWithdrawRefund,
+		IsGift:          0,
+		FromUserId:      0,
+		SourceChannelID: order.SourceChannelID,
 	}
 	return tx.Create(&cashHistory).Error
 }

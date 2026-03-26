@@ -307,6 +307,7 @@ func GetLuckyMoneyAppDetail(db *gorm.DB, luckyID int64, currentUserID int64) (po
 		Amount       float64    `gorm:"column:amount"`
 		Number       int        `gorm:"column:number"`
 		Thunder      int        `gorm:"column:thunder"`
+		GameMode     int        `gorm:"column:game_mode"`
 		LoseRate     float64    `gorm:"column:lose_rate"`
 		Status       int        `gorm:"column:status"`
 		CreatedAt    time.Time  `gorm:"column:created_at"`
@@ -314,7 +315,7 @@ func GetLuckyMoneyAppDetail(db *gorm.DB, luckyID int64, currentUserID int64) (po
 	}
 	var base luckyBaseRow
 	err := db.Table("lucky_money l").
-		Select("l.id, l.sender_id, l.sender_name, u.avatar as sender_avatar, l.amount, l.number, l.thunder, l.lose_rate, l.status, l.created_at, l.expire_time").
+		Select("l.id, l.sender_id, l.sender_name, u.avatar as sender_avatar, l.amount, l.number, l.thunder, l.game_mode, l.lose_rate, l.status, l.created_at, l.expire_time").
 		Joins("left join tg_user u on u.id = l.sender_id").
 		Where("l.id = ?", luckyID).
 		Take(&base).Error
@@ -340,6 +341,7 @@ func GetLuckyMoneyAppDetail(db *gorm.DB, luckyID int64, currentUserID int64) (po
 		StatusText:   statusText,
 		Amount:       base.Amount,
 		Thunder:      base.Thunder,
+		GameMode:     base.GameMode,
 		LoseRate:     base.LoseRate,
 		ExpireTime:   expireAt,
 		GrabbedCount: 0,

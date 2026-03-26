@@ -221,7 +221,7 @@ func RegisterTgByEmail(ctx *gin.Context) {
 		return
 	}
 	db := ctx.MustGet("db").(*gorm.DB)
-	newUser, err := repository.RegisterTgByEmail(db, req.Email, req.Password, req.Code)
+	newUser, err := repository.RegisterTgByEmail(db, req.Email, req.Password, req.Code, req.SourceChannelCode)
 	if err != nil {
 		utils.ErrorBack(ctx, err.Error())
 		return
@@ -554,16 +554,17 @@ func TransferRebateToBalance(ctx *gin.Context) {
 		}
 
 		cashHistory := pojo.CashHistory{
-			UserId:      user.ID,
-			AwardUni:    fmt.Sprintf("rebate_transfer_%d_%d", user.ID, time.Now().UnixNano()),
-			Amount:      transferAmount,
-			StartAmount: user.Balance,
-			EndAmount:   newBalance,
-			CashMark:    "佣金转余额",
-			CashDesc:    fmt.Sprintf("返佣余额转入主余额%.3f", transferAmount),
-			Type:        pojo.CashHistoryTypeRebateTransfer,
-			IsGift:      0,
-			FromUserId:  0,
+			UserId:          user.ID,
+			AwardUni:        fmt.Sprintf("rebate_transfer_%d_%d", user.ID, time.Now().UnixNano()),
+			Amount:          transferAmount,
+			StartAmount:     user.Balance,
+			EndAmount:       newBalance,
+			CashMark:        "佣金转余额",
+			CashDesc:        fmt.Sprintf("返佣余额转入主余额%.3f", transferAmount),
+			Type:            pojo.CashHistoryTypeRebateTransfer,
+			IsGift:          0,
+			FromUserId:      0,
+			SourceChannelID: user.SourceChannelID,
 		}
 		return tx.Create(&cashHistory).Error
 	})

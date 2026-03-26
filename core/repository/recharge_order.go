@@ -221,6 +221,7 @@ func AppCreateRechargeOrder(db *gorm.DB, userID int64, req pojo.RechargeOrderApp
 	order := pojo.RechargeOrder{
 		TenantId:        tgUser.TenantId,
 		UserId:          userID,
+		SourceChannelID: tgUser.SourceChannelID,
 		OrderNo:         orderNo,
 		MerchantOrderNo: merchantOrderNo,
 		Channel:         req.Channel,
@@ -314,16 +315,17 @@ func ProcessRechargeOrderSuccess(db *gorm.DB, orderNo string, providerTradeNo st
 		}
 
 		cashHistory := pojo.CashHistory{
-			UserId:      user.ID,
-			AwardUni:    fmt.Sprintf("recharge_%s", order.OrderNo),
-			Amount:      creditAmount,
-			StartAmount: user.Balance,
-			EndAmount:   user.Balance + creditAmount,
-			CashMark:    "充值到账",
-			CashDesc:    fmt.Sprintf("充值订单%s到账", order.OrderNo),
-			Type:        pojo.CashHistoryTypeRechargeCredit,
-			IsGift:      0,
-			FromUserId:  0,
+			UserId:          user.ID,
+			AwardUni:        fmt.Sprintf("recharge_%s", order.OrderNo),
+			Amount:          creditAmount,
+			StartAmount:     user.Balance,
+			EndAmount:       user.Balance + creditAmount,
+			CashMark:        "充值到账",
+			CashDesc:        fmt.Sprintf("充值订单%s到账", order.OrderNo),
+			Type:            pojo.CashHistoryTypeRechargeCredit,
+			IsGift:          0,
+			FromUserId:      0,
+			SourceChannelID: order.SourceChannelID,
 		}
 		if err := tx.Create(&cashHistory).Error; err != nil {
 			return err
@@ -331,28 +333,30 @@ func ProcessRechargeOrderSuccess(db *gorm.DB, orderNo string, providerTradeNo st
 
 		if bonusAmount > 0 {
 			giftHistory := pojo.CashHistory{
-				UserId:      user.ID,
-				AwardUni:    fmt.Sprintf("recharge_gift_%s", order.OrderNo),
-				Amount:      bonusAmount,
-				StartAmount: user.Balance + order.Amount - order.Fee,
-				EndAmount:   user.Balance + creditAmount,
-				CashMark:    "首充赠送",
-				CashDesc:    fmt.Sprintf("首充赠送彩金%s，赠送%.3f", order.OrderNo, bonusAmount),
-				Type:        pojo.CashHistoryTypeRechargeCredit,
-				IsGift:      1,
-				FromUserId:  0,
+				UserId:          user.ID,
+				AwardUni:        fmt.Sprintf("recharge_gift_%s", order.OrderNo),
+				Amount:          bonusAmount,
+				StartAmount:     user.Balance + order.Amount - order.Fee,
+				EndAmount:       user.Balance + creditAmount,
+				CashMark:        "首充赠送",
+				CashDesc:        fmt.Sprintf("首充赠送彩金%s，赠送%.3f", order.OrderNo, bonusAmount),
+				Type:            pojo.CashHistoryTypeRechargeCredit,
+				IsGift:          1,
+				FromUserId:      0,
+				SourceChannelID: order.SourceChannelID,
 			}
 			if err := tx.Create(&giftHistory).Error; err != nil {
 				return err
 			}
 			if err := CreatePlatformProfitLedgerIfAbsent(tx, pojo.PlatformProfitLedger{
-				TenantId:      order.TenantId,
-				UserId:        user.ID,
-				SourceType:    pojo.PlatformProfitSourceRechargeGift,
-				SourceId:      giftHistory.AwardUni,
-				IncomeAmount:  0,
-				ExpenseAmount: bonusAmount,
-				Remark:        giftHistory.CashDesc,
+				TenantId:        order.TenantId,
+				UserId:          user.ID,
+				SourceChannelID: order.SourceChannelID,
+				SourceType:      pojo.PlatformProfitSourceRechargeGift,
+				SourceId:        giftHistory.AwardUni,
+				IncomeAmount:    0,
+				ExpenseAmount:   bonusAmount,
+				Remark:          giftHistory.CashDesc,
 			}); err != nil {
 				return err
 			}
@@ -471,16 +475,17 @@ func rechargeOrderDevCallback(db *gorm.DB, orderNo string, tablePrefix string) e
 		}
 
 		cashHistory := pojo.CashHistory{
-			UserId:      user.ID,
-			AwardUni:    fmt.Sprintf("recharge_%s", order.OrderNo),
-			Amount:      creditAmount,
-			StartAmount: user.Balance,
-			EndAmount:   user.Balance + creditAmount,
-			CashMark:    "充值到账",
-			CashDesc:    fmt.Sprintf("充值订单%s到账", order.OrderNo),
-			Type:        pojo.CashHistoryTypeRechargeCredit,
-			IsGift:      0,
-			FromUserId:  0,
+			UserId:          user.ID,
+			AwardUni:        fmt.Sprintf("recharge_%s", order.OrderNo),
+			Amount:          creditAmount,
+			StartAmount:     user.Balance,
+			EndAmount:       user.Balance + creditAmount,
+			CashMark:        "充值到账",
+			CashDesc:        fmt.Sprintf("充值订单%s到账", order.OrderNo),
+			Type:            pojo.CashHistoryTypeRechargeCredit,
+			IsGift:          0,
+			FromUserId:      0,
+			SourceChannelID: order.SourceChannelID,
 		}
 		if err := tx.Create(&cashHistory).Error; err != nil {
 			return err
@@ -488,28 +493,30 @@ func rechargeOrderDevCallback(db *gorm.DB, orderNo string, tablePrefix string) e
 
 		if bonusAmount > 0 {
 			giftCashHistory := pojo.CashHistory{
-				UserId:      user.ID,
-				AwardUni:    fmt.Sprintf("recharge_gift_%s", order.OrderNo),
-				Amount:      bonusAmount,
-				StartAmount: user.Balance + order.Amount - order.Fee,
-				EndAmount:   user.Balance + creditAmount,
-				CashMark:    "首充赠送",
-				CashDesc:    fmt.Sprintf("首充赠送彩金%s，赠送%.3f", order.OrderNo, bonusAmount),
-				Type:        pojo.CashHistoryTypeRechargeCredit,
-				IsGift:      1,
-				FromUserId:  0,
+				UserId:          user.ID,
+				AwardUni:        fmt.Sprintf("recharge_gift_%s", order.OrderNo),
+				Amount:          bonusAmount,
+				StartAmount:     user.Balance + order.Amount - order.Fee,
+				EndAmount:       user.Balance + creditAmount,
+				CashMark:        "首充赠送",
+				CashDesc:        fmt.Sprintf("首充赠送彩金%s，赠送%.3f", order.OrderNo, bonusAmount),
+				Type:            pojo.CashHistoryTypeRechargeCredit,
+				IsGift:          1,
+				FromUserId:      0,
+				SourceChannelID: order.SourceChannelID,
 			}
 			if err := tx.Create(&giftCashHistory).Error; err != nil {
 				return err
 			}
 			if err := CreatePlatformProfitLedgerIfAbsent(tx, pojo.PlatformProfitLedger{
-				TenantId:      order.TenantId,
-				UserId:        user.ID,
-				SourceType:    pojo.PlatformProfitSourceRechargeGift,
-				SourceId:      giftCashHistory.AwardUni,
-				IncomeAmount:  0,
-				ExpenseAmount: bonusAmount,
-				Remark:        giftCashHistory.CashDesc,
+				TenantId:        order.TenantId,
+				UserId:          user.ID,
+				SourceChannelID: order.SourceChannelID,
+				SourceType:      pojo.PlatformProfitSourceRechargeGift,
+				SourceId:        giftCashHistory.AwardUni,
+				IncomeAmount:    0,
+				ExpenseAmount:   bonusAmount,
+				Remark:          giftCashHistory.CashDesc,
 			}); err != nil {
 				return err
 			}
@@ -565,19 +572,20 @@ func applyInviteFirstRechargeReward(tx *gorm.DB, order pojo.RechargeOrder, subUs
 	}
 	remark := "first_recharge_reward"
 	record := pojo.TgUserRebateRecord{
-		TenantId:       &order.TenantId,
-		SubUserId:      subUser.ID,
-		ParentUserId:   parentID,
-		SourceType:     5,
-		SourceOrderId:  order.OrderNo,
-		SourceAmount:   order.Amount,
-		RebateRate:     rate,
-		RebateAmount:   rebateAmount,
-		Currency:       currency,
-		Status:         1,
-		SettledAt:      &now,
-		IdempotencyKey: idempotencyKey,
-		Remark:         &remark,
+		TenantId:        &order.TenantId,
+		SubUserId:       subUser.ID,
+		ParentUserId:    parentID,
+		SourceChannelID: order.SourceChannelID,
+		SourceType:      5,
+		SourceOrderId:   order.OrderNo,
+		SourceAmount:    order.Amount,
+		RebateRate:      rate,
+		RebateAmount:    rebateAmount,
+		Currency:        currency,
+		Status:          1,
+		SettledAt:       &now,
+		IdempotencyKey:  idempotencyKey,
+		Remark:          &remark,
 	}
 	if err := tx.Create(&record).Error; err != nil {
 		return err

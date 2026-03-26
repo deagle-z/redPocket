@@ -131,13 +131,17 @@ const accountMenus = computed<MenuItem[]>(() => [
   { key: 'recharge', label: t('profilePage.accountRecharge'), icon: normalizeInlineSvg(downIcon) },
   { key: 'withdraw', label: t('profilePage.accountWithdraw'), icon: normalizeInlineSvg(upIcon) },
   { key: 'withdraw-account', label: t('profilePage.accountWithdrawAccount'), icon: normalizeInlineSvg(bankCardIcon) },
-  // { key: 'lucky-reward', label: t('profilePage.accountLuckyReward'), icon: gamesIcon },
 ])
 
 const promoMenus = computed<MenuItem[]>(() => [
   { key: 'team', label: t('profilePage.promoTeam'), icon: normalizeInlineSvg(teamIcon) },
   { key: 'invite', label: t('profilePage.promoInvite'), icon: normalizeInlineSvg(shareIcon), extra: t('profilePage.promoInviteExtra'), tone: 'success' },
   { key: 'rebate', label: t('profilePage.promoRebate'), icon: normalizeInlineSvg(chartBarAltIcon) },
+])
+
+const activityMenus = computed<MenuItem[]>(() => [
+  { key: 'ranking', label: t('profilePage.activityRanking'), icon: normalizeInlineSvg(chartBarAltIcon) },
+  { key: 'spin', label: t('profilePage.activitySpin'), icon: normalizeInlineSvg(gamesIcon) },
 ])
 
 const otherMenus = computed<MenuItem[]>(() => [
@@ -356,6 +360,12 @@ function onMenuClick(item: MenuItem) {
     case 'rebate':
       goByPath('/rebate')
       break
+    case 'ranking':
+      goByPath('/ranking')
+      break
+    case 'spin':
+      goByPath('/spin')
+      break
     case 'language':
       openLanguagePopup()
       break
@@ -460,6 +470,22 @@ async function handleConfirmLogout() {
     </p>
     <section class="menu-card">
       <button v-for="item in promoMenus" :key="item.key" type="button" class="menu-row" @click="onMenuClick(item)">
+        <div class="menu-left">
+          <span class="menu-icon" v-html="item.icon" />
+          <span class="menu-text">{{ item.label }}</span>
+        </div>
+        <div class="menu-right">
+          <span v-if="item.extra" class="menu-extra" :class="item.tone">{{ item.extra }}</span>
+          <van-icon name="arrow" class="menu-arrow" />
+        </div>
+      </button>
+    </section>
+
+    <p class="section-label">
+      {{ t('profilePage.sectionActivity') }}
+    </p>
+    <section class="menu-card">
+      <button v-for="item in activityMenus" :key="item.key" type="button" class="menu-row" @click="onMenuClick(item)">
         <div class="menu-left">
           <span class="menu-icon" v-html="item.icon" />
           <span class="menu-text">{{ item.label }}</span>

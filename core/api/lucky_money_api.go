@@ -384,7 +384,7 @@ func GrabRedPacketApp(ctx *gin.Context) {
 		}
 	}
 	db := ctx.MustGet("db").(*gorm.DB)
-	result, err := services.GrabRedPacket(db, req.LuckyID, userID, hostInfo.TablePrefix, grabIndex)
+	result, err := services.GrabRedPacket(db, req.LuckyID, userID, hostInfo.TablePrefix, grabIndex, req.OddEvenGuess)
 	if err != nil {
 		utils.ErrorBack(ctx, err.Error())
 		return

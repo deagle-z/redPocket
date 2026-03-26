@@ -816,18 +816,19 @@ func (s *TelegramBotService) processRechargeAmount(ctx context.Context, telegram
 	db := utils.NewPrefixDb(s.TablePrefix)
 	orderNo := s.generateRechargeOrderNo(user.ID)
 	rechargeOrder := pojo.RechargeOrder{
-		TenantId:    0,
-		UserId:      user.ID,
-		OrderNo:     orderNo,
-		Channel:     "telegram",
-		PayMethod:   strPtr("manual"),
-		Currency:    "BRL",
-		Amount:      amountValue,
-		Fee:         0,
-		BonusAmount: 0,
-		Status:      0,
-		Title:       strPtr("Telegram 充值"),
-		Remark:      strPtr(fmt.Sprintf("tg:%d", telegramUserID)),
+		TenantId:        0,
+		UserId:          user.ID,
+		SourceChannelID: user.SourceChannelID,
+		OrderNo:         orderNo,
+		Channel:         "telegram",
+		PayMethod:       strPtr("manual"),
+		Currency:        "BRL",
+		Amount:          amountValue,
+		Fee:             0,
+		BonusAmount:     0,
+		Status:          0,
+		Title:           strPtr("Telegram 充值"),
+		Remark:          strPtr(fmt.Sprintf("tg:%d", telegramUserID)),
 	}
 
 	if err := db.Create(&rechargeOrder).Error; err != nil {
@@ -869,14 +870,15 @@ func (s *TelegramBotService) manualRechargeCallback(db *gorm.DB, orderID int64) 
 	startAmount := user.Balance
 	endAmount := utils.ToMoney(startAmount).Add(utils.ToMoney(order.Amount)).ToDollars()
 	cashHistory := pojo.CashHistory{
-		UserId:      user.ID,
-		AwardUni:    order.OrderNo,
-		Amount:      order.Amount,
-		StartAmount: startAmount,
-		EndAmount:   endAmount,
-		CashMark:    "充值到账",
-		CashDesc:    fmt.Sprintf("订单号:%s", order.OrderNo),
-		FromUserId:  0,
+		UserId:          user.ID,
+		AwardUni:        order.OrderNo,
+		Amount:          order.Amount,
+		StartAmount:     startAmount,
+		EndAmount:       endAmount,
+		CashMark:        "充值到账",
+		CashDesc:        fmt.Sprintf("订单号:%s", order.OrderNo),
+		FromUserId:      0,
+		SourceChannelID: order.SourceChannelID,
 	}
 	if err := tx.Create(&cashHistory).Error; err != nil {
 		tx.Rollback()
@@ -959,19 +961,20 @@ func (s *TelegramBotService) applyInviteFirstRechargeReward(tx *gorm.DB, order p
 	}
 	remark := strPtr("first_recharge_reward")
 	record := pojo.TgUserRebateRecord{
-		TenantId:       &order.TenantId,
-		SubUserId:      user.ID,
-		ParentUserId:   parentID,
-		SourceType:     5,
-		SourceOrderId:  order.OrderNo,
-		SourceAmount:   order.Amount,
-		RebateRate:     rate,
-		RebateAmount:   rebateAmount,
-		Currency:       currency,
-		Status:         1,
-		SettledAt:      &now,
-		IdempotencyKey: idempotencyKey,
-		Remark:         remark,
+		TenantId:        &order.TenantId,
+		SubUserId:       user.ID,
+		ParentUserId:    parentID,
+		SourceChannelID: order.SourceChannelID,
+		SourceType:      5,
+		SourceOrderId:   order.OrderNo,
+		SourceAmount:    order.Amount,
+		RebateRate:      rate,
+		RebateAmount:    rebateAmount,
+		Currency:        currency,
+		Status:          1,
+		SettledAt:       &now,
+		IdempotencyKey:  idempotencyKey,
+		Remark:          remark,
 	}
 	if err := tx.Create(&record).Error; err != nil {
 		return err
@@ -1777,7 +1780,7 @@ func (s *TelegramBotService) HandleGrabCallback(chatID int64, userID int64, luck
 	}
 
 	// 调用服务层抢红包（使用系统用户ID）
-	result, err := services.GrabRedPacket(s.DB, luckyID, user.ID, s.TablePrefix, grabIndex)
+	result, err := services.GrabRedPacket(s.DB, luckyID, user.ID, s.TablePrefix, grabIndex, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -2218,19 +2221,20 @@ func (s *TelegramBotService) createRebateRecord(tx *gorm.DB, level int, order po
 	}
 
 	record := pojo.TgUserRebateRecord{
-		TenantId:       &order.TenantId,
-		SubUserId:      subUserID,
-		ParentUserId:   parentUserID,
-		SourceType:     sourceType,
-		SourceOrderId:  order.OrderNo,
-		SourceAmount:   order.Amount,
-		RebateRate:     rate,
-		RebateAmount:   rebateAmount,
-		Currency:       order.Currency,
-		Status:         1,
-		SettledAt:      &now,
-		IdempotencyKey: idempotencyKey,
-		Remark:         strPtr(fmt.Sprintf("level_%d_rebate", level)),
+		TenantId:        &order.TenantId,
+		SubUserId:       subUserID,
+		ParentUserId:    parentUserID,
+		SourceChannelID: order.SourceChannelID,
+		SourceType:      sourceType,
+		SourceOrderId:   order.OrderNo,
+		SourceAmount:    order.Amount,
+		RebateRate:      rate,
+		RebateAmount:    rebateAmount,
+		Currency:        order.Currency,
+		Status:          1,
+		SettledAt:       &now,
+		IdempotencyKey:  idempotencyKey,
+		Remark:          strPtr(fmt.Sprintf("level_%d_rebate", level)),
 	}
 
 	if err := tx.Create(&record).Error; err != nil {
