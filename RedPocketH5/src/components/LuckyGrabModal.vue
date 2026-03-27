@@ -2,6 +2,7 @@
 import { onBeforeUnmount, watch } from 'vue'
 import { showToast } from 'vant'
 import { grabLuckyPacket } from '@/api/user'
+import { resolveOddEvenGuess } from '@/utils/lucky-play'
 import { formatCurrency } from '@/utils/currency'
 import imgCoin from '@/assets/svg/coin.svg'
 
@@ -10,6 +11,7 @@ interface Props {
   luckyId?: number
   grabIndex?: number
   senderName?: string
+  choice?: string
   closeOnClickOverlay?: boolean
   showResultToast?: boolean
 }
@@ -18,6 +20,7 @@ const props = withDefaults(defineProps<Props>(), {
   luckyId: 0,
   grabIndex: 0,
   senderName: '',
+  choice: '',
   closeOnClickOverlay: true,
   showResultToast: true,
 })
@@ -38,10 +41,15 @@ const resultAmountText = ref('')
 const resultAmountValue = ref(0)
 const isAmountHidden = ref(false)
 const isThunderHit = ref(false)
+const currentGameMode = ref<0 | 1 | null>(null)
 const loseMoneyText = ref(formatCurrency(0))
+const resultMessageText = ref('')
+const resolvedOddEvenGuess = computed(() => resolveOddEvenGuess(props.choice))
 const displayAmountText = computed(() => {
   if (!resultReady.value)
     return ''
+  if (currentGameMode.value === 1 && isThunderHit.value)
+    return t('grabModal.parityLoseShort')
   return isThunderHit.value ? t('grabModal.thunderShort') : resultAmountText.value
 })
 const blessingText = computed(() => {
@@ -49,9 +57,7 @@ const blessingText = computed(() => {
     return t('grabModal.loading')
   if (!resultReady.value)
     return t('grabModal.openingHint')
-  if (isThunderHit.value)
-    return t('grabModal.thunder', { amount: resultAmountText.value, loseMoney: loseMoneyText.value })
-  return t('grabModal.win')
+  return resultMessageText.value || t('grabModal.win')
 })
 
 function resetState() {
@@ -63,7 +69,9 @@ function resetState() {
   resultAmountValue.value = 0
   isAmountHidden.value = false
   isThunderHit.value = false
+  currentGameMode.value = null
   loseMoneyText.value = formatCurrency(0)
+  resultMessageText.value = ''
 }
 
 function closeModal() {
@@ -105,6 +113,31 @@ function formatAmount(value: number) {
   return formatCurrency(Number(value || 0))
 }
 
+function resolveResultMessage(data: any) {
+  const gameMode = Number(data?.gameMode)
+  const guess = Number(data?.guess ?? data?.oddEvenGuess ?? resolvedOddEvenGuess.value ?? -1)
+  const guessLabel = guess === 1 ? t('grabModal.guessOdd') : t('grabModal.guessEven')
+
+  if (gameMode === 1 && (guess === 0 || guess === 1)) {
+    if (isThunderHit.value) {
+      return t('grabModal.parityLose', {
+        guess: guessLabel,
+        amount: resultAmountText.value,
+        loseMoney: loseMoneyText.value,
+      })
+    }
+    return t('grabModal.parityWin', {
+      guess: guessLabel,
+      amount: resultAmountText.value,
+    })
+  }
+
+  if (isThunderHit.value)
+    return t('grabModal.thunder', { amount: resultAmountText.value, loseMoney: loseMoneyText.value })
+
+  return t('grabModal.winAmount', { amount: resultAmountText.value })
+}
+
 async function submitGrab(): Promise<boolean> {
   const luckyId = Number(props.luckyId || 0)
   const grabIndex = Number(props.grabIndex || 0)
@@ -117,7 +150,10 @@ async function submitGrab(): Promise<boolean> {
     const { data } = await grabLuckyPacket({
       luckyId,
       grabIndex: grabIndex > 0 ? grabIndex : undefined,
+      oddEvenGuess: resolvedOddEvenGuess.value ?? undefined,
     })
+    const resolvedGameMode = Number(data?.gameMode)
+    currentGameMode.value = resolvedGameMode === 1 ? 1 : 0
     isThunderHit.value = data?.isThunder === 1 || data?.isThunder === '1'
     isAmountHidden.value = data?.isAmountHidden === 1 || data?.isAmountHidden === '1'
     const rawAmount = Number(data?.amount ?? data?.grabAmount ?? 0)
@@ -125,9 +161,10 @@ async function submitGrab(): Promise<boolean> {
     resultAmountValue.value = rawAmount
     resultAmountText.value = formatAmount(rawAmount)
     loseMoneyText.value = formatAmount(rawLoseMoney)
+    resultMessageText.value = resolveResultMessage(data)
     resultReady.value = true
     if (props.showResultToast)
-      showToast(data?.message || t('grabModal.grabSuccess'))
+      showToast(resultMessageText.value || data?.message || t('grabModal.grabSuccess'))
     const emitData = isAmountHidden.value
       ? {
           ...data,

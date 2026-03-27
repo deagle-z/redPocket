@@ -2,27 +2,34 @@
 import { showToast } from 'vant'
 import { getCurrentTgInviteRuleConfig, sendLuckyPacket } from '@/api/user'
 import language1Icon from '@/assets/svg/language-1.svg'
+import { resolveGameMode } from '@/utils/lucky-play'
+import type { LuckyPlayType } from '@/utils/lucky-play'
 
 const props = withDefaults(defineProps<{
   variant?: 'page' | 'modal'
   showIntro?: boolean
   showTips?: boolean
   autoReset?: boolean
+  defaultPlayType?: LuckyPlayType
+  lockPlayType?: boolean
 }>(), {
   variant: 'page',
   showIntro: true,
   showTips: true,
   autoReset: false,
+  defaultPlayType: 'thunder',
+  lockPlayType: false,
 })
 
 const emit = defineEmits<{
-  (e: 'success', payload: { id: number, amount: number, thunder: number }): void
+  (e: 'success', payload: { id: number, amount: number, thunder?: number, playType: LuckyPlayType }): void
 }>()
 
 const { t } = useI18n()
 
 const amountPresets = [100, 200, 300, 500, 1000, 2000]
 const mineOptions = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+const selectedPlayType = ref<LuckyPlayType>(props.defaultPlayType)
 const selectedAmountPreset = ref<number | null>(null)
 const selectedMine = ref<number | null>(0)
 const amountInput = ref('')
@@ -36,6 +43,7 @@ const rootClass = computed(() => [
   'send-packet-form',
   `send-packet-form--${props.variant}`,
 ])
+const showMineSection = computed(() => selectedPlayType.value === 'thunder')
 
 const availableAmountPresets = computed(() => {
   return amountPresets.filter(value => value >= amountMin.value && value <= amountMax.value)
@@ -50,7 +58,8 @@ const amountRangeText = computed(() => {
 
 const canSubmit = computed(() => {
   const amount = Number(amountInput.value)
-  return selectedMine.value !== null
+  const hasValidThunder = selectedPlayType.value === 'parity' || selectedMine.value !== null
+  return hasValidThunder
     && Number.isFinite(amount)
     && amount >= amountMin.value
     && amount <= amountMax.value
@@ -59,6 +68,7 @@ const canSubmit = computed(() => {
 
 function resetForm() {
   selectedAmountPreset.value = null
+  selectedPlayType.value = props.defaultPlayType
   selectedMine.value = 0
   amountInput.value = ''
 }
@@ -76,6 +86,16 @@ function onAmountInput(event: Event) {
 
 function selectMine(value: number) {
   selectedMine.value = value
+}
+
+function selectPlayType(value: LuckyPlayType) {
+  if (props.lockPlayType)
+    return
+  selectedPlayType.value = value
+  if (value === 'parity')
+    selectedMine.value = null
+  else if (selectedMine.value === null)
+    selectedMine.value = 0
 }
 
 async function loadSendRangeConfig() {
@@ -108,7 +128,8 @@ async function submitPacket() {
     showToast(amountRangeText.value)
     return
   }
-  if (!amount || amount <= 0 || !Number.isInteger(thunder) || thunder < 0 || thunder > 9) {
+  const requiresThunder = selectedPlayType.value === 'thunder'
+  if (!amount || amount <= 0 || (requiresThunder && (!Number.isInteger(thunder) || thunder < 0 || thunder > 9))) {
     showToast(t('sendPacketPage.invalidInput'))
     return
   }
@@ -117,12 +138,17 @@ async function submitPacket() {
   try {
     const { data } = await sendLuckyPacket({
       amount,
-      thunder,
-      chatId: 0,
+      gameMode: resolveGameMode(selectedPlayType.value),
+      thunder: requiresThunder ? thunder : undefined,
     })
     const id = Number(data?.id || 0)
     showToast(t('sendPacketPage.sendSuccess', { id: id || '-' }))
-    emit('success', { id, amount, thunder })
+    emit('success', {
+      id,
+      amount,
+      thunder: requiresThunder ? thunder : undefined,
+      playType: selectedPlayType.value,
+    })
     if (props.autoReset)
       resetForm()
   }
@@ -136,6 +162,14 @@ async function submitPacket() {
 
 onMounted(() => {
   void loadSendRangeConfig()
+})
+
+watch(() => props.defaultPlayType, (value) => {
+  selectedPlayType.value = value
+  if (value === 'parity')
+    selectedMine.value = null
+  else if (selectedMine.value === null)
+    selectedMine.value = 0
 })
 </script>
 
@@ -152,6 +186,36 @@ onMounted(() => {
         <p class="packet-subtitle">
           {{ t('sendPacketPage.packetTypeSub') }}
         </p>
+      </div>
+    </section>
+
+    <section class="section-block">
+      <header class="section-header">
+        <span class="section-title">
+          {{ t('sendPacketPage.playTypeTitle') }}
+        </span>
+      </header>
+      <div class="play-type-grid">
+        <button
+          type="button"
+          class="play-type-card"
+          :class="{ active: selectedPlayType === 'thunder', locked: lockPlayType }"
+          @click="selectPlayType('thunder')"
+        >
+          <span class="play-type-card__eyebrow">{{ t('sendPacketPage.playTypeThunderEyebrow') }}</span>
+          <strong class="play-type-card__title">{{ t('sendPacketPage.playTypeThunder') }}</strong>
+          <span class="play-type-card__sub">{{ t('sendPacketPage.playTypeThunderSub') }}</span>
+        </button>
+        <button
+          type="button"
+          class="play-type-card parity"
+          :class="{ active: selectedPlayType === 'parity', locked: lockPlayType }"
+          @click="selectPlayType('parity')"
+        >
+          <span class="play-type-card__eyebrow">{{ t('sendPacketPage.playTypeParityEyebrow') }}</span>
+          <strong class="play-type-card__title">{{ t('sendPacketPage.playTypeParity') }}</strong>
+          <span class="play-type-card__sub">{{ t('sendPacketPage.playTypeParitySub') }}</span>
+        </button>
       </div>
     </section>
 
@@ -195,7 +259,7 @@ onMounted(() => {
       </div>
     </section>
 
-    <section class="section-block">
+    <section v-if="showMineSection" class="section-block">
       <header class="section-header">
         <span class="section-title">
           {{ t('sendPacketPage.mineTitle') }}
@@ -241,10 +305,10 @@ onMounted(() => {
 
     <template v-if="showTips">
       <p class="tips-text">
-        {{ t('sendPacketPage.tipsText') }}
+        {{ selectedPlayType === 'parity' ? t('sendPacketPage.tipsParityText') : t('sendPacketPage.tipsText') }}
       </p>
       <p class="notice-text">
-        {{ t('sendPacketPage.noticeText') }}
+        {{ selectedPlayType === 'parity' ? t('sendPacketPage.noticeParityText') : t('sendPacketPage.noticeText') }}
       </p>
     </template>
   </div>
@@ -281,7 +345,9 @@ onMounted(() => {
   background:
     radial-gradient(rgba(212, 175, 55, 1) 1px, transparent 1px),
     linear-gradient(160deg, rgba(116, 0, 0, 0.96) 0%, rgba(74, 0, 0, 0.96) 100%);
-  background-size: 18px 18px, 100% 100%;
+  background-size:
+    18px 18px,
+    100% 100%;
   padding: 16px;
 }
 
@@ -302,6 +368,7 @@ onMounted(() => {
   width: 28px;
   height: 28px;
   object-fit: contain;
+  /* prettier-ignore */
   filter: brightness(0) saturate(100%) invert(16%) sepia(38%) saturate(1338%) hue-rotate(357deg) brightness(92%) contrast(97%);
 }
 
@@ -322,6 +389,72 @@ onMounted(() => {
 
 .section-block {
   margin-top: 14px;
+}
+
+.play-type-grid {
+  margin-top: 10px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.play-type-card {
+  min-height: 108px;
+  border: 1px solid rgba(255, 248, 214, 0.16);
+  border-radius: 18px;
+  background:
+    linear-gradient(180deg, rgba(255, 248, 214, 0.06) 0%, rgba(255, 248, 214, 0) 100%),
+    linear-gradient(160deg, rgba(128, 0, 0, 0.95) 0%, rgba(76, 0, 0, 0.96) 100%);
+  color: #fff0c9;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-end;
+  gap: 6px;
+  padding: 14px;
+  text-align: left;
+  transition:
+    transform 0.18s ease,
+    border-color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.play-type-card.parity {
+  background:
+    linear-gradient(180deg, rgba(255, 248, 214, 0.06) 0%, rgba(255, 248, 214, 0) 100%),
+    linear-gradient(160deg, rgba(16, 82, 121, 0.95) 0%, rgba(12, 49, 85, 0.96) 100%);
+}
+
+.play-type-card.active {
+  border-color: rgba(255, 248, 214, 0.55);
+  box-shadow:
+    0 10px 20px rgba(0, 0, 0, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.16);
+  transform: translateY(-1px);
+}
+
+.play-type-card.locked {
+  cursor: default;
+}
+
+.play-type-card__eyebrow {
+  color: rgba(255, 229, 186, 0.68);
+  font-size: 10px;
+  line-height: 1;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.play-type-card__title {
+  font-size: 17px;
+  line-height: 1.15;
+}
+
+.play-type-card__sub {
+  color: rgba(255, 229, 186, 0.8);
+  font-size: 12px;
+  line-height: 1.4;
 }
 
 .section-header {
@@ -571,6 +704,10 @@ onMounted(() => {
 }
 
 @media (max-width: 390px) {
+  .play-type-grid {
+    grid-template-columns: 1fr;
+  }
+
   .preset-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }

@@ -364,7 +364,7 @@ function onMenuClick(item: MenuItem) {
       goByPath('/ranking')
       break
     case 'spin':
-      goByPath('/spin')
+      goByPath('/prize')
       break
     case 'language':
       openLanguagePopup()

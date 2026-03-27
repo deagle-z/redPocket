@@ -585,6 +585,8 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 	winFee := 0.0     // 中奖/猜对手续费（抢包者端抽成）
 	sendCommission := 0
 	grabbingCommission := 0
+	sendPoolCommission := 0
+	grabbingPoolCommission := 0
 	amountStr := fmt.Sprintf("%.2f", redAmount)
 	lastDigit := amountStr[len(amountStr)-1]
 	var hitThunder bool
@@ -604,9 +606,11 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 		loseMoney = luckyMoney.Amount * luckyMoney.LoseRate
 		sendCommission = GetSendCommission(db)
 		thunderFee = loseMoney * float64(sendCommission) / 100.0
+		sendPoolCommission = GetSendPoolCommission(db)
 	} else {
 		grabbingCommission = GetGrabbingCommission(db)
 		winFee = redAmount * float64(grabbingCommission) / 100.0
+		grabbingPoolCommission = GetGrabbingPoolCommission(db)
 	}
 
 	lockKey := fmt.Sprintf("lucky_grab:%d", luckyID)
@@ -665,8 +669,10 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 
 		// 中雷手续费
 		commissionAmount := thunderFee
-		// 实际到账金额 = 显示金额 - 抽成金额
-		actualLoseMoney := loseMoney - commissionAmount
+		// 奖池注入金额
+		thunderPoolFee := loseMoney * float64(sendPoolCommission) / 100.0
+		// 实际到账金额 = 损失金额 - 平台抽成 - 奖池注入
+		actualLoseMoney := loseMoney - commissionAmount - thunderPoolFee
 
 		history := &pojo.LuckyHistory{
 			UserID:          luckyMoney.SenderID,
@@ -796,12 +802,23 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 				return nil, fmt.Errorf("发包上级返佣失败: %v", err)
 			}
 		}
+
+		// 中雷奖池注入
+		if thunderPoolFee > 0 {
+			bizId := fmt.Sprintf("lucky_thunder_%d_%d", luckyID, userID)
+			if err := repository.DepositPrizePool(tx, luckyMoney.TenantId, "lucky", pojo.PrizePoolBizTypeLose, bizId, userID, thunderPoolFee); err != nil {
+				tx.Rollback()
+				return nil, fmt.Errorf("中雷奖池注入失败: %v", err)
+			}
+		}
 	} else {
 		// 未中雷，增加用户余额（需要扣除抽成）
 		// 中奖手续费
 		commissionAmount := winFee
-		// 实际到账金额 = 显示金额 - 抽成金额
-		actualAmount := redAmount - commissionAmount
+		// 奖池注入金额
+		winPoolFee := redAmount * float64(grabbingPoolCommission) / 100.0
+		// 实际到账金额 = 显示金额 - 平台抽成 - 奖池注入
+		actualAmount := redAmount - commissionAmount - winPoolFee
 
 		// 增加用户余额（实际到账金额）
 		if err := tx.Model(&pojo.TgUser{}).
@@ -869,6 +886,15 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 				return nil, fmt.Errorf("中奖上级返佣失败: %v", err)
 			}
 		}
+
+		// 中奖奖池注入
+		if winPoolFee > 0 {
+			bizId := fmt.Sprintf("lucky_win_%d_%d", luckyID, userID)
+			if err := repository.DepositPrizePool(tx, luckyMoney.TenantId, "lucky", pojo.PrizePoolBizTypeWin, bizId, userID, winPoolFee); err != nil {
+				tx.Rollback()
+				return nil, fmt.Errorf("中奖奖池注入失败: %v", err)
+			}
+		}
 	}
 
 	// 创建领取记录
@@ -930,13 +956,29 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 		"grabIndex":      grabIndex,
 		"isAmountHidden": isAmountHidden,
 		"luckyInfo":      luckyMoney,
+		"gameMode":       luckyMoney.GameMode,
+		"guess":          guess,
 		"message":        "",
 	}
 
-	if isThunder == 1 {
-		result["message"] = fmt.Sprintf("中雷，领取 %.2f ，损失 %.2f ", redAmount, loseMoney)
+	if luckyMoney.GameMode == 1 {
+		// 奇偶模式
+		guessText := "偶"
+		if guess == 1 {
+			guessText = "奇"
+		}
+		if isThunder == 1 {
+			result["message"] = fmt.Sprintf("猜%s，猜错！领取 %.2f ，损失 %.2f ", guessText, redAmount, loseMoney)
+		} else {
+			result["message"] = fmt.Sprintf("猜%s，猜对！获得 %.2f ", guessText, redAmount)
+		}
 	} else {
-		result["message"] = fmt.Sprintf("未中雷，领取 %.2f ", redAmount)
+		// 雷号模式
+		if isThunder == 1 {
+			result["message"] = fmt.Sprintf("中雷，领取 %.2f ，损失 %.2f ", redAmount, loseMoney)
+		} else {
+			result["message"] = fmt.Sprintf("未中雷，领取 %.2f ", redAmount)
+		}
 	}
 
 	return result, nil
@@ -1108,6 +1150,54 @@ func GetGrabbingCommission(db *gorm.DB) int {
 	// 存入Redis，设置过期时间为20-40分钟随机
 	utils.RD.SetEX(ctx, redisKey, strconv.Itoa(result), utils.GetRandomRangeSecond(20*60, 40*60))
 
+	return result
+}
+
+// GetSendPoolCommission 获取中雷注入奖池百分比（带Redis缓存）
+func GetSendPoolCommission(db *gorm.DB) int {
+	defaultValue := 1
+	redisKey := "bgu_auth_group_send_pool_commission"
+	ctx := context.Background()
+	configKey := "lucky_send_pool_commission"
+
+	cachedValue, err := utils.RD.Get(ctx, redisKey).Result()
+	if err == nil && cachedValue != "" {
+		if value, parseErr := strconv.Atoi(cachedValue); parseErr == nil && value >= 0 {
+			return value
+		}
+	}
+
+	configValue := getOrInitSysConfigValue(db, configKey, strconv.Itoa(defaultValue), "红包中雷注入奖池百分比")
+	result, parseErr := strconv.Atoi(configValue)
+	if parseErr != nil || result < 0 {
+		result = defaultValue
+		_ = db.Model(&pojo.SysConfig{}).Where("config_key = ?", configKey).Update("config_value", strconv.Itoa(defaultValue)).Error
+	}
+	utils.RD.SetEX(ctx, redisKey, strconv.Itoa(result), utils.GetRandomRangeSecond(20*60, 40*60))
+	return result
+}
+
+// GetGrabbingPoolCommission 获取抢包中奖注入奖池百分比（带Redis缓存）
+func GetGrabbingPoolCommission(db *gorm.DB) int {
+	defaultValue := 1
+	redisKey := "bgu_auth_group_grabbing_pool_commission"
+	ctx := context.Background()
+	configKey := "lucky_grabbing_pool_commission"
+
+	cachedValue, err := utils.RD.Get(ctx, redisKey).Result()
+	if err == nil && cachedValue != "" {
+		if value, parseErr := strconv.Atoi(cachedValue); parseErr == nil && value >= 0 {
+			return value
+		}
+	}
+
+	configValue := getOrInitSysConfigValue(db, configKey, strconv.Itoa(defaultValue), "抢红包中奖注入奖池百分比")
+	result, parseErr := strconv.Atoi(configValue)
+	if parseErr != nil || result < 0 {
+		result = defaultValue
+		_ = db.Model(&pojo.SysConfig{}).Where("config_key = ?", configKey).Update("config_value", strconv.Itoa(defaultValue)).Error
+	}
+	utils.RD.SetEX(ctx, redisKey, strconv.Itoa(result), utils.GetRandomRangeSecond(20*60, 40*60))
 	return result
 }
 

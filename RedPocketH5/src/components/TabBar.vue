@@ -6,7 +6,7 @@ const tabbarStyle = {
   '--van-tabbar-z-index': '99',
   '--van-tabbar-background': '#650400',
   '--van-tabbar-item-active-background': 'transparent',
-  background: 'linear-gradient(170deg, rgba(125, 0, 0, 0.98) 0%, rgba(78, 0, 0, 0.98) 58%, rgba(46, 0, 0, 0.98) 100%)',
+  'background': 'linear-gradient(170deg, rgba(125, 0, 0, 0.98) 0%, rgba(78, 0, 0, 0.98) 58%, rgba(46, 0, 0, 0.98) 100%)',
 }
 
 const show = computed(() => {
@@ -47,13 +47,13 @@ function isActive(name: string) {
       </template>
     </van-tabbar-item>
 
-    <van-tabbar-item replace class="tab-item" :to="{ name: 'Team' }">
-      <span class="tab-label" :class="{ 'tab-label--active': isActive('Team') }">
-        {{ $t('tabbar.team') }}
+    <van-tabbar-item replace class="tab-item" :to="{ name: 'Prize' }">
+      <span class="tab-label" :class="{ 'tab-label--active': isActive('Prize') }">
+        {{ $t('profilePage.activitySpin') }}
       </span>
       <template #icon>
-        <div class="icon-wrap" :class="{ 'icon-wrap--active': isActive('Team') }">
-          <img src="@/assets/tabbar/team.svg" class="tab-icon">
+        <div class="icon-wrap" :class="{ 'icon-wrap--active': isActive('Prize') }">
+          <img src="@/assets/tabbar/dice.svg" class="tab-icon">
         </div>
       </template>
     </van-tabbar-item>
@@ -98,7 +98,9 @@ function isActive(name: string) {
   background:
     radial-gradient(rgba(212, 175, 55, 1) 1px, transparent 1px),
     linear-gradient(170deg, rgba(125, 0, 0, 0.98) 0%, rgba(78, 0, 0, 0.98) 58%, rgba(46, 0, 0, 0.98) 100%) !important;
-  background-size: 18px 18px, 100% 100%;
+  background-size:
+    18px 18px,
+    100% 100%;
   border: 1px solid rgba(212, 175, 55, 0.44);
   border-radius: 22px;
   box-shadow:
@@ -223,6 +225,7 @@ function isActive(name: string) {
 .tab-icon {
   width: 18px;
   height: 18px;
+  object-fit: contain;
   filter: brightness(0) saturate(100%) invert(85%) sepia(20%) saturate(300%) hue-rotate(340deg) brightness(80%);
   transition: filter 0.2s ease;
 }

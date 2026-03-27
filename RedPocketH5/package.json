@@ -21,6 +21,7 @@
     "prepare": "simple-git-hooks"
   },
   "dependencies": {
+    "@lucky-canvas/vue": "^0.1.11",
     "@unhead/vue": "2.1.1",
     "@vant/touch-emulator": "^1.5.0",
     "@vant/use": "^1.6.0",

@@ -74,9 +74,10 @@ type LuckyMoneyResp struct {
 
 type LuckyMoneyAppListSearch struct {
 	PageInfo
-	ChatID  int64 `json:"chatId"`  // 群组ID，可选
-	Status  *int  `json:"status"`  // 状态，可选（默认进行中）
-	LuckyID int64 `json:"luckyId"` // 红包ID，可选
+	ChatID   int64 `json:"chatId"`   // 群组ID，可选
+	Status   *int  `json:"status"`   // 状态，可选（默认进行中）
+	LuckyID  int64 `json:"luckyId"`  // 红包ID，可选
+	GameMode *int  `json:"gameMode"` // 游戏模式筛选，可选：0=雷号 1=奇偶
 }
 
 type LuckyMoneyAppItemBack struct {

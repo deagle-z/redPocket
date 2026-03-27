@@ -130,9 +130,8 @@ export interface RechargeOrderAppBack {
 
 export interface LuckyMoneySendReq {
   amount: number
-  thunder: number
-  number?: number
-  chatId?: number
+  gameMode: 0 | 1
+  thunder?: number
 }
 
 export interface LuckyMoneyBack {
@@ -146,6 +145,7 @@ export interface LuckyMoneyBack {
 export interface LuckyPacketListReq {
   currentPage: number
   pageSize: number
+  gameMode?: 0 | 1
   chatId?: number
   status?: number
   luckyId?: number
@@ -153,6 +153,11 @@ export interface LuckyPacketListReq {
 
 export interface LuckyPacketListItem {
   id: number
+  game_mode?: 0 | 1
+  playType?: string | number
+  gameType?: string | number
+  ruleType?: string | number
+  mode?: string | number
   senderId: number
   senderName: string
   senderAvatar?: string
@@ -187,6 +192,7 @@ export interface LuckyPacketListResp {
 export interface LuckyGrabReq {
   luckyId: number
   grabIndex?: number
+  oddEvenGuess?: 0 | 1
 }
 
 export interface LuckyDetailReq {
@@ -195,6 +201,10 @@ export interface LuckyDetailReq {
 
 export interface LuckyDetailSummary {
   id: number
+  playType?: string | number
+  gameType?: string | number
+  ruleType?: string | number
+  mode?: string | number
   status: number
   statusText: string
   amount: number

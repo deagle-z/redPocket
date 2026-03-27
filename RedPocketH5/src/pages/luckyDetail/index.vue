@@ -1,13 +1,16 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import type { ParityChoice } from '@/utils/lucky-play'
 import { showConfirmDialog, showToast } from 'vant'
 import { getLuckyDetail } from '@/api/user'
 import AppPageHeader from '@/components/AppPageHeader.vue'
 import LuckyGrabModal from '@/components/LuckyGrabModal.vue'
+import ParityChoiceDialog from '@/components/ParityChoiceDialog.vue'
 import wsClient from '@/plugins/websocket'
 import { formatCurrency } from '@/utils/currency'
 import { isLogin } from '@/utils/auth'
+import { isParityPlayType, resolveLuckyPlayType } from '@/utils/lucky-play'
 import imgAvatarPlaceholder from '@/assets/images/avatar-placeholder.png'
 import imgRedpacketGif from '@/assets/images/redpacket.gif'
 import imgRedpacketJpg from '@/assets/images/redpacket.jpg'
@@ -21,7 +24,9 @@ const DEFAULT_AVATAR = imgAvatarPlaceholder
 const detail = ref<any | null>(null)
 const loading = ref(false)
 const grabModalVisible = ref(false)
-const pendingGrabTarget = ref<{ seqNo: number } | null>(null)
+const parityChoiceVisible = ref(false)
+const pendingGrabTarget = ref<{ seqNo: number, choice?: ParityChoice | null } | null>(null)
+const pendingParitySeqNo = ref(0)
 // 倒数第二个被抢的格子 seqNo，需隐藏金额显示 loading
 const secondToLastSeqNo = ref(0)
 
@@ -36,6 +41,7 @@ const overview = computed(() => {
   if (!summary)
     return null
 
+  const playType = resolveLuckyPlayType(summary)
   const isOngoing = Number(summary?.status) === 1
   const amount = Number(summary?.amount || 0)
   const received = Number(finance?.receivedAmount || 0)
@@ -48,6 +54,8 @@ const overview = computed(() => {
 
   return {
     id: Number(summary?.id || luckyId.value),
+    playType,
+    playTypeText: playType === 'parity' ? t('homeLucky.playTypeParity') : t('homeLucky.playTypeThunder'),
     status: isOngoing ? 'ongoing' : 'done',
     statusText: isOngoing ? t('homeLucky.statusOngoing') : t('homeLucky.statusDone'),
     senderName: sender?.senderName || t('luckyDetailPage.defaultSender'),
@@ -56,9 +64,11 @@ const overview = computed(() => {
     amountText: formatCurrency(amount),
     gameText: summary?.gameText || t('homeLucky.game'),
     progressText: t('homeLucky.progress', { grabbed: grabbedCount, total: number }),
-    thunderText: isOngoing
-      ? t('luckyDetailPage.thunderUnknown')
-      : t('homeLucky.thunderNo', { no: Number(summary?.thunder || 0) }),
+    thunderText: playType === 'parity'
+      ? t('homeLucky.paritySelectHint')
+      : (isOngoing
+          ? t('luckyDetailPage.thunderUnknown')
+          : t('homeLucky.thunderNo', { no: Number(summary?.thunder || 0) })),
     oddsText: t('luckyDetailPage.odds', { rate: Number(summary?.loseRate || 0).toFixed(1) }),
     timeText: isOngoing
       ? t('homeLucky.remainingTime', { time: formatRemainText(remainSeconds) })
@@ -69,8 +79,15 @@ const overview = computed(() => {
       { label: t('luckyDetailPage.rowSendAmount'), value: formatCurrency(amount) },
       { label: t('luckyDetailPage.rowGrabbedAmount'), value: formatCurrency(received) },
       { label: t('luckyDetailPage.rowRemainAmount'), value: formatCurrency(remain) },
-      { label: t('luckyDetailPage.rowHitCount'), value: `${hitCount}` },
-      { label: t('luckyDetailPage.rowThunderIncome'), value: formatCurrency(Number(finance?.thunderIncome || 0)), highlight: true },
+      {
+        label: playType === 'parity' ? t('luckyDetailPage.rowChoiceRule') : t('luckyDetailPage.rowHitCount'),
+        value: playType === 'parity' ? t('homeLucky.paritySelectHint') : `${hitCount}`,
+      },
+      {
+        label: playType === 'parity' ? t('luckyDetailPage.rowPlayType') : t('luckyDetailPage.rowThunderIncome'),
+        value: playType === 'parity' ? t('homeLucky.playTypeParity') : formatCurrency(Number(finance?.thunderIncome || 0)),
+        highlight: true,
+      },
       { label: t('luckyDetailPage.rowUnclaimed'), value: `${Math.max(number - grabbedCount, 0)}` },
     ],
   }
@@ -189,13 +206,27 @@ function openGrabDialog(item: { seqNo: number, isGrabbed: boolean }) {
   }
   if (overview.value?.status !== 'ongoing' || item.isGrabbed)
     return
-  pendingGrabTarget.value = { seqNo: item.seqNo }
+  if (overview.value && isParityPlayType(overview.value.playType)) {
+    pendingParitySeqNo.value = item.seqNo
+    parityChoiceVisible.value = true
+    return
+  }
+  pendingGrabTarget.value = { seqNo: item.seqNo, choice: null }
   grabModalVisible.value = true
 }
 
 function closeGrabDialog() {
   grabModalVisible.value = false
   pendingGrabTarget.value = null
+}
+
+function handleParityChoiceConfirm(choice: ParityChoice) {
+  if (!pendingParitySeqNo.value)
+    return
+  pendingGrabTarget.value = { seqNo: pendingParitySeqNo.value, choice }
+  grabModalVisible.value = true
+  parityChoiceVisible.value = false
+  pendingParitySeqNo.value = 0
 }
 
 function handleGrabSuccess() {
@@ -283,6 +314,7 @@ onBeforeUnmount(() => {
               <div class="packet-info">
                 <div class="tags-row">
                   <span class="tag game">{{ overview.gameText }}</span>
+                  <span class="tag play-type-tag" :class="overview.playType">{{ overview.playTypeText }}</span>
                   <span class="tag progress">{{ overview.progressText }}</span>
                 </div>
                 <div class="meta-row">
@@ -390,10 +422,17 @@ onBeforeUnmount(() => {
       v-model:show="grabModalVisible"
       :lucky-id="overview?.id || luckyId"
       :grab-index="Number(pendingGrabTarget?.seqNo || 0)"
+      :choice="pendingGrabTarget?.choice || ''"
       :sender-name="overview?.senderName || t('grabModal.defaultSender')"
       :show-result-toast="false"
       @success="handleGrabSuccess"
       @close="closeGrabDialog"
+    />
+
+    <ParityChoiceDialog
+      v-model:show="parityChoiceVisible"
+      :sender-name="overview?.senderName || t('grabModal.defaultSender')"
+      @confirm="handleParityChoiceConfirm"
     />
   </div>
 </template>
@@ -439,7 +478,15 @@ onBeforeUnmount(() => {
   left: 0;
   right: 0;
   height: 3px;
-  background: linear-gradient(90deg, transparent 0%, #b8860b 15%, #ffd700 40%, #d4af37 60%, #b8860b 85%, transparent 100%);
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    #b8860b 15%,
+    #ffd700 40%,
+    #d4af37 60%,
+    #b8860b 85%,
+    transparent 100%
+  );
   pointer-events: none;
 }
 
@@ -488,7 +535,9 @@ onBeforeUnmount(() => {
   border-radius: 50%;
   object-fit: cover;
   border: 2px solid rgba(212, 175, 55, 0.65);
-  box-shadow: 0 0 8px rgba(212, 175, 55, 0.25), 0 4px 8px rgba(0, 0, 0, 0.28);
+  box-shadow:
+    0 0 8px rgba(212, 175, 55, 0.25),
+    0 4px 8px rgba(0, 0, 0, 0.28);
 }
 
 .user-name {
@@ -553,7 +602,9 @@ onBeforeUnmount(() => {
   font-size: 10px;
   font-weight: 700;
   border: 1px solid rgba(255, 248, 214, 0.5);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  box-shadow:
+    0 2px 6px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
 }
 
 .packet-image {
@@ -593,6 +644,22 @@ onBeforeUnmount(() => {
   color: #ffe7bf;
   background: rgba(212, 175, 55, 0.14);
   border-color: rgba(212, 175, 55, 0.4);
+}
+
+.tag.play-type-tag {
+  color: #fff3de;
+  background: rgba(255, 248, 214, 0.1);
+  border-color: rgba(255, 248, 214, 0.2);
+}
+
+.tag.play-type-tag.parity {
+  background: rgba(74, 163, 226, 0.16);
+  border-color: rgba(74, 163, 226, 0.32);
+}
+
+.tag.play-type-tag.thunder {
+  background: rgba(212, 175, 55, 0.14);
+  border-color: rgba(212, 175, 55, 0.34);
 }
 
 .tag.progress {
@@ -709,7 +776,9 @@ onBeforeUnmount(() => {
   background: linear-gradient(180deg, #9e1010 0%, #6a0000 100%);
   color: #fff3de;
   font-size: 8px;
-  box-shadow: inset 0 1px 0 rgba(212, 175, 55, 0.45), 0 2px 6px rgba(0, 0, 0, 0.3);
+  box-shadow:
+    inset 0 1px 0 rgba(212, 175, 55, 0.45),
+    0 2px 6px rgba(0, 0, 0, 0.3);
 }
 
 .action-pill.grabbed {

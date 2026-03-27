@@ -93,6 +93,20 @@ declare module 'vue-router/auto-routes' {
       Record<never, never>,
       | never
     >,
+    'PacketList': RouteRecordInfo<
+      'PacketList',
+      '/packetList',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
+    'Prize': RouteRecordInfo<
+      'Prize',
+      '/prize',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
     'Profile': RouteRecordInfo<
       'Profile',
       '/profile',
@@ -247,6 +261,18 @@ declare module 'vue-router/auto-routes' {
     'src/pages/luckyDetail/index.vue': {
       routes:
         | 'LuckyDetail'
+      views:
+        | never
+    }
+    'src/pages/packetList/index.vue': {
+      routes:
+        | 'PacketList'
+      views:
+        | never
+    }
+    'src/pages/prize/index.vue': {
+      routes:
+        | 'Prize'
       views:
         | never
     }

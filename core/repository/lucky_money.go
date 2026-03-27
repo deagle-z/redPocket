@@ -161,6 +161,9 @@ func GetLuckyMoneyAppList(db *gorm.DB, search pojo.LuckyMoneyAppListSearch, curr
 	if search.Status != nil {
 		query = query.Where("status = ?", *search.Status)
 	}
+	if search.GameMode != nil {
+		query = query.Where("game_mode = ?", *search.GameMode)
+	}
 
 	query.Count(&result.Total)
 	// 未完结(status=1)优先，其次按最新ID排序
@@ -235,6 +238,7 @@ func GetLuckyMoneyAppList(db *gorm.DB, search pojo.LuckyMoneyAppListSearch, curr
 		itemBack.Received = lucky.Received
 		itemBack.Number = lucky.Number
 		itemBack.Thunder = lucky.Thunder
+		itemBack.GameMode = lucky.GameMode
 		itemBack.LoseRate = lucky.LoseRate
 		itemBack.Status = lucky.Status
 		itemBack.CreatedAt = lucky.CreatedAt
