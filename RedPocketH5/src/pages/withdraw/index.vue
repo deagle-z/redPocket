@@ -276,7 +276,7 @@ onMounted(() => {
           <CoinAmount :text="formatCurrency(balance)" />
         </p>
         <p class="card-sub">
-          {{ t('withdrawPage.frozenBalance', { amount: formatCurrency(frozen) }) }}
+          <CurrencyText :text="t('withdrawPage.frozenBalance', { amount: formatCurrency(frozen) })" />
         </p>
       </div>
       <span class="card-chip"><img class="chip-coin" src="@/assets/svg/coin.svg" alt=""></span>

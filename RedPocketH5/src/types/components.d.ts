@@ -17,6 +17,7 @@ declare module 'vue' {
     AppTopHeader: typeof import('./../components/AppTopHeader.vue')['default']
     Chart: typeof import('./../components/Chart/index.vue')['default']
     CoinAmount: typeof import('./../components/CoinAmount.vue')['default']
+    CurrencyText: typeof import('./../components/CurrencyText.vue')['default']
     GhostButton: typeof import('./../components/GhostButton.vue')['default']
     LuckyGrabModal: typeof import('./../components/LuckyGrabModal.vue')['default']
     NavBar: typeof import('./../components/NavBar.vue')['default']

@@ -394,3 +394,27 @@ func GrabRedPacketApp(ctx *gin.Context) {
 
 	utils.SuccessObjBack(ctx, result)
 }
+
+// GetPrizePoolBalanceApp app端获取奖池余额
+// @Summary 获取奖池余额
+// @Tags 红包管理
+// @Accept json
+// @Produce json
+// @Param poolCode query string false "奖池编码，默认 lucky"
+// @Success 200 {object} pojo.BaseResponse
+// @Router /api/v1/app/prizePool/balance [get]
+func GetPrizePoolBalanceApp(ctx *gin.Context) {
+	poolCode := ctx.DefaultQuery("poolCode", "lucky")
+	db := ctx.MustGet("db").(*gorm.DB)
+
+	balance, err := repository.GetPrizePoolBalance(db, poolCode)
+	if err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+
+	utils.SuccessObjBack(ctx, gin.H{
+		"poolCode": poolCode,
+		"balance":  balance,
+	})
+}

@@ -238,10 +238,10 @@ onBeforeUnmount(() => {
               </div>
               <div class="amount">
                 <CoinAmount v-if="resultReady && !isThunderHit && displayAmountText" :text="displayAmountText" class="amount-coin" />
-                <template v-else>{{ displayAmountText }}</template>
+                <template v-else><CurrencyText :text="displayAmountText" /></template>
               </div>
               <div class="blessing">
-                {{ blessingText }}
+                <CurrencyText :text="blessingText" />
               </div>
             </div>
           </div>

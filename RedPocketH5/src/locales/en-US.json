@@ -250,7 +250,8 @@
     "entryEyebrow": "Packet Hall",
     "entryTitle": "Open the list page and filter packets by play mode",
     "modeThunder": "Thunder Mode",
-    "modeParity": "Parity Mode"
+    "modeParity": "Parity Mode",
+    "prizePoolLabel": "Prize Pool"
   },
   "walletPage": {
     "title": "My Wallet",

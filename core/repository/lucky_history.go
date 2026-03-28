@@ -70,11 +70,11 @@ func GetLuckyHistoryList(db *gorm.DB, search pojo.LuckyHistorySearch) (result po
 	return result
 }
 
-// GetLuckyHistoryCount 获取红包已领取数量
+// GetLuckyHistoryCount 获取红包已领取数量（排除 GrabType=2 的发包者中雷返利记录）
 func GetLuckyHistoryCount(db *gorm.DB, luckyID int64) (int64, error) {
 	var count int64
 	err := db.Model(&pojo.LuckyHistory{}).
-		Where("lucky_id = ?", luckyID).
+		Where("lucky_id = ? AND grab_type != 2", luckyID).
 		Count(&count).Error
 	return count, err
 }

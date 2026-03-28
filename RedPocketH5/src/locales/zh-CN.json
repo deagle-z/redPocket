@@ -250,7 +250,8 @@
     "entryEyebrow": "红包大厅",
     "entryTitle": "进入列表后按玩法筛选红包",
     "modeThunder": "雷号模式",
-    "modeParity": "奇偶模式"
+    "modeParity": "奇偶模式",
+    "prizePoolLabel": "奖池余额"
   },
   "walletPage": {
     "title": "我的钱包",

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { showConfirmDialog, showToast } from 'vant'
 import type { LuckyPlayType, ParityChoice } from '@/utils/lucky-play'
-import { getLuckyPacketList } from '@/api/user'
+import { getLuckyPacketList, getPrizePoolBalance } from '@/api/user'
 import AppPageHeader from '@/components/AppPageHeader.vue'
 import LuckyGrabModal from '@/components/LuckyGrabModal.vue'
 import ParityChoiceDialog from '@/components/ParityChoiceDialog.vue'
@@ -13,6 +13,7 @@ import wsClient from '@/plugins/websocket'
 import imgAvatarPlaceholder from '@/assets/images/avatar-placeholder.png'
 import imgRedpacketGif from '@/assets/images/redpacket.gif'
 import imgRedpacketJpg from '@/assets/images/redpacket.jpg'
+import imgCoin from '@/assets/svg/coin.svg'
 
 const { t } = useI18n()
 const route = useRoute()
@@ -27,6 +28,7 @@ const parityChoiceVisible = ref(false)
 const sendPacketModalVisible = ref(false)
 const pendingGrabTarget = ref<{ packet: any, action: any, choice?: ParityChoice | null } | null>(null)
 const pendingParityTarget = ref<{ packet: any, action: any } | null>(null)
+const prizePoolBalance = ref<number>(0)
 let countdownTimer: number | undefined
 
 const modePlayType = computed<LuckyPlayType>(() => currentMode.value === 1 ? 'parity' : 'thunder')
@@ -57,15 +59,6 @@ function closeSendPacketDialog() {
 async function handleSendPacketSuccess() {
   sendPacketModalVisible.value = false
   await loadPacketList()
-}
-
-function switchMode(mode: 0 | 1) {
-  if (currentMode.value === mode)
-    return
-  router.replace({
-    path: '/packetList',
-    query: { mode: String(mode) },
-  })
 }
 
 function promptLogin() {
@@ -412,6 +405,48 @@ function applyLuckyFinished(message: any) {
   })
 }
 
+async function loadPrizePoolBalance() {
+  try {
+    const { data } = await getPrizePoolBalance('lucky')
+    prizePoolBalance.value = Number(data?.balance ?? 0)
+  }
+  catch {}
+}
+
+function applyPrizePoolBalance(message: any) {
+  const payload = message?.data || message
+  if (payload?.poolCode && payload.poolCode !== 'lucky')
+    return
+  prizePoolBalance.value = Number(payload?.balance ?? 0)
+}
+
+// Jackpot rolling display
+const displayBalance = ref(0)
+const isFlashing = ref(false)
+let jpRafId: number | undefined
+
+function rollToBalance(target: number) {
+  cancelAnimationFrame(jpRafId!)
+  const step = () => {
+    const diff = target - displayBalance.value
+    if (Math.abs(diff) > 0.5) {
+      displayBalance.value += diff * 0.12
+      jpRafId = requestAnimationFrame(step)
+    }
+    else {
+      displayBalance.value = target
+    }
+  }
+  jpRafId = requestAnimationFrame(step)
+}
+
+watch(prizePoolBalance, (val) => {
+  isFlashing.value = false
+  nextTick(() => { isFlashing.value = true })
+  setTimeout(() => { isFlashing.value = false }, 600)
+  rollToBalance(val)
+}, { immediate: true })
+
 watch(() => route.query.mode, async () => {
   syncModeFromRoute()
   await loadPacketList()
@@ -422,14 +457,18 @@ onMounted(() => {
   wsClient.on('lucky_sent', applyLuckySent)
   wsClient.on('lucky_grabbed', applyLuckyBroadcast)
   wsClient.on('lucky_finished', applyLuckyFinished)
+  wsClient.on('prize_pool_balance', applyPrizePoolBalance)
+  loadPrizePoolBalance()
 })
 
 onBeforeUnmount(() => {
+  cancelAnimationFrame(jpRafId!)
   if (countdownTimer)
     window.clearInterval(countdownTimer)
   wsClient.off('lucky_sent', applyLuckySent)
   wsClient.off('lucky_grabbed', applyLuckyBroadcast)
   wsClient.off('lucky_finished', applyLuckyFinished)
+  wsClient.off('prize_pool_balance', applyPrizePoolBalance)
 })
 </script>
 
@@ -439,16 +478,13 @@ onBeforeUnmount(() => {
       <template #right><van-icon name="gift-o" /></template>
     </AppPageHeader>
 
-    <section class="mode-switch-card">
-      <button type="button" class="mode-switch-btn thunder-mode" :class="{ active: currentMode === 0 }" @click="switchMode(0)">
-        <span class="mode-switch-btn__icon"><van-icon name="fire-o" /></span>
-        <span class="mode-switch-btn__label">{{ t('packetListPage.modeThunder') }}</span>
-      </button>
-      <button type="button" class="mode-switch-btn parity-mode" :class="{ active: currentMode === 1 }" @click="switchMode(1)">
-        <span class="mode-switch-btn__icon"><van-icon name="apps-o" /></span>
-        <span class="mode-switch-btn__label">{{ t('packetListPage.modeParity') }}</span>
-      </button>
-    </section>
+    <div class="jackpot-panel" :class="{ 'jackpot-panel--flash': isFlashing }">
+      <div class="jp-label">{{ t('packetListPage.prizePoolLabel') }}</div>
+      <div class="jp-amount-box">
+        <img :src="imgCoin" class="jp-coin-icon" alt="">
+        <span class="jp-amount-num">{{ Math.floor(displayBalance).toLocaleString('en-US') }}</span>
+      </div>
+    </div>
 
     <button type="button" class="send-entry-btn" @click="openSendPacketDialog">
       <span class="send-entry-btn__badge">{{ t('homeLucky.sendQuickEyebrow') }}</span>
@@ -516,7 +552,7 @@ onBeforeUnmount(() => {
                 </div>
                 <div class="meta-row">
                   <span v-if="packet.ruleText">{{ packet.ruleText }}</span>
-                  <span v-if="packet.statText" class="meta-chip--accent">{{ packet.statText }}</span>
+                  <span v-if="packet.statText" class="meta-chip--accent"><CurrencyText :text="packet.statText" /></span>
                 </div>
                 <div v-if="packet.actions?.length" class="packet-actions-inline">
                   <button
@@ -583,8 +619,10 @@ onBeforeUnmount(() => {
         <SendPacketForm
           variant="modal"
           :show-intro="false"
+          :show-play-type="false"
           :show-tips="false"
           :default-play-type="modePlayType"
+          lock-play-type
           auto-reset
           @success="handleSendPacketSuccess"
         />
@@ -610,94 +648,64 @@ onBeforeUnmount(() => {
   padding: 8px 12px calc(90px + env(safe-area-inset-bottom));
 }
 
-.mode-switch-card {
-  margin-top: 8px;
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+.jackpot-panel {
+  margin-top: 12px;
+  padding: 14px 20px 16px;
+  border-radius: 18px;
+  background: rgba(0, 0, 0, 0.58);
+  border: 2px solid #ffbb00;
+  box-shadow: 0 0 22px rgba(0, 0, 0, 0.75), inset 0 0 16px rgba(255, 184, 0, 0.1);
+  text-align: center;
+  animation: jpPanelPulse 2s infinite ease-in-out;
+  position: relative;
+  overflow: hidden;
 }
 
-.mode-switch-btn {
-  min-height: 54px;
-  border-radius: 18px;
-  border: 1px solid rgba(255, 248, 214, 0.12);
-  background: linear-gradient(180deg, rgba(93, 34, 18, 0.95) 0%, rgba(61, 20, 10, 0.98) 100%);
-  color: rgba(255, 232, 186, 0.66);
+.jackpot-panel--flash {
+  animation: jpFlash 0.5s ease-out forwards, jpPanelPulse 2s 0.5s infinite ease-in-out;
+}
+
+@keyframes jpPanelPulse {
+  0%, 100% { box-shadow: 0 0 22px rgba(0, 0, 0, 0.75), inset 0 0 16px rgba(255, 184, 0, 0.1); }
+  50% { box-shadow: 0 0 38px rgba(255, 184, 0, 0.28), inset 0 0 20px rgba(255, 184, 0, 0.15); border-color: #fff8c0; }
+}
+
+@keyframes jpFlash {
+  0%   { transform: scale(1);    filter: brightness(1); }
+  30%  { transform: scale(1.025); filter: brightness(1.7) drop-shadow(0 0 14px #ffbb00); }
+  100% { transform: scale(1);    filter: brightness(1); }
+}
+
+.jp-label {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.55);
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+
+.jp-amount-box {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 10px;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 248, 214, 0.06),
-    0 8px 16px rgba(0, 0, 0, 0.22);
-  transition:
-    border-color 180ms ease,
-    color 180ms ease,
-    box-shadow 180ms ease,
-    background 180ms ease,
-    transform 180ms ease;
 }
 
-.mode-switch-btn.active {
-  color: #fff7e8;
-  transform: translateY(-1px);
+.jp-coin-icon {
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
 }
 
-.mode-switch-btn.thunder-mode.active {
-  border-color: rgba(255, 203, 122, 0.52);
-  background: linear-gradient(160deg, rgba(148, 22, 0, 0.98) 0%, rgba(107, 8, 0, 0.98) 100%);
-  box-shadow:
-    0 12px 24px rgba(0, 0, 0, 0.28),
-    0 0 0 1px rgba(255, 203, 122, 0.12),
-    0 0 18px rgba(182, 56, 16, 0.2);
-}
-
-.mode-switch-btn.parity-mode.active {
-  border-color: rgba(147, 215, 255, 0.42);
-  background: linear-gradient(160deg, rgba(29, 71, 98, 0.98) 0%, rgba(15, 47, 70, 0.98) 100%);
-  box-shadow:
-    0 12px 24px rgba(0, 0, 0, 0.28),
-    0 0 0 1px rgba(147, 215, 255, 0.1),
-    0 0 18px rgba(53, 123, 171, 0.16);
-}
-
-.mode-switch-btn:not(.active):active {
-  border-color: rgba(255, 248, 214, 0.22);
-  color: rgba(255, 240, 210, 0.82);
-}
-
-.mode-switch-btn__icon {
-  width: 30px;
-  height: 30px;
-  border-radius: 12px;
-  background: rgba(255, 248, 214, 0.09);
-  border: 1px solid rgba(255, 248, 214, 0.06);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 18px;
-  transition:
-    background 180ms ease,
-    border-color 180ms ease,
-    color 180ms ease;
-}
-
-.mode-switch-btn.active .mode-switch-btn__icon {
-  background: rgba(255, 248, 214, 0.14);
-  border-color: rgba(255, 248, 214, 0.18);
-}
-
-.mode-switch-btn.parity-mode.active .mode-switch-btn__icon {
-  color: #bfe8ff;
-}
-
-.mode-switch-btn.thunder-mode.active .mode-switch-btn__icon {
-  color: #ffd996;
-}
-
-.mode-switch-btn__label {
-  font-size: 14px;
-  font-weight: 800;
+.jp-amount-num {
+  font-size: 38px;
+  font-weight: 900;
+  line-height: 1;
+  background: linear-gradient(180deg, #fff5c3 0%, #ffbb00 45%, #e19d00 58%, #c87000 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.8));
+  font-variant-numeric: tabular-nums;
 }
 
 .send-entry-btn {

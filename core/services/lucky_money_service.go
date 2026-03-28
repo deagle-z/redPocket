@@ -73,8 +73,13 @@ func sendRedPacket(db *gorm.DB, senderID int64, senderName string, req pojo.Luck
 	maxAmount := req.Amount / float64(luckyTotal) * 2
 	redEnvelopes := utils.RedEnvelope(req.Amount, luckyTotal, minAmount, maxAmount)
 
-	// 获取中雷倍数
-	loseRate := GetLoseRate(db)
+	// 获取中雷/猜错倍数（奇偶模式使用独立配置）
+	var loseRate float64
+	if req.GameMode == 1 {
+		loseRate = GetGame2LoseRate(db)
+	} else {
+		loseRate = GetLoseRate(db)
+	}
 	// 获取红包过期分钟配置
 	expireMinutes := GetLuckyExpireMinutes(db)
 	expireAt := time.Now().Add(time.Duration(expireMinutes) * time.Minute)
@@ -603,7 +608,13 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 	}
 	if hitThunder {
 		isThunder = 1
-		loseMoney = luckyMoney.Amount * luckyMoney.LoseRate
+		if luckyMoney.GameMode == 1 {
+			// 奇偶模式：猜错赔付 = 实际抢到金额 × 倍率
+			loseMoney = redAmount * luckyMoney.LoseRate
+		} else {
+			// 雷号模式：中雷赔付 = 总包金额 × 倍率
+			loseMoney = luckyMoney.Amount * luckyMoney.LoseRate
+		}
 		sendCommission = GetSendCommission(db)
 		thunderFee = loseMoney * float64(sendCommission) / 100.0
 		sendPoolCommission = GetSendPoolCommission(db)
@@ -1067,6 +1078,31 @@ func GetLoseRate(db *gorm.DB) float64 {
 		_ = db.Model(&pojo.SysConfig{}).Where("config_key = ?", configKey).Update("config_value", strconv.FormatFloat(defaultValue, 'f', 2, 64)).Error
 	}
 	// 存入Redis，设置过期时间为20-40分钟随机
+	utils.RD.SetEX(ctx, redisKey, strconv.FormatFloat(result, 'f', 2, 64), utils.GetRandomRangeSecond(20*60, 40*60))
+
+	return result
+}
+
+// GetGame2LoseRate 获取奇偶模式猜错倍数（带Redis缓存）
+func GetGame2LoseRate(db *gorm.DB) float64 {
+	defaultValue := 1.8
+	redisKey := "bgu_auth_group_game2_lose_rate"
+	ctx := context.Background()
+	configKey := "lucky_game2_lose_rate"
+
+	cachedValue, err := utils.RD.Get(ctx, redisKey).Result()
+	if err == nil && cachedValue != "" {
+		if value, parseErr := strconv.ParseFloat(cachedValue, 64); parseErr == nil && value > 0 {
+			return value
+		}
+	}
+
+	configValue := getOrInitSysConfigValue(db, configKey, strconv.FormatFloat(defaultValue, 'f', 2, 64), "奇偶模式猜错倍数")
+	result, parseErr := strconv.ParseFloat(configValue, 64)
+	if parseErr != nil || result <= 0 {
+		result = defaultValue
+		_ = db.Model(&pojo.SysConfig{}).Where("config_key = ?", configKey).Update("config_value", strconv.FormatFloat(defaultValue, 'f', 2, 64)).Error
+	}
 	utils.RD.SetEX(ctx, redisKey, strconv.FormatFloat(result, 'f', 2, 64), utils.GetRandomRangeSecond(20*60, 40*60))
 
 	return result

@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { LuckyWheel } from '@lucky-canvas/vue'
 import { showToast } from 'vant'
 import AppPageHeader from '@/components/AppPageHeader.vue'
+import imgCoin from '@/assets/svg/coin.svg'
 
 interface PageData {
   childCount: number
@@ -33,35 +34,6 @@ function svgDataUri(svg: string) {
 
 const soundEffectUrl = 'https://pic.bofapic.com/static/_template_/maroon/media/turntable_sound.mp3'
 const prizeBg = 'https://pub-93b0b439f98b49c4ba1db81844583907.r2.dev/static/_template_/maroon/img/activity/turntable/prize.png'
-const spinBtn = svgDataUri(`
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 220">
-  <defs>
-    <radialGradient id="g" cx="50%" cy="35%">
-      <stop offset="0%" stop-color="#fff7c8"/>
-      <stop offset="48%" stop-color="#f3c84f"/>
-      <stop offset="100%" stop-color="#b86705"/>
-    </radialGradient>
-  </defs>
-  <circle cx="110" cy="110" r="105" fill="url(#g)"/>
-  <circle cx="110" cy="110" r="74" fill="#7f150f" stroke="#fff2b8" stroke-width="8"/>
-  <path d="M110 8 L132 58 L88 58 Z" fill="#ffef9e"/>
-  <circle cx="110" cy="110" r="12" fill="#ffe59a"/>
-</svg>
-`)
-const disabledBtn = svgDataUri(`
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 220">
-  <defs>
-    <radialGradient id="g" cx="50%" cy="35%">
-      <stop offset="0%" stop-color="#e5dcc0"/>
-      <stop offset="48%" stop-color="#b8a77b"/>
-      <stop offset="100%" stop-color="#71583b"/>
-    </radialGradient>
-  </defs>
-  <circle cx="110" cy="110" r="105" fill="url(#g)"/>
-  <circle cx="110" cy="110" r="74" fill="#5d4333" stroke="#eadfb7" stroke-width="8"/>
-  <circle cx="110" cy="110" r="12" fill="#f5edcf"/>
-</svg>
-`)
 const lightBg1 = svgDataUri(`
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600">
   <defs>
@@ -130,7 +102,7 @@ const prizeImg1 = {
       </linearGradient>
     </defs>
     <circle cx="60" cy="60" r="42" fill="url(#g)" stroke="#fff0bf" stroke-width="6"/>
-    <text x="60" y="72" text-anchor="middle" font-size="34" font-weight="800" fill="#7a2708">₹</text>
+    <text x="60" y="72" text-anchor="middle" font-size="34" font-weight="800" fill="#7a2708">$</text>
   </svg>
   `),
   width: '40%',
@@ -187,7 +159,7 @@ const prizeImg4 = {
   top: '45%',
 }
 
-const rewardCatalog = ['₹8', '₹18', '₹28', '₹38', '₹58', '₹88', '₹128', '₹188', '₹588', 'Random']
+const rewardCatalog = ['8', '18', '28', '38', '58', '88', '128', '188', '588', 'Random']
 
 const state = reactive({
   winningShow: false,
@@ -201,12 +173,12 @@ const state = reactive({
     superCount: 15,
     rewardList: rewardCatalog,
     recordList: [
-      { uid: 'UID*321', type: 1 as const, reward: '₹18' },
-      { uid: 'UID*873', type: 2 as const, reward: '₹88' },
-      { uid: 'UID*552', type: 3 as const, reward: '₹188' },
-      { uid: 'UID*119', type: 1 as const, reward: '₹8' },
-      { uid: 'UID*694', type: 2 as const, reward: '₹58' },
-      { uid: 'UID*205', type: 3 as const, reward: '₹588' },
+      { uid: 'UID*321', type: 1 as const, reward: '18' },
+      { uid: 'UID*873', type: 2 as const, reward: '88' },
+      { uid: 'UID*552', type: 3 as const, reward: '188' },
+      { uid: 'UID*119', type: 1 as const, reward: '8' },
+      { uid: 'UID*694', type: 2 as const, reward: '58' },
+      { uid: 'UID*205', type: 3 as const, reward: '588' },
     ],
   } as PageData,
 })
@@ -233,8 +205,8 @@ const spinning = ref(false)
 
 const canvasWidth = computed(() => {
   if (typeof window === 'undefined')
-    return 320
-  return window.innerWidth > 480 ? 360 : Math.floor(window.innerWidth * 0.78)
+    return 300
+  return window.innerWidth > 480 ? 340 : Math.floor(window.innerWidth * 0.74)
 })
 
 const wheelDefaultConfig = ref({
@@ -250,6 +222,50 @@ const currentSpinText = computed(() => {
   return t('prizePage.normalSpin')
 })
 
+// ── Jackpot counter ───────────────────────────────────────────────
+const jackpotValue = ref(5290463)
+const jackpotDisplay = ref(5290463)
+const isJpFlashing = ref(false)
+let jpRafId: number | undefined
+let jpIntervalId: number | undefined
+
+function rollJackpot(target: number) {
+  cancelAnimationFrame(jpRafId!)
+  const step = () => {
+    const diff = target - jackpotDisplay.value
+    if (Math.abs(diff) > 0.5) {
+      jackpotDisplay.value += diff * 0.1
+      jpRafId = requestAnimationFrame(step)
+    }
+    else {
+      jackpotDisplay.value = target
+    }
+  }
+  jpRafId = requestAnimationFrame(step)
+}
+
+function startJackpot() {
+  jpIntervalId = window.setInterval(() => {
+    jackpotValue.value += Math.floor(Math.random() * 888 + 200)
+    isJpFlashing.value = false
+    nextTick(() => {
+      isJpFlashing.value = true
+    })
+    setTimeout(() => {
+      isJpFlashing.value = false
+    }, 600)
+    rollJackpot(jackpotValue.value)
+  }, 2000)
+}
+
+// ── LED ring ──────────────────────────────────────────────────────
+const LED_COUNT = 24
+const ledBulbs = Array.from({ length: LED_COUNT }, (_, i) => ({
+  angle: i * (360 / LED_COUNT),
+  delay: `${((i * 2) / LED_COUNT).toFixed(2)}s`,
+}))
+
+// ── Existing wheel logic ──────────────────────────────────────────
 function randomInt(min: number, max: number) {
   return Math.floor(Math.random() * (max - min + 1)) + min
 }
@@ -260,7 +276,6 @@ function randomDelay(minSeconds: number, maxSeconds: number) {
 
 function createMockPageData(): PageData {
   const childCount = randomInt(0, 15)
-  const rewardList = [...rewardCatalog]
   const recordList = Array.from({ length: 10 }, (_, index) => ({
     uid: `UID*${randomInt(100, 999)}`,
     type: (index % 3 + 1) as 1 | 2 | 3,
@@ -271,7 +286,7 @@ function createMockPageData(): PageData {
     normalCount: 3,
     advancedCount: 8,
     superCount: 15,
-    rewardList,
+    rewardList: [...rewardCatalog],
     recordList,
   }
 }
@@ -294,54 +309,48 @@ async function mockLuckDrawInit() {
 }
 
 function pickWeightedIndex(type: number) {
-  const pools = {
+  const pools: Record<number, number[]> = {
     1: [0, 1, 2, 3, 4, 5, 9],
     2: [1, 2, 3, 4, 5, 6, 7, 9],
     3: [3, 4, 5, 6, 7, 8, 9],
   }
-  const pool = pools[type as 1 | 2 | 3] || pools[1]
+  const pool = pools[type] || pools[1]
   return pool[randomInt(0, pool.length - 1)]
 }
 
 async function mockLuckDrawDo({ key }: { key: number }): Promise<DrawResult> {
   await new Promise(resolve => setTimeout(resolve, randomInt(450, 900)))
   const index = pickWeightedIndex(key)
-  const reward = state.pageData.rewardList[index] || '₹8'
+  const reward = state.pageData.rewardList[index] || '8'
   return { index, reward }
 }
 
 function buildPrizeConfig() {
   const texts = state.pageData.rewardList
   prizes.value = [
-    { background: '#f7d4ca', imgs: [prizeImg1], fonts: [{ text: texts[0], top: '20%', fontColor: '#9f3800', fontSize: '12px' }] },
-    { background: '#fca89f', imgs: [prizeImg2], fonts: [{ text: texts[1], top: '20%', fontColor: '#9f3800', fontSize: '12px' }] },
-    { background: '#f7d4ca', imgs: [prizeImg3], fonts: [{ text: texts[2], top: '20%', fontColor: '#9f3800', fontSize: '12px' }] },
-    { background: '#fca89f', imgs: [prizeImg2], fonts: [{ text: texts[3], top: '20%', fontColor: '#9f3800', fontSize: '12px' }] },
-    { background: '#f7d4ca', imgs: [prizeImg3], fonts: [{ text: texts[4], top: '20%', fontColor: '#9f3800', fontSize: '12px' }] },
-    { background: '#fca89f', imgs: [prizeImg4], fonts: [{ text: texts[5], top: '20%', fontColor: '#9f3800', fontSize: '12px' }] },
-    { background: '#f7d4ca', imgs: [prizeImg1], fonts: [{ text: texts[6], top: '20%', fontColor: '#9f3800', fontSize: '12px' }] },
-    { background: '#fca89f', imgs: [prizeImg2], fonts: [{ text: texts[7], top: '20%', fontColor: '#9f3800', fontSize: '12px' }] },
-    { background: '#f7d4ca', imgs: [prizeImg1], fonts: [{ text: texts[8], top: '20%', fontColor: '#9f3800', fontSize: '12px' }] },
-    { background: '#fca89f', imgs: [prizeImg2], fonts: [{ text: texts[9], top: '20%', fontColor: '#9f3800', fontSize: '12px' }] },
+    { background: '#8b0000', imgs: [prizeImg1], fonts: [{ text: texts[0], top: '20%', fontColor: '#ffe59a', fontSize: '13px' }] },
+    { background: '#1a1a1a', imgs: [prizeImg2], fonts: [{ text: texts[1], top: '20%', fontColor: '#ffbb00', fontSize: '13px' }] },
+    { background: '#8b0000', imgs: [prizeImg3], fonts: [{ text: texts[2], top: '20%', fontColor: '#ffe59a', fontSize: '13px' }] },
+    { background: '#1a1a1a', imgs: [prizeImg2], fonts: [{ text: texts[3], top: '20%', fontColor: '#ffbb00', fontSize: '13px' }] },
+    { background: '#8b0000', imgs: [prizeImg3], fonts: [{ text: texts[4], top: '20%', fontColor: '#ffe59a', fontSize: '13px' }] },
+    { background: '#1a1a1a', imgs: [prizeImg4], fonts: [{ text: texts[5], top: '20%', fontColor: '#ffbb00', fontSize: '13px' }] },
+    { background: '#8b0000', imgs: [prizeImg1], fonts: [{ text: texts[6], top: '20%', fontColor: '#ffe59a', fontSize: '13px' }] },
+    { background: '#1a1a1a', imgs: [prizeImg2], fonts: [{ text: texts[7], top: '20%', fontColor: '#ffbb00', fontSize: '13px' }] },
+    { background: '#8b0000', imgs: [prizeImg1], fonts: [{ text: texts[8], top: '20%', fontColor: '#ffe59a', fontSize: '13px' }] },
+    { background: '#1a1a1a', imgs: [prizeImg2], fonts: [{ text: texts[9], top: '20%', fontColor: '#ffbb00', fontSize: '13px' }] },
   ]
 
+  const isActive = state.type > 0
   buttons.value = [{
-    radius: '45%',
+    radius: '30%',
+    background: isActive ? '#d4a017' : '#8a7355',
+    pointer: false,
     fonts: [{
-      text: state.type > 0 ? currentSpinText.value : t('prizePage.spinAction'),
-      fontColor: '#561919',
-      top: '-30%',
+      text: isActive ? currentSpinText.value : t('prizePage.spinAction'),
+      fontColor: isActive ? '#5a1206' : '#c4b89a',
       fontSize: '12',
-    }, {
-      text: 'Spin',
-      fontColor: '#561919',
-      top: '0%',
-      fontSize: '12',
-    }],
-    imgs: [{
-      src: state.type > 0 ? spinBtn : disabledBtn,
-      width: '80%',
-      top: '-115%',
+      fontWeight: 'bold',
+      top: '20%',
     }],
   }]
 }
@@ -366,11 +375,7 @@ async function refreshPageState() {
 }
 
 function addLatestRecord(reward: string) {
-  state.pageData.recordList.unshift({
-    uid: 'ME***',
-    type: (state.type || 1) as 1 | 2 | 3,
-    reward,
-  })
+  state.pageData.recordList.unshift({ uid: 'ME***', type: (state.type || 1) as 1 | 2 | 3, reward })
   state.pageData.recordList = state.pageData.recordList.slice(0, 12)
 }
 
@@ -404,7 +409,6 @@ async function startCallback() {
     showToast(t('prizePage.noChance'))
     return
   }
-
   spinning.value = true
   state.reward = ''
   wheelCanvas.value?.play?.()
@@ -412,12 +416,10 @@ async function startCallback() {
     audioRef.value.currentTime = 0
     audioRef.value.play().catch(() => {})
   }
-
   try {
     const { index, reward } = await mockLuckDrawDo({ key: state.type })
     state.reward = reward
     const stopDelay = randomDelay(3, 5)
-
     window.setTimeout(() => {
       wheelCanvas.value?.stop?.(index)
     }, stopDelay)
@@ -448,106 +450,142 @@ function closeWinning() {
 function goBack() {
   router.back()
 }
-
 function goInvite() {
   router.push('/invite')
 }
 
 function spinTypeLabel(type: 1 | 2 | 3) {
-  if (type === 3)
-    return t('prizePage.superSpin')
-  if (type === 2)
-    return t('prizePage.advancedSpin')
+  if (type === 3) return t('prizePage.superSpin')
+  if (type === 2) return t('prizePage.advancedSpin')
   return t('prizePage.normalSpin')
 }
 
 onMounted(async () => {
   await refreshPageState()
   startScrolling()
+  startJackpot()
 })
 
 onBeforeUnmount(() => {
   if (animationFrame.value)
     cancelAnimationFrame(animationFrame.value)
+  cancelAnimationFrame(jpRafId!)
+  clearInterval(jpIntervalId)
   pauseSound()
 })
 </script>
 
 <template>
   <div class="prize-page">
+    <!-- 环境光 -->
+    <div class="ambient-bg" />
+    <div class="velvet-texture" />
+
     <AppPageHeader :title="t('prizePage.title')" @back="goBack" />
 
     <div class="prize-scroll">
       <audio ref="audioRef" :src="soundEffectUrl" preload="auto" />
 
-      <div class="turntable">
-        <div class="content">
-          <div class="wheel-container">
-            <div class="turntable-prize">
-              <div class="wheel">
-                <LuckyWheel
-                  ref="wheelCanvas"
-                  :width="canvasWidth"
-                  :height="canvasWidth"
-                  :prizes="prizes"
-                  :blocks="blocks"
-                  :buttons="buttons"
-                  :default-config="wheelDefaultConfig"
-                  class="wheel-canvas"
-                  @start="startCallback"
-                  @end="endCallback"
-                />
-              </div>
-            </div>
-          </div>
+      <!-- 顶部奖池 -->
+      <div class="jp-container" :class="{ 'jp-flash': isJpFlashing }">
+        <p class="jp-super-label">SUPER JACKPOT</p>
+        <div class="jp-amount-row">
+          <img :src="imgCoin" class="jp-coin" alt="">
+          <span class="jp-amount">{{ Math.floor(jackpotDisplay).toLocaleString('en-US') }}</span>
+        </div>
+      </div>
 
-          <button type="button" class="invite-btn" @click="goInvite">
-            Play
-          </button>
+      <!-- 转盘系统 -->
+      <div class="wheel-system" :style="{ '--ws': `${canvasWidth + 64}px`, '--wr': `${(canvasWidth + 64) / 2}px` }">
+        <!-- 3D 机械外框 -->
+        <div class="outer-frame" />
 
-          <div class="winning">
-            <div class="winning-report">
-              <span class="active">{{ t('prizePage.recordUser') }}</span>
-              <span>{{ t('prizePage.recordType') }}</span>
-              <span>{{ t('prizePage.recordReward') }}</span>
-            </div>
-            <div ref="listContainer" class="winning-list">
-              <div ref="listWrapper" class="scroll-up">
-                <div
-                  v-for="(item, index) in state.pageData.recordList"
-                  :key="`${item.uid}-${item.reward}-${index}`"
-                  class="winning-item"
-                >
-                  <span class="winning-item__cell">{{ item.uid }}</span>
-                  <span class="winning-item__cell">{{ spinTypeLabel(item.type) }}</span>
-                  <span class="winning-item__cell winning-item__reward">{{ item.reward }}</span>
-                </div>
-              </div>
+        <!-- LED 灯珠轨道 -->
+        <div class="led-track">
+          <div
+            v-for="(bulb, i) in ledBulbs"
+            :key="i"
+            class="led-bulb"
+            :style="{ transform: `rotate(${bulb.angle}deg)`, animationDelay: bulb.delay }"
+          />
+        </div>
+
+        <!-- 霓虹指针 -->
+        <svg class="modern-pointer" viewBox="0 0 100 120">
+          <defs>
+            <linearGradient id="ptrGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#00f2ff" />
+              <stop offset="100%" stop-color="#0066ff" />
+            </linearGradient>
+          </defs>
+          <path d="M50 120 L10 20 L90 20 Z" fill="url(#ptrGrad)" />
+          <circle cx="50" cy="35" r="10" fill="#fff" opacity="0.5" />
+        </svg>
+
+        <!-- LuckyCanvas 转盘 -->
+        <LuckyWheel
+          ref="wheelCanvas"
+          :width="canvasWidth"
+          :height="canvasWidth"
+          :prizes="prizes"
+          :blocks="blocks"
+          :buttons="buttons"
+          :default-config="wheelDefaultConfig"
+          class="wheel-canvas"
+          @start="startCallback"
+          @end="endCallback"
+        />
+      </div>
+
+      <!-- 邀请按钮 -->
+      <button type="button" class="invite-btn" @click="goInvite">
+        {{ t('prizePage.spinAction') }}
+      </button>
+
+      <!-- 中奖记录 -->
+      <div class="winning">
+        <div class="winning-report">
+          <span class="active">{{ t('prizePage.recordUser') }}</span>
+          <span>{{ t('prizePage.recordType') }}</span>
+          <span>{{ t('prizePage.recordReward') }}</span>
+        </div>
+        <div ref="listContainer" class="winning-list">
+          <div ref="listWrapper" class="scroll-up">
+            <div
+              v-for="(item, index) in state.pageData.recordList"
+              :key="`${item.uid}-${item.reward}-${index}`"
+              class="winning-item"
+            >
+              <span class="winning-item__cell">{{ item.uid }}</span>
+              <span class="winning-item__cell">{{ spinTypeLabel(item.type) }}</span>
+              <span class="winning-item__cell winning-item__reward">
+                <CoinAmount :text="item.reward" />
+              </span>
             </div>
           </div>
         </div>
       </div>
 
-      <van-overlay :show="state.winningShow" class="winning-overlay">
-        <div class="light-bg2">
-          <img :src="lightBg3">
-        </div>
-        <div class="light-bg">
-          <img :src="lightBg2">
-        </div>
-        <div class="spins-tips">
-          <img class="close" :src="closeWhite" @click="closeWinning">
-          <button type="button" class="spins-btn" @click="closeWinning">
-            {{ t('prizePage.claimAction') }}
-          </button>
-          <div class="tip">
-            <h1>{{ t('prizePage.resultTitle') }}</h1>
-            <img class="tip__prize" :src="winPrize">
-            <div class="tip__amount">
-              +{{ state.reward }}
+      <!-- 中奖弹窗 -->
+      <van-overlay :show="state.winningShow" class="winning-overlay" @click.self="closeWinning">
+        <div class="win-modal">
+          <!-- 光晕背景层 -->
+          <img class="win-glow-outer" :src="lightBg3" alt="">
+          <img class="win-glow-inner" :src="lightBg2" alt="">
+          <!-- 内容卡片 -->
+          <div class="win-card" :style="{ backgroundImage: `url(${lightBg1})` }">
+            <img class="win-close" :src="closeWhite" @click="closeWinning">
+            <div class="win-body">
+              <h1 class="win-title">{{ t('prizePage.resultTitle') }}</h1>
+              <img class="win-prize-img" :src="winPrize">
+              <div class="win-amount">
+                <CoinAmount :text="state.reward" class="win-coin-amount" />
+              </div>
             </div>
+            <button type="button" class="win-btn" @click="closeWinning">
+              {{ t('prizePage.claimAction') }}
+            </button>
           </div>
-          <div class="light-bg1" :style="{ backgroundImage: `url(${lightBg1})` }" />
         </div>
       </van-overlay>
     </div>
@@ -555,33 +593,203 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
+/* ── 页面基础 ── */
 .prize-page {
   min-height: 100vh;
-  background: #190709;
+  background: #050000;
+  position: relative;
+}
+
+.ambient-bg {
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(circle at center, #8b0000 0%, #050000 78%);
+  opacity: 0.65;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.velvet-texture {
+  position: fixed;
+  inset: 0;
+  opacity: 0.04;
+  pointer-events: none;
+  z-index: 2;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
 .prize-scroll {
   position: relative;
+  z-index: 5;
   min-height: calc(100vh - 46px);
-  padding-bottom: calc(104px + env(safe-area-inset-bottom));
+  padding: 0 16px calc(80px + env(safe-area-inset-bottom));
   overflow: hidden;
 }
 
-.turntable {
-  display: flex;
-  min-height: 100%;
-  color: #fff;
-  background-color: #1a0313;
-  flex-direction: column;
+/* ── 顶部奖池 ── */
+.jp-container {
+  margin: 16px auto 0;
+  max-width: 360px;
+  text-align: center;
 }
 
-.content {
-  flex: 1;
-  padding-top: 8px;
-  background:
-    radial-gradient(circle at top, rgba(255, 211, 88, 0.18), transparent 28%),
-    linear-gradient(180deg, rgba(93, 14, 11, 0.86) 0%, rgba(47, 2, 2, 0.96) 38%, rgba(25, 3, 19, 1) 100%);
-  overflow-x: hidden;
+@keyframes jpFlash {
+  0% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+
+  30% {
+    transform: scale(1.03);
+    filter: brightness(1.8) drop-shadow(0 0 16px #ffbb00);
+  }
+
+  100% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+}
+
+.jp-flash {
+  animation: jpFlash 0.6s ease-out forwards;
+}
+
+.jp-super-label {
+  margin: 0 0 6px;
+  font-size: 11px;
+  letter-spacing: 6px;
+  text-transform: uppercase;
+  color: #ffcc00;
+}
+
+.jp-amount-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.jp-coin {
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+}
+
+.jp-amount {
+  font-size: 44px;
+  font-weight: 900;
+  line-height: 1;
+  background: linear-gradient(180deg, #fff5c3 0%, #ffbb00 50%, #8b4513 100%);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.9));
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── 转盘系统 ── */
+.wheel-system {
+  position: relative;
+  width: var(--ws);
+  height: var(--ws);
+  margin: 20px auto 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.outer-frame {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #2a2a2a, #0d0d0d, #2a2a2a);
+  border: 4px solid #5d1a1a;
+  box-shadow:
+    0 20px 50px rgba(0, 0, 0, 0.85),
+    inset 0 0 30px #000;
+}
+
+/* LED 灯珠轨道 */
+.led-track {
+  position: absolute;
+  inset: 6%;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.5);
+  box-shadow: inset 0 0 12px rgba(255, 187, 0, 0.15);
+}
+
+.led-bulb {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background: #fff;
+  border-radius: 50%;
+  left: calc(50% - 5px);
+  top: 6px;
+  /* rotate around the center of led-track: radius(44%*ws) minus bulb top offset */
+  transform-origin: 5px calc(var(--ws) * 0.44 - 6px);
+  box-shadow: 0 0 4px #fff, 0 0 12px #ffbb00;
+  animation: ledFlow 2s infinite ease-in-out;
+}
+
+@keyframes ledFlow {
+  0%,
+  100% {
+    opacity: 0.25;
+    filter: brightness(1);
+  }
+
+  50% {
+    opacity: 1;
+    filter: brightness(1.6) blur(0.5px);
+  }
+}
+
+/* 霓虹指针 */
+.modern-pointer {
+  position: absolute;
+  top: -44px;
+  width: 52px;
+  height: 76px;
+  z-index: 20;
+  filter: drop-shadow(0 0 16px #00f2ff);
+}
+
+/* LuckyCanvas */
+.wheel-canvas {
+  z-index: 10;
+  position: relative;
+}
+
+/* ── 邀请按钮 ── */
+.invite-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  max-width: 360px;
+  height: 50px;
+  margin: 24px auto 0;
+  border: 1px solid rgba(255, 236, 157, 0.4);
+  border-radius: 999px;
+  background: linear-gradient(180deg, #fff9d0 0%, #ffd358 48%, #bf780c 100%);
+  box-shadow:
+    0 10px 20px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  color: #7c2200;
+  font-size: 16px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+}
+
+/* ── 中奖记录 ── */
+.winning {
+  margin: 24px auto 0;
+  max-width: 360px;
+  border: 1px solid #fdf07e;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #200000 0%, #500007 100%);
+  overflow: hidden;
 }
 
 .winning-report,
@@ -590,71 +798,9 @@ onBeforeUnmount(() => {
   align-items: center;
 }
 
-.wheel-container {
-  display: flex;
-  justify-content: center;
-  width: 100%;
-  height: 71vw;
-  margin-top: 4px;
-  padding: 0 42px;
-}
-
-.turntable-prize {
-  position: relative;
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
-}
-
-.wheel {
-  position: relative;
-  display: flex;
-  justify-content: center;
-  width: 100%;
-}
-
-.wheel-canvas {
-  z-index: 1;
-  max-width: 360px;
-  max-height: 360px;
-}
-
-.invite-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: calc(100% - 36px);
-  height: 48px;
-  margin: 28px auto 12px;
-  border: 1px solid rgba(255, 236, 157, 0.4);
-  border-radius: 999px;
-  background: linear-gradient(
-    180deg,
-    rgba(255, 249, 208, 0.98) 0%,
-    rgba(255, 211, 88, 0.96) 48%,
-    rgba(191, 120, 12, 1) 100%
-  );
-  box-shadow:
-    0 10px 18px rgba(77, 17, 19, 0.45),
-    inset 0 1px 0 rgba(255, 255, 255, 0.35);
-  color: #7c2200;
-  font-size: 16px;
-  font-weight: 800;
-  letter-spacing: 0.03em;
-}
-
-.winning {
-  margin: 30px 16px 0;
-  border: 1px solid #fdf07e;
-  border-radius: 8px;
-  background: linear-gradient(180deg, #270000 0%, #560007 100%);
-}
-
 .winning-report {
   height: 36px;
-  margin: 6px 6px 0;
-  justify-content: center;
-  background-color: #5d1519;
+  background: #5d1519;
   color: rgba(255, 255, 255, 0.4);
   font-size: 12px;
 }
@@ -676,7 +822,7 @@ onBeforeUnmount(() => {
 }
 
 .winning-item {
-  padding: 10px 12px;
+  padding: 9px 12px;
   color: #fff;
   font-size: 12px;
 }
@@ -684,125 +830,132 @@ onBeforeUnmount(() => {
 .winning-item__reward {
   color: #ffea00;
   font-weight: 700;
+  display: flex;
+  justify-content: center;
 }
 
+/* ── 中奖弹窗 ── */
 :deep(.winning-overlay.van-overlay) {
-  position: absolute;
-  z-index: 12;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
 }
 
-.light-bg2,
-.light-bg,
-.spins-tips {
-  position: fixed;
-  left: 50%;
-}
-
-.light-bg2 {
-  top: 40%;
-  z-index: 2002;
+.win-modal {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 100%;
-  max-width: 500px;
-  transform: translate(-50%, -60%);
-}
-
-.light-bg2 img {
-  width: 100%;
-  animation: scale-element 2s linear infinite;
-}
-
-.light-bg {
-  top: 40%;
-  z-index: 2002;
-  width: 282px;
-  transform: translate(-41%, -63%);
-}
-
-.light-bg img {
-  width: 100%;
-}
-
-.spins-tips {
-  top: 40%;
-  z-index: 9999;
-  width: 80%;
   max-width: 360px;
-  padding: 96px 0 112px;
-  transform: translate(-50%, -60%);
-  text-align: center;
-  font-size: 14px;
+  padding: 0 16px;
 }
 
-.light-bg1 {
+.win-glow-outer {
   position: absolute;
-  inset: 0;
-  z-index: -1;
+  width: 120%;
+  max-width: 500px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  animation: scaleFloat 2s linear infinite;
+  z-index: 0;
+}
+
+.win-glow-inner {
+  position: absolute;
+  width: 80%;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.win-card {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  padding: 40px 0 80px;
+  text-align: center;
   background-repeat: no-repeat;
   background-position: center;
   background-size: contain;
 }
 
-.close {
+.win-close {
   position: absolute;
-  top: 8px;
-  right: 8px;
-  width: 20px;
+  top: 4px;
+  right: 4px;
+  width: 24px;
   cursor: pointer;
 }
 
-.spins-btn {
+.win-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0 32px;
+}
+
+.win-title {
+  margin: 0 0 8px;
+  color: #fff;
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.win-prize-img {
+  width: 96px;
+  margin: 8px 0;
+}
+
+.win-amount {
+  display: flex;
+  justify-content: center;
+  margin-top: 4px;
+}
+
+.win-btn {
   position: absolute;
-  bottom: 28px;
+  bottom: 20px;
   left: 50%;
+  transform: translateX(-50%);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   min-width: 148px;
   height: 44px;
-  padding: 0 22px;
+  padding: 0 24px;
   border-radius: 999px;
   background: linear-gradient(180deg, #ffd601 0%, #ffa800 100%);
   color: #921111;
+  font-size: 15px;
   font-weight: 700;
-  transform: translateX(-50%);
+  white-space: nowrap;
 }
 
-.tip {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 0 40px;
-}
-
-.tip h1 {
-  margin: 0;
-  color: #fff;
-  font-size: 22px;
-}
-
-.tip__prize {
-  width: 96px;
-  margin: 12px 0;
-}
-
-.tip__amount {
-  color: #ffe65c;
+:deep(.win-coin-amount) {
   font-size: 36px;
   font-weight: 800;
+  color: #ffe65c;
 }
 
-@keyframes scale-element {
-  0% {
+:deep(.tip-coin-amount .coin-amount-icon) {
+  width: 1.1em;
+  height: 1.1em;
+}
+
+@keyframes scaleFloat {
+  0%,
+  100% {
     transform: scale(0.96);
   }
 
   50% {
     transform: scale(1.04);
-  }
-
-  100% {
-    transform: scale(0.96);
   }
 }
 </style>

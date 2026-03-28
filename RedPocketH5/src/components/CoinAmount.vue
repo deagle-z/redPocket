@@ -3,8 +3,8 @@ import imgCoin from '@/assets/svg/coin.svg'
 
 const props = defineProps<{ text: string }>()
 
-// Strip ฿ symbol wherever it appears, preserve +/- signs
-const stripped = computed(() => props.text.replace(/฿\s*/g, '').trim())
+// Strip coin marker wherever it appears, preserve +/- signs
+const stripped = computed(() => props.text.replace(/\u0E3F\s*/g, '').trim())
 </script>
 
 <template>

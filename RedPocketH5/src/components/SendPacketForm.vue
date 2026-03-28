@@ -8,6 +8,7 @@ import type { LuckyPlayType } from '@/utils/lucky-play'
 const props = withDefaults(defineProps<{
   variant?: 'page' | 'modal'
   showIntro?: boolean
+  showPlayType?: boolean
   showTips?: boolean
   autoReset?: boolean
   defaultPlayType?: LuckyPlayType
@@ -15,6 +16,7 @@ const props = withDefaults(defineProps<{
 }>(), {
   variant: 'page',
   showIntro: true,
+  showPlayType: true,
   showTips: true,
   autoReset: false,
   defaultPlayType: 'thunder',
@@ -189,7 +191,7 @@ watch(() => props.defaultPlayType, (value) => {
       </div>
     </section>
 
-    <section class="section-block">
+    <section v-if="showPlayType" class="section-block">
       <header class="section-header">
         <span class="section-title">
           {{ t('sendPacketPage.playTypeTitle') }}

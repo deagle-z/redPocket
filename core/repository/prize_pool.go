@@ -2,13 +2,33 @@ package repository
 
 import (
 	"BaseGoUni/core/pojo"
+	"BaseGoUni/core/utils"
 	"fmt"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
+	"sync"
+	"time"
 )
+
+// GetPrizePoolBalance 查询指定奖池当前余额，不存在则返回 0
+func GetPrizePoolBalance(db *gorm.DB, poolCode string) (float64, error) {
+	var pool pojo.SysTenantPrizePool
+	err := db.Where(" pool_code = ?", poolCode).First(&pool).Error
+	if err == gorm.ErrRecordNotFound {
+		return 0, nil
+	}
+	if err != nil {
+		return 0, err
+	}
+	return pool.Balance, nil
+}
+
+// prizePoolThrottle 节流控制：key = "tenantId:poolCode"，value = 上次推送时间
+var prizePoolThrottle sync.Map
 
 // DepositPrizePool 向奖池注入金额（事务内调用）
 // 若奖池记录不存在则自动创建；使用 SELECT FOR UPDATE 保证并发安全
+// 事务提交后异步触发节流推送
 func DepositPrizePool(tx *gorm.DB, tenantId int64, poolCode string, bizType string, bizId string, userId int64, amount float64) error {
 	if amount <= 0 {
 		return nil
@@ -67,5 +87,29 @@ func DepositPrizePool(tx *gorm.DB, tenantId int64, poolCode string, bizType stri
 		return fmt.Errorf("写入奖池流水失败: %v", err)
 	}
 
+	// 事务提交后异步触发节流推送（用 afterBalance 作为乐观估算值，避免再次查库）
+	go broadcastPrizePoolThrottled(tenantId, poolCode, afterBalance)
+
 	return nil
+}
+
+// broadcastPrizePoolThrottled 节流推送奖池余额，同一奖池 1s 内最多推送 1 次
+func broadcastPrizePoolThrottled(tenantId int64, poolCode string, balance float64) {
+	key := fmt.Sprintf("%d:%s", tenantId, poolCode)
+	now := time.Now()
+
+	actual, loaded := prizePoolThrottle.LoadOrStore(key, now)
+	if loaded {
+		last := actual.(time.Time)
+		if now.Sub(last) < time.Second {
+			return // 节流，跳过本次
+		}
+		prizePoolThrottle.Store(key, now)
+	}
+
+	_ = utils.BroadcastWsWithType("prize_pool_balance", map[string]interface{}{
+		"tenantId": tenantId,
+		"poolCode": poolCode,
+		"balance":  balance,
+	})
 }

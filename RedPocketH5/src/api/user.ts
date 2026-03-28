@@ -472,6 +472,10 @@ export function getLuckyAppHistory(data: LuckyAppHistoryReq) {
   return request.post<ApiResult<LuckyAppHistoryResp>>('/api/v1/app/lucky/history', data)
 }
 
+export function getPrizePoolBalance(poolCode = 'lucky') {
+  return request.get<ApiResult<{ poolCode: string, balance: number }>>(`/api/v1/app/prizePool/balance?poolCode=${poolCode}`)
+}
+
 export function getAppCashHistoryList(data: AppCashHistoryReq) {
   return request.post<ApiResult<AppCashHistoryResp>>('/api/v1/app/cashHistory/list', data)
 }

@@ -344,7 +344,7 @@ onBeforeUnmount(() => {
             <div v-for="row in overview.summaryRows" :key="row.label" class="summary-row">
               <span class="summary-label">{{ row.label }}</span>
               <span class="summary-value" :class="{ highlight: row.highlight }">
-                <CoinAmount v-if="row.value.startsWith('฿')" :text="row.value" />
+                <CoinAmount v-if="row.value.startsWith('\u0E3F')" :text="row.value" />
                 <template v-else>{{ row.value }}</template>
               </span>
             </div>

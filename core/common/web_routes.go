@@ -257,8 +257,9 @@ func InitGin() {
 		appRouter.POST("/tg/sendEmailCode", api.SendTgEmailCode)
 		appRouter.POST("/tg/registerByEmail", api.RegisterTgByEmail)
 		appRouter.POST("/tg/forgotPasswordByEmail", api.ForgotPasswordByEmail)
-		appRouter.POST("/lucky/list", api.GetRedPacketListApp) // 不校验token
-		appRouter.POST("/lucky/detail", api.GetLuckyDetailApp) // 不校验token
+		appRouter.POST("/lucky/list", api.GetRedPacketListApp)         // 不校验token
+		appRouter.POST("/lucky/detail", api.GetLuckyDetailApp)         // 不校验token
+		appRouter.GET("/prizePool/balance", api.GetPrizePoolBalanceApp) // 不校验token
 	}
 
 	appAuthRouter := router.Group("/api/v1/app")

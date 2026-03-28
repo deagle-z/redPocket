@@ -1,4 +1,6 @@
-export const CURRENCY_SYMBOL = '฿'
+import coinSvg from '@/assets/svg/coin.svg'
+
+export const CURRENCY_SYMBOL = coinSvg
 export const CURRENCY_CODE = 'GOLD'
 
 interface FormatCurrencyOptions {
@@ -6,6 +8,9 @@ interface FormatCurrencyOptions {
   spaceBetweenSymbolAndAmount?: boolean
   fractionDigits?: number
 }
+
+// Internal text marker — used by CoinAmount / CurrencyText to detect and replace with the coin icon
+const _symbolChar = '\u0E3F'
 
 export function formatCurrency(value: number, options: FormatCurrencyOptions = {}) {
   const {
@@ -19,5 +24,5 @@ export function formatCurrency(value: number, options: FormatCurrencyOptions = {
   const absText = Math.abs(safe).toFixed(fractionDigits)
   const signText = signed ? (safe >= 0 ? '+' : '-') : (safe < 0 ? '-' : '')
   const space = spaceBetweenSymbolAndAmount ? ' ' : ''
-  return `${signText}${CURRENCY_SYMBOL}${space}${absText}`
+  return `${signText}${_symbolChar}${space}${absText}`
 }

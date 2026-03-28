@@ -434,7 +434,7 @@ onMounted(() => {
 
           <div class="tx-main">
             <p class="tx-title">
-              {{ item.title }}
+              <CurrencyText :text="item.title" />
             </p>
             <!-- <p class="tx-sub">
               {{ item.sub }}
