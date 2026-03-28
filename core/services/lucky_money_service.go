@@ -212,8 +212,16 @@ func EnsureMinActiveLuckyPackets(db *gorm.DB, tablePrefix string) error {
 	autoLuckyMaintainMu.Lock()
 	defer autoLuckyMaintainMu.Unlock()
 
+	if err := ensureMinForMode(db, tablePrefix, 0); err != nil {
+		return err
+	}
+	return ensureMinForMode(db, tablePrefix, 1)
+}
+
+// ensureMinForMode 确保指定玩法模式（0=雷号, 1=奇偶）至少有 3 个活跃红包
+func ensureMinForMode(db *gorm.DB, tablePrefix string, gameMode int) error {
 	for i := 0; i < 3; i++ {
-		activeCount, err := countActiveLuckyMoney(db)
+		activeCount, err := countActiveLuckyMoneyByMode(db, gameMode)
 		if err != nil {
 			return err
 		}
@@ -235,13 +243,15 @@ func EnsureMinActiveLuckyPackets(db *gorm.DB, tablePrefix string) error {
 		}
 
 		req := pojo.LuckyMoneySend{
-			Amount:  amount,
-			Thunder: rand.IntN(10),
+			Amount:   amount,
+			GameMode: gameMode,
+		}
+		if gameMode == 0 {
+			req.Thunder = rand.IntN(10)
 		}
 		luckyMoney, sendErr := sendRedPacket(db, botUser.ID, getTgUserDisplayName(&botUser), req, tablePrefix)
 		if sendErr != nil {
-			err = sendErr
-			return err
+			return sendErr
 		}
 		broadcastLuckySent(luckyMoney)
 	}
@@ -259,6 +269,12 @@ func broadcastLuckySent(luckyMoney *pojo.LuckyMoney) {
 	if err := utils.BroadcastWsWithType("lucky_sent", result); err != nil {
 		log.Printf("[lucky] Broadcast lucky_sent failed: luckyID=%d err=%v", luckyMoney.ID, err)
 	}
+}
+
+func countActiveLuckyMoneyByMode(db *gorm.DB, gameMode int) (int64, error) {
+	var total int64
+	err := db.Model(&pojo.LuckyMoney{}).Where("status = ? AND game_mode = ?", 1, gameMode).Count(&total).Error
+	return total, err
 }
 
 func countActiveLuckyMoney(db *gorm.DB) (int64, error) {
