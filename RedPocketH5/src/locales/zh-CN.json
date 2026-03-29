@@ -609,6 +609,7 @@
     "spinAction": "立即抽奖",
     "spinning": "抽奖中",
     "noChance": "当前没有抽奖次数",
+    "drawMiss": "本次未中奖",
     "recordTitle": "最新中奖记录",
     "recordHint": "活动数据滚动展示",
     "recordUser": "用户",

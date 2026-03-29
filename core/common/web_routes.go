@@ -149,6 +149,9 @@ func InitGin() {
 		adminGroup.GET("/sysPayChannelMethod/:channelId", api.GetSysPayChannelMethods) // 获取通道绑定的支付方式
 		adminGroup.POST("/sysVipLevel/list", api.GetSysVipLevels)                      // 获取VIP等级列表
 		adminGroup.GET("/sysVipLevel/:id", api.GetSysVipLevelById)                     // 获取VIP等级详情
+		adminGroup.GET("/prizePoolConfig/:poolId", api.GetPrizePoolConfig)             // 获取奖池概率配置
+		adminGroup.POST("/userLotteryRecord/list", api.GetUserLotteryRecords)          // 抽奖记录列表
+		adminGroup.GET("/userLotteryRecord/:id", api.GetUserLotteryRecordById)         // 抽奖记录详情
 		adminGroup.POST("/sysCustomField/list", api.GetSysCustomFields)
 		adminGroup.GET("/sysCustomField/:id", api.GetSysCustomFieldById)
 		adminGroup.POST("/platformProfitLedger/list", api.GetPlatformProfitLedgers)
@@ -196,6 +199,8 @@ func InitGin() {
 		adminGroupLog.DELETE("/sysPayChannelMethod/:id", api.DelSysPayChannelMethod)      // 删除通道-方式绑定
 		adminGroupLog.POST("/sysVipLevel", api.SetSysVipLevel)                            // 创建或更新VIP等级
 		adminGroupLog.DELETE("/sysVipLevel/:id", api.DelSysVipLevel)                      // 删除VIP等级
+		adminGroupLog.POST("/prizePoolConfig", api.SetPrizePoolConfig)                    // 创建或更新奖池概率配置
+		adminGroupLog.DELETE("/prizePoolConfig/:id", api.DelPrizePoolConfig)              // 删除奖池概率配置
 		adminGroupLog.POST("/sysCountry", api.SetSysCountry)
 		adminGroupLog.DELETE("/sysCountry/:id", api.DelSysCountry)
 		adminGroupLog.POST("/sysCustomField", api.SetSysCustomField)
@@ -257,8 +262,8 @@ func InitGin() {
 		appRouter.POST("/tg/sendEmailCode", api.SendTgEmailCode)
 		appRouter.POST("/tg/registerByEmail", api.RegisterTgByEmail)
 		appRouter.POST("/tg/forgotPasswordByEmail", api.ForgotPasswordByEmail)
-		appRouter.POST("/lucky/list", api.GetRedPacketListApp)         // 不校验token
-		appRouter.POST("/lucky/detail", api.GetLuckyDetailApp)         // 不校验token
+		appRouter.POST("/lucky/list", api.GetRedPacketListApp)          // 不校验token
+		appRouter.POST("/lucky/detail", api.GetLuckyDetailApp)          // 不校验token
 		appRouter.GET("/prizePool/balance", api.GetPrizePoolBalanceApp) // 不校验token
 	}
 
@@ -293,6 +298,9 @@ func InitGin() {
 		appAuthRouter.GET("/vip/progress", api.AppGetVipProgress)                               // App端获取当前用户VIP进度
 		appAuthRouter.GET("/vip/rewards", api.AppGetClaimableVipRewards)                        // App端查询可领取VIP奖励列表
 		appAuthRouter.POST("/vip/rewards/:id/claim", api.AppClaimVipReward)                     // App端领取VIP奖励（id=0领取全部）
+		appAuthRouter.GET("/lottery/chances", api.GetLotteryChances)                            // App端查询抽奖次数
+		appAuthRouter.POST("/lottery/draw", api.DrawLottery)                                    // App端消耗一次抽奖机会
+		appAuthRouter.GET("/lottery/history", api.GetLotteryHistory)                            // App端查询抽奖历史
 	}
 
 	log.Printf("Start server at %s:%d ", utils.GlobalConfig.Host, utils.GlobalConfig.Port)
@@ -553,7 +561,12 @@ func appAuthMiddle(singleLogin bool) gin.HandlerFunc {
 		}
 		authHeader = strings.TrimPrefix(authHeader, "Bearer ")
 		hostInfo := utils.GetTempHostInfo(utils.GetRequestHost(c))
-		userId, userType, hostName, _, _ := utils.ParseToken(hostInfo.AccessSecret, authHeader)
+		userId, hostName, tenantId, parseErr := utils.ParseAppToken(hostInfo.AccessSecret, authHeader)
+		if parseErr != nil {
+			utils.UnauthorizedBack(c, "token is invalid")
+			c.Abort()
+			return
+		}
 		if hostInfo.HostName != hostName {
 			utils.UnauthorizedBack(c, "token is invalid 0")
 			c.Abort()
@@ -561,11 +574,6 @@ func appAuthMiddle(singleLogin bool) gin.HandlerFunc {
 		}
 		if userId == 0 {
 			utils.UnauthorizedBack(c, "token is invalid 1")
-			c.Abort()
-			return
-		}
-		if userType != 5 {
-			utils.UnauthorizedBack(c, "not support api")
 			c.Abort()
 			return
 		}
@@ -580,8 +588,9 @@ func appAuthMiddle(singleLogin bool) gin.HandlerFunc {
 		}
 
 		c.Set("userId", userId)
-		c.Set("userType", userType)
+		c.Set("userType", 5)
 		c.Set("token", authHeader)
+		c.Set("tenantId", tenantId)
 		c.Next()
 		endTime := time.Now()
 		latencyTime := endTime.Sub(startTime)

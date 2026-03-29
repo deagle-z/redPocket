@@ -2,31 +2,21 @@
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { LuckyWheel } from '@lucky-canvas/vue'
 import { showToast } from 'vant'
-import AppPageHeader from '@/components/AppPageHeader.vue'
+import { drawLottery, getLotteryChances, getLotteryHistory, getPrizePoolBalance } from '@/api/user'
 import imgCoin from '@/assets/svg/coin.svg'
 
 interface PageData {
-  childCount: number
-  normalCount: number
-  advancedCount: number
-  superCount: number
   rewardList: string[]
   recordList: RecordItem[]
 }
 
 interface RecordItem {
   uid: string
-  type: 1 | 2 | 3
-  reward: string
-}
-
-interface DrawResult {
-  index: number
   reward: string
 }
 
 const { t } = useI18n()
-const router = useRouter()
+const DEFAULT_REWARD_AMOUNTS = [2, 20, 30, 50, 180]
 
 function svgDataUri(svg: string) {
   return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`
@@ -92,69 +82,22 @@ const winPrize = svgDataUri(`
 `)
 
 const prizeImg1 = {
-  src: svgDataUri(`
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">
-    <defs>
-      <linearGradient id="g" x1="0%" x2="100%">
-        <stop offset="0%" stop-color="#fff6b2"/>
-        <stop offset="55%" stop-color="#ffd347"/>
-        <stop offset="100%" stop-color="#b97608"/>
-      </linearGradient>
-    </defs>
-    <circle cx="60" cy="60" r="42" fill="url(#g)" stroke="#fff0bf" stroke-width="6"/>
-    <text x="60" y="72" text-anchor="middle" font-size="34" font-weight="800" fill="#7a2708">$</text>
-  </svg>
-  `),
+  src: imgCoin,
   width: '40%',
   top: '45%',
 }
 const prizeImg2 = {
-  src: svgDataUri(`
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">
-    <defs>
-      <linearGradient id="g" x1="0%" x2="100%">
-        <stop offset="0%" stop-color="#fff1aa"/>
-        <stop offset="55%" stop-color="#ffcb3a"/>
-        <stop offset="100%" stop-color="#bb7200"/>
-      </linearGradient>
-    </defs>
-    <path d="M38 36 H82 L90 50 L78 92 H42 L30 50 Z" fill="url(#g)" stroke="#fff1c5" stroke-width="5"/>
-    <path d="M50 36 C50 24 70 24 70 36" fill="none" stroke="#8f2d10" stroke-width="6" stroke-linecap="round"/>
-  </svg>
-  `),
+  src: imgCoin,
   width: '40%',
   top: '45%',
 }
 const prizeImg3 = {
-  src: svgDataUri(`
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">
-    <defs>
-      <linearGradient id="g" x1="0%" x2="100%">
-        <stop offset="0%" stop-color="#fff7be"/>
-        <stop offset="55%" stop-color="#ffd44b"/>
-        <stop offset="100%" stop-color="#b87406"/>
-      </linearGradient>
-    </defs>
-    <path d="M26 40 L44 28 L60 44 L76 28 L94 40 L84 78 H36 Z" fill="url(#g)" stroke="#fff3c7" stroke-width="5"/>
-    <circle cx="60" cy="58" r="10" fill="#a31d14"/>
-  </svg>
-  `),
+  src: imgCoin,
   width: '40%',
   top: '45%',
 }
 const prizeImg4 = {
-  src: svgDataUri(`
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">
-    <defs>
-      <linearGradient id="g" x1="0%" x2="100%">
-        <stop offset="0%" stop-color="#fff2b5"/>
-        <stop offset="55%" stop-color="#ffd041"/>
-        <stop offset="100%" stop-color="#ba7607"/>
-      </linearGradient>
-    </defs>
-    <path d="M60 24 L74 44 L98 48 L80 66 L84 92 L60 80 L36 92 L40 66 L22 48 L46 44 Z" fill="url(#g)" stroke="#fff2c0" stroke-width="5"/>
-  </svg>
-  `),
+  src: imgCoin,
   width: '40%',
   top: '45%',
 }
@@ -163,22 +106,16 @@ const rewardCatalog = ['8', '18', '28', '38', '58', '88', '128', '188', '588', '
 
 const state = reactive({
   winningShow: false,
-  type: 0,
-  drawType: 2,
   reward: '',
   pageData: {
-    childCount: 0,
-    normalCount: 3,
-    advancedCount: 8,
-    superCount: 15,
     rewardList: rewardCatalog,
     recordList: [
-      { uid: 'UID*321', type: 1 as const, reward: '18' },
-      { uid: 'UID*873', type: 2 as const, reward: '88' },
-      { uid: 'UID*552', type: 3 as const, reward: '188' },
-      { uid: 'UID*119', type: 1 as const, reward: '8' },
-      { uid: 'UID*694', type: 2 as const, reward: '58' },
-      { uid: 'UID*205', type: 3 as const, reward: '588' },
+      { uid: 'UID*321', reward: '18' },
+      { uid: 'UID*873', reward: '88' },
+      { uid: 'UID*552', reward: '188' },
+      { uid: 'UID*119', reward: '8' },
+      { uid: 'UID*694', reward: '58' },
+      { uid: 'UID*205', reward: '588' },
     ],
   } as PageData,
 })
@@ -202,6 +139,8 @@ const listWrapper = ref<HTMLElement | null>(null)
 const audioRef = ref<HTMLAudioElement | null>(null)
 const animationFrame = ref<number>()
 const spinning = ref(false)
+const availableSpins = ref(0)
+const lotteryAmounts = ref<number[]>([...DEFAULT_REWARD_AMOUNTS])
 
 const canvasWidth = computed(() => {
   if (typeof window === 'undefined')
@@ -214,20 +153,11 @@ const wheelDefaultConfig = ref({
   decelerationTime: 2500,
 })
 
-const currentSpinText = computed(() => {
-  if (state.type === 3)
-    return t('prizePage.superSpin')
-  if (state.type === 2)
-    return t('prizePage.advancedSpin')
-  return t('prizePage.normalSpin')
-})
-
 // ── Jackpot counter ───────────────────────────────────────────────
-const jackpotValue = ref(5290463)
-const jackpotDisplay = ref(5290463)
+const jackpotValue = ref(0)
+const jackpotDisplay = ref(0)
 const isJpFlashing = ref(false)
 let jpRafId: number | undefined
-let jpIntervalId: number | undefined
 
 function rollJackpot(target: number) {
   cancelAnimationFrame(jpRafId!)
@@ -244,9 +174,10 @@ function rollJackpot(target: number) {
   jpRafId = requestAnimationFrame(step)
 }
 
-function startJackpot() {
-  jpIntervalId = window.setInterval(() => {
-    jackpotValue.value += Math.floor(Math.random() * 888 + 200)
+async function loadJackpotBalance() {
+  try {
+    const { data } = await getPrizePoolBalance('lucky')
+    jackpotValue.value = Number(data?.balance ?? 0)
     isJpFlashing.value = false
     nextTick(() => {
       isJpFlashing.value = true
@@ -255,7 +186,10 @@ function startJackpot() {
       isJpFlashing.value = false
     }, 600)
     rollJackpot(jackpotValue.value)
-  }, 2000)
+  }
+  catch {
+    // Keep current jackpot display when loading fails.
+  }
 }
 
 // ── LED ring ──────────────────────────────────────────────────────
@@ -275,58 +209,73 @@ function randomDelay(minSeconds: number, maxSeconds: number) {
 }
 
 function createMockPageData(): PageData {
-  const childCount = randomInt(0, 15)
-  const recordList = Array.from({ length: 10 }, (_, index) => ({
+  const recordList = Array.from({ length: 10 }, () => ({
     uid: `UID*${randomInt(100, 999)}`,
-    type: (index % 3 + 1) as 1 | 2 | 3,
     reward: rewardCatalog[randomInt(0, rewardCatalog.length - 2)],
   }))
   return {
-    childCount,
-    normalCount: 3,
-    advancedCount: 8,
-    superCount: 15,
     rewardList: [...rewardCatalog],
     recordList,
   }
 }
 
-async function mockPhoneCanDraw() {
-  await new Promise(resolve => setTimeout(resolve, 120))
-  const childCount = state.pageData.childCount
-  if (childCount >= state.pageData.superCount)
-    return 4
-  if (childCount >= state.pageData.advancedCount)
-    return 3
-  if (childCount >= state.pageData.normalCount)
-    return 2
-  return 6
-}
+async function loadLotteryHistory(limit = 10) {
+  try {
+    const { data } = await getLotteryHistory(limit)
+    const nextRecords = Array.isArray(data)
+      ? data.map(item => ({
+          uid: String(item?.name || 'User'),
+          reward: formatAwardText(Number(item?.awardAmount || 0)),
+        }))
+      : []
 
-async function mockLuckDrawInit() {
-  await new Promise(resolve => setTimeout(resolve, 160))
-  return createMockPageData()
-}
-
-function pickWeightedIndex(type: number) {
-  const pools: Record<number, number[]> = {
-    1: [0, 1, 2, 3, 4, 5, 9],
-    2: [1, 2, 3, 4, 5, 6, 7, 9],
-    3: [3, 4, 5, 6, 7, 8, 9],
+    if (nextRecords.length > 0) {
+      state.pageData.recordList = nextRecords
+      return
+    }
   }
-  const pool = pools[type] || pools[1]
-  return pool[randomInt(0, pool.length - 1)]
+  catch {
+    // Fall back to local mock records when history loading fails.
+  }
+
+  if (!state.pageData.recordList.length)
+    state.pageData.recordList = createMockPageData().recordList
 }
 
-async function mockLuckDrawDo({ key }: { key: number }): Promise<DrawResult> {
-  await new Promise(resolve => setTimeout(resolve, randomInt(450, 900)))
-  const index = pickWeightedIndex(key)
-  const reward = state.pageData.rewardList[index] || '8'
-  return { index, reward }
+function formatAwardText(value: number) {
+  const numericValue = Number(value || 0)
+  if (Number.isInteger(numericValue))
+    return String(numericValue)
+  return numericValue.toFixed(2).replace(/\.?0+$/, '')
+}
+
+function buildRewardSlots(amounts: number[]) {
+  const source = amounts
+    .map(value => Number(value ?? 0))
+    .filter(value => Number.isFinite(value))
+
+  const slots = (source.length > 0 ? source : DEFAULT_REWARD_AMOUNTS)
+    .slice(0, 10)
+    .map(value => formatAwardText(value))
+
+  while (slots.length < 10)
+    slots.push('0')
+
+  return slots
+}
+
+function resolveRewardIndex(awardAmount: number, rewards: string[]) {
+  const target = formatAwardText(awardAmount)
+  const exactIndex = rewards.findIndex(reward => reward === target)
+  if (exactIndex >= 0)
+    return exactIndex
+  const zeroIndex = rewards.findIndex(reward => reward === '0')
+  return zeroIndex >= 0 ? zeroIndex : 0
 }
 
 function buildPrizeConfig() {
-  const texts = state.pageData.rewardList
+  const texts = buildRewardSlots(lotteryAmounts.value)
+  state.pageData.rewardList = texts
   prizes.value = [
     { background: '#8b0000', imgs: [prizeImg1], fonts: [{ text: texts[0], top: '20%', fontColor: '#ffe59a', fontSize: '13px' }] },
     { background: '#1a1a1a', imgs: [prizeImg2], fonts: [{ text: texts[1], top: '20%', fontColor: '#ffbb00', fontSize: '13px' }] },
@@ -340,34 +289,23 @@ function buildPrizeConfig() {
     { background: '#1a1a1a', imgs: [prizeImg2], fonts: [{ text: texts[9], top: '20%', fontColor: '#ffbb00', fontSize: '13px' }] },
   ]
 
-  const isActive = state.type > 0
   buttons.value = [{
     radius: '30%',
-    background: isActive ? '#d4a017' : '#8a7355',
+    background: 'rgba(0,0,0,0)',
     pointer: false,
-    fonts: [{
-      text: isActive ? currentSpinText.value : t('prizePage.spinAction'),
-      fontColor: isActive ? '#5a1206' : '#c4b89a',
-      fontSize: '12',
-      fontWeight: 'bold',
-      top: '20%',
-    }],
+    fonts: [],
   }]
 }
 
 async function refreshPageState() {
-  state.pageData = await mockLuckDrawInit()
-  const status = await mockPhoneCanDraw()
-
-  if (status === 4)
-    state.type = 3
-  else if (status === 3)
-    state.type = 2
-  else if (status === 2)
-    state.type = 1
-  else
-    state.type = 0
-
+  const [chanceResult] = await Promise.all([
+    getLotteryChances(),
+    loadJackpotBalance(),
+    loadLotteryHistory(),
+  ])
+  const amounts = Array.isArray(chanceResult?.data?.amounts) ? chanceResult.data.amounts : DEFAULT_REWARD_AMOUNTS
+  lotteryAmounts.value = amounts.length > 0 ? amounts : [...DEFAULT_REWARD_AMOUNTS]
+  availableSpins.value = Math.max(0, Number(chanceResult?.data?.availableCount ?? 0))
   buildPrizeConfig()
   window.setTimeout(() => {
     wheelCanvas.value?.init?.()
@@ -375,7 +313,7 @@ async function refreshPageState() {
 }
 
 function addLatestRecord(reward: string) {
-  state.pageData.recordList.unshift({ uid: 'ME***', type: (state.type || 1) as 1 | 2 | 3, reward })
+  state.pageData.recordList.unshift({ uid: 'ME***', reward })
   state.pageData.recordList = state.pageData.recordList.slice(0, 12)
 }
 
@@ -405,7 +343,7 @@ function startScrolling() {
 }
 
 async function startCallback() {
-  if (!state.type || spinning.value) {
+  if (availableSpins.value <= 0 || spinning.value) {
     showToast(t('prizePage.noChance'))
     return
   }
@@ -417,7 +355,10 @@ async function startCallback() {
     audioRef.value.play().catch(() => {})
   }
   try {
-    const { index, reward } = await mockLuckDrawDo({ key: state.type })
+    const { data } = await drawLottery()
+    const awardAmount = Number(data?.awardAmount ?? 0)
+    const reward = formatAwardText(awardAmount)
+    const index = resolveRewardIndex(awardAmount, state.pageData.rewardList)
     state.reward = reward
     const stopDelay = randomDelay(3, 5)
     window.setTimeout(() => {
@@ -429,15 +370,19 @@ async function startCallback() {
     pauseSound()
     spinning.value = false
     showToast(error?.message || t('prizePage.noChance'))
+    await refreshPageState()
   }
 }
 
 async function endCallback() {
   pauseSound()
   spinning.value = false
-  if (state.reward) {
+  if (Number(state.reward || 0) > 0) {
     addLatestRecord(state.reward)
     state.winningShow = true
+  }
+  else {
+    showToast(t('prizePage.drawMiss'))
   }
   await refreshPageState()
 }
@@ -447,30 +392,15 @@ function closeWinning() {
   state.reward = ''
 }
 
-function goBack() {
-  router.back()
-}
-function goInvite() {
-  router.push('/invite')
-}
-
-function spinTypeLabel(type: 1 | 2 | 3) {
-  if (type === 3) return t('prizePage.superSpin')
-  if (type === 2) return t('prizePage.advancedSpin')
-  return t('prizePage.normalSpin')
-}
-
 onMounted(async () => {
   await refreshPageState()
   startScrolling()
-  startJackpot()
 })
 
 onBeforeUnmount(() => {
   if (animationFrame.value)
     cancelAnimationFrame(animationFrame.value)
   cancelAnimationFrame(jpRafId!)
-  clearInterval(jpIntervalId)
   pauseSound()
 })
 </script>
@@ -481,14 +411,14 @@ onBeforeUnmount(() => {
     <div class="ambient-bg" />
     <div class="velvet-texture" />
 
-    <AppPageHeader :title="t('prizePage.title')" @back="goBack" />
-
     <div class="prize-scroll">
       <audio ref="audioRef" :src="soundEffectUrl" preload="auto" />
 
       <!-- 顶部奖池 -->
       <div class="jp-container" :class="{ 'jp-flash': isJpFlashing }">
-        <p class="jp-super-label">SUPER JACKPOT</p>
+        <p class="jp-super-label">
+          SUPER JACKPOT
+        </p>
         <div class="jp-amount-row">
           <img :src="imgCoin" class="jp-coin" alt="">
           <span class="jp-amount">{{ Math.floor(jackpotDisplay).toLocaleString('en-US') }}</span>
@@ -535,10 +465,21 @@ onBeforeUnmount(() => {
           @start="startCallback"
           @end="endCallback"
         />
+
+        <button
+          type="button"
+          class="wheel-center-btn"
+          :class="{ disabled: availableSpins <= 0 }"
+          :disabled="spinning || availableSpins <= 0"
+          @click="startCallback"
+        >
+          <span class="wheel-center-btn__count">x{{ availableSpins }}</span>
+          <span class="wheel-center-btn__start">start</span>
+        </button>
       </div>
 
       <!-- 邀请按钮 -->
-      <button type="button" class="invite-btn" @click="goInvite">
+      <button type="button" class="invite-btn" :disabled="spinning || availableSpins <= 0" @click="startCallback">
         {{ t('prizePage.spinAction') }}
       </button>
 
@@ -546,7 +487,6 @@ onBeforeUnmount(() => {
       <div class="winning">
         <div class="winning-report">
           <span class="active">{{ t('prizePage.recordUser') }}</span>
-          <span>{{ t('prizePage.recordType') }}</span>
           <span>{{ t('prizePage.recordReward') }}</span>
         </div>
         <div ref="listContainer" class="winning-list">
@@ -557,7 +497,6 @@ onBeforeUnmount(() => {
               class="winning-item"
             >
               <span class="winning-item__cell">{{ item.uid }}</span>
-              <span class="winning-item__cell">{{ spinTypeLabel(item.type) }}</span>
               <span class="winning-item__cell winning-item__reward">
                 <CoinAmount :text="item.reward" />
               </span>
@@ -576,7 +515,9 @@ onBeforeUnmount(() => {
           <div class="win-card" :style="{ backgroundImage: `url(${lightBg1})` }">
             <img class="win-close" :src="closeWhite" @click="closeWinning">
             <div class="win-body">
-              <h1 class="win-title">{{ t('prizePage.resultTitle') }}</h1>
+              <h1 class="win-title">
+                {{ t('prizePage.resultTitle') }}
+              </h1>
               <img class="win-prize-img" :src="winPrize">
               <div class="win-amount">
                 <CoinAmount :text="state.reward" class="win-coin-amount" />
@@ -728,7 +669,9 @@ onBeforeUnmount(() => {
   top: 6px;
   /* rotate around the center of led-track: radius(44%*ws) minus bulb top offset */
   transform-origin: 5px calc(var(--ws) * 0.44 - 6px);
-  box-shadow: 0 0 4px #fff, 0 0 12px #ffbb00;
+  box-shadow:
+    0 0 4px #fff,
+    0 0 12px #ffbb00;
   animation: ledFlow 2s infinite ease-in-out;
 }
 
@@ -761,6 +704,53 @@ onBeforeUnmount(() => {
   position: relative;
 }
 
+.wheel-center-btn {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 16;
+  width: 22%;
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  border: 3px solid rgba(255, 240, 181, 0.9);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 30% 22%, rgba(255, 255, 255, 0.42), rgba(255, 255, 255, 0) 38%),
+    linear-gradient(180deg, #fff4ba 0%, #ffd14b 42%, #b86b08 100%);
+  box-shadow:
+    0 10px 22px rgba(0, 0, 0, 0.45),
+    inset 0 2px 0 rgba(255, 255, 255, 0.4);
+  color: #7a2100;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+}
+
+.wheel-center-btn.disabled {
+  border-color: rgba(228, 228, 228, 0.8);
+  background: linear-gradient(180deg, #bebebe 0%, #8f8f8f 48%, #676767 100%);
+  box-shadow:
+    0 10px 22px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  color: #efefef;
+}
+
+.wheel-center-btn__count {
+  font-size: 18px;
+  line-height: 1;
+  font-weight: 900;
+}
+
+.wheel-center-btn__start {
+  font-size: 12px;
+  line-height: 1;
+  font-weight: 900;
+  text-transform: lowercase;
+  letter-spacing: 0.04em;
+}
+
 /* ── 邀请按钮 ── */
 .invite-btn {
   display: flex;
@@ -780,6 +770,15 @@ onBeforeUnmount(() => {
   font-size: 16px;
   font-weight: 900;
   letter-spacing: 0.06em;
+}
+
+.invite-btn:disabled {
+  border-color: rgba(214, 214, 214, 0.28);
+  background: linear-gradient(180deg, #bebebe 0%, #8f8f8f 48%, #676767 100%);
+  box-shadow:
+    0 10px 20px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14);
+  color: #efefef;
 }
 
 /* ── 中奖记录 ── */

@@ -609,6 +609,7 @@
     "spinAction": "Spin Now",
     "spinning": "Spinning",
     "noChance": "No spin chances available right now",
+    "drawMiss": "No prize this time",
     "recordTitle": "Latest Winning Records",
     "recordHint": "Activity data rolling display",
     "recordUser": "User",

@@ -832,8 +832,7 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 
 		// 中雷奖池注入
 		if thunderPoolFee > 0 {
-			bizId := fmt.Sprintf("lucky_thunder_%d_%d", luckyID, userID)
-			if err := repository.DepositPrizePool(tx, luckyMoney.TenantId, "lucky", pojo.PrizePoolBizTypeLose, bizId, userID, thunderPoolFee); err != nil {
+			if err := repository.DepositPrizePool(tx, luckyMoney.TenantId, "lucky", userID, thunderPoolFee); err != nil {
 				tx.Rollback()
 				return nil, fmt.Errorf("中雷奖池注入失败: %v", err)
 			}
@@ -916,8 +915,7 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 
 		// 中奖奖池注入
 		if winPoolFee > 0 {
-			bizId := fmt.Sprintf("lucky_win_%d_%d", luckyID, userID)
-			if err := repository.DepositPrizePool(tx, luckyMoney.TenantId, "lucky", pojo.PrizePoolBizTypeWin, bizId, userID, winPoolFee); err != nil {
+			if err := repository.DepositPrizePool(tx, luckyMoney.TenantId, "lucky", userID, winPoolFee); err != nil {
 				tx.Rollback()
 				return nil, fmt.Errorf("中奖奖池注入失败: %v", err)
 			}

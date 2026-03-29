@@ -31,6 +31,8 @@ const (
 	CashHistoryTypeWithdrawRefund         int8 = 10 // 提现失败/取消/退回返还
 	CashHistoryTypeRebateTransfer         int8 = 11 // 佣金(返水)转余额
 	CashHistoryTypeLuckyExpireRefund      int8 = 12 // 红包过期退回
+	CashHistoryTypeLotteryConsume         int8 = 13 // 抽奖消耗
+	CashHistoryTypeLotteryAward           int8 = 14 // 抽奖中奖
 )
 
 type CashHistoryResp struct {

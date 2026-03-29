@@ -476,6 +476,36 @@ export function getPrizePoolBalance(poolCode = 'lucky') {
   return request.get<ApiResult<{ poolCode: string, balance: number }>>(`/api/v1/app/prizePool/balance?poolCode=${poolCode}`)
 }
 
+export interface LotteryChancesResp {
+  totalFlow: number
+  earnedCount: number
+  usedCount: number
+  availableCount: number
+  amounts: number[]
+}
+
+export interface LotteryDrawResp {
+  recordId: number
+  awardAmount: number
+}
+
+export interface LotteryHistoryItem {
+  name: string
+  awardAmount: number
+}
+
+export function getLotteryChances() {
+  return request.get<ApiResult<LotteryChancesResp>>('/api/v1/app/lottery/chances')
+}
+
+export function drawLottery() {
+  return request.post<ApiResult<LotteryDrawResp>>('/api/v1/app/lottery/draw', {})
+}
+
+export function getLotteryHistory(limit = 10) {
+  return request.get<ApiResult<LotteryHistoryItem[]>>(`/api/v1/app/lottery/history?limit=${limit}`)
+}
+
 export function getAppCashHistoryList(data: AppCashHistoryReq) {
   return request.post<ApiResult<AppCashHistoryResp>>('/api/v1/app/cashHistory/list', data)
 }

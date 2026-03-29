@@ -149,6 +149,50 @@ func GetJwtToken(accessSecret string, accessExpire int64, username string, userI
 	return token.SignedString([]byte(accessSecret))
 }
 
+// GetAppJwtToken 生成 App 端 JWT（含 tenantId）
+func GetAppJwtToken(accessSecret string, accessExpire int64, username string, userId int64, hostName string, tenantId int64) (string, error) {
+	iat := time.Now().Unix()
+	claims := make(jwt.MapClaims)
+	claims["exp"] = iat + accessExpire
+	claims["iat"] = iat
+	claims["username"] = username
+	claims["userId"] = userId
+	claims["userType"] = 5
+	claims["hostName"] = hostName
+	claims["tenantId"] = tenantId
+	token := jwt.New(jwt.SigningMethodHS256)
+	token.Claims = claims
+	return token.SignedString([]byte(accessSecret))
+}
+
+// ParseAppToken 解析 App 端 JWT，额外返回 tenantId
+func ParseAppToken(accessSecret string, tokenString string) (userId int64, hostName string, tenantId int64, err error) {
+	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
+		return []byte(accessSecret), nil
+	})
+	if err != nil {
+		return
+	}
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok || !token.Valid {
+		err = fmt.Errorf("invalid token")
+		return
+	}
+	if v, ok := claims["userId"].(float64); ok {
+		userId = int64(v)
+	}
+	if v, ok := claims["hostName"].(string); ok {
+		hostName = v
+	}
+	if v, ok := claims["tenantId"].(float64); ok {
+		tenantId = int64(v)
+	}
+	return
+}
+
 func GetMerchantJwtToken(accessSecret string, accessExpire int64, username string, userId int64, userType int, hostName string, childCode string) (string, error) {
 	iat := time.Now().Unix()
 	claims := make(jwt.MapClaims)

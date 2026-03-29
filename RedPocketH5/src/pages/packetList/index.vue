@@ -82,6 +82,10 @@ function goLuckyDetail(packet: any) {
   })
 }
 
+function goPrizePage() {
+  router.push('/prize')
+}
+
 function formatAmount(value: number) {
   return formatCurrency(Number(value || 0))
 }
@@ -103,6 +107,13 @@ function formatActionLabel(isOngoing: boolean, isGrabged: boolean, amount: numbe
 function formatRemainText(seconds: number) {
   const s = Math.max(0, Math.floor(seconds))
   return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`
+}
+
+function normalizeGrabbedCount(grabbed: number, total: number) {
+  const safeTotal = Math.max(0, Number(total || 0))
+  if (safeTotal <= 0)
+    return 0
+  return Math.min(Math.max(0, Number(grabbed || 0)), safeTotal)
 }
 
 function refreshPacketCountdowns() {
@@ -168,6 +179,9 @@ function mapPacket(item: any) {
     }))
   }
 
+  const totalCount = Number(item?.number || 0)
+  const grabbedCount = normalizeGrabbedCount(Number(item?.grabbedCount || 0), totalCount)
+
   return {
     id: Number(item?.id || 0),
     playType,
@@ -179,7 +193,7 @@ function mapPacket(item: any) {
     status: isOngoing ? 'ongoing' : 'done',
     statusText: isOngoing ? t('homeLucky.statusOngoing') : t('homeLucky.statusDone'),
     gameText: t('homeLucky.game'),
-    progressText: t('homeLucky.progress', { grabbed: Number(item?.grabbedCount || 0), total: Number(item?.number || 0) }),
+    progressText: t('homeLucky.progress', { grabbed: grabbedCount, total: totalCount }),
     ruleText: playType === 'parity'
       ? t('homeLucky.paritySelectHint')
       : t('homeLucky.thunderNo', { no: Number(item?.thunder || 0) }),
@@ -259,8 +273,8 @@ function handleGrabSuccess(payload: { luckyId: number, grabIndex: number, data: 
     const idx = nextActions.findIndex((it: any) => Number(it?.seqNo) === grabIndex)
     if (idx >= 0)
       nextActions[idx] = { ...nextActions[idx], isGrabbed: true, amount: rawAmount }
-    const grabbedCount = nextActions.filter((it: any) => it.isGrabbed).length
     const packetNumber = Number(packet?.actions?.length || 0)
+    const grabbedCount = normalizeGrabbedCount(nextActions.filter((it: any) => it.isGrabbed).length, packetNumber)
     const remaining = packetNumber - grabbedCount
     return {
       ...packet,
@@ -329,8 +343,8 @@ function applyLuckyBroadcast(message: any) {
       }
     }
 
-    const grabbedCount = nextActions.filter((it: any) => it.isGrabbed).length
     const packetNumber = Number(lucky?.number || packet?.actions?.length || 0)
+    const grabbedCount = normalizeGrabbedCount(nextActions.filter((it: any) => it.isGrabbed).length, packetNumber)
     return {
       ...packet,
       status: nextStatus,
@@ -388,7 +402,10 @@ function applyLuckyFinished(message: any) {
         label: formatActionLabel(false, grabbed, amount, Number(action.seqNo)),
       }
     })
-    const grabbedCount = Number(summary?.grabbedCount ?? updatedActions.filter((a: any) => a.isGrabbed).length)
+    const grabbedCount = normalizeGrabbedCount(
+      Number(summary?.grabbedCount ?? updatedActions.filter((a: any) => a.isGrabbed).length),
+      total,
+    )
     return {
       ...packet,
       status: 'done',
@@ -442,8 +459,12 @@ function rollToBalance(target: number) {
 
 watch(prizePoolBalance, (val) => {
   isFlashing.value = false
-  nextTick(() => { isFlashing.value = true })
-  setTimeout(() => { isFlashing.value = false }, 600)
+  nextTick(() => {
+    isFlashing.value = true
+  })
+  setTimeout(() => {
+    isFlashing.value = false
+  }, 600)
   rollToBalance(val)
 }, { immediate: true })
 
@@ -475,16 +496,20 @@ onBeforeUnmount(() => {
 <template>
   <div class="packet-list-page">
     <AppPageHeader :title="pageTitle" @back="goBack" @right-click="openSendPacketDialog">
-      <template #right><van-icon name="gift-o" /></template>
+      <template #right>
+        <van-icon name="gift-o" />
+      </template>
     </AppPageHeader>
 
-    <div class="jackpot-panel" :class="{ 'jackpot-panel--flash': isFlashing }">
-      <div class="jp-label">{{ t('packetListPage.prizePoolLabel') }}</div>
+    <button type="button" class="jackpot-panel" :class="{ 'jackpot-panel--flash': isFlashing }" @click="goPrizePage">
+      <div class="jp-label">
+        Super Jackpot
+      </div>
       <div class="jp-amount-box">
         <img :src="imgCoin" class="jp-coin-icon" alt="">
         <span class="jp-amount-num">{{ Math.floor(displayBalance).toLocaleString('en-US') }}</span>
       </div>
-    </div>
+    </button>
 
     <button type="button" class="send-entry-btn" @click="openSendPacketDialog">
       <span class="send-entry-btn__badge">{{ t('homeLucky.sendQuickEyebrow') }}</span>
@@ -568,7 +593,9 @@ onBeforeUnmount(() => {
                     <span v-else-if="action.isGrabMine" class="mine-text">🎁 </span>
                     <span v-else-if="packet.playType === 'parity' && !action.isGrabbed && packet.status === 'ongoing'" class="choice-mark">奇/偶</span>
                     <CoinAmount v-if="action.amount > 0 && !action.thunder && !action.displayLoading && (action.isGrabbed || packet.status !== 'ongoing')" :text="`${action.amount.toFixed(2)}`" />
-                    <template v-else>{{ action.label }}</template>
+                    <template v-else>
+                      {{ action.label }}
+                    </template>
                   </button>
                 </div>
               </div>
@@ -577,7 +604,9 @@ onBeforeUnmount(() => {
 
           <div class="packet-actions">
             <span v-if="packet.status === 'ongoing'" class="time-text time-text--footer">{{ packet.timeText }}</span>
-            <button v-else type="button" class="action-pill done">{{ t('homeLucky.statusDone') }}</button>
+            <button v-else type="button" class="action-pill done">
+              {{ t('homeLucky.statusDone') }}
+            </button>
           </div>
         </article>
       </template>
@@ -611,9 +640,15 @@ onBeforeUnmount(() => {
     >
       <section class="send-packet-modal">
         <div class="send-packet-modal__hero">
-          <p class="send-packet-modal__eyebrow">{{ t('homeLucky.sendQuickEyebrow') }}</p>
-          <h3 class="send-packet-modal__title">{{ t('sendPacketPage.playTypeTitle') }}</h3>
-          <p class="send-packet-modal__sub">{{ t('sendPacketPage.packetTypeSub') }}</p>
+          <p class="send-packet-modal__eyebrow">
+            {{ t('homeLucky.sendQuickEyebrow') }}
+          </p>
+          <h3 class="send-packet-modal__title">
+            {{ t('sendPacketPage.playTypeTitle') }}
+          </h3>
+          <p class="send-packet-modal__sub">
+            {{ t('sendPacketPage.packetTypeSub') }}
+          </p>
         </div>
 
         <SendPacketForm
@@ -649,31 +684,57 @@ onBeforeUnmount(() => {
 }
 
 .jackpot-panel {
+  width: 100%;
   margin-top: 12px;
   padding: 14px 20px 16px;
+  appearance: none;
   border-radius: 18px;
   background: rgba(0, 0, 0, 0.58);
   border: 2px solid #ffbb00;
-  box-shadow: 0 0 22px rgba(0, 0, 0, 0.75), inset 0 0 16px rgba(255, 184, 0, 0.1);
+  box-shadow:
+    0 0 22px rgba(0, 0, 0, 0.75),
+    inset 0 0 16px rgba(255, 184, 0, 0.1);
   text-align: center;
+  cursor: pointer;
   animation: jpPanelPulse 2s infinite ease-in-out;
   position: relative;
   overflow: hidden;
 }
 
 .jackpot-panel--flash {
-  animation: jpFlash 0.5s ease-out forwards, jpPanelPulse 2s 0.5s infinite ease-in-out;
+  animation:
+    jpFlash 0.5s ease-out forwards,
+    jpPanelPulse 2s 0.5s infinite ease-in-out;
 }
 
 @keyframes jpPanelPulse {
-  0%, 100% { box-shadow: 0 0 22px rgba(0, 0, 0, 0.75), inset 0 0 16px rgba(255, 184, 0, 0.1); }
-  50% { box-shadow: 0 0 38px rgba(255, 184, 0, 0.28), inset 0 0 20px rgba(255, 184, 0, 0.15); border-color: #fff8c0; }
+  0%,
+  100% {
+    box-shadow:
+      0 0 22px rgba(0, 0, 0, 0.75),
+      inset 0 0 16px rgba(255, 184, 0, 0.1);
+  }
+  50% {
+    box-shadow:
+      0 0 38px rgba(255, 184, 0, 0.28),
+      inset 0 0 20px rgba(255, 184, 0, 0.15);
+    border-color: #fff8c0;
+  }
 }
 
 @keyframes jpFlash {
-  0%   { transform: scale(1);    filter: brightness(1); }
-  30%  { transform: scale(1.025); filter: brightness(1.7) drop-shadow(0 0 14px #ffbb00); }
-  100% { transform: scale(1);    filter: brightness(1); }
+  0% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+  30% {
+    transform: scale(1.025);
+    filter: brightness(1.7) drop-shadow(0 0 14px #ffbb00);
+  }
+  100% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
 }
 
 .jp-label {

@@ -62,7 +62,7 @@ func TgAuthLogin(db *gorm.DB, hostInfo pojo.HostInfo, req pojo.TgAuthLoginReq, o
 		}
 
 		claimUsername := fmt.Sprintf("tg_%d", dbUser.TgID)
-		token, tokenErr := utils.GetJwtToken(hostInfo.AccessSecret, hostInfo.AccessExpire, claimUsername, dbUser.ID, 5, hostInfo.HostName)
+		token, tokenErr := utils.GetAppJwtToken(hostInfo.AccessSecret, hostInfo.AccessExpire, claimUsername, dbUser.ID, hostInfo.HostName, dbUser.TenantId)
 		if tokenErr != nil {
 			return tokenErr
 		}
@@ -120,7 +120,7 @@ func TgEmailLogin(db *gorm.DB, hostInfo pojo.HostInfo, req pojo.TgEmailLoginReq,
 	if dbUser.Username != nil && strings.TrimSpace(*dbUser.Username) != "" {
 		claimUsername = strings.TrimSpace(*dbUser.Username)
 	}
-	token, err := utils.GetJwtToken(hostInfo.AccessSecret, hostInfo.AccessExpire, claimUsername, dbUser.ID, 5, hostInfo.HostName)
+	token, err := utils.GetAppJwtToken(hostInfo.AccessSecret, hostInfo.AccessExpire, claimUsername, dbUser.ID, hostInfo.HostName, dbUser.TenantId)
 	if err != nil {
 		return result, err
 	}

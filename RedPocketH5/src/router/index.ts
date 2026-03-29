@@ -44,6 +44,15 @@ router.beforeEach(async (to: EnhancedRouteLocation) => {
 
   const routeName = String(to.name || '')
   const isPublicRoute = publicRouteNames.has(routeName) || publicRoutePaths.has(to.path)
+  const isAuthPage = to.path === '/login' || to.path === '/register'
+
+  if (isLogin() && isAuthPage) {
+    return {
+      path: '/',
+      replace: true,
+    }
+  }
+
   if (!isLogin() && !isPublicRoute) {
     return {
       name: 'Login',
