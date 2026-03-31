@@ -11,8 +11,8 @@ import { ElTag, ElButton, ElMessageBox } from "element-plus";
 
 const statusOptions = [
   { label: "待支付", value: 0 },
-  { label: "支付中", value: 1 },
-  { label: "成功", value: 2 },
+  { label: "支付成功", value: 1 },
+  { label: "状态2", value: 2 },
   { label: "失败", value: 3 },
   { label: "取消", value: 4 },
   { label: "关闭/超时", value: 5 },
@@ -26,8 +26,8 @@ function getStatusLabel(status: number) {
 }
 
 function getStatusType(status: number) {
-  if (status === 2) return "success";
-  if (status === 1 || status === 6) return "warning";
+  if (status === 1) return "success";
+  if (status === 6) return "warning";
   if (status === 3) return "danger";
   if (status === 4 || status === 5 || status === 7) return "info";
   return "info";
@@ -125,7 +125,7 @@ export function useRechargeOrder(tableRef: Ref) {
       fixed: "right",
       width: 130,
       cellRenderer: scope => {
-        if (scope.row.status !== 1) return null;
+        if (scope.row.status !== 0) return null;
         const id: number = scope.row.id;
         const isLoading = callbackLoadingIds.value.has(id);
         return (

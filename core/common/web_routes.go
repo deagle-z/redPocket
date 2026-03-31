@@ -140,6 +140,8 @@ func InitGin() {
 		adminGroup.GET("/payChannel/:id", api.GetPayChannelById)           // 获取支付通道详情
 		adminGroup.POST("/sysCountry/list", api.GetSysCountries)
 		adminGroup.GET("/sysCountry/:id", api.GetSysCountryById)
+		adminGroup.POST("/sysBanner/list", api.GetSysBanners)                          // 获取轮播图列表
+		adminGroup.GET("/sysBanner/:id", api.GetSysBannerById)                         // 获取轮播图详情
 		adminGroup.POST("/sysPayChannel/list", api.GetSysPayChannels)                  // 获取支付通道列表
 		adminGroup.GET("/sysPayChannel/:id", api.GetSysPayChannelById)                 // 获取支付通道详情
 		adminGroup.POST("/sysSourceChannel/list", api.GetSysSourceChannels)            // 获取投流来源渠道列表
@@ -203,6 +205,8 @@ func InitGin() {
 		adminGroupLog.DELETE("/prizePoolConfig/:id", api.DelPrizePoolConfig)              // 删除奖池概率配置
 		adminGroupLog.POST("/sysCountry", api.SetSysCountry)
 		adminGroupLog.DELETE("/sysCountry/:id", api.DelSysCountry)
+		adminGroupLog.POST("/sysBanner", api.SetSysBanner)
+		adminGroupLog.DELETE("/sysBanner/:id", api.DelSysBanner)
 		adminGroupLog.POST("/sysCustomField", api.SetSysCustomField)
 		adminGroupLog.DELETE("/sysCustomField/:id", api.DelSysCustomField)
 		adminGroupLog.POST("/platformProfitLedger", api.SetPlatformProfitLedger)

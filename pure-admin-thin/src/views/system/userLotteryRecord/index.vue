@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
+import { h, onMounted, ref } from "vue";
 import { PureTableBar } from "@/components/RePureTableBar";
 import { useRenderIcon } from "@/components/ReIcon/src/hooks";
 import { message } from "@/utils/message";
@@ -64,15 +64,16 @@ const columns: TableColumnList = [
     label: "状态",
     prop: "status",
     minWidth: 90,
-    cellRenderer: scope => (
-      <el-tag
-        size="small"
-        type={statusMap[scope.row.status]?.type ?? ""}
-        effect="plain"
-      >
-        {statusMap[scope.row.status]?.label ?? scope.row.status}
-      </el-tag>
-    )
+    cellRenderer: scope =>
+      h(
+        "el-tag",
+        {
+          size: "small",
+          type: statusMap[scope.row.status]?.type ?? "",
+          effect: "plain"
+        },
+        () => statusMap[scope.row.status]?.label ?? scope.row.status
+      )
   },
   { label: "备注", prop: "remark", minWidth: 120 },
   { label: "创建时间", prop: "createdAt", minWidth: 160 }
