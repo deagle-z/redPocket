@@ -145,6 +145,7 @@ const activityMenus = computed<MenuItem[]>(() => [
 ])
 
 const otherMenus = computed<MenuItem[]>(() => [
+  { key: 'setting', label: t('profilePage.serviceSetting'), icon: normalizeInlineSvg(passwordIcon) },
   { key: 'language', label: t('profilePage.serviceLanguage'), icon: normalizeInlineSvg(shareIcon) },
   { key: 'rules', label: t('profilePage.serviceRules'), icon: normalizeInlineSvg(gamesIcon) },
   { key: 'bind-tg', label: t('profilePage.serviceBindTg'), icon: normalizeInlineSvg(telegramIcon), extra: formatMaskedNumber(profile.tgId), tone: 'muted' },
@@ -365,6 +366,9 @@ function onMenuClick(item: MenuItem) {
       break
     case 'spin':
       goByPath('/prize')
+      break
+    case 'setting':
+      goByPath('/setting')
       break
     case 'language':
       openLanguagePopup()

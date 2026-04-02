@@ -80,6 +80,23 @@ func DelSysBanner(ctx *gin.Context) {
 	utils.SuccessObjBack(ctx, result)
 }
 
+// GetAppBanners godoc
+//
+//	@Summary		App端获取轮播图（按position分组）
+//	@Tags			轮播图
+//	@Accept			json
+//	@Produce		json
+//	@Param			data body		pojo.SysBannerAppReq	false	"平台"
+//	@Success		200	{object}		pojo.SysBannerGroupedResp
+//	@Router			/api/v1/app/banners [post]
+func GetAppBanners(ctx *gin.Context) {
+	var req pojo.SysBannerAppReq
+	_ = ctx.ShouldBindJSON(&req)
+	db := ctx.MustGet("db").(*gorm.DB)
+	result := repository.GetSysBannersGroupedByPosition(db, req.Platform)
+	utils.SuccessObjBack(ctx, result)
+}
+
 // GetSysBannerById godoc
 //
 //	@Summary		根据ID获取轮播图

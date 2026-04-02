@@ -14,6 +14,9 @@ import imgAvatarPlaceholder from '@/assets/images/avatar-placeholder.png'
 import imgRedpacketGif from '@/assets/images/redpacket.gif'
 import imgRedpacketJpg from '@/assets/images/redpacket.jpg'
 import imgCoin from '@/assets/svg/coin.svg'
+import bgMusicUrl from '@/assets/video/bg.mp3'
+import openSoundUrl from '@/assets/video/open.mp3'
+import winSoundUrl from '@/assets/video/win.mp3'
 
 const { t } = useI18n()
 const route = useRoute()
@@ -30,6 +33,58 @@ const pendingGrabTarget = ref<{ packet: any, action: any, choice?: ParityChoice 
 const pendingParityTarget = ref<{ packet: any, action: any } | null>(null)
 const prizePoolBalance = ref<number>(0)
 let countdownTimer: number | undefined
+
+// ── Audio ─────────────────────────────────────────────────────────
+const AUDIO_OPEN_KEY = 'setting_audio_open'
+
+function isAudioEnabled() {
+  return localStorage.getItem(AUDIO_OPEN_KEY) !== '0'
+}
+
+let bgAudio: HTMLAudioElement | null = null
+let winAudio: HTMLAudioElement | null = null
+
+function initAudio() {
+  if (!isAudioEnabled())
+    return
+  bgAudio = new Audio(bgMusicUrl)
+  bgAudio.loop = true
+  bgAudio.volume = 0.35
+  bgAudio.play().catch(() => {})
+
+  winAudio = new Audio(winSoundUrl)
+  winAudio.loop = true
+  winAudio.volume = 0.7
+}
+
+function playOpenSound() {
+  if (!isAudioEnabled())
+    return
+  const a = new Audio(openSoundUrl)
+  a.volume = 0.7
+  a.play().catch(() => {})
+}
+
+function playWinSound() {
+  if (!isAudioEnabled() || !winAudio)
+    return
+  winAudio.currentTime = 0
+  winAudio.play().catch(() => {})
+}
+
+function stopWinSound() {
+  if (!winAudio)
+    return
+  winAudio.pause()
+  winAudio.currentTime = 0
+}
+
+function destroyAudio() {
+  bgAudio?.pause()
+  bgAudio = null
+  winAudio?.pause()
+  winAudio = null
+}
 
 const modePlayType = computed<LuckyPlayType>(() => currentMode.value === 1 ? 'parity' : 'thunder')
 const pageTitle = computed(() => currentMode.value === 1 ? t('packetListPage.modeParity') : t('packetListPage.modeThunder'))
@@ -256,6 +311,7 @@ function handleParityChoiceConfirm(choice: ParityChoice) {
 function closeGrabDialog() {
   grabModalVisible.value = false
   pendingGrabTarget.value = null
+  stopWinSound()
 }
 
 function handleGrabSuccess(payload: { luckyId: number, grabIndex: number, data: any }) {
@@ -264,6 +320,9 @@ function handleGrabSuccess(payload: { luckyId: number, grabIndex: number, data: 
   const rawAmount = Number(payload?.data?.amount ?? payload?.data?.grabAmount ?? 0)
   if (!luckyId || !grabIndex)
     return
+  const rawLoseMoney = Number(payload?.data?.loseMoney ?? 0)
+  if (rawAmount > 0 && rawLoseMoney <= 0)
+    playWinSound()
 
   packetList.value = packetList.value.map((packet) => {
     if (Number(packet.id) !== luckyId)
@@ -474,6 +533,7 @@ watch(() => route.query.mode, async () => {
 }, { immediate: true })
 
 onMounted(() => {
+  initAudio()
   countdownTimer = window.setInterval(refreshPacketCountdowns, 1000)
   wsClient.on('lucky_sent', applyLuckySent)
   wsClient.on('lucky_grabbed', applyLuckyBroadcast)
@@ -483,6 +543,7 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  destroyAudio()
   cancelAnimationFrame(jpRafId!)
   if (countdownTimer)
     window.clearInterval(countdownTimer)
@@ -619,6 +680,7 @@ onBeforeUnmount(() => {
       :choice="pendingGrabTarget?.choice || ''"
       :sender-name="pendingGrabTarget?.packet?.username || t('grabModal.defaultSender')"
       :show-result-toast="false"
+      @coin-click="playOpenSound"
       @success="handleGrabSuccess"
       @close="closeGrabDialog"
     />
@@ -763,6 +825,7 @@ onBeforeUnmount(() => {
   font-weight: 900;
   line-height: 1;
   background: linear-gradient(180deg, #fff5c3 0%, #ffbb00 45%, #e19d00 58%, #c87000 100%);
+  background-clip: text;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.8));
@@ -961,6 +1024,7 @@ onBeforeUnmount(() => {
   font-size: 12px;
   font-weight: 700;
   background: linear-gradient(to bottom, #cfb53b, #ffd700, #d4af37);
+  background-clip: text;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }

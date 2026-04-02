@@ -3,6 +3,8 @@ import { ref } from "vue";
 import Segmented from "@/components/ReSegmented";
 import { formRules } from "./utils/rule";
 import type { FormProps } from "./utils/types";
+import { getToken, formatToken } from "@/utils/auth";
+import { message } from "@/utils/message";
 
 const props = withDefaults(defineProps<FormProps>(), {
   formInline: () => ({
@@ -26,6 +28,46 @@ const props = withDefaults(defineProps<FormProps>(), {
 
 const ruleFormRef = ref();
 const newFormInline = ref(props.formInline);
+
+const uploadUrl = `${import.meta.env.VITE_BASE_URL}/api/v1/admin/upload`;
+
+function getUploadHeaders() {
+  const token = getToken()?.accessToken;
+  return token ? { Authorization: formatToken(token) } : {};
+}
+
+function handleBeforeUpload() {
+  const token = getToken()?.accessToken;
+  if (!token) {
+    message("请先登录后再上传", { type: "error" });
+    return false;
+  }
+  return true;
+}
+
+function handleImageUploadSuccess(response: any) {
+  const url = response?.data?.url || response?.url;
+  if (!url) {
+    message("上传失败，未返回URL", { type: "error" });
+    return;
+  }
+  newFormInline.value.imageUrl = url;
+  message("上传成功", { type: "success" });
+}
+
+function handleThumbUploadSuccess(response: any) {
+  const url = response?.data?.url || response?.url;
+  if (!url) {
+    message("上传失败，未返回URL", { type: "error" });
+    return;
+  }
+  newFormInline.value.thumbUrl = url;
+  message("上传成功", { type: "success" });
+}
+
+function handleUploadError() {
+  message("上传失败", { type: "error" });
+}
 
 const statusOptions = [
   { label: "启用", value: false },
@@ -116,6 +158,24 @@ defineExpose({ getRef });
             clearable
             placeholder="请输入图片URL"
           />
+          <el-upload
+            class="mt-2"
+            :action="uploadUrl"
+            :headers="getUploadHeaders()"
+            :before-upload="handleBeforeUpload"
+            :show-file-list="false"
+            :on-success="handleImageUploadSuccess"
+            :on-error="handleUploadError"
+          >
+            <el-button type="primary">上传图片</el-button>
+          </el-upload>
+          <el-image
+            v-if="newFormInline.imageUrl"
+            class="mt-2"
+            style="width: 120px; height: 120px"
+            :src="newFormInline.imageUrl"
+            fit="cover"
+          />
         </el-form-item>
       </el-col>
       <el-col :span="24">
@@ -124,6 +184,24 @@ defineExpose({ getRef });
             v-model="newFormInline.thumbUrl"
             clearable
             placeholder="请输入缩略图URL"
+          />
+          <el-upload
+            class="mt-2"
+            :action="uploadUrl"
+            :headers="getUploadHeaders()"
+            :before-upload="handleBeforeUpload"
+            :show-file-list="false"
+            :on-success="handleThumbUploadSuccess"
+            :on-error="handleUploadError"
+          >
+            <el-button type="primary">上传图片</el-button>
+          </el-upload>
+          <el-image
+            v-if="newFormInline.thumbUrl"
+            class="mt-2"
+            style="width: 120px; height: 120px"
+            :src="newFormInline.thumbUrl"
+            fit="cover"
           />
         </el-form-item>
       </el-col>

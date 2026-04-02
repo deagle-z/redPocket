@@ -269,6 +269,7 @@ func InitGin() {
 		appRouter.POST("/lucky/list", api.GetRedPacketListApp)          // 不校验token
 		appRouter.POST("/lucky/detail", api.GetLuckyDetailApp)          // 不校验token
 		appRouter.GET("/prizePool/balance", api.GetPrizePoolBalanceApp) // 不校验token
+		appRouter.POST("/banners", api.GetAppBanners)                    // 轮播图按position分组
 	}
 
 	appAuthRouter := router.Group("/api/v1/app")
@@ -282,6 +283,7 @@ func InitGin() {
 		appAuthRouter.GET("/tg/currentUserInfo", api.GetCurrentTgUserInfo)
 		appAuthRouter.POST("/tg/avatar", api.UpdateCurrentTgUserAvatar)
 		appAuthRouter.POST("/tg/bindEmail", api.BindCurrentTgEmail)
+		appAuthRouter.POST("/tg/audioOpen", api.SetAudioOpen)
 		appAuthRouter.GET("/tg/inviteStats", api.GetCurrentTgInviteStats)
 		appAuthRouter.GET("/tg/inviteRuleConfig", api.GetCurrentTgInviteRuleConfig)
 		appAuthRouter.POST("/tg/rebate/transfer", api.TransferRebateToBalance)

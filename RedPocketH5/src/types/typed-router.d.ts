@@ -156,6 +156,13 @@ declare module 'vue-router/auto-routes' {
       Record<never, never>,
       | never
     >,
+    'Setting': RouteRecordInfo<
+      'Setting',
+      '/setting',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
     'Team': RouteRecordInfo<
       'Team',
       '/team',
@@ -315,6 +322,12 @@ declare module 'vue-router/auto-routes' {
     'src/pages/sendPacket/index.vue': {
       routes:
         | 'SendPacket'
+      views:
+        | never
+    }
+    'src/pages/setting/index.vue': {
+      routes:
+        | 'Setting'
       views:
         | never
     }

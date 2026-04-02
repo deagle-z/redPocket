@@ -606,6 +606,39 @@ func GetCurrentTgCashHistory(ctx *gin.Context) {
 }
 
 // TgLogout TG用户登出
+// SetAudioOpen 设置音效开关
+//
+//	@Summary		设置音效开关
+//	@Tags			TG用户
+//	@Accept			json
+//	@Produce		json
+//	@Param			data body		pojo.TgSetAudioOpenReq	true	"audioOpen 0=关 1=开"
+//	@Success		200	{object}		string
+//	@Router			/api/v1/app/tg/audioOpen [post]
+func SetAudioOpen(ctx *gin.Context) {
+	userIDRaw, ok := ctx.Get("userId")
+	if !ok {
+		utils.UnauthorizedBack(ctx, "token is invalid")
+		return
+	}
+	userID, ok := userIDRaw.(int64)
+	if !ok || userID <= 0 {
+		utils.UnauthorizedBack(ctx, "token is invalid")
+		return
+	}
+	var req pojo.TgSetAudioOpenReq
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	db := ctx.MustGet("db").(*gorm.DB)
+	if err := db.Model(&pojo.TgUser{}).Where("id = ?", userID).Update("audio_open", req.AudioOpen).Error; err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	utils.SuccessBack(ctx, "success")
+}
+
 func TgLogout(ctx *gin.Context) {
 	token := ""
 	if tokenVal, ok := ctx.Get("token"); ok {

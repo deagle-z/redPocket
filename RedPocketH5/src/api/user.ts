@@ -50,6 +50,7 @@ export interface TgCurrentUserInfo {
   rebate_amount?: number
   vip_level?: number | null
   vip_level_name?: string | null
+  audioOpen?: 0 | 1
 }
 
 export interface VipLevelSimple {
@@ -637,4 +638,30 @@ export interface CreateWithdrawOrderReq {
 
 export function createWithdrawOrder(data: CreateWithdrawOrderReq) {
   return request.post<ApiResult<{ orderNo: string }>>('/api/v1/app/withdraw', data)
+}
+
+export interface BannerItem {
+  id: number
+  bannerName: string
+  position: string
+  platform: string
+  imageUrl: string
+  jumpType: string
+  jumpValue?: string
+  sort: number
+  status: number
+}
+
+export interface BannersData {
+  home: BannerItem[]
+  popup: BannerItem[]
+  activity: BannerItem[]
+}
+
+export function getBanners(data: { platform?: string } = {}) {
+  return request.post<ApiResult<BannersData>>('/api/v1/app/banners', data)
+}
+
+export function setAudioOpen(audioOpen: 0 | 1) {
+  return request.post<ApiResult<null>>('/api/v1/app/tg/audioOpen', { audioOpen })
 }

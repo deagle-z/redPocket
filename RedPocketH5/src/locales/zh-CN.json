@@ -490,6 +490,7 @@
     "serviceBindEmail": "绑定邮箱",
     "serviceChangePassword": "修改密码",
     "serviceQuestions": "常见问题",
+    "serviceSetting": "设置",
     "serviceCs": "客服中心",
     "notBound": "未绑定",
     "toastLoadFailed": "加载用户信息失败",
@@ -516,6 +517,14 @@
     "avatarUpload": "上传自定义头像",
     "avatarUploading": "上传中..."
   },
+  "settingPage": {
+    "title": "设置",
+    "avatar": "头像",
+    "changeAvatar": "点击更换头像",
+    "uploading": "上传中...",
+    "music": "音乐",
+    "bgMusic": "背景音乐"
+  },
   "common": {
     "noMore": "没有更多了",
     "confirmTitle": "确认",
@@ -525,7 +534,9 @@
     "requestFailed": "请求失败",
     "badRequest": "请求参数错误",
     "networkError": "网络异常，请稍后重试",
-    "authFailed": "登录状态失效"
+    "authFailed": "登录状态失效",
+    "noRemind": "不再提醒",
+    "ok": "我知道了"
   },
   "bindEmailPage": {
     "title": "绑定邮箱",

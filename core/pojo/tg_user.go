@@ -36,7 +36,8 @@ type TgUser struct {
 	InviteCode        *string `gorm:"size:32;index;comment:邀请码（用户自身的邀请码）" json:"invite_code"`
 	SourceChannelID   *int64  `gorm:"column:source_channel_id;type:bigint;index;comment:来源渠道ID" json:"source_channel_id"`
 	SourceChannelCode *string `gorm:"column:source_channel_code;size:64;index;comment:来源渠道编码快照" json:"source_channel_code"`
-	TenantId          int64   `json:"tenantId" gorm:"type:bigint;"`
+	TenantId          int64 `json:"tenantId" gorm:"type:bigint;"`
+	AudioOpen         int8  `gorm:"column:audio_open;comment:音效开关 0=关 1=开" json:"audio_open"`
 }
 
 type TgUserSearch struct {
@@ -119,6 +120,10 @@ type TgUpdateAvatarReq struct {
 	Avatar string `json:"avatar" binding:"required"`
 }
 
+type TgSetAudioOpenReq struct {
+	AudioOpen int8 `json:"audioOpen" binding:"oneof=0 1"`
+}
+
 type TgCurrentUserInfo struct {
 	Avatar       *string `json:"avatar"`
 	Balance      float64 `json:"balance"`
@@ -130,6 +135,7 @@ type TgCurrentUserInfo struct {
 	Email        string  `json:"email"`
 	VipLevel     *int    `json:"vip_level"`
 	VipLevelName *string `json:"vip_level_name"`
+	AudioOpen    int8    `json:"audio_open"`
 }
 
 type TgInviteStatsBack struct {
@@ -194,6 +200,7 @@ type TgUserAdminBack struct {
 	SourceChannelID   *int64    `json:"sourceChannelId"`
 	SourceChannelCode *string   `json:"sourceChannelCode"`
 	TenantId          int64     `json:"tenantId"`
+	AudioOpen         int8      `json:"audio_open"`
 }
 
 type TgUserAdminResp struct {

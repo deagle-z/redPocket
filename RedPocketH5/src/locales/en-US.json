@@ -490,6 +490,7 @@
     "serviceBindEmail": "Bind Email",
     "serviceChangePassword": "Change Password",
     "serviceQuestions": "FAQ",
+    "serviceSetting": "Settings",
     "serviceCs": "Support Center",
     "notBound": "Not Bound",
     "toastLoadFailed": "Failed to load user info",
@@ -516,6 +517,14 @@
     "avatarUpload": "Upload Custom Avatar",
     "avatarUploading": "Uploading..."
   },
+  "settingPage": {
+    "title": "Settings",
+    "avatar": "Avatar",
+    "changeAvatar": "Tap to change avatar",
+    "uploading": "Uploading...",
+    "music": "Music",
+    "bgMusic": "Background Music"
+  },
   "common": {
     "noMore": "No more",
     "confirmTitle": "Confirm",
@@ -525,7 +534,9 @@
     "requestFailed": "Request failed",
     "badRequest": "Invalid request parameters",
     "networkError": "Network error, please try again later",
-    "authFailed": "Authorization verification failed"
+    "authFailed": "Authorization verification failed",
+    "noRemind": "Don't remind me",
+    "ok": "OK"
   },
   "bindEmailPage": {
     "title": "Email",

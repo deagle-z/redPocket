@@ -106,6 +106,32 @@ func GetSysBannerById(db *gorm.DB, id int64) (result pojo.SysBannerBack, err err
 	return result, nil
 }
 
+// GetSysBannersGroupedByPosition App端获取有效轮播图并按position分组
+// platform: 请求平台(app/h5/web)；返回 platform=all 及匹配平台的启用记录，按 sort asc 排列
+func GetSysBannersGroupedByPosition(db *gorm.DB, platform string) pojo.SysBannerGroupedResp {
+	var list []pojo.SysBanner
+	now := time.Now()
+	query := db.Model(&pojo.SysBanner{}).
+		Where("status = ?", 1).
+		Where("(start_time IS NULL OR start_time <= ?)", now).
+		Where("(end_time IS NULL OR end_time >= ?)", now).
+		Order("sort asc, id desc")
+
+	if platform != "" {
+		query = query.Where("platform IN ?", []string{"all", platform})
+	}
+
+	query.Find(&list)
+
+	result := pojo.SysBannerGroupedResp{}
+	for _, item := range list {
+		var temp pojo.SysBannerBack
+		_ = copier.Copy(&temp, &item)
+		result[item.Position] = append(result[item.Position], temp)
+	}
+	return result
+}
+
 func unixToTimePtr(ts *int64) *time.Time {
 	if ts == nil || *ts <= 0 {
 		return nil

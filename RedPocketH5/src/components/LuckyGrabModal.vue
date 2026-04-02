@@ -29,6 +29,7 @@ const emit = defineEmits<{
   (e: 'update:show', value: boolean): void
   (e: 'success', payload: { luckyId: number, grabIndex: number, data: any }): void
   (e: 'close'): void
+  (e: 'coin-click'): void
 }>()
 
 const { t } = useI18n()
@@ -96,6 +97,7 @@ function sleep(ms: number) {
 function handleOpen() {
   if (loading.value || spinning.value || opened.value || resultReady.value)
     return
+  emit('coin-click')
   void runOpenFlow()
 }
 

@@ -450,6 +450,7 @@ func GetCurrentTgUserInfo(db *gorm.DB, accessSecret string, token string) (pojo.
 		Email:        user.Email,
 		VipLevel:     user.VipLevel,
 		VipLevelName: user.VipLevelName,
+		AudioOpen:    user.AudioOpen,
 	}, nil
 }
 

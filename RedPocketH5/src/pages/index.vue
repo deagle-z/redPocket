@@ -1,33 +1,25 @@
 <script setup lang="ts">
 import { showToast } from 'vant'
-import { getLuckyRecentWinners } from '@/api/user'
+import type { BannerItem } from '@/api/user'
+import { getBanners, getLuckyRecentWinners } from '@/api/user'
 import { formatCurrency } from '@/utils/currency'
 import imgAvatarPlaceholder from '@/assets/images/avatar-placeholder.png'
-import imgTutorial from '@/assets/images/tutorial.png'
-import imgActivityChannel from '@/assets/images/activity-channel300.jpg'
-import imgLuckykita from '@/assets/images/luckykita2.jpg'
 import coinSvgUrl from '@/assets/svg/coin.svg'
 
 const { t } = useI18n()
 const router = useRouter()
 
-const bannerList = computed(() => [
-  {
-    img: imgTutorial,
-    text: t('homeLucky.bannerText1'),
-  },
-  {
-    img: imgActivityChannel,
-    text: t('homeLucky.bannerText2'),
-  },
-  {
-    img: imgLuckykita,
-    text: t('homeLucky.bannerText3'),
-  },
-])
+const DISMISSED_KEY = 'dismissed_popup_banner_ids'
 
 const DEFAULT_AVATAR = imgAvatarPlaceholder
 const activeIndex = ref(0)
+
+const homeBanners = ref<BannerItem[]>([])
+const popupQueue = ref<BannerItem[]>([])
+const popupVisible = ref(false)
+const popupIndex = ref(0)
+
+const currentPopup = computed(() => popupQueue.value[popupIndex.value] ?? null)
 const recentWinnersLoading = ref(false)
 const recentWinners = ref<any[]>([])
 const thunderCanvasRef = ref<HTMLCanvasElement | null>(null)
@@ -43,7 +35,7 @@ let coinImagePromise: Promise<HTMLImageElement> | null = null
 const visibleWinners = computed(() => recentWinners.value)
 const showWinnerLoading = computed(() => recentWinnersLoading.value && visibleWinners.value.length === 0)
 const showWinnerEmpty = computed(() => visibleWinners.value.length === 0)
-const marqueeText = computed(() => bannerList.value[activeIndex.value]?.text || '')
+const marqueeText = computed(() => homeBanners.value[activeIndex.value]?.bannerName || '')
 
 function onSwipeChange(index: number) {
   activeIndex.value = index
@@ -216,7 +208,68 @@ async function loadRecentWinners() {
   }
 }
 
+function getDismissedIds(): number[] {
+  try {
+    return JSON.parse(localStorage.getItem(DISMISSED_KEY) || '[]')
+  }
+  catch {
+    return []
+  }
+}
+
+function addDismissedId(id: number) {
+  const ids = getDismissedIds()
+  if (!ids.includes(id)) {
+    ids.push(id)
+    localStorage.setItem(DISMISSED_KEY, JSON.stringify(ids))
+  }
+}
+
+async function loadBanners() {
+  try {
+    const { data } = await getBanners()
+    homeBanners.value = (data?.home ?? []).filter(b => b.status === 1)
+    const dismissed = getDismissedIds()
+    popupQueue.value = (data?.popup ?? [])
+      .filter(b => b.status === 1 && !dismissed.includes(b.id))
+      .sort((a, b) => a.sort - b.sort)
+    if (popupQueue.value.length > 0) {
+      popupIndex.value = 0
+      popupVisible.value = true
+    }
+  }
+  catch { /* silent — carousel stays empty */ }
+}
+
+function onBannerClick(banner: BannerItem) {
+  if (banner.jumpType === 'url' && banner.jumpValue)
+    window.open(banner.jumpValue, '_blank')
+}
+
+function onPopupOk() {
+  if (popupIndex.value + 1 < popupQueue.value.length) {
+    popupIndex.value++
+  }
+  else {
+    popupVisible.value = false
+  }
+}
+
+function onPopupDismiss() {
+  const item = currentPopup.value
+  if (item)
+    addDismissedId(item.id)
+  popupQueue.value.splice(popupIndex.value, 1)
+  if (popupQueue.value.length === 0) {
+    popupVisible.value = false
+  }
+  else {
+    popupIndex.value = Math.min(popupIndex.value, popupQueue.value.length - 1)
+  }
+}
+
 onMounted(async () => {
+  void loadBanners()
   void loadRecentWinners()
   await initEntryCardAnimations()
 })
@@ -231,8 +284,14 @@ onBeforeUnmount(() => {
   <div class="home-page">
     <section class="home-carousel-card">
       <van-swipe class="home-swipe" :autoplay="3200" lazy-render indicator-color="#d4af37" @change="onSwipeChange">
-        <van-swipe-item v-for="(item, idx) in bannerList" :key="`${item.img}-${idx}`">
-          <img :src="item.img" class="banner-image" :alt="`banner-${idx + 1}`">
+        <van-swipe-item v-for="item in homeBanners" :key="item.id">
+          <img
+            :src="item.imageUrl"
+            class="banner-image"
+            :alt="item.bannerName"
+            :style="item.jumpType === 'url' ? 'cursor:pointer' : ''"
+            @click="onBannerClick(item)"
+          >
         </van-swipe-item>
       </van-swipe>
       <div class="banner-stripe" />
@@ -339,6 +398,26 @@ onBeforeUnmount(() => {
         </div>
       </template>
     </section>
+
+    <!-- 弹窗广告 -->
+    <van-overlay :show="popupVisible" class="banner-popup-overlay" @click.self="onPopupOk">
+      <div class="banner-popup">
+        <img
+          v-if="currentPopup"
+          :src="currentPopup.imageUrl"
+          class="banner-popup__img"
+          :alt="currentPopup.bannerName"
+        >
+        <div class="banner-popup__actions">
+          <button type="button" class="popup-btn popup-btn--dismiss" @click="onPopupDismiss">
+            {{ t('common.noRemind') }}
+          </button>
+          <button type="button" class="popup-btn popup-btn--ok" @click="onPopupOk">
+            {{ t('common.ok') }}
+          </button>
+        </div>
+      </div>
+    </van-overlay>
   </div>
 </template>
 
@@ -824,6 +903,56 @@ onBeforeUnmount(() => {
     transition: none !important;
     transform: none !important;
   }
+}
+
+/* ── 弹窗广告 ── */
+:deep(.banner-popup-overlay.van-overlay) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 3000;
+}
+
+.banner-popup {
+  width: 80vw;
+  max-width: 360px;
+  max-height: 70vh;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #1a0a00;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.7);
+  display: flex;
+  flex-direction: column;
+}
+
+.banner-popup__img {
+  width: 100%;
+  flex: 1;
+  min-height: 0;
+  object-fit: cover;
+  display: block;
+}
+
+.banner-popup__actions {
+  display: flex;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.popup-btn {
+  flex: 1;
+  height: 48px;
+  font-size: 15px;
+  font-weight: 600;
+  background: transparent;
+}
+
+.popup-btn--dismiss {
+  color: rgba(255, 255, 255, 0.4);
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.popup-btn--ok {
+  color: #f3c84f;
 }
 </style>
 

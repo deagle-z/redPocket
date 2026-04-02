@@ -74,6 +74,14 @@ type SysBannerResp struct {
 	BasePageResponse[SysBannerBack]
 }
 
+// SysBannerAppReq App端获取轮播图请求
+type SysBannerAppReq struct {
+	Platform string `json:"platform"` // web/app/h5，为空则返回all+该平台
+}
+
+// SysBannerGroupedResp App端轮播图按position分组返回
+type SysBannerGroupedResp map[string][]SysBannerBack
+
 var SysBannerTableName = "sys_banner"
 
 func (SysBanner) TableName() string {
