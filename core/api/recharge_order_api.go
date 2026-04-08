@@ -157,3 +157,27 @@ func AppCreateRechargeOrder(ctx *gin.Context) {
 	}
 	utils.SuccessObjBack(ctx, result)
 }
+
+// CheckIsFirstRecharge godoc
+//
+//	@Summary		判断当前用户是否已首充
+//	@Tags			充值
+//	@Produce		json
+//	@Success		200	{object}	map[string]bool	"firstRecharge: true=已首充 false=未首充"
+//	@Router			/api/v1/app/recharge/isFirst [get]
+func CheckIsFirstRecharge(ctx *gin.Context) {
+	userIDRaw, ok := ctx.Get("userId")
+	if !ok {
+		utils.UnauthorizedBack(ctx, "token is invalid")
+		return
+	}
+	userID, ok := userIDRaw.(int64)
+	if !ok || userID <= 0 {
+		utils.UnauthorizedBack(ctx, "token is invalid")
+		return
+	}
+	db := ctx.MustGet("db").(*gorm.DB)
+	utils.SuccessObjBack(ctx, gin.H{
+		"firstRecharge": repository.IsFirstRecharge(db, userID),
+	})
+}

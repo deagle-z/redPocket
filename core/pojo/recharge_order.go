@@ -33,6 +33,7 @@ type RechargeOrder struct { // 充值记录/充值订单表
 	Remark          *string    `json:"remark" gorm:"column:remark;type:varchar(255)"`                       // 备注（可选）
 	Extra           *string    `json:"extra" gorm:"column:extra;type:json"`                                 // 扩展信息（可选）
 	IsDev           *int8      `json:"isDev" gorm:"column:is_dev;type:tinyint(1);comment:是否手动回调 0否 1是"`     // 是否手动回调
+	IsFirst         *int8      `json:"isFirst" gorm:"column:is_first;type:tinyint(1);default:0;comment:是否首充 0否 1是"` // 是否首充
 	DeletedAt       *time.Time `json:"deletedAt" gorm:"column:deleted_at;type:datetime(3)"`                 // 软删除时间（可选）
 }
 
@@ -113,6 +114,7 @@ type RechargeOrderBack struct {
 	Remark          *string    `json:"remark"`
 	Extra           *string    `json:"extra"`
 	IsDev           *int8      `json:"isDev"`
+	IsFirst         *int8      `json:"isFirst"`
 }
 
 type RechargeOrderResp struct {
@@ -127,6 +129,7 @@ type RechargeOrderAppReq struct {
 	CountryCode     string            `json:"countryCode"`     // 国家编码（可选，用于校验额外字段）
 	MerchantOrderNo string            `json:"merchantOrderNo"` // 商户订单号（可选）
 	ExtraFields     map[string]string `json:"extraFields"`     // 国家自定义字段
+	IsFirst         int8              `json:"isFirst"`         // 是否参加首充活动 0否 1是
 }
 
 type RechargeOrderAppBack struct {

@@ -297,7 +297,10 @@
     "fillInfo": "Fill in Info",
     "submit": "Confirm Recharge",
     "paySubQr": "Scan to pay",
-    "paySubWallet": "E-wallet"
+    "paySubWallet": "E-wallet",
+    "firstRechargeTitle": "First Recharge Bonus",
+    "firstRechargeDesc": "Join to enjoy extra rewards on your first deposit",
+    "firstRechargeGift": "Bonus amount:"
   },
   "withdrawPage": {
     "title": "Withdraw",

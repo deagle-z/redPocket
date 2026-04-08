@@ -374,7 +374,8 @@ onBeforeUnmount(() => {
               :disabled="overview.status !== 'ongoing' || item.isGrabbed"
               @click="openGrabDialog(item)"
             >
-              <span v-if="item.isThunder" aria-hidden="true">💣</span>
+              <span v-if="item.isThunder && overview.playType !== 'parity'" aria-hidden="true">💣</span>
+              <span v-else-if="item.isThunder && overview.playType === 'parity'">-</span>
               {{ item.label }}
             </button>
           </div>

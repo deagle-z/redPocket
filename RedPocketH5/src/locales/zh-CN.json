@@ -297,7 +297,10 @@
     "fillInfo": "填写信息",
     "submit": "确认充值",
     "paySubQr": "扫码支付",
-    "paySubWallet": "电子钱包"
+    "paySubWallet": "电子钱包",
+    "firstRechargeTitle": "首充优惠活动",
+    "firstRechargeDesc": "参与首充可享受额外奖励",
+    "firstRechargeGift": "赠送金额："
   },
   "withdrawPage": {
     "title": "提现",

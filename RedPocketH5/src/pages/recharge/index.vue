@@ -5,10 +5,12 @@ import { showToast } from 'vant'
 import type { AppCountryItem, AppPayMethodItem, AppRechargeChannelItem, RechargeField, RechargeFieldOption } from '@/api/user'
 import {
   createRechargeOrder,
+  getAppConfig,
   getAppCountries,
   getCountryRechargeFields,
   getCountryRechargeInfo,
   getCurrentTgUserInfo,
+  getRechargeIsFirst,
 } from '@/api/user'
 import AppPageHeader from '@/components/AppPageHeader.vue'
 import { formatCurrency } from '@/utils/currency'
@@ -17,6 +19,23 @@ const { t } = useI18n()
 const router = useRouter()
 
 const balance = ref(0)
+
+// 首充活动
+const firstRechargeCompleted = ref(true) // 默认 true，避免闪烁
+const joinFirstRecharge = ref(false)
+const firstRechargeGift = ref('')
+
+async function loadFirstRechargeStatus() {
+  try {
+    const [isFirstRes, giftRes] = await Promise.all([
+      getRechargeIsFirst(),
+      getAppConfig('first_recharge_gift'),
+    ])
+    firstRechargeCompleted.value = isFirstRes.data?.firstRecharge ?? true
+    firstRechargeGift.value = giftRes.data?.configValue ?? ''
+  }
+  catch { /* 接口失败不影响主流程 */ }
+}
 
 // 国家列表
 const countries = ref<AppCountryItem[]>([])
@@ -214,6 +233,7 @@ async function handleSubmitRecharge() {
       currency: selectedCountry.value?.currencyCode,
       countryCode: selectedCountry.value?.countryCode ?? '',
       extraFields: rechargeFields.value.length ? { ...fieldValues.value } : undefined,
+      isFirst: joinFirstRecharge.value ? 1 : 0,
     })
 
     if (data?.payUrl) {
@@ -241,6 +261,7 @@ async function handleSubmitRecharge() {
 onMounted(() => {
   loadBalance()
   loadCountries()
+  loadFirstRechargeStatus()
 })
 </script>
 
@@ -384,6 +405,24 @@ onMounted(() => {
         @cancel="pickerVisible = false"
       />
     </van-popup>
+
+    <!-- 首充活动 -->
+    <section v-if="!firstRechargeCompleted" class="card first-recharge-card">
+      <div class="first-recharge-row">
+        <div class="first-recharge-info">
+          <p class="first-recharge-title">{{ t('rechargePage.firstRechargeTitle') }}</p>
+          <p class="first-recharge-desc">{{ t('rechargePage.firstRechargeDesc') }}</p>
+          <p v-if="joinFirstRecharge && firstRechargeGift" class="first-recharge-gift">
+            {{ t('rechargePage.firstRechargeGift') }} <CoinAmount :text="firstRechargeGift" />
+          </p>
+        </div>
+        <van-switch
+          v-model="joinFirstRecharge"
+          active-color="#d4af37"
+          inactive-color="rgba(255,255,255,0.15)"
+        />
+      </div>
+    </section>
 
     <div v-if="displayAmount && selectedCountry?.rate" class="local-amount-hint">
       ≈ {{ localCurrencySymbol }}{{ localAmount }} {{ selectedCountry?.currencyCode }}
@@ -729,6 +768,34 @@ onMounted(() => {
 
 .recharge-field:first-of-type {
   margin-top: 0;
+}
+
+.first-recharge-card {
+  padding: 14px 16px;
+}
+
+.first-recharge-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.first-recharge-info {
+  flex: 1;
+}
+
+.first-recharge-title {
+  margin: 0 0 4px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #ffd87f;
+}
+
+.first-recharge-desc {
+  margin: 0;
+  font-size: 12px;
+  color: rgba(255, 229, 186, 0.6);
 }
 
 .local-amount-hint {

@@ -114,6 +114,15 @@ export interface RechargeOrderAppReq {
   countryCode?: string
   merchantOrderNo?: string
   extraFields?: Record<string, string>
+  isFirst?: 0 | 1
+}
+
+export function getRechargeIsFirst() {
+  return request.get<ApiResult<{ firstRecharge: boolean }>>('/api/v1/app/recharge/isFirst')
+}
+
+export function getAppConfig(key: string) {
+  return request.get<ApiResult<{ configKey: string, configValue: string, configDesc: string }>>(`/api/v1/app/config/${key}`)
 }
 
 export interface RechargeOrderAppBack {

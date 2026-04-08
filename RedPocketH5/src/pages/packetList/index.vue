@@ -650,7 +650,8 @@ onBeforeUnmount(() => {
                     :disabled="packet.status !== 'ongoing' || action.isGrabbed"
                     @click="openGrabDialog(packet, action)"
                   >
-                    <span v-if="action.thunder" aria-hidden="true">💣</span>
+                    <span v-if="action.thunder && packet.playType !== 'parity'" aria-hidden="true">💣</span>
+                    <span v-else-if="action.thunder && packet.playType === 'parity'">-</span>
                     <span v-else-if="action.isGrabMine" class="mine-text">🎁 </span>
                     <span v-else-if="packet.playType === 'parity' && !action.isGrabbed && packet.status === 'ongoing'" class="choice-mark">奇/偶</span>
                     <CoinAmount v-if="action.amount > 0 && !action.thunder && !action.displayLoading && (action.isGrabbed || packet.status !== 'ongoing')" :text="`${action.amount.toFixed(2)}`" />
