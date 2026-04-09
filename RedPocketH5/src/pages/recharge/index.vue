@@ -20,19 +20,31 @@ const router = useRouter()
 
 const balance = ref(0)
 
-// 首充活动
-const firstRechargeCompleted = ref(true) // 默认 true，避免闪烁
-const joinFirstRecharge = ref(false)
+// 促销活动
+// promoChoice: '' = 不参加, 'first' = 首充, 'today_first' = 今日首充
+const hasFirst = ref(false)
+const hasTodayFirst = ref(false)
 const firstRechargeGift = ref('')
+const todayFirstRechargeGift = ref('')
+const promoChoice = ref<'' | 'first' | 'today_first'>('')
+
+const showPromo = computed(() => hasFirst.value || hasTodayFirst.value)
 
 async function loadFirstRechargeStatus() {
   try {
-    const [isFirstRes, giftRes] = await Promise.all([
+    const [isFirstRes, giftRes, todayGiftRes] = await Promise.all([
       getRechargeIsFirst(),
       getAppConfig('first_recharge_gift'),
+      getAppConfig('today_first_recharge_gift'),
     ])
-    firstRechargeCompleted.value = isFirstRes.data?.firstRecharge ?? true
+    hasFirst.value = isFirstRes.data?.hasFirst ?? false
+    hasTodayFirst.value = isFirstRes.data?.hasTodayFirst ?? false
     firstRechargeGift.value = giftRes.data?.configValue ?? ''
+    todayFirstRechargeGift.value = todayGiftRes.data?.configValue ?? ''
+    if (hasFirst.value)
+      promoChoice.value = 'first'
+    else if (hasTodayFirst.value)
+      promoChoice.value = 'today_first'
   }
   catch { /* 接口失败不影响主流程 */ }
 }
@@ -233,7 +245,7 @@ async function handleSubmitRecharge() {
       currency: selectedCountry.value?.currencyCode,
       countryCode: selectedCountry.value?.countryCode ?? '',
       extraFields: rechargeFields.value.length ? { ...fieldValues.value } : undefined,
-      isFirst: joinFirstRecharge.value ? 1 : 0,
+      isFirst: promoChoice.value !== '' ? 1 : 0,
     })
 
     if (data?.payUrl) {
@@ -406,21 +418,64 @@ onMounted(() => {
       />
     </van-popup>
 
-    <!-- 首充活动 -->
-    <section v-if="!firstRechargeCompleted" class="card first-recharge-card">
-      <div class="first-recharge-row">
-        <div class="first-recharge-info">
-          <p class="first-recharge-title">{{ t('rechargePage.firstRechargeTitle') }}</p>
-          <p class="first-recharge-desc">{{ t('rechargePage.firstRechargeDesc') }}</p>
-          <p v-if="joinFirstRecharge && firstRechargeGift" class="first-recharge-gift">
-            {{ t('rechargePage.firstRechargeGift') }} <CoinAmount :text="firstRechargeGift" />
-          </p>
-        </div>
-        <van-switch
-          v-model="joinFirstRecharge"
-          active-color="#d4af37"
-          inactive-color="rgba(255,255,255,0.15)"
-        />
+    <!-- 促销活动选择 -->
+    <section v-if="showPromo" class="card">
+      <h2>{{ t('rechargePage.promoTitle') }}</h2>
+      <div class="promo-list">
+        <!-- 首充活动 -->
+        <button
+          v-if="hasFirst"
+          type="button"
+          class="promo-item"
+          :class="{ active: promoChoice === 'first' }"
+          @click="promoChoice = promoChoice === 'first' ? '' : 'first'"
+        >
+          <span class="promo-radio">
+            <span v-if="promoChoice === 'first'" class="promo-radio-dot" />
+          </span>
+          <div class="promo-body">
+            <div class="promo-header-row">
+              <span class="promo-name">{{ t('rechargePage.firstRechargeTitle') }}</span>
+              <span v-if="firstRechargeGift" class="promo-badge">+{{ firstRechargeGift }}%</span>
+            </div>
+            <p class="promo-desc">{{ t('rechargePage.firstRechargeDesc') }}</p>
+          </div>
+        </button>
+
+        <!-- 今日首充活动 -->
+        <button
+          v-if="hasTodayFirst"
+          type="button"
+          class="promo-item"
+          :class="{ active: promoChoice === 'today_first' }"
+          @click="promoChoice = promoChoice === 'today_first' ? '' : 'today_first'"
+        >
+          <span class="promo-radio">
+            <span v-if="promoChoice === 'today_first'" class="promo-radio-dot" />
+          </span>
+          <div class="promo-body">
+            <div class="promo-header-row">
+              <span class="promo-name">{{ t('rechargePage.todayFirstTitle') }}</span>
+              <span v-if="todayFirstRechargeGift" class="promo-badge">+{{ todayFirstRechargeGift }}%</span>
+            </div>
+            <p class="promo-desc">{{ t('rechargePage.todayFirstDesc') }}</p>
+          </div>
+        </button>
+
+        <!-- 不参加 -->
+        <button
+          type="button"
+          class="promo-item"
+          :class="{ active: promoChoice === '' }"
+          @click="promoChoice = ''"
+        >
+          <span class="promo-radio">
+            <span v-if="promoChoice === ''" class="promo-radio-dot" />
+          </span>
+          <div class="promo-body">
+            <span class="promo-name promo-name--muted">{{ t('rechargePage.promoNone') }}</span>
+          </div>
+        </button>
       </div>
     </section>
 
@@ -770,32 +825,89 @@ onMounted(() => {
   margin-top: 0;
 }
 
-.first-recharge-card {
-  padding: 14px 16px;
+.promo-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
-.first-recharge-row {
+.promo-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  width: 100%;
+  padding: 14px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(212, 175, 55, 0.2);
+  background: rgba(255, 248, 214, 0.05);
+  text-align: left;
+  transition: all 0.15s;
+}
+
+.promo-item.active {
+  border-color: rgba(212, 175, 55, 0.6);
+  background: linear-gradient(160deg, rgba(255, 223, 135, 0.1), rgba(116, 24, 0, 0.2));
+}
+
+.promo-radio {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid rgba(212, 175, 55, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 1px;
+}
+
+.promo-item.active .promo-radio {
+  border-color: #d4af37;
+}
+
+.promo-radio-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #d4af37;
+}
+
+.promo-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.promo-header-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 8px;
+  margin-bottom: 4px;
 }
 
-.first-recharge-info {
-  flex: 1;
-}
-
-.first-recharge-title {
-  margin: 0 0 4px;
+.promo-name {
   font-size: 14px;
   font-weight: 700;
-  color: #ffd87f;
+  color: #fff0c9;
 }
 
-.first-recharge-desc {
+.promo-name--muted {
+  color: rgba(255, 229, 186, 0.6);
+  font-weight: 400;
+}
+
+.promo-badge {
+  font-size: 13px;
+  font-weight: 700;
+  color: #ffd87f;
+  white-space: nowrap;
+}
+
+.promo-desc {
   margin: 0;
   font-size: 12px;
-  color: rgba(255, 229, 186, 0.6);
+  color: rgba(255, 229, 186, 0.55);
+  line-height: 1.4;
 }
 
 .local-amount-hint {

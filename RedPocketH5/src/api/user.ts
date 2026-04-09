@@ -118,7 +118,7 @@ export interface RechargeOrderAppReq {
 }
 
 export function getRechargeIsFirst() {
-  return request.get<ApiResult<{ firstRecharge: boolean }>>('/api/v1/app/recharge/isFirst')
+  return request.get<ApiResult<{ hasFirst: boolean, hasTodayFirst: boolean }>>('/api/v1/app/recharge/isFirst')
 }
 
 export function getAppConfig(key: string) {

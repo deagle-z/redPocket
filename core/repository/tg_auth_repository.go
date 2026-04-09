@@ -319,10 +319,12 @@ func RegisterTgByEmail(db *gorm.DB, email string, password string, code string, 
 			if uidErr != nil {
 				return uidErr
 			}
+			randomAvatar := fmt.Sprintf("https://pub-bd25d6a357314ec1823d725e93570e3d.r2.dev/game/avatar%d.png", rand.IntN(9)+1)
 			user := pojo.TgUser{
 				Uid:               uid,
 				Username:          &username,
 				FirstName:         &displayName,
+				Avatar:            &randomAvatar,
 				Password:          string(passwordHash),
 				Email:             email,
 				Status:            1,

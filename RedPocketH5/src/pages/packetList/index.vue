@@ -651,7 +651,7 @@ onBeforeUnmount(() => {
                     @click="openGrabDialog(packet, action)"
                   >
                     <span v-if="action.thunder && packet.playType !== 'parity'" aria-hidden="true">💣</span>
-                    <span v-else-if="action.thunder && packet.playType === 'parity'">-</span>
+                    <img v-else-if="action.thunder && packet.playType === 'parity'" :src="imgCoin" class="parity-lose-coin" alt="">
                     <span v-else-if="action.isGrabMine" class="mine-text">🎁 </span>
                     <span v-else-if="packet.playType === 'parity' && !action.isGrabbed && packet.status === 'ongoing'" class="choice-mark">奇/偶</span>
                     <CoinAmount v-if="action.amount > 0 && !action.thunder && !action.displayLoading && (action.isGrabbed || packet.status !== 'ongoing')" :text="`${action.amount.toFixed(2)}`" />
@@ -1155,6 +1155,13 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: center;
   background: linear-gradient(180deg, rgba(0, 0, 0, 0.2) 0%, rgba(0, 0, 0, 0.35) 100%);
+}
+
+.parity-lose-coin {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+  opacity: 0.6;
 }
 
 .action-pill {

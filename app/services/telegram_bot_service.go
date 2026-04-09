@@ -1660,7 +1660,7 @@ func (s *TelegramBotService) buildCashFlowText(userID int64) (string, error) {
 		return "", err
 	}
 
-	return fmt.Sprintf("流水明细\n今日流水：%.2f U\n昨日流水：%.2f U\n总流水：%.2f U", todayTotal, yesterdayTotal, allTotal), nil
+	return fmt.Sprintf("流水明细\n今日流水：%.2f \n昨日流水：%.2f\n总流水：%.2f", todayTotal, yesterdayTotal, allTotal), nil
 }
 
 func (s *TelegramBotService) sumCashHistoryAbsAmount(userID int64, start *time.Time, end *time.Time) (float64, error) {
@@ -1804,7 +1804,7 @@ func (s *TelegramBotService) HandleBalanceCommand(userID int64) (string, error) 
 		inviteBaseURL = "https://t.me/goodLuckEveryOne66Bot/?start="
 	}
 	inviteLink := fmt.Sprintf("%s%s", inviteBaseURL, inviteCode)
-	return fmt.Sprintf("用户：%s\n余额：%.3f U\n邀请链接：%s", displayName, user.Balance, inviteLink), nil
+	return fmt.Sprintf("用户：%s\n余额：%.3f \n邀请链接：%s", displayName, user.Balance, inviteLink), nil
 }
 
 // HandleRegisterCommand 处理注册命令
@@ -1817,7 +1817,7 @@ func (s *TelegramBotService) HandleRegisterCommand(chatID int64, userID int64, u
 		return fmt.Sprintf(`✅ 您已注册！
 
 👤 用户ID：<code>%d</code>
-💰 余额：<code>%.3f U</code>
+💰 余额：<code>%.3f </code>
 📊 状态：<code>%s</code>
 📅 注册时间：<code>%s</code>`,
 			tgUser.ID,
@@ -1872,7 +1872,7 @@ func (s *TelegramBotService) HandleRegisterCommand(chatID int64, userID int64, u
 				return fmt.Sprintf(`✅ 您已注册！
 
 👤 用户ID：<code>%d</code>
-💰 余额：<code>%.3f U</code>
+💰 余额：<code>%.3f </code>
 📊 状态：<code>%s</code>
 📅 注册时间：<code>%s</code>`,
 					retryUser.ID,
@@ -1887,7 +1887,7 @@ func (s *TelegramBotService) HandleRegisterCommand(chatID int64, userID int64, u
 	return fmt.Sprintf(`🎉 注册成功！
 
 👤 用户ID：<code>%d</code>
-💰 余额：<code>%.3f U</code>
+💰 余额：<code>%.3f </code>
 📊 状态：<code>正常</code>
 🔑 邀请码：<code>%s</code>
 
@@ -1938,11 +1938,11 @@ func FormatRedPacketCompleteMessage(luckyMoney *pojo.LuckyMoney, historyList []p
 
 	for i, history := range historyList {
 		if history.IsThunder == 1 {
-			details.WriteString(fmt.Sprintf("%d.[💣] <code>%.2f</code> U <code>%s</code>\n",
+			details.WriteString(fmt.Sprintf("%d.[💣] <code>%.2f</code>  <code>%s</code>\n",
 				i+1, history.Amount, utils.FormatName(history.FirstName, 8)))
 			loseMoneyTotal += history.LoseMoney
 		} else {
-			details.WriteString(fmt.Sprintf("%d.[💵] <code>%.2f</code> U <code>%s</code>\n",
+			details.WriteString(fmt.Sprintf("%d.[💵] <code>%.2f</code>  <code>%s</code>\n",
 				i+1, history.Amount, utils.FormatName(history.FirstName, 8)))
 		}
 	}
@@ -1954,7 +1954,7 @@ func FormatRedPacketCompleteMessage(luckyMoney *pojo.LuckyMoney, historyList []p
 	}
 
 	return fmt.Sprintf(`[ <code>%s</code> ]的红包已被领完！
-🧧红包金额：%.0f U
+🧧红包金额：%.0f 
 🛎红包倍数：%.2f
 💥中雷数字：%d
 --------领取详情--------

@@ -17,6 +17,7 @@
     "Register": "注册",
     "ForgotPassword": "❓ 忘记密码",
     "Settings": "⚙️ 设置",
+    "Team": "团队",
     "Undefined": "🤷 未定义标题"
   },
   "tabbar": {
@@ -298,9 +299,13 @@
     "submit": "确认充值",
     "paySubQr": "扫码支付",
     "paySubWallet": "电子钱包",
-    "firstRechargeTitle": "首充优惠活动",
-    "firstRechargeDesc": "参与首充可享受额外奖励",
-    "firstRechargeGift": "赠送金额："
+    "promoTitle": "选择促销",
+    "promoNone": "不要参与任何促销活动。",
+    "firstRechargeTitle": "首次充值优惠",
+    "firstRechargeDesc": "首次存款即可获得额外奖励",
+    "firstRechargeGift": "赠送金额：",
+    "todayFirstTitle": "今日首次充值优惠",
+    "todayFirstDesc": "今日首次存款即可享受额外奖励"
   },
   "withdrawPage": {
     "title": "提现",

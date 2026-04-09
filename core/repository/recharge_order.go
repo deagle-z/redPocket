@@ -232,7 +232,7 @@ func AppCreateRechargeOrder(db *gorm.DB, userID int64, req pojo.RechargeOrderApp
 		BonusAmount:     0,
 		Status:          0, // 待支付
 		ProviderTradeNo: providerTradeNo,
-		IsFirst:         &req.IsFirst,
+		ActivityType:    &req.ActivityType,
 	}
 	if err = db.Create(&order).Error; err != nil {
 		return result, err
@@ -365,6 +365,12 @@ func ProcessRechargeOrderSuccess(db *gorm.DB, orderNo string, providerTradeNo st
 
 		if isFirstRecharge {
 			if err := applyInviteFirstRechargeReward(tx, order, user, tablePrefix, now); err != nil {
+				return err
+			}
+		}
+		// 活动赠送：activity_type=1(首充) 或 2(今日首充)
+		if order.ActivityType != nil && *order.ActivityType > 0 {
+			if err := applyFirstRechargeActivityGift(tx, order, user); err != nil {
 				return err
 			}
 		}
@@ -529,8 +535,8 @@ func rechargeOrderDevCallback(db *gorm.DB, orderNo string, tablePrefix string) e
 			}
 		}
 
-		// 首充活动赠送：订单标记 is_first=1 且该用户无已完成的首充活动订单
-		if order.IsFirst != nil && *order.IsFirst == 1 {
+		// 活动赠送：activity_type=1(首充) 或 2(今日首充)
+		if order.ActivityType != nil && *order.ActivityType > 0 {
 			if err := applyFirstRechargeActivityGift(tx, order, user); err != nil {
 				return err
 			}
@@ -545,31 +551,45 @@ func rechargeOrderDevCallback(db *gorm.DB, orderNo string, tablePrefix string) e
 	return err
 }
 
-// applyFirstRechargeActivityGift 首充活动赠送：读取 sys_config.first_recharge_gift，赠送余额并记录流水
+// applyFirstRechargeActivityGift 活动赠送：按充值金额百分比赠送余额并记录流水
 func applyFirstRechargeActivityGift(tx *gorm.DB, order pojo.RechargeOrder, user pojo.TgUser) error {
-	// 检查该用户是否已有其他已完成的首充活动订单（排除当前订单）
+	// 检查该用户是否已有其他已完成的同类活动订单（排除当前订单）
 	var completedCount int64
 	tx.Model(&pojo.RechargeOrder{}).
-		Where("user_id = ? AND is_first = 1 AND status = 1 AND id != ?", user.ID, order.ID).
+		Where("user_id = ? AND activity_type = ? AND status = 1 AND id != ?", user.ID, order.ActivityType, order.ID).
 		Count(&completedCount)
 	if completedCount > 0 {
 		return nil
 	}
 
-	// 读取首充赠送金额配置
+	// 读取活动赠送比例配置
+	configKey := "first_recharge_gift"
+	awardUniPrefix := "first_recharge_gift"
+	cashMark := "首充活动赠送"
+	if order.ActivityType != nil && *order.ActivityType == 2 {
+		configKey = "today_first_recharge_gift"
+		awardUniPrefix = "today_first_recharge_gift"
+		cashMark = "今日首充活动赠送"
+	}
+
 	var cfg pojo.SysConfig
-	tx.Where("config_key = ?", "first_recharge_gift").First(&cfg)
+	tx.Where("config_key = ?", configKey).First(&cfg)
 	if cfg.ID == 0 || strings.TrimSpace(cfg.ConfigValue) == "" {
 		return nil
 	}
-	giftAmount, err := strconv.ParseFloat(strings.TrimSpace(cfg.ConfigValue), 64)
-	if err != nil || giftAmount <= 0 {
+	rate, err := strconv.ParseFloat(strings.TrimSpace(cfg.ConfigValue), 64)
+	if err != nil || rate <= 0 {
+		return nil
+	}
+
+	giftAmount := utils.ToMoney(order.Amount).Multiply(rate / 100).ToDollars()
+	if giftAmount <= 0 {
 		return nil
 	}
 
 	// 赠送余额
 	if err = tx.Model(&pojo.TgUser{}).Where("id = ?", user.ID).Updates(map[string]any{
-		"balance":    gorm.Expr("balance + ?", giftAmount),
+		"balance":     gorm.Expr("balance + ?", giftAmount),
 		"gift_amount": gorm.Expr("gift_amount + ?", giftAmount),
 		"gift_total":  gorm.Expr("gift_total + ?", giftAmount),
 	}).Error; err != nil {
@@ -577,15 +597,15 @@ func applyFirstRechargeActivityGift(tx *gorm.DB, order pojo.RechargeOrder, user 
 	}
 
 	// 记录流水
-	awardUni := fmt.Sprintf("first_recharge_gift_%s", order.OrderNo)
-	desc := fmt.Sprintf("首充活动赠送%.3f，订单%s", giftAmount, order.OrderNo)
+	awardUni := fmt.Sprintf("%s_%s", awardUniPrefix, order.OrderNo)
+	desc := fmt.Sprintf("%s%.3f，订单%s，充值金额%.3f，赠送比例%.2f%%", cashMark, giftAmount, order.OrderNo, order.Amount, rate)
 	history := pojo.CashHistory{
 		UserId:          user.ID,
 		AwardUni:        awardUni,
 		Amount:          giftAmount,
 		StartAmount:     user.Balance,
 		EndAmount:       user.Balance + giftAmount,
-		CashMark:        "首充活动赠送",
+		CashMark:        cashMark,
 		CashDesc:        desc,
 		Type:            pojo.CashHistoryTypeRechargeCredit,
 		IsGift:          1,
@@ -669,12 +689,22 @@ func applyInviteFirstRechargeReward(tx *gorm.DB, order pojo.RechargeOrder, subUs
 	}).Error
 }
 
-// IsFirstRecharge 判断用户是否已完成首充（status=1 表示成功）
-// 返回 true = 已有成功充值记录（已首充），false = 从未成功充值（未首充）
-func IsFirstRecharge(db *gorm.DB, userID int64) bool {
-	var count int64
-	db.Model(&pojo.RechargeOrder{}).Where("user_id = ? AND status = 1", userID).Count(&count)
-	return count > 0
+// CheckActivityStatus 检查用户活动参与状态
+// hasFirst: 是否已参加过首充活动（activity_type=1 且 status=1）
+// hasTodayFirst: 24小时内是否已参加过今日首充活动（activity_type=2 且 status=1）
+func CheckActivityStatus(db *gorm.DB, userID int64) (hasFirst bool, hasTodayFirst bool) {
+	var firstCount int64
+	db.Model(&pojo.RechargeOrder{}).
+		Where("user_id = ? AND activity_type = 1 AND status = 1", userID).
+		Count(&firstCount)
+	hasFirst = firstCount > 0
+
+	var todayCount int64
+	db.Model(&pojo.RechargeOrder{}).
+		Where("user_id = ? AND activity_type = 2 AND status = 1 AND created_at >= ?", userID, time.Now().Add(-24*time.Hour)).
+		Count(&todayCount)
+	hasTodayFirst = todayCount > 0
+	return
 }
 
 func getInviteFirstRechargeRewardRate(tablePrefix string) float64 {

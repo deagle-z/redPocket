@@ -160,10 +160,10 @@ func AppCreateRechargeOrder(ctx *gin.Context) {
 
 // CheckIsFirstRecharge godoc
 //
-//	@Summary		判断当前用户是否已首充
+//	@Summary		检查用户活动参与状态
 //	@Tags			充值
 //	@Produce		json
-//	@Success		200	{object}	map[string]bool	"firstRecharge: true=已首充 false=未首充"
+//	@Success		200	{object}	map[string]bool	"hasFirst: 是否已参加首充活动; hasTodayFirst: 24h内是否已参加今日首充活动"
 //	@Router			/api/v1/app/recharge/isFirst [get]
 func CheckIsFirstRecharge(ctx *gin.Context) {
 	userIDRaw, ok := ctx.Get("userId")
@@ -177,7 +177,9 @@ func CheckIsFirstRecharge(ctx *gin.Context) {
 		return
 	}
 	db := ctx.MustGet("db").(*gorm.DB)
+	hasFirst, hasTodayFirst := repository.CheckActivityStatus(db, userID)
 	utils.SuccessObjBack(ctx, gin.H{
-		"firstRecharge": repository.IsFirstRecharge(db, userID),
+		"hasFirst":      !hasFirst,
+		"hasTodayFirst": !hasTodayFirst,
 	})
 }

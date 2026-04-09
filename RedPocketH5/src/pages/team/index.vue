@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive } from 'vue'
+import { useRouter } from 'vue-router'
 import { getCurrentTgInviteStats } from '@/api/user'
 import { formatCurrency } from '@/utils/currency'
 import imgTeamJpg from '@/assets/images/team.jpg'
 
 const { t } = useI18n()
+const router = useRouter()
 
 const teamRuleBannerImage = imgTeamJpg
 
@@ -59,6 +61,7 @@ onMounted(() => {
 
 <template>
   <div class="team-page">
+    <AppPageHeader :title="t('teamPage.title')" @back="router.back()" />
     <section class="section-card">
       <div class="section-title">
         <span class="dot green" />

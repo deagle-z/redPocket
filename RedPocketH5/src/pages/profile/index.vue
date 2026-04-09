@@ -5,15 +5,6 @@ import { showToast } from 'vant'
 import { clearToken, isLogin } from '@/utils/auth'
 import { locale } from '@/utils/i18n'
 import avatarPlaceholderIcon from '@/assets/my/question-circle.svg'
-import avatar1 from '@/assets/images/avatar1.png'
-import avatar2 from '@/assets/images/avatar2.png'
-import avatar3 from '@/assets/images/avatar3.png'
-import avatar4 from '@/assets/images/avatar4.png'
-import avatar5 from '@/assets/images/avatar5.png'
-import avatar6 from '@/assets/images/avatar6.png'
-import avatar7 from '@/assets/images/avatar7.png'
-import avatar8 from '@/assets/images/avatar8.png'
-import avatar9 from '@/assets/images/avatar9.png'
 import bankCardIcon from '@/assets/my/bank card.svg?raw'
 import chartBarAltIcon from '@/assets/my/chart-bar-alt.svg?raw'
 import customerServiceIcon from '@/assets/my/customer-service-fill.svg?raw'
@@ -114,7 +105,8 @@ const showAvatarPopup = ref(false)
 const uploadingAvatar = ref(false)
 const avatarFileInput = ref<HTMLInputElement>()
 const PROFILE_AVATAR_KEY = 'profile_custom_avatar'
-const avatarOptions = [avatar1, avatar2, avatar3, avatar4, avatar5, avatar6, avatar7, avatar8, avatar9]
+const AVATAR_BASE = 'https://pub-bd25d6a357314ec1823d725e93570e3d.r2.dev/game/'
+const avatarOptions = Array.from({ length: 9 }, (_, i) => `${AVATAR_BASE}avatar${i + 1}.png`)
 const profile = reactive({
   avatar: '',
   username: '',

@@ -17,6 +17,7 @@
     "Register": "🧑‍💻 Register",
     "ForgotPassword": "❓ Forgot Password",
     "Settings": "⚙️ Settings",
+    "Team": "Team",
     "Undefined": "🤷 Undefined title"
   },
   "tabbar": {
@@ -298,9 +299,13 @@
     "submit": "Confirm Recharge",
     "paySubQr": "Scan to pay",
     "paySubWallet": "E-wallet",
-    "firstRechargeTitle": "First Recharge Bonus",
-    "firstRechargeDesc": "Join to enjoy extra rewards on your first deposit",
-    "firstRechargeGift": "Bonus amount:"
+    "promoTitle": "Select Promotion",
+    "promoNone": "Do not participate in any promotion.",
+    "firstRechargeTitle": "First Deposit Bonus",
+    "firstRechargeDesc": "Get extra rewards on your first deposit",
+    "firstRechargeGift": "Bonus amount:",
+    "todayFirstTitle": "Daily First Deposit Bonus",
+    "todayFirstDesc": "Get extra rewards on your first deposit today"
   },
   "withdrawPage": {
     "title": "Withdraw",
