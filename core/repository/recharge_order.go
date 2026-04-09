@@ -10,6 +10,7 @@ import (
 	"github.com/jinzhu/copier"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
+	"log"
 	"regexp"
 	"strconv"
 	"strings"
@@ -175,19 +176,23 @@ func AppCreateRechargeOrder(db *gorm.DB, userID int64, req pojo.RechargeOrderApp
 
 	var tgUser pojo.TgUser
 	if err = db.Where("id = ?", userID).First(&tgUser).Error; err != nil || tgUser.ID == 0 {
+		log.Printf("[AppCreateRechargeOrder] 用户不存在 userID=%d err=%v", userID, err)
 		return result, errors.New("用户不存在")
 	}
 	if tgUser.Status != 1 {
+		log.Printf("[AppCreateRechargeOrder] 用户已禁用 userID=%d status=%d", userID, tgUser.Status)
 		return result, errors.New("用户已禁用，请联系管理员处理")
 	}
 
 	// 延迟写库策略：先解析渠道、调用三方，成功后再落库，失败不留脏数据
 	provider, providerErr := pay.MustGet(req.Channel)
 	if providerErr != nil {
+		log.Printf("[AppCreateRechargeOrder] 渠道未注册，降级为MANUAL userID=%d channel=%s err=%v", userID, req.Channel, providerErr)
 		// 渠道未注册时降级为 MANUAL
 		provider = pay.Get("MANUAL")
 	}
 	if provider == nil {
+		log.Printf("[AppCreateRechargeOrder] 支付渠道配置错误 userID=%d channel=%s", userID, req.Channel)
 		return result, errors.New("支付渠道配置错误")
 	}
 
@@ -201,6 +206,7 @@ func AppCreateRechargeOrder(db *gorm.DB, userID int64, req pojo.RechargeOrderApp
 		ExtraFields: req.ExtraFields,
 	})
 	if err != nil {
+		log.Printf("[AppCreateRechargeOrder] 三方创建订单失败 userID=%d orderNo=%s channel=%s amount=%.3f err=%v", userID, orderNo, req.Channel, req.Amount, err)
 		return result, err
 	}
 
@@ -235,8 +241,10 @@ func AppCreateRechargeOrder(db *gorm.DB, userID int64, req pojo.RechargeOrderApp
 		ActivityType:    &req.ActivityType,
 	}
 	if err = db.Create(&order).Error; err != nil {
+		log.Printf("[AppCreateRechargeOrder] 写库失败 userID=%d orderNo=%s err=%v", userID, orderNo, err)
 		return result, err
 	}
+	log.Printf("[AppCreateRechargeOrder] 订单创建成功 userID=%d orderNo=%s channel=%s amount=%.3f activityType=%d", userID, orderNo, req.Channel, req.Amount, req.ActivityType)
 
 	result = pojo.RechargeOrderAppBack{
 		OrderNo:         order.OrderNo,
