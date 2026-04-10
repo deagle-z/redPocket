@@ -47,6 +47,14 @@ const {
           class="!w-[180px]"
         />
       </el-form-item>
+      <el-form-item label="Banner编码：" prop="bannerCode">
+        <el-input
+          v-model="form.bannerCode"
+          placeholder="请输入Banner编码"
+          clearable
+          class="!w-[180px]"
+        />
+      </el-form-item>
       <el-form-item label="位置：" prop="position">
         <el-select
           v-model="form.position"
@@ -57,6 +65,7 @@ const {
           <el-option label="首页" value="home" />
           <el-option label="首页弹窗" value="popup" />
           <el-option label="活动页" value="activity" />
+          <el-option label="会员中心" value="member_center" />
         </el-select>
       </el-form-item>
       <el-form-item label="平台：" prop="platform">
@@ -70,6 +79,19 @@ const {
           <el-option label="Web" value="web" />
           <el-option label="App" value="app" />
           <el-option label="H5" value="h5" />
+          <el-option label="PC" value="pc" />
+        </el-select>
+      </el-form-item>
+      <el-form-item label="Banner类型：" prop="bannerType">
+        <el-select
+          v-model="form.bannerType"
+          placeholder="请选择类型"
+          clearable
+          class="!w-[130px]"
+        >
+          <el-option label="图片" value="image" />
+          <el-option label="视频" value="video" />
+          <el-option label="弹窗" value="popup" />
         </el-select>
       </el-form-item>
       <el-form-item label="跳转类型：" prop="jumpType">
@@ -84,7 +106,36 @@ const {
           <el-option label="站内页面" value="internal" />
           <el-option label="商品" value="product" />
           <el-option label="活动" value="activity" />
+          <el-option label="分类" value="category" />
         </el-select>
+      </el-form-item>
+      <el-form-item label="展示类型：" prop="displayType">
+        <el-select
+          v-model="form.displayType"
+          placeholder="请选择展示类型"
+          clearable
+          class="!w-[130px]"
+        >
+          <el-option label="轮播" value="banner" />
+          <el-option label="弹窗" value="popup" />
+          <el-option label="悬浮" value="float" />
+        </el-select>
+      </el-form-item>
+      <el-form-item label="语言：" prop="languageCode">
+        <el-input
+          v-model="form.languageCode"
+          placeholder="如 zh-CN"
+          clearable
+          class="!w-[130px]"
+        />
+      </el-form-item>
+      <el-form-item label="国家：" prop="countryCode">
+        <el-input
+          v-model="form.countryCode"
+          placeholder="如 CN"
+          clearable
+          class="!w-[120px]"
+        />
       </el-form-item>
       <el-form-item label="状态：" prop="status">
         <el-select

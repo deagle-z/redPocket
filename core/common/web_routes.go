@@ -142,6 +142,8 @@ func InitGin() {
 		adminGroup.GET("/sysCountry/:id", api.GetSysCountryById)
 		adminGroup.POST("/sysBanner/list", api.GetSysBanners)                          // 获取轮播图列表
 		adminGroup.GET("/sysBanner/:id", api.GetSysBannerById)                         // 获取轮播图详情
+		adminGroup.POST("/sysConfig/list", api.GetSysConfigs)                          // 获取系统配置列表
+		adminGroup.GET("/sysConfig/:id", api.GetAppSysConfig)                          // 根据ID获取系统配置（复用key接口占位）
 		adminGroup.POST("/sysPayChannel/list", api.GetSysPayChannels)                  // 获取支付通道列表
 		adminGroup.GET("/sysPayChannel/:id", api.GetSysPayChannelById)                 // 获取支付通道详情
 		adminGroup.POST("/sysSourceChannel/list", api.GetSysSourceChannels)            // 获取投流来源渠道列表
@@ -207,6 +209,8 @@ func InitGin() {
 		adminGroupLog.DELETE("/sysCountry/:id", api.DelSysCountry)
 		adminGroupLog.POST("/sysBanner", api.SetSysBanner)
 		adminGroupLog.DELETE("/sysBanner/:id", api.DelSysBanner)
+		adminGroupLog.POST("/sysConfig", api.SetSysConfig)
+		adminGroupLog.DELETE("/sysConfig/:id", api.DelSysConfig)
 		adminGroupLog.POST("/sysCustomField", api.SetSysCustomField)
 		adminGroupLog.DELETE("/sysCustomField/:id", api.DelSysCustomField)
 		adminGroupLog.POST("/platformProfitLedger", api.SetPlatformProfitLedger)

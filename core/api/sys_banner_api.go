@@ -93,7 +93,7 @@ func GetAppBanners(ctx *gin.Context) {
 	var req pojo.SysBannerAppReq
 	_ = ctx.ShouldBindJSON(&req)
 	db := ctx.MustGet("db").(*gorm.DB)
-	result := repository.GetSysBannersGroupedByPosition(db, req.Platform)
+	result := repository.GetSysBannersGroupedByPosition(db, req)
 	utils.SuccessObjBack(ctx, result)
 }
 

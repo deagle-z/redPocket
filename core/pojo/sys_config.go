@@ -20,6 +20,19 @@ type SysConfigBack struct {
 	ConfigDesc  string    `json:"configDesc"`
 }
 
+type SysConfigSearch struct {
+	PageInfo
+	ConfigKey  string `json:"configKey"`
+	ConfigDesc string `json:"configDesc"`
+}
+
+type SysConfigSet struct {
+	ID          int64  `json:"id"`
+	ConfigKey   string `json:"configKey"`
+	ConfigValue string `json:"configValue"`
+	ConfigDesc  string `json:"configDesc"`
+}
+
 type SysConfigResp struct {
 	BasePageResponse[SysConfigBack]
 }

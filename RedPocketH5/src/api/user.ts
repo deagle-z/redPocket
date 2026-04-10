@@ -1,4 +1,5 @@
 import request from '@/utils/request'
+import { i18n } from '@/utils/i18n'
 
 export interface ApiResult<T> {
   code: number
@@ -652,11 +653,27 @@ export function createWithdrawOrder(data: CreateWithdrawOrderReq) {
 export interface BannerItem {
   id: number
   bannerName: string
+  bannerCode?: string
   position: string
   platform: string
+  bannerType?: string
+  displayType?: string
+  openMode?: string
+  languageCode?: string
+  title?: string
+  subTitle?: string
+  description?: string
+  buttonText?: string
   imageUrl: string
+  thumbUrl?: string
+  bgImageUrl?: string
+  iconUrl?: string
+  videoUrl?: string
   jumpType: string
   jumpValue?: string
+  textColor?: string
+  buttonColor?: string
+  bgColor?: string
   sort: number
   status: number
 }
@@ -667,8 +684,13 @@ export interface BannersData {
   activity: BannerItem[]
 }
 
-export function getBanners(data: { platform?: string } = {}) {
-  return request.post<ApiResult<BannersData>>('/api/v1/app/banners', data)
+export function getBanners(data: { position?: string, countryCode?: string } = {}) {
+  const lang = i18n.global.locale.value || 'en-US'
+  return request.post<ApiResult<BannersData>>('/api/v1/app/banners', {
+    platform: 'h5',
+    lang,
+    ...data,
+  })
 }
 
 export function setAudioOpen(audioOpen: 0 | 1) {
