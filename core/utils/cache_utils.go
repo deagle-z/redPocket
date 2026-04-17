@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"gorm.io/gorm"
+	"log"
 	"math/rand/v2"
 	"strconv"
 	"time"
@@ -221,15 +222,28 @@ func GetTempHostInfo(hostName string) (result pojo.HostInfo) {
 	redisKey := fmt.Sprintf(KeyHostInfoTemp, hostName)
 	result, _ = GetOrLoad(context.Background(), Db, redisKey, GetRandomRangeSecond(20*60, 40*60),
 		func(db *gorm.DB) (tempResult pojo.HostInfo, err error) {
-			if err = Db.Where("host_name = ?", hostName).First(&tempResult).Error; err != nil {
+			if err = Db.Where("host_name = ?", hostName).First(&tempResult).Error; err == nil && tempResult.ID != 0 {
+				return tempResult, nil
+			}
+			tempResult = pojo.HostInfo{}
+			if err = Db.Where("id = ?", 1).First(&tempResult).Error; err != nil {
 				return tempResult, err
 			}
 			if tempResult.ID == 0 {
-				err = errors.New("no match data")
+				return tempResult, errors.New("no match data")
 			}
-			return tempResult, err
+			return tempResult, nil
 		},
 	)
+	if result.ID == 0 {
+		log.Printf("hostInfo miss: requestHost=%s", hostName)
+		return result
+	}
+	if result.HostName == hostName {
+		log.Printf("hostInfo hit: requestHost=%s host=%s id=%d prefix=%s", hostName, result.HostName, result.ID, result.TablePrefix)
+		return result
+	}
+	log.Printf("hostInfo fallback: requestHost=%s fallbackHost=%s id=%d prefix=%s", hostName, result.HostName, result.ID, result.TablePrefix)
 	return result
 }
 
