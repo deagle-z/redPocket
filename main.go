@@ -103,6 +103,6 @@ func main() {
 	//		log.Print("init telegram bot success\n")
 	//	}
 	//}
-
+	utils.NewITNioSMSClient()
 	common.InitGin()
 }

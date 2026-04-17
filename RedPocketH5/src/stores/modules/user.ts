@@ -3,11 +3,12 @@ import type { ForgotPasswordData, LoginData, RegisterData, TgAuthLoginData, User
 import { clearToken, setToken } from '@/utils/auth'
 
 import {
-  forgotPasswordByEmail,
+  forgotPasswordByPhone,
   getEmailCode,
   getCurrentTgUserInfo,
   sendRegisterEmailCode,
-  loginByEmail as userLoginByEmail,
+  sendRegisterSMSCode,
+  loginByPhone as userLoginByPhone,
   logout as userLogout,
   register as userRegister,
   tgLogin as userTgLogin,
@@ -29,7 +30,7 @@ export const useUserStore = defineStore('user', () => {
 
   const login = async (loginForm: LoginData) => {
     try {
-      const { data } = await userLoginByEmail(loginForm)
+      const { data } = await userLoginByPhone(loginForm)
       const token = data.accessToken || data.token
       if (!token)
         throw new Error('Login token missing')
@@ -86,7 +87,7 @@ export const useUserStore = defineStore('user', () => {
   }
 
   const reset = async (form: ForgotPasswordData) => {
-    const data = await forgotPasswordByEmail(form)
+    const data = await forgotPasswordByPhone(form)
     return data
   }
 
@@ -97,6 +98,11 @@ export const useUserStore = defineStore('user', () => {
 
   const sendCode = async (email: string) => {
     const data = await sendRegisterEmailCode(email)
+    return data
+  }
+
+  const sendSMSCode = async (phone: string, country: string) => {
+    const data = await sendRegisterSMSCode(phone, country)
     return data
   }
 
@@ -111,6 +117,7 @@ export const useUserStore = defineStore('user', () => {
     reset,
     register,
     sendCode,
+    sendSMSCode,
   }
 }, {
   persist: true,

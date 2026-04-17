@@ -15,9 +15,15 @@ const { t } = useI18n()
 const router = useRouter()
 const userStore = useUserStore()
 const loading = ref(false)
-const activeTab = ref<'telegram' | 'email'>('telegram')
+const activeTab = ref<'telegram' | 'phone'>('telegram')
 const tgBotUsername = import.meta.env.VITE_TG_BOT_USERNAME || 'luckRedBoomPacket66Bot'
 const showLangPopup = ref(false)
+const loginCountries = [
+  { code: 'MX', nameKey: 'login.countryMexico' },
+  { code: 'ID', nameKey: 'login.countryIndonesia' },
+  { code: 'BR', nameKey: 'login.countryBrazil' },
+] as const
+type LoginCountryCode = typeof loginCountries[number]['code']
 const languageOptions = [
   {
     code: 'CN',
@@ -33,14 +39,28 @@ const languageOptions = [
   },
 ]
 
-const postData = reactive({
-  email: '',
+const postData = reactive<{
+  country: LoginCountryCode
+  phone: string
+  password: string
+}>({
+  country: loginCountries[0].code,
+  phone: '',
   password: '',
 })
 
+function normalizePhoneInput(event: Event) {
+  const input = event.target as HTMLInputElement
+  postData.phone = input.value.replace(/\D+/g, '')
+}
+
 async function login() {
-  if (!postData.email) {
-    showToast(t('login.pleaseEnterEmail'))
+  if (!postData.country) {
+    showToast(t('login.pleaseSelectCountry'))
+    return
+  }
+  if (!postData.phone) {
+    showToast(t('login.pleaseEnterPhone'))
     return
   }
   if (!postData.password) {
@@ -174,11 +194,11 @@ function goRegister() {
           </button>
           <button
             class="tab"
-            :class="{ active: activeTab === 'email' }"
+            :class="{ active: activeTab === 'phone' }"
             type="button"
-            @click="activeTab = 'email'"
+            @click="activeTab = 'phone'"
           >
-            {{ t('login.emailTab') }}
+            {{ t('login.phoneTab') }}
           </button>
         </div>
 
@@ -212,19 +232,43 @@ function goRegister() {
         <section v-else class="email-panel">
           <div class="email-form-card">
             <div class="email-form-row">
-              <label for="login-email" class="email-form-label">
+              <label class="email-form-label">
                 <span class="icon-wrap">
-                  <img :src="emailIcon" alt="email" class="email-form-icon">
+                  <img :src="languageIcon" alt="country" class="email-form-icon">
                 </span>
-                <span>{{ t('login.email') }}</span>
+                <span>{{ t('login.country') }}</span>
+              </label>
+              <div class="country-options">
+                <button
+                  v-for="item in loginCountries"
+                  :key="item.code"
+                  type="button"
+                  class="country-btn"
+                  :class="{ active: postData.country === item.code }"
+                  @click="postData.country = item.code"
+                >
+                  {{ t(item.nameKey) }}
+                </button>
+              </div>
+            </div>
+
+            <div class="email-form-row">
+              <label for="login-phone" class="email-form-label">
+                <span class="icon-wrap">
+                  <img :src="emailIcon" alt="phone" class="email-form-icon">
+                </span>
+                <span>{{ t('login.phone') }}</span>
               </label>
               <input
-                id="login-email"
-                v-model="postData.email"
-                type="text"
-                autocomplete="username"
+                id="login-phone"
+                v-model="postData.phone"
+                type="tel"
+                inputmode="tel"
+                pattern="[0-9]*"
+                autocomplete="tel"
                 class="email-form-input"
-                :placeholder="t('login.emailOrUsername')"
+                :placeholder="t('login.pleaseEnterPhone')"
+                @input="normalizePhoneInput"
               >
             </div>
 
@@ -635,6 +679,34 @@ function goRegister() {
   background: rgba(255, 248, 214, 0.08);
 }
 
+.country-options {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.country-btn {
+  min-height: 44px;
+  padding: 0 10px;
+  border: 1px solid rgba(212, 175, 55, 0.22);
+  border-radius: 14px;
+  background: rgba(255, 248, 214, 0.05);
+  color: #fff4d1;
+  font-size: 13px;
+  font-weight: 700;
+  transition:
+    border-color 0.2s ease,
+    background-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.country-btn.active {
+  border-color: rgba(255, 223, 135, 0.72);
+  background: rgba(212, 175, 55, 0.16);
+  box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.12);
+  color: #fff8e5;
+}
+
 .email-actions {
   margin-top: 12px;
   display: flex;
@@ -877,6 +949,10 @@ function goRegister() {
 
   .email-form-card {
     padding: 8px 12px;
+  }
+
+  .country-options {
+    grid-template-columns: 1fr;
   }
 
   .feature-grid {

@@ -7,6 +7,7 @@ import AppPageHeader from '@/components/AppPageHeader.vue'
 import emailIcon from '@/assets/svg/email.svg'
 import lockIcon from '@/assets/svg/lock.svg'
 import verifyIcon from '@/assets/svg/verify.svg'
+import languageIcon from '@/assets/svg/language.svg'
 
 const { t } = useI18n()
 const router = useRouter()
@@ -15,9 +16,21 @@ const userStore = useUserStore()
 const loading = ref(false)
 const sendLoading = ref(false)
 const countdown = ref(0)
+const resetCountries = [
+  { code: 'MX', nameKey: 'forgotPassword.countryMexico' },
+  { code: 'ID', nameKey: 'forgotPassword.countryIndonesia' },
+  { code: 'BR', nameKey: 'forgotPassword.countryBrazil' },
+] as const
+type ResetCountryCode = typeof resetCountries[number]['code']
 
-const postData = reactive({
-  email: '',
+const postData = reactive<{
+  country: ResetCountryCode
+  phone: string
+  code: string
+  newPassword: string
+}>({
+  country: resetCountries[0].code,
+  phone: '',
   code: '',
   newPassword: '',
 })
@@ -42,13 +55,17 @@ onUnmounted(() => {
 })
 
 async function sendCode() {
-  if (!postData.email) {
-    showToast(t('forgotPassword.pleaseEnterEmail'))
+  if (!postData.country) {
+    showToast(t('forgotPassword.pleaseSelectCountry'))
+    return
+  }
+  if (!postData.phone) {
+    showToast(t('forgotPassword.pleaseEnterPhone'))
     return
   }
   try {
     sendLoading.value = true
-    await userStore.sendCode(postData.email)
+    await userStore.sendSMSCode(postData.phone, postData.country)
     startCountdown()
     showToast(t('forgotPassword.sendCodeSuccess'))
   }
@@ -61,8 +78,12 @@ async function sendCode() {
 }
 
 async function submitReset() {
-  if (!postData.email) {
-    showToast(t('forgotPassword.pleaseEnterEmail'))
+  if (!postData.country) {
+    showToast(t('forgotPassword.pleaseSelectCountry'))
+    return
+  }
+  if (!postData.phone) {
+    showToast(t('forgotPassword.pleaseEnterPhone'))
     return
   }
   if (!postData.code) {
@@ -104,18 +125,41 @@ function goBack() {
 
       <div class="reset-form-card">
         <div class="reset-row">
-          <label for="reset-email" class="reset-label">
+          <label class="reset-label">
             <span class="reset-icon-wrap">
-              <img :src="emailIcon" alt="email" class="reset-icon">
+              <img :src="languageIcon" alt="country" class="reset-icon">
             </span>
-            <span>{{ t('forgotPassword.email') }}</span>
+            <span>{{ t('forgotPassword.country') }}</span>
+          </label>
+          <div class="country-options">
+            <button
+              v-for="item in resetCountries"
+              :key="item.code"
+              type="button"
+              class="country-btn"
+              :class="{ active: postData.country === item.code }"
+              @click="postData.country = item.code"
+            >
+              {{ t(item.nameKey) }}
+            </button>
+          </div>
+        </div>
+
+        <div class="reset-row">
+          <label for="reset-phone" class="reset-label">
+            <span class="reset-icon-wrap">
+              <img :src="emailIcon" alt="phone" class="reset-icon">
+            </span>
+            <span>{{ t('forgotPassword.phone') }}</span>
           </label>
           <input
-            id="reset-email"
-            v-model="postData.email"
-            type="text"
+            id="reset-phone"
+            v-model="postData.phone"
+            type="tel"
+            inputmode="tel"
+            autocomplete="tel"
             class="reset-input"
-            :placeholder="t('forgotPassword.pleaseEnterEmail')"
+            :placeholder="t('forgotPassword.pleaseEnterPhone')"
           >
         </div>
 
@@ -295,6 +339,34 @@ function goBack() {
   background: rgba(255, 248, 214, 0.08);
 }
 
+.country-options {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.country-btn {
+  min-height: 44px;
+  padding: 0 10px;
+  border: 1px solid rgba(212, 175, 55, 0.22);
+  border-radius: 14px;
+  background: rgba(255, 248, 214, 0.05);
+  color: #fff4d1;
+  font-size: 13px;
+  font-weight: 700;
+  transition:
+    border-color 0.2s ease,
+    background-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.country-btn.active {
+  border-color: rgba(255, 223, 135, 0.72);
+  background: rgba(212, 175, 55, 0.16);
+  box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.12);
+  color: #fff8e5;
+}
+
 .reset-code-wrap {
   display: flex;
   align-items: center;
@@ -354,6 +426,10 @@ function goBack() {
   .send-btn {
     min-width: 92px;
     font-size: 12px;
+  }
+
+  .country-options {
+    grid-template-columns: 1fr;
   }
 }
 </style>

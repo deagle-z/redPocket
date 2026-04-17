@@ -142,6 +142,66 @@ func TgEmailLogin(db *gorm.DB, hostInfo pojo.HostInfo, req pojo.TgEmailLoginReq,
 	return result, nil
 }
 
+// TgPhoneLogin 手机号密码登录
+func TgPhoneLogin(db *gorm.DB, hostInfo pojo.HostInfo, req pojo.TgPhoneLoginReq, onlineUser pojo.OnlineUser) (result pojo.TgAuthLoginBack, err error) {
+	phone := strings.TrimSpace(req.Phone)
+	country := strings.TrimSpace(strings.ToUpper(req.Country))
+	if !utils.IsPhone(phone) {
+		return result, errors.New("手机号格式错误")
+	}
+	if strings.TrimSpace(req.Password) == "" {
+		return result, errors.New("密码不能为空")
+	}
+
+	query := db.Where("phone = ?", phone)
+	if country != "" {
+		query = query.Where("country = ?", country)
+	}
+	var users []pojo.TgUser
+	query.Order("id desc").Limit(2).Find(&users)
+	if len(users) == 0 {
+		return result, errors.New("账号或密码错误")
+	}
+	if len(users) > 1 {
+		return result, errors.New("手机号重复，请联系管理员")
+	}
+	dbUser := users[0]
+	if dbUser.Status != 1 {
+		return result, errors.New("User account disabled")
+	}
+	if dbUser.Password == "" {
+		return result, errors.New("账号或密码错误")
+	}
+	if err = bcrypt.CompareHashAndPassword([]byte(dbUser.Password), []byte(req.Password)); err != nil {
+		return result, errors.New("账号或密码错误")
+	}
+
+	claimUsername := phone
+	if dbUser.Username != nil && strings.TrimSpace(*dbUser.Username) != "" {
+		claimUsername = strings.TrimSpace(*dbUser.Username)
+	}
+	token, err := utils.GetAppJwtToken(hostInfo.AccessSecret, hostInfo.AccessExpire, claimUsername, dbUser.ID, hostInfo.HostName, dbUser.TenantId)
+	if err != nil {
+		return result, err
+	}
+	key := utils.KeyRdTgOnline + utils.MD5(token)
+	onlineUser.UserId = dbUser.ID
+	onlineUser.Username = claimUsername
+	onlineUser.Key = key
+	userJSON, _ := json.Marshal(onlineUser)
+	_ = utils.RD.SetEX(context.Background(), key, string(userJSON), time.Duration(hostInfo.AccessExpire)*time.Second).Err()
+
+	var tgUserBack pojo.TgUserBack
+	_ = copier.Copy(&tgUserBack, &dbUser)
+	result = pojo.TgAuthLoginBack{
+		AccessToken: token,
+		UserType:    5,
+		ExpiresIn:   hostInfo.AccessExpire,
+		TgUser:      tgUserBack,
+	}
+	return result, nil
+}
+
 func createTgUserFromAuth(tx *gorm.DB, req pojo.TgAuthLoginReq) (pojo.TgUser, error) {
 	displayName := strings.TrimSpace(req.FirstName)
 	if displayName == "" {
@@ -260,6 +320,43 @@ func SendTgEmailCode(email string, ip string, isDev bool) (string, error) {
 	return code, nil
 }
 
+// SendTgSMSCode 发送短信验证码，非dev按IP限流1分钟1次；dev返回验证码。
+func SendTgSMSCode(phone string, country string, ip string, isDev bool) (string, error) {
+	phone = strings.TrimSpace(phone)
+	country = strings.TrimSpace(strings.ToUpper(country))
+	if !utils.IsPhone(phone) {
+		return "", errors.New("手机号格式错误")
+	}
+	sendPhone := utils.NormalizeSMSPhone(country, phone)
+
+	if !isDev {
+		limitKey := fmt.Sprintf("bgu_tg_sms_code_limit_%s", ip)
+		ok, err := utils.RD.SetNX(context.Background(), limitKey, "1", time.Minute).Result()
+		if err != nil {
+			return "", errors.New("服务异常，请稍后重试")
+		}
+		if !ok {
+			return "", errors.New("请求过于频繁，请1分钟后重试")
+		}
+	}
+
+	code := fmt.Sprintf("%06d", rand.IntN(1000000))
+	codeKey := fmt.Sprintf("bgu_tg_sms_code_%s", buildTgPhoneCacheKey(country, phone))
+	if err := utils.RD.SetEX(context.Background(), codeKey, code, 10*time.Minute).Err(); err != nil {
+		return "", errors.New("服务异常，请稍后重试")
+	}
+
+	//if !isDev {
+	client := utils.NewITNioSMSClient()
+	content := fmt.Sprintf("Your verification code is %s. It is valid for 10 minutes.", code)
+	if _, err := client.SendSMS(sendPhone, content, "", ""); err != nil {
+		_ = utils.RD.Del(context.Background(), codeKey).Err()
+		return "", errors.New("验证码发送失败")
+	}
+	//}
+	return code, nil
+}
+
 // RegisterTgByEmail 邮箱注册。
 func RegisterTgByEmail(db *gorm.DB, email string, password string, code string, sourceChannelCode string) (pojo.TgUser, error) {
 	email = strings.TrimSpace(strings.ToLower(email))
@@ -356,6 +453,118 @@ func RegisterTgByEmail(db *gorm.DB, email string, password string, code string, 
 	return newUser, nil
 }
 
+// RegisterTgByPhone 手机号注册。
+func RegisterTgByPhone(db *gorm.DB, phone string, country string, password string, code string, sourceChannelCode string) (pojo.TgUser, error) {
+	phone = strings.TrimSpace(phone)
+	country = strings.TrimSpace(strings.ToUpper(country))
+	code = strings.TrimSpace(code)
+	if !utils.IsPhone(phone) {
+		return pojo.TgUser{}, errors.New("手机号格式错误")
+	}
+	if len(password) < 6 || len(password) > 64 {
+		return pojo.TgUser{}, errors.New("密码长度需在6-64位")
+	}
+	if len(code) != 6 {
+		return pojo.TgUser{}, errors.New("验证码格式错误")
+	}
+
+	codeKey := fmt.Sprintf("bgu_tg_sms_code_%s", buildTgPhoneCacheKey(country, phone))
+	cacheCode, err := utils.RD.Get(context.Background(), codeKey).Result()
+	if err != nil {
+		return pojo.TgUser{}, errors.New("验证码已失效")
+	}
+	if cacheCode != code {
+		return pojo.TgUser{}, errors.New("验证码错误")
+	}
+
+	query := db.Where("phone = ?", phone)
+	if country != "" {
+		query = query.Where("country = ?", country)
+	}
+	var exist pojo.TgUser
+	if err = query.First(&exist).Error; err == nil && exist.ID > 0 {
+		return pojo.TgUser{}, errors.New("手机号已注册")
+	}
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		return pojo.TgUser{}, errors.New("服务异常，请稍后重试")
+	}
+
+	passwordHash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return pojo.TgUser{}, errors.New("服务异常，请稍后重试")
+	}
+
+	displayName := phone
+	if len(displayName) > 4 {
+		displayName = displayName[len(displayName)-4:]
+	}
+	displayName = fmt.Sprintf("User_%s", displayName)
+	username := displayName
+
+	var newUser pojo.TgUser
+	err = db.Transaction(func(tx *gorm.DB) error {
+		sourceChannel, err := ResolveSourceChannelByCode(tx, 0, sourceChannelCode)
+		if err != nil {
+			return err
+		}
+		for i := 0; i < 5; i++ {
+			inviteCode := fmt.Sprintf("%06d", rand.IntN(1000000))
+			uid, uidErr := generateUniqueUID(tx)
+			if uidErr != nil {
+				return uidErr
+			}
+			newUser = pojo.TgUser{
+				Uid:               uid,
+				Username:          &username,
+				FirstName:         &displayName,
+				Password:          string(passwordHash),
+				Phone:             &phone,
+				Country:           nullableString(country),
+				Status:            1,
+				InviteCode:        &inviteCode,
+				SourceChannelID:   nil,
+				SourceChannelCode: nil,
+				TenantId:          0,
+			}
+			if sourceChannel != nil {
+				newUser.SourceChannelID = &sourceChannel.ID
+				newUser.SourceChannelCode = &sourceChannel.ChannelCode
+			}
+			if err := tx.Create(&newUser).Error; err != nil {
+				if strings.Contains(err.Error(), "Duplicate entry") || strings.Contains(err.Error(), "1062") {
+					var exist pojo.TgUser
+					q := tx.Where("phone = ?", phone)
+					if country != "" {
+						q = q.Where("country = ?", country)
+					}
+					if findErr := q.First(&exist).Error; findErr == nil && exist.ID > 0 {
+						return errors.New("手机号已注册")
+					}
+					continue
+				}
+				return err
+			}
+			return nil
+		}
+		return errors.New("手机号注册失败")
+	})
+	if err != nil {
+		return pojo.TgUser{}, err
+	}
+
+	_ = utils.RD.Del(context.Background(), codeKey).Err()
+	return newUser, nil
+}
+
+func buildTgPhoneCacheKey(country string, phone string) string {
+	country = strings.TrimSpace(strings.ToUpper(country))
+	phone = strings.TrimSpace(phone)
+	if country == "" {
+		return phone
+	}
+	return fmt.Sprintf("%s_%s", country, phone)
+}
+
 // ResetTgPasswordByEmail 忘记密码（邮箱验证码 + 新密码），按IP限流。
 func ResetTgPasswordByEmail(db *gorm.DB, email string, code string, newPassword string, ip string) error {
 	email = strings.TrimSpace(strings.ToLower(email))
@@ -413,6 +622,68 @@ func ResetTgPasswordByEmail(db *gorm.DB, email string, code string, newPassword 
 	return nil
 }
 
+// ResetTgPasswordByPhone 忘记密码（短信验证码 + 新密码），按IP限流。
+func ResetTgPasswordByPhone(db *gorm.DB, phone string, country string, code string, newPassword string, ip string) error {
+	phone = strings.TrimSpace(phone)
+	country = strings.TrimSpace(strings.ToUpper(country))
+	code = strings.TrimSpace(code)
+	newPassword = strings.TrimSpace(newPassword)
+	if !utils.IsPhone(phone) {
+		return errors.New("手机号格式错误")
+	}
+	if len(code) != 6 {
+		return errors.New("验证码格式错误")
+	}
+	if len(newPassword) < 6 || len(newPassword) > 64 {
+		return errors.New("密码长度需在6-64位")
+	}
+
+	limitKey := fmt.Sprintf("bgu_tg_forgot_pwd_phone_limit_%s", ip)
+	ok, err := utils.RD.SetNX(context.Background(), limitKey, "1", time.Minute).Result()
+	if err != nil {
+		return errors.New("服务异常，请稍后重试")
+	}
+	if !ok {
+		return errors.New("请求过于频繁，请1分钟后重试")
+	}
+
+	codeKey := fmt.Sprintf("bgu_tg_sms_code_%s", buildTgPhoneCacheKey(country, phone))
+	cacheCode, err := utils.RD.Get(context.Background(), codeKey).Result()
+	if err != nil {
+		return errors.New("验证码已失效")
+	}
+	if cacheCode != code {
+		return errors.New("验证码错误")
+	}
+
+	query := db.Where("phone = ?", phone)
+	if country != "" {
+		query = query.Where("country = ?", country)
+	}
+	var users []pojo.TgUser
+	query.Order("id desc").Limit(2).Find(&users)
+	if len(users) == 0 {
+		return errors.New("账号不存在")
+	}
+	if len(users) > 1 {
+		return errors.New("手机号重复，请联系管理员")
+	}
+	dbUser := users[0]
+	if dbUser.Status != 1 {
+		return errors.New("User account disabled")
+	}
+
+	passwordHash, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return errors.New("服务异常，请稍后重试")
+	}
+	if err = db.Model(&pojo.TgUser{}).Where("id = ?", dbUser.ID).Update("password", string(passwordHash)).Error; err != nil {
+		return errors.New("服务异常，请稍后重试")
+	}
+	_ = utils.RD.Del(context.Background(), codeKey).Err()
+	return nil
+}
+
 // GetCurrentTgUserInfo 获取当前TG用户信息。
 func GetCurrentTgUserInfo(db *gorm.DB, accessSecret string, token string) (pojo.TgCurrentUserInfo, error) {
 	token = strings.TrimSpace(token)
@@ -450,6 +721,8 @@ func GetCurrentTgUserInfo(db *gorm.DB, accessSecret string, token string) (pojo.
 		GiftAmount:   user.GiftAmount,
 		RebateAmount: user.RebateAmount,
 		Email:        user.Email,
+		Phone:        user.Phone,
+		Country:      user.Country,
 		VipLevel:     user.VipLevel,
 		VipLevelName: user.VipLevelName,
 		AudioOpen:    user.AudioOpen,

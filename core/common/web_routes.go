@@ -267,9 +267,13 @@ func InitGin() {
 		//appRouter.GET("/getPkByName/:name", api.GetPkManagerUrlByName) // 获取PK管理器列表
 		appRouter.POST("/tg/login", api.TgAuthLogin)
 		appRouter.POST("/tg/loginByEmail", api.LoginTgByEmail)
+		appRouter.POST("/tg/loginByPhone", api.LoginTgByPhone)
 		appRouter.POST("/tg/sendEmailCode", api.SendTgEmailCode)
+		appRouter.POST("/tg/sendSMSCode", api.SendTgSMSCode)
 		appRouter.POST("/tg/registerByEmail", api.RegisterTgByEmail)
+		appRouter.POST("/tg/registerByPhone", api.RegisterTgByPhone)
 		appRouter.POST("/tg/forgotPasswordByEmail", api.ForgotPasswordByEmail)
+		appRouter.POST("/tg/forgotPasswordByPhone", api.ForgotPasswordByPhone)
 		appRouter.POST("/lucky/list", api.GetRedPacketListApp)          // 不校验token
 		appRouter.POST("/lucky/detail", api.GetLuckyDetailApp)          // 不校验token
 		appRouter.GET("/prizePool/balance", api.GetPrizePoolBalanceApp) // 不校验token

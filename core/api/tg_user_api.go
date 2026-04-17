@@ -213,6 +213,30 @@ func SendTgEmailCode(ctx *gin.Context) {
 	})
 }
 
+// SendTgSMSCode 发送短信验证码（按IP每分钟限流）
+func SendTgSMSCode(ctx *gin.Context) {
+	var req pojo.TgSendSMSCodeReq
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		utils.ErrorBack(ctx, "参数格式错误")
+		return
+	}
+	code, err := repository.SendTgSMSCode(req.Phone, req.Country, utils.GetIPAddress(ctx), utils.IsDev())
+	if err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	if !utils.IsDev() {
+		utils.SuccessBack(ctx, "success")
+		return
+	}
+
+	utils.SuccessObjBack(ctx, gin.H{
+		"code":    code,
+		"phone":   strings.TrimSpace(req.Phone),
+		"country": strings.TrimSpace(strings.ToUpper(req.Country)),
+	})
+}
+
 // RegisterTgByEmail 邮箱注册
 func RegisterTgByEmail(ctx *gin.Context) {
 	var req pojo.TgEmailRegisterReq
@@ -231,6 +255,28 @@ func RegisterTgByEmail(ctx *gin.Context) {
 		"id":    newUser.ID,
 		"uid":   newUser.Uid,
 		"email": newUser.Email,
+	})
+}
+
+// RegisterTgByPhone 手机号注册
+func RegisterTgByPhone(ctx *gin.Context) {
+	var req pojo.TgPhoneRegisterReq
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		utils.ErrorBack(ctx, "参数格式错误")
+		return
+	}
+	db := ctx.MustGet("db").(*gorm.DB)
+	newUser, err := repository.RegisterTgByPhone(db, req.Phone, req.Country, req.Password, req.Code, req.SourceChannelCode)
+	if err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+
+	utils.SuccessObjBack(ctx, gin.H{
+		"id":      newUser.ID,
+		"uid":     newUser.Uid,
+		"phone":   newUser.Phone,
+		"country": newUser.Country,
 	})
 }
 
@@ -257,6 +303,29 @@ func LoginTgByEmail(ctx *gin.Context) {
 	utils.SuccessObjBack(ctx, data)
 }
 
+// LoginTgByPhone 手机号登录
+func LoginTgByPhone(ctx *gin.Context) {
+	var req pojo.TgPhoneLoginReq
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		utils.ErrorBack(ctx, "参数格式错误")
+		return
+	}
+	tempHostInfo := ctx.MustGet("hostInfo").(pojo.HostInfo)
+	db := ctx.MustGet("db").(*gorm.DB)
+	onlineUser := pojo.OnlineUser{
+		Username:  req.Phone,
+		Browser:   ctx.GetHeader("User-Agent"),
+		Ip:        utils.GetIPAddress(ctx),
+		LoginTime: time.Now(),
+	}
+	data, err := repository.TgPhoneLogin(db, tempHostInfo, req, onlineUser)
+	if err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	utils.SuccessObjBack(ctx, data)
+}
+
 // ForgotPasswordByEmail 忘记密码
 func ForgotPasswordByEmail(ctx *gin.Context) {
 	var req pojo.TgForgotPasswordReq
@@ -266,6 +335,21 @@ func ForgotPasswordByEmail(ctx *gin.Context) {
 	}
 	db := ctx.MustGet("db").(*gorm.DB)
 	if err := repository.ResetTgPasswordByEmail(db, req.Email, req.Code, req.NewPassword, utils.GetIPAddress(ctx)); err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	utils.SuccessBack(ctx, "success")
+}
+
+// ForgotPasswordByPhone 手机号忘记密码
+func ForgotPasswordByPhone(ctx *gin.Context) {
+	var req pojo.TgForgotPasswordByPhoneReq
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		utils.ErrorBack(ctx, "参数格式错误")
+		return
+	}
+	db := ctx.MustGet("db").(*gorm.DB)
+	if err := repository.ResetTgPasswordByPhone(db, req.Phone, req.Country, req.Code, req.NewPassword, utils.GetIPAddress(ctx)); err != nil {
 		utils.ErrorBack(ctx, err.Error())
 		return
 	}

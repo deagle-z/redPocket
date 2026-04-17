@@ -26,6 +26,12 @@ func GetTgUsers(db *gorm.DB, search pojo.TgUserSearch) (result pojo.TgUserAdminR
 	if search.FirstName != "" {
 		query = query.Where("first_name like ?", "%"+search.FirstName+"%")
 	}
+	if search.Phone != "" {
+		query = query.Where("phone like ?", "%"+search.Phone+"%")
+	}
+	if search.Country != "" {
+		query = query.Where("country = ?", search.Country)
+	}
 	if search.IsBot != nil {
 		query = query.Where("is_bot = ?", *search.IsBot)
 	}

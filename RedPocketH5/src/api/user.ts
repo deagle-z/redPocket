@@ -8,7 +8,8 @@ export interface ApiResult<T> {
 }
 
 export interface LoginData {
-  email: string
+  phone: string
+  country: string
   password: string
 }
 
@@ -352,8 +353,8 @@ export function tgLogin(data: TgAuthLoginData) {
   return request.post<ApiResult<TgAuthLoginRes>>('/api/v1/app/tg/login', data)
 }
 
-export function loginByEmail(data: LoginData) {
-  return request.post<ApiResult<LoginRes>>('/api/v1/app/tg/loginByEmail', data)
+export function loginByPhone(data: LoginData) {
+  return request.post<ApiResult<LoginRes>>('/api/v1/app/tg/loginByPhone', data)
 }
 
 export function logout() {
@@ -365,15 +366,16 @@ export function getUserInfo() {
 }
 
 export interface RegisterData {
-  email: string
+  phone: string
+  country: string
   code: string
   password: string
-  confirmPassword: string
-  inviteCode: string
+  sourceChannelCode?: string
 }
 
 export interface ForgotPasswordData {
-  email: string
+  phone: string
+  country: string
   code: string
   newPassword: string
 }
@@ -386,12 +388,16 @@ export function sendRegisterEmailCode(email: string): Promise<any> {
   return request.post('/api/v1/app/tg/sendEmailCode', { email })
 }
 
+export function sendRegisterSMSCode(phone: string, country: string): Promise<any> {
+  return request.post('/api/v1/app/tg/sendSMSCode', { phone, country })
+}
+
 export function resetPassword(): Promise<any> {
   return request.post('/user/reset-password')
 }
 
-export function forgotPasswordByEmail(data: ForgotPasswordData): Promise<any> {
-  return request.post('/api/v1/app/tg/forgotPasswordByEmail', data)
+export function forgotPasswordByPhone(data: ForgotPasswordData): Promise<any> {
+  return request.post('/api/v1/app/tg/forgotPasswordByPhone', data)
 }
 
 export function getCurrentTgUserInfo() {
@@ -522,10 +528,12 @@ export function getAppCashHistoryList(data: AppCashHistoryReq) {
 }
 
 export function register(data: RegisterData): Promise<any> {
-  return request.post('/api/v1/app/tg/registerByEmail', {
-    email: data.email,
+  return request.post('/api/v1/app/tg/registerByPhone', {
+    phone: data.phone,
+    country: data.country,
     code: data.code,
     password: data.password,
+    sourceChannelCode: data.sourceChannelCode || '',
   })
 }
 

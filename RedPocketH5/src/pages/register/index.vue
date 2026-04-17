@@ -23,6 +23,12 @@ const devCode = ref('')
 const showLangPopup = ref(false)
 const tgBotId = Number(import.meta.env.VITE_TG_BOT_ID || 0)
 const registerHeaderImage = imgRegisterHeader
+const registerCountries = [
+  { code: 'MX', nameKey: 'register.countryMexico' },
+  { code: 'ID', nameKey: 'register.countryIndonesia' },
+  { code: 'BR', nameKey: 'register.countryBrazil' },
+] as const
+type RegisterCountryCode = typeof registerCountries[number]['code']
 
 const languageOptions = [
   {
@@ -39,13 +45,26 @@ const languageOptions = [
   },
 ]
 
-const postData = reactive({
-  email: '',
+const postData = reactive<{
+  country: RegisterCountryCode
+  phone: string
+  code: string
+  password: string
+  confirmPassword: string
+  inviteCode: string
+}>({
+  country: registerCountries[0].code,
+  phone: '',
   code: '',
   password: '',
   confirmPassword: '',
   inviteCode: '',
 })
+
+function normalizePhoneInput(event: Event) {
+  const input = event.target as HTMLInputElement
+  postData.phone = input.value.replace(/\D+/g, '')
+}
 
 let countdownTimer: ReturnType<typeof setInterval> | null = null
 
@@ -78,13 +97,17 @@ onMounted(() => {
 })
 
 async function sendCode() {
-  if (!postData.email) {
-    showToast(t('register.pleaseEnterEmail'))
+  if (!postData.country) {
+    showToast(t('register.pleaseSelectCountry'))
+    return
+  }
+  if (!postData.phone) {
+    showToast(t('register.pleaseEnterPhone'))
     return
   }
   try {
     sendLoading.value = true
-    const res = await userStore.sendCode(postData.email)
+    const res = await userStore.sendSMSCode(postData.phone, postData.country)
     const code = res?.data?.code
     if (code) {
       devCode.value = String(code)
@@ -106,8 +129,12 @@ async function sendCode() {
 }
 
 async function register() {
-  if (!postData.email) {
-    showToast(t('register.pleaseEnterEmail'))
+  if (!postData.country) {
+    showToast(t('register.pleaseSelectCountry'))
+    return
+  }
+  if (!postData.phone) {
+    showToast(t('register.pleaseEnterPhone'))
     return
   }
   if (!postData.code) {
@@ -128,7 +155,13 @@ async function register() {
   }
   try {
     loading.value = true
-    await userStore.register({ ...postData })
+    await userStore.register({
+      phone: postData.phone,
+      country: postData.country,
+      code: postData.code,
+      password: postData.password,
+      sourceChannelCode: postData.inviteCode.trim(),
+    })
     showToast(t('register.registerSuccess'))
     router.push({ name: 'Login' as keyof RouteMap })
   }
@@ -265,19 +298,43 @@ function selectLanguage(lang: string) {
 
         <div class="form-card">
           <div class="form-row">
-            <label for="register-email" class="form-label">
+            <label class="form-label">
               <span class="icon-wrap">
-                <img :src="emailIcon" alt="email" class="form-icon">
+                <img :src="languageIcon" alt="country" class="form-icon">
               </span>
-              <span>{{ t('register.email') }}</span>
+              <span>{{ t('register.country') }}</span>
+            </label>
+            <div class="country-options">
+              <button
+                v-for="item in registerCountries"
+                :key="item.code"
+                type="button"
+                class="country-btn"
+                :class="{ active: postData.country === item.code }"
+                @click="postData.country = item.code"
+              >
+                {{ t(item.nameKey) }}
+              </button>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <label for="register-phone" class="form-label">
+              <span class="icon-wrap">
+                <img :src="emailIcon" alt="phone" class="form-icon">
+              </span>
+              <span>{{ t('register.phone') }}</span>
             </label>
             <input
-              id="register-email"
-              v-model="postData.email"
-              type="text"
-              autocomplete="email"
+              id="register-phone"
+              v-model="postData.phone"
+              type="tel"
+              inputmode="tel"
+              pattern="[0-9]*"
+              autocomplete="tel"
               class="form-input"
-              :placeholder="t('register.pleaseEnterEmail')"
+              :placeholder="t('register.pleaseEnterPhone')"
+              @input="normalizePhoneInput"
             >
           </div>
 
@@ -286,7 +343,7 @@ function selectLanguage(lang: string) {
               <span class="icon-wrap">
                 <img :src="verifyIcon" alt="verify code" class="form-icon">
               </span>
-              <span>{{ t('register.emailCode') }}</span>
+              <span>{{ t('register.smsCode') }}</span>
             </label>
             <div class="code-input-group">
               <input
@@ -734,6 +791,34 @@ function selectLanguage(lang: string) {
   min-width: 0;
 }
 
+.country-options {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.country-btn {
+  min-height: 44px;
+  padding: 0 10px;
+  border: 1px solid rgba(212, 175, 55, 0.22);
+  border-radius: 14px;
+  background: rgba(255, 248, 214, 0.05);
+  color: #fff4d1;
+  font-size: 13px;
+  font-weight: 700;
+  transition:
+    border-color 0.2s ease,
+    background-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.country-btn.active {
+  border-color: rgba(255, 223, 135, 0.72);
+  background: rgba(212, 175, 55, 0.16);
+  box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.12);
+  color: #fff8e5;
+}
+
 .dev-code-tip {
   margin: 4px 0 0;
   font-size: 12px;
@@ -995,6 +1080,10 @@ function selectLanguage(lang: string) {
 
   .form-row--code .code-input-group {
     gap: 8px;
+  }
+
+  .country-options {
+    grid-template-columns: 1fr;
   }
 
   .send-btn {

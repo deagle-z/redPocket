@@ -17,6 +17,8 @@ type TgUser struct {
 	Avatar   *string `gorm:"size:1024;comment:头像URL" json:"avatar"`
 	Password string  `gorm:"size:128;comment:password" json:"password"`
 	Email    string  `gorm:"size:255;comment:email" json:"email"`
+	Phone    *string `gorm:"column:phone;size:32;comment:手机号码" json:"phone"`
+	Country  *string `gorm:"column:country;size:64;comment:国家" json:"country"`
 	IsBot    bool    `gorm:"column:is_bot;not null;default:false;comment:是否机器人" json:"is_bot"`
 
 	TgID int64 `gorm:"column:tg_id;index;comment:Telegram 用户ID（唯一且稳定）" json:"tg_id"`
@@ -36,8 +38,8 @@ type TgUser struct {
 	InviteCode        *string `gorm:"size:32;index;comment:邀请码（用户自身的邀请码）" json:"invite_code"`
 	SourceChannelID   *int64  `gorm:"column:source_channel_id;type:bigint;index;comment:来源渠道ID" json:"source_channel_id"`
 	SourceChannelCode *string `gorm:"column:source_channel_code;size:64;index;comment:来源渠道编码快照" json:"source_channel_code"`
-	TenantId          int64 `json:"tenantId" gorm:"type:bigint;"`
-	AudioOpen         int8  `gorm:"column:audio_open;comment:音效开关 0=关 1=开" json:"audio_open"`
+	TenantId          int64   `json:"tenantId" gorm:"type:bigint;"`
+	AudioOpen         int8    `gorm:"column:audio_open;comment:音效开关 0=关 1=开" json:"audio_open"`
 }
 
 type TgUserSearch struct {
@@ -45,6 +47,8 @@ type TgUserSearch struct {
 	TgID              int64  `json:"tgId"`       // Telegram用户ID
 	Username          string `json:"username"`   // Telegram用户名
 	FirstName         string `json:"firstName"`  // 展示名
+	Phone             string `json:"phone"`      // 手机号码
+	Country           string `json:"country"`    // 国家
 	IsBot             *bool  `json:"isBot"`      // 是否机器人
 	Status            *int8  `json:"status"`     // 状态
 	ParentID          *int64 `json:"parentId"`   // 上级/邀请人用户ID
@@ -59,6 +63,8 @@ type TgUserSet struct {
 	Username          *string `json:"username"`
 	FirstName         *string `json:"firstName"`
 	Avatar            *string `json:"avatar"`
+	Phone             *string `json:"phone"`
+	Country           *string `json:"country"`
 	IsBot             bool    `json:"isBot"`
 	TgID              int64   `json:"tgId"`
 	Balance           float64 `json:"balance"`
@@ -93,8 +99,21 @@ type TgSendEmailCodeReq struct {
 	Email string `json:"email"`
 }
 
+type TgSendSMSCodeReq struct {
+	Phone   string `json:"phone"`
+	Country string `json:"country"`
+}
+
 type TgEmailRegisterReq struct {
 	Email             string `json:"email"`
+	Password          string `json:"password"`
+	Code              string `json:"code"`
+	SourceChannelCode string `json:"sourceChannelCode"`
+}
+
+type TgPhoneRegisterReq struct {
+	Phone             string `json:"phone"`
+	Country           string `json:"country"`
 	Password          string `json:"password"`
 	Code              string `json:"code"`
 	SourceChannelCode string `json:"sourceChannelCode"`
@@ -105,8 +124,21 @@ type TgEmailLoginReq struct {
 	Password string `json:"password"`
 }
 
+type TgPhoneLoginReq struct {
+	Phone    string `json:"phone"`
+	Country  string `json:"country"`
+	Password string `json:"password"`
+}
+
 type TgForgotPasswordReq struct {
 	Email       string `json:"email"`
+	Code        string `json:"code"`
+	NewPassword string `json:"newPassword"`
+}
+
+type TgForgotPasswordByPhoneReq struct {
+	Phone       string `json:"phone"`
+	Country     string `json:"country"`
 	Code        string `json:"code"`
 	NewPassword string `json:"newPassword"`
 }
@@ -133,6 +165,8 @@ type TgCurrentUserInfo struct {
 	GiftAmount   float64 `json:"gift_amount"`
 	RebateAmount float64 `json:"rebate_amount"`
 	Email        string  `json:"email"`
+	Phone        *string `json:"phone"`
+	Country      *string `json:"country"`
 	VipLevel     *int    `json:"vip_level"`
 	VipLevelName *string `json:"vip_level_name"`
 	AudioOpen    int8    `json:"audio_open"`
@@ -166,6 +200,8 @@ type TgUserBack struct {
 	Username          *string   `json:"username"`
 	FirstName         *string   `json:"firstName"`
 	Avatar            *string   `json:"avatar"`
+	Phone             *string   `json:"phone"`
+	Country           *string   `json:"country"`
 	TgID              int64     `json:"tgId"`
 	Balance           float64   `json:"balance"`
 	GiftAmount        float64   `json:"giftAmount"`
@@ -189,6 +225,8 @@ type TgUserAdminBack struct {
 	Username          *string   `json:"username"`
 	FirstName         *string   `json:"firstName"`
 	Avatar            *string   `json:"avatar"`
+	Phone             *string   `json:"phone"`
+	Country           *string   `json:"country"`
 	IsBot             bool      `json:"isBot"`
 	TgID              int64     `json:"tgId"`
 	Balance           float64   `json:"balance"`
