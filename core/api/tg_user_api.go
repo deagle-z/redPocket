@@ -74,7 +74,7 @@ func DelTgUser(ctx *gin.Context) {
 	idStr := ctx.Param("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		utils.ErrorBack(ctx, "参数格式错误")
+		utils.ErrorBack(ctx, "invalid_params")
 		return
 	}
 	db := ctx.MustGet("db").(*gorm.DB)
@@ -99,7 +99,7 @@ func GetTgUserById(ctx *gin.Context) {
 	idStr := ctx.Param("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		utils.ErrorBack(ctx, "参数格式错误")
+		utils.ErrorBack(ctx, "invalid_params")
 		return
 	}
 	db := ctx.MustGet("db").(*gorm.DB)
@@ -127,11 +127,11 @@ func SetTgUserStatus(ctx *gin.Context) {
 		return
 	}
 	if req.ID <= 0 {
-		utils.ErrorBack(ctx, "参数格式错误")
+		utils.ErrorBack(ctx, "invalid_params")
 		return
 	}
 	if req.Status != 1 && req.Status != 0 && req.Status != -1 {
-		utils.ErrorBack(ctx, "状态不支持")
+		utils.ErrorBack(ctx, "invalid_status")
 		return
 	}
 	db := ctx.MustGet("db").(*gorm.DB)
@@ -195,7 +195,7 @@ func GetTgUsersWithSubStatsSummary(ctx *gin.Context) {
 func SendTgEmailCode(ctx *gin.Context) {
 	var req pojo.TgSendEmailCodeReq
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		utils.ErrorBack(ctx, "参数格式错误")
+		utils.ErrorBack(ctx, "invalid_params")
 		return
 	}
 	code, err := repository.SendTgEmailCode(req.Email, utils.GetIPAddress(ctx), utils.IsDev())
@@ -217,7 +217,7 @@ func SendTgEmailCode(ctx *gin.Context) {
 func SendTgSMSCode(ctx *gin.Context) {
 	var req pojo.TgSendSMSCodeReq
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		utils.ErrorBack(ctx, "参数格式错误")
+		utils.ErrorBack(ctx, "invalid_params")
 		return
 	}
 	code, err := repository.SendTgSMSCode(req.Phone, req.Country, utils.GetIPAddress(ctx), utils.IsDev())
@@ -241,7 +241,7 @@ func SendTgSMSCode(ctx *gin.Context) {
 func RegisterTgByEmail(ctx *gin.Context) {
 	var req pojo.TgEmailRegisterReq
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		utils.ErrorBack(ctx, "参数格式错误")
+		utils.ErrorBack(ctx, "invalid_params")
 		return
 	}
 	db := ctx.MustGet("db").(*gorm.DB)
@@ -262,11 +262,11 @@ func RegisterTgByEmail(ctx *gin.Context) {
 func RegisterTgByPhone(ctx *gin.Context) {
 	var req pojo.TgPhoneRegisterReq
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		utils.ErrorBack(ctx, "参数格式错误")
+		utils.ErrorBack(ctx, "invalid_params")
 		return
 	}
 	db := ctx.MustGet("db").(*gorm.DB)
-	newUser, err := repository.RegisterTgByPhone(db, req.Phone, req.Country, req.Password, req.Code, req.SourceChannelCode)
+	newUser, err := repository.RegisterTgByPhone(db, req.Phone, req.Country, req.Password, req.SourceChannelCode)
 	if err != nil {
 		utils.ErrorBack(ctx, err.Error())
 		return
@@ -284,7 +284,7 @@ func RegisterTgByPhone(ctx *gin.Context) {
 func LoginTgByEmail(ctx *gin.Context) {
 	var req pojo.TgEmailLoginReq
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		utils.ErrorBack(ctx, "参数格式错误")
+		utils.ErrorBack(ctx, "invalid_params")
 		return
 	}
 	tempHostInfo := ctx.MustGet("hostInfo").(pojo.HostInfo)
@@ -307,7 +307,7 @@ func LoginTgByEmail(ctx *gin.Context) {
 func LoginTgByPhone(ctx *gin.Context) {
 	var req pojo.TgPhoneLoginReq
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		utils.ErrorBack(ctx, "参数格式错误")
+		utils.ErrorBack(ctx, "invalid_params")
 		return
 	}
 	tempHostInfo := ctx.MustGet("hostInfo").(pojo.HostInfo)
@@ -330,7 +330,7 @@ func LoginTgByPhone(ctx *gin.Context) {
 func ForgotPasswordByEmail(ctx *gin.Context) {
 	var req pojo.TgForgotPasswordReq
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		utils.ErrorBack(ctx, "参数格式错误")
+		utils.ErrorBack(ctx, "invalid_params")
 		return
 	}
 	db := ctx.MustGet("db").(*gorm.DB)
@@ -345,7 +345,7 @@ func ForgotPasswordByEmail(ctx *gin.Context) {
 func ForgotPasswordByPhone(ctx *gin.Context) {
 	var req pojo.TgForgotPasswordByPhoneReq
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		utils.ErrorBack(ctx, "参数格式错误")
+		utils.ErrorBack(ctx, "invalid_params")
 		return
 	}
 	db := ctx.MustGet("db").(*gorm.DB)
@@ -360,46 +360,46 @@ func ForgotPasswordByPhone(ctx *gin.Context) {
 func BindCurrentTgEmail(ctx *gin.Context) {
 	userIDRaw, ok := ctx.Get("userId")
 	if !ok {
-		utils.UnauthorizedBack(ctx, "token is invalid")
+		utils.UnauthorizedBack(ctx, "token_invalid")
 		return
 	}
 	userID, ok := userIDRaw.(int64)
 	if !ok || userID <= 0 {
-		utils.UnauthorizedBack(ctx, "token is invalid")
+		utils.UnauthorizedBack(ctx, "token_invalid")
 		return
 	}
 
 	var req pojo.TgBindEmailReq
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		utils.ErrorBack(ctx, "参数格式错误")
+		utils.ErrorBack(ctx, "invalid_params")
 		return
 	}
 	email := strings.TrimSpace(strings.ToLower(req.Email))
 	code := strings.TrimSpace(req.Code)
 	if !utils.IsEmail(email) {
-		utils.ErrorBack(ctx, "邮箱格式错误")
+		utils.ErrorBack(ctx, "email_format_error")
 		return
 	}
 	if len(code) != 6 {
-		utils.ErrorBack(ctx, "验证码格式错误")
+		utils.ErrorBack(ctx, "code_format_error")
 		return
 	}
 
 	codeKey := fmt.Sprintf("bgu_tg_email_code_%s", email)
 	cacheCode, err := utils.RD.Get(context.Background(), codeKey).Result()
 	if err != nil || strings.TrimSpace(cacheCode) == "" {
-		utils.ErrorBack(ctx, "验证码已失效")
+		utils.ErrorBack(ctx, "code_expired")
 		return
 	}
 	if strings.TrimSpace(cacheCode) != code {
-		utils.ErrorBack(ctx, "验证码错误")
+		utils.ErrorBack(ctx, "code_incorrect")
 		return
 	}
 
 	db := ctx.MustGet("db").(*gorm.DB)
 	var exists pojo.TgUser
 	if err = db.Where("email = ? AND id <> ? AND status <> ?", email, userID, -1).First(&exists).Error; err == nil && exists.ID > 0 {
-		utils.ErrorBack(ctx, "邮箱已被使用")
+		utils.ErrorBack(ctx, "email_already_used")
 		return
 	}
 	if err = db.Model(&pojo.TgUser{}).Where("id = ?", userID).Update("email", email).Error; err != nil {
@@ -416,7 +416,7 @@ func BindCurrentTgEmail(ctx *gin.Context) {
 func GetCurrentTgUserInfo(ctx *gin.Context) {
 	authHeader := strings.TrimSpace(ctx.GetHeader("Authorization"))
 	if authHeader == "" {
-		utils.UnauthorizedBack(ctx, "Authorization header is missing")
+		utils.UnauthorizedBack(ctx, "auth_header_missing")
 		return
 	}
 	token := strings.TrimSpace(strings.TrimPrefix(authHeader, "Bearer "))
@@ -430,16 +430,38 @@ func GetCurrentTgUserInfo(ctx *gin.Context) {
 	utils.SuccessObjBack(ctx, data)
 }
 
-// UpdateCurrentTgUserAvatar 更新当前TG用户头像
-func UpdateCurrentTgUserAvatar(ctx *gin.Context) {
+// GetCurrentTgWithdrawSummary 获取当前TG用户提现可用摘要
+func GetCurrentTgWithdrawSummary(ctx *gin.Context) {
 	userIDRaw, ok := ctx.Get("userId")
 	if !ok {
-		utils.UnauthorizedBack(ctx, "token is invalid")
+		utils.UnauthorizedBack(ctx, "token_invalid")
 		return
 	}
 	userID, ok := userIDRaw.(int64)
 	if !ok || userID <= 0 {
-		utils.UnauthorizedBack(ctx, "token is invalid")
+		utils.UnauthorizedBack(ctx, "token_invalid")
+		return
+	}
+
+	db := ctx.MustGet("db").(*gorm.DB)
+	data, err := repository.GetUserWithdrawSummary(db, userID)
+	if err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	utils.SuccessObjBack(ctx, data)
+}
+
+// UpdateCurrentTgUserAvatar 更新当前TG用户头像
+func UpdateCurrentTgUserAvatar(ctx *gin.Context) {
+	userIDRaw, ok := ctx.Get("userId")
+	if !ok {
+		utils.UnauthorizedBack(ctx, "token_invalid")
+		return
+	}
+	userID, ok := userIDRaw.(int64)
+	if !ok || userID <= 0 {
+		utils.UnauthorizedBack(ctx, "token_invalid")
 		return
 	}
 
@@ -450,7 +472,7 @@ func UpdateCurrentTgUserAvatar(ctx *gin.Context) {
 	}
 	req.Avatar = strings.TrimSpace(req.Avatar)
 	if req.Avatar == "" {
-		utils.ErrorBack(ctx, "avatar is required")
+		utils.ErrorBack(ctx, "avatar_required")
 		return
 	}
 
@@ -468,12 +490,12 @@ func UpdateCurrentTgUserAvatar(ctx *gin.Context) {
 func GetCurrentTgInviteStats(ctx *gin.Context) {
 	userIDRaw, ok := ctx.Get("userId")
 	if !ok {
-		utils.UnauthorizedBack(ctx, "token is invalid")
+		utils.UnauthorizedBack(ctx, "token_invalid")
 		return
 	}
 	userID, ok := userIDRaw.(int64)
 	if !ok || userID <= 0 {
-		utils.UnauthorizedBack(ctx, "token is invalid")
+		utils.UnauthorizedBack(ctx, "token_invalid")
 		return
 	}
 
@@ -481,7 +503,7 @@ func GetCurrentTgInviteStats(ctx *gin.Context) {
 
 	var user pojo.TgUser
 	if err := db.Where("id = ?", userID).First(&user).Error; err != nil || user.ID == 0 {
-		utils.ErrorBack(ctx, "用户不存在")
+		utils.ErrorBack(ctx, "user_not_found")
 		return
 	}
 
@@ -537,12 +559,12 @@ func GetCurrentTgInviteStats(ctx *gin.Context) {
 func GetCurrentTgInviteRuleConfig(ctx *gin.Context) {
 	userIDRaw, ok := ctx.Get("userId")
 	if !ok {
-		utils.UnauthorizedBack(ctx, "token is invalid")
+		utils.UnauthorizedBack(ctx, "token_invalid")
 		return
 	}
 	userID, ok := userIDRaw.(int64)
 	if !ok || userID <= 0 {
-		utils.UnauthorizedBack(ctx, "token is invalid")
+		utils.UnauthorizedBack(ctx, "token_invalid")
 		return
 	}
 
@@ -600,12 +622,12 @@ func GetCurrentTgInviteRuleConfig(ctx *gin.Context) {
 func TransferRebateToBalance(ctx *gin.Context) {
 	userIDRaw, ok := ctx.Get("userId")
 	if !ok {
-		utils.UnauthorizedBack(ctx, "token is invalid")
+		utils.UnauthorizedBack(ctx, "token_invalid")
 		return
 	}
 	userID, ok := userIDRaw.(int64)
 	if !ok || userID <= 0 {
-		utils.UnauthorizedBack(ctx, "token is invalid")
+		utils.UnauthorizedBack(ctx, "token_invalid")
 		return
 	}
 
@@ -619,15 +641,18 @@ func TransferRebateToBalance(ctx *gin.Context) {
 			return err
 		}
 		if user.Status != 1 {
-			return fmt.Errorf("用户已禁用，请联系管理员处理")
+			return fmt.Errorf("user_disabled_contact_admin")
 		}
 		if user.RebateAmount <= 0 {
-			return fmt.Errorf("暂无可转移佣金")
+			return fmt.Errorf("no_rebate_to_transfer")
 		}
 
 		transferAmount = user.RebateAmount
 		newBalance = user.Balance + transferAmount
 
+		if err := repository.EnsureUserWithdrawLimitState(tx, user); err != nil {
+			return err
+		}
 		if err := tx.Model(&pojo.TgUser{}).
 			Where("id = ?", user.ID).
 			Updates(map[string]any{
@@ -668,12 +693,12 @@ func TransferRebateToBalance(ctx *gin.Context) {
 func GetCurrentTgCashHistory(ctx *gin.Context) {
 	userIDRaw, ok := ctx.Get("userId")
 	if !ok {
-		utils.UnauthorizedBack(ctx, "token is invalid")
+		utils.UnauthorizedBack(ctx, "token_invalid")
 		return
 	}
 	userID, ok := userIDRaw.(int64)
 	if !ok || userID <= 0 {
-		utils.UnauthorizedBack(ctx, "token is invalid")
+		utils.UnauthorizedBack(ctx, "token_invalid")
 		return
 	}
 
@@ -702,12 +727,12 @@ func GetCurrentTgCashHistory(ctx *gin.Context) {
 func SetAudioOpen(ctx *gin.Context) {
 	userIDRaw, ok := ctx.Get("userId")
 	if !ok {
-		utils.UnauthorizedBack(ctx, "token is invalid")
+		utils.UnauthorizedBack(ctx, "token_invalid")
 		return
 	}
 	userID, ok := userIDRaw.(int64)
 	if !ok || userID <= 0 {
-		utils.UnauthorizedBack(ctx, "token is invalid")
+		utils.UnauthorizedBack(ctx, "token_invalid")
 		return
 	}
 	var req pojo.TgSetAudioOpenReq
@@ -733,13 +758,13 @@ func TgLogout(ctx *gin.Context) {
 	if token == "" {
 		authHeader := strings.TrimSpace(ctx.GetHeader("Authorization"))
 		if authHeader == "" {
-			utils.UnauthorizedBack(ctx, "Authorization header is missing")
+			utils.UnauthorizedBack(ctx, "auth_header_missing")
 			return
 		}
 		token = strings.TrimSpace(strings.TrimPrefix(authHeader, "Bearer "))
 	}
 	if token == "" {
-		utils.UnauthorizedBack(ctx, "token is invalid")
+		utils.UnauthorizedBack(ctx, "token_invalid")
 		return
 	}
 	key := utils.KeyRdTgOnline + utils.MD5(token)

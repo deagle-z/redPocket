@@ -52,7 +52,7 @@ func SetPayChannel(db *gorm.DB, req pojo.PayChannelSet) (result pojo.PayChannelB
 	if req.ID > 0 {
 		db.Where("id = ?", req.ID).First(&entity)
 		if entity.ID == 0 {
-			return result, errors.New("更新的数据不存在")
+			return result, errors.New("record_not_found_update")
 		}
 		_ = copier.Copy(&entity, &req)
 		err = db.Save(&entity).Error
@@ -72,7 +72,7 @@ func DelPayChannel(db *gorm.DB, id int64) (result string, err error) {
 	var entity pojo.PayChannel
 	db.Where("id = ?", id).First(&entity)
 	if entity.ID == 0 {
-		return result, errors.New("删除的数据不存在")
+		return result, errors.New("record_not_found_delete")
 	}
 	err = db.Delete(&entity).Error
 	if err != nil {
@@ -86,7 +86,7 @@ func GetPayChannelById(db *gorm.DB, id int64) (result pojo.PayChannelBack, err e
 	var entity pojo.PayChannel
 	db.Where("id = ?", id).First(&entity)
 	if entity.ID == 0 {
-		return result, errors.New("数据不存在")
+		return result, errors.New("record_not_found")
 	}
 	_ = copier.Copy(&result, &entity)
 	return result, nil

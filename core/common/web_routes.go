@@ -56,6 +56,7 @@ func InitGin() {
 		apiGroup.POST("/user/award", api.AwardUser)            // 内部用户余额变动
 		apiGroup.POST("/user/login", api.UserLogin)            // 管理员登录
 		apiGroup.POST("/tenant/login", api.SysTenantUserLogin) // 租户用户登录
+		apiGroup.POST("/admin/lucky/historyUserFlow", api.GetLuckyHistoryUserFlowListAdmin)
 	}
 	// 通用接口
 	commonGroup := router.Group("/api/v1/outside")
@@ -154,6 +155,7 @@ func InitGin() {
 		adminGroup.POST("/sysVipLevel/list", api.GetSysVipLevels)                      // 获取VIP等级列表
 		adminGroup.GET("/sysVipLevel/:id", api.GetSysVipLevelById)                     // 获取VIP等级详情
 		adminGroup.GET("/prizePoolConfig/:poolId", api.GetPrizePoolConfig)             // 获取奖池概率配置
+		adminGroup.GET("/prizePoolBalance/:poolCode", api.GetPrizePoolByCodeAdmin)     // 获取奖池余额
 		adminGroup.POST("/userLotteryRecord/list", api.GetUserLotteryRecords)          // 抽奖记录列表
 		adminGroup.GET("/userLotteryRecord/:id", api.GetUserLotteryRecordById)         // 抽奖记录详情
 		adminGroup.POST("/sysCustomField/list", api.GetSysCustomFields)
@@ -204,6 +206,7 @@ func InitGin() {
 		adminGroupLog.POST("/sysVipLevel", api.SetSysVipLevel)                            // 创建或更新VIP等级
 		adminGroupLog.DELETE("/sysVipLevel/:id", api.DelSysVipLevel)                      // 删除VIP等级
 		adminGroupLog.POST("/prizePoolConfig", api.SetPrizePoolConfig)                    // 创建或更新奖池概率配置
+		adminGroupLog.POST("/prizePoolBalance", api.SetPrizePoolBalanceAdmin)             // 设置奖池余额
 		adminGroupLog.DELETE("/prizePoolConfig/:id", api.DelPrizePoolConfig)              // 删除奖池概率配置
 		adminGroupLog.POST("/sysCountry", api.SetSysCountry)
 		adminGroupLog.DELETE("/sysCountry/:id", api.DelSysCountry)
@@ -230,6 +233,7 @@ func InitGin() {
 
 		tenantGroup.POST("/lucky/list", tenantApi.GetLuckyMoneyList)
 		tenantGroup.POST("/lucky/history", tenantApi.GetLuckyHistoryList)
+		tenantGroup.POST("/lucky/historyUserFlow", tenantApi.GetLuckyHistoryUserFlowList)
 		tenantGroup.GET("/lucky/:id", tenantApi.GetLuckyMoneyDetail)
 
 		tenantGroup.POST("/rechargeOrder/list", tenantApi.GetRechargeOrders)
@@ -259,7 +263,9 @@ func InitGin() {
 	// 支付回调（公开，三方主动调用，无 token）
 	payCallbackRouter := router.Group("/api/v1/pay")
 	{
-		payCallbackRouter.POST("/gctpk/notify", api.GctpkPayinCallback) // GCTPK 代收回调
+		payCallbackRouter.POST("/gctpk/notify", api.GctpkPayinCallback)       // GCTPK 代收回调（兼容自动识别）
+		payCallbackRouter.POST("/gctpkmxn/notify", api.GctpkMxnPayinCallback) // GCTPK MXN 代收回调
+		payCallbackRouter.POST("/gctpkbrl/notify", api.GctpkBrlPayinCallback) // GCTPK BRL 代收回调
 	}
 
 	appRouter := router.Group("/api/v1/app")
@@ -267,7 +273,7 @@ func InitGin() {
 		//appRouter.GET("/getPkByName/:name", api.GetPkManagerUrlByName) // 获取PK管理器列表
 		appRouter.POST("/tg/login", api.TgAuthLogin)
 		appRouter.POST("/tg/loginByEmail", api.LoginTgByEmail)
-		appRouter.POST("/tg/loginByPhone", api.LoginTgByPhone)
+		appRouter.POST("/tg/phoneLogin", api.LoginTgByPhone)
 		appRouter.POST("/tg/sendEmailCode", api.SendTgEmailCode)
 		appRouter.POST("/tg/sendSMSCode", api.SendTgSMSCode)
 		appRouter.POST("/tg/registerByEmail", api.RegisterTgByEmail)
@@ -291,6 +297,7 @@ func InitGin() {
 		appRouter.POST("/lucky/recentWinners", api.GetRecentLuckyWinnersApp) // 不校验token
 		appAuthRouter.POST("/tg/logout", api.TgLogout)
 		appAuthRouter.GET("/tg/currentUserInfo", api.GetCurrentTgUserInfo)
+		appAuthRouter.GET("/tg/withdrawSummary", api.GetCurrentTgWithdrawSummary)
 		appAuthRouter.POST("/tg/avatar", api.UpdateCurrentTgUserAvatar)
 		appAuthRouter.POST("/tg/bindEmail", api.BindCurrentTgEmail)
 		appAuthRouter.POST("/tg/audioOpen", api.SetAudioOpen)

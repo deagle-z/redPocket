@@ -25,6 +25,8 @@ export const useUserStore = defineStore({
     username: storageLocal().getItem<DataInfo<number>>(userKey)?.username ?? "",
     // 昵称
     nickname: storageLocal().getItem<DataInfo<number>>(userKey)?.nickname ?? "",
+    // 国家
+    country: storageLocal().getItem<DataInfo<number>>(userKey)?.country ?? "",
     // 页面级别权限
     roles: storageLocal().getItem<DataInfo<number>>(userKey)?.roles ?? [],
     // 按钮级别权限
@@ -47,6 +49,10 @@ export const useUserStore = defineStore({
     /** 存储昵称 */
     SET_NICKNAME(nickname: string) {
       this.nickname = nickname;
+    },
+    /** 存储国家 */
+    SET_COUNTRY(country: string) {
+      this.country = country;
     },
     /** 存储角色 */
     SET_ROLES(roles: Array<string>) {
@@ -80,6 +86,7 @@ export const useUserStore = defineStore({
     /** 前端登出（不调用接口） */
     logOut() {
       this.username = "";
+      this.country = "";
       this.roles = [];
       this.permissions = [];
       removeToken();

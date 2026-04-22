@@ -61,7 +61,7 @@ router.beforeEach(async (to: EnhancedRouteLocation) => {
     }
   }
 
-  if (isLogin() && !userStore.userInfo?.uid)
+  if (isLogin() && (!userStore.userInfo?.uid || userStore.userInfo.country === undefined))
     await userStore.loadCurrentUserInfo()
 })
 

@@ -37,6 +37,21 @@ func GetLuckyHistoryList(ctx *gin.Context) {
 	utils.SuccessObjBack(ctx, result)
 }
 
+func GetLuckyHistoryUserFlowList(ctx *gin.Context) {
+	tenantID, ok := getTenantID(ctx)
+	if !ok {
+		return
+	}
+	var search pojo.LuckyHistoryUserFlowSearch
+	search.SetPageDefaults()
+	if err := ctx.ShouldBindJSON(&search); err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	result := tenantRepo.GetLuckyHistoryUserFlowList(getDB(ctx), tenantID, search)
+	utils.SuccessObjBack(ctx, result)
+}
+
 func GetLuckyMoneyDetail(ctx *gin.Context) {
 	tenantID, ok := getTenantID(ctx)
 	if !ok {

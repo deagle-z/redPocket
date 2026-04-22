@@ -2,8 +2,8 @@ package repository
 
 import (
 	"BaseGoUni/core/pojo"
+	"BaseGoUni/core/utils"
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/jinzhu/copier"
@@ -49,7 +49,7 @@ func SetLuckyMoneyItem(db *gorm.DB, req pojo.LuckyMoneyItemSet) (result pojo.Luc
 	if req.ID > 0 {
 		db.Where("id = ?", req.ID).First(&dbItem)
 		if dbItem.ID == 0 {
-			return result, errors.New("更新的数据不存在")
+			return result, errors.New("record_not_found_update")
 		}
 		_ = copier.Copy(&dbItem, &req)
 		err = db.Save(&dbItem).Error
@@ -69,7 +69,7 @@ func DelLuckyMoneyItem(db *gorm.DB, id uint64) (result string, err error) {
 	var dbItem pojo.LuckyMoneyItem
 	db.Where("id = ?", id).First(&dbItem)
 	if dbItem.ID == 0 {
-		return result, errors.New("删除的数据不存在")
+		return result, errors.New("record_not_found_delete")
 	}
 	err = db.Delete(&dbItem).Error
 	if err != nil {
@@ -83,7 +83,7 @@ func GetLuckyMoneyItemById(db *gorm.DB, id uint64) (result pojo.LuckyMoneyItemBa
 	var dbItem pojo.LuckyMoneyItem
 	db.Where("id = ?", id).First(&dbItem)
 	if dbItem.ID == 0 {
-		return result, errors.New("数据不存在")
+		return result, errors.New("record_not_found")
 	}
 	_ = copier.Copy(&result, &dbItem)
 	return result, nil
@@ -116,7 +116,7 @@ func MarkLuckyMoneyItemGrabbed(db *gorm.DB, luckyID int64, seqNo int, userID int
 		return result.Error
 	}
 	if result.RowsAffected == 0 {
-		return errors.New(fmt.Sprintf("红包第%d个已被抢", seqNo))
+		return errors.New(utils.I18nMessage("lucky_packet_seq_grabbed", map[string]interface{}{"seqNo": seqNo}))
 	}
 	return nil
 }

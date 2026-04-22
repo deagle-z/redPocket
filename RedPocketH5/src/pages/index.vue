@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { showToast } from 'vant'
-import type { BannerItem } from '@/api/user'
-import { getBanners, getLuckyRecentWinners } from '@/api/user'
+import type { BannerItem, LuckyHistoryUserFlowItem } from '@/api/user'
+import { getBanners, getLuckyHistoryUserFlow } from '@/api/user'
 import { formatCurrency } from '@/utils/currency'
 import imgAvatarPlaceholder from '@/assets/images/avatar-placeholder.png'
 import coinSvgUrl from '@/assets/svg/coin.svg'
@@ -191,13 +191,16 @@ async function loadRecentWinners() {
     return
   try {
     recentWinnersLoading.value = true
-    const { data } = await getLuckyRecentWinners({ limit: 10 })
-    recentWinners.value = (data || []).map((item: any) => ({
-      id: Number(item?.id || 0),
-      avatar: item?.avatar || DEFAULT_AVATAR,
-      amount: formatCurrency(Number(item?.amount || 0)),
-      name: item?.firstName || 'User',
-      time: item?.timeText || t('homeLucky.timeJustNow'),
+    const { data } = await getLuckyHistoryUserFlow({
+      currentPage: 0,
+      pageSize: 20,
+    })
+    recentWinners.value = (data?.list || []).map((item: LuckyHistoryUserFlowItem, index: number) => ({
+      id: Number(item.userId || index),
+      avatar: item.avatar || DEFAULT_AVATAR,
+      amount: formatCurrency(Number(item.flowAmount || 0)),
+      name: item.firstName || 'User',
+      time: t('homeLucky.timeJustNow'),
     }))
   }
   catch {
@@ -372,7 +375,6 @@ onBeforeUnmount(() => {
           <div class="winner-main">
             <van-skeleton title :row="1" />
           </div>
-          <van-skeleton title :row="0" class="winner-skeleton-time" />
         </article>
       </div>
 
@@ -389,10 +391,6 @@ onBeforeUnmount(() => {
               <p class="winner-name">
                 {{ item.name }}
               </p>
-            </div>
-            <div class="winner-right">
-              <span class="winner-time">{{ item.time }}</span>
-              <van-icon name="arrow" />
             </div>
           </article>
         </div>
@@ -878,19 +876,6 @@ onBeforeUnmount(() => {
   margin: 6px 0 0;
   color: rgba(255, 229, 186, 0.68);
   font-size: 14px;
-  line-height: 1;
-}
-
-.winner-right {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  color: rgba(255, 229, 186, 0.65);
-}
-
-.winner-time {
-  color: #f4d7aa;
-  font-size: 15px;
   line-height: 1;
 }
 

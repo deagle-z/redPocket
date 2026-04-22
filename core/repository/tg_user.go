@@ -66,7 +66,7 @@ func SetTgUser(db *gorm.DB, req pojo.TgUserSet) (result pojo.TgUserAdminBack, er
 	if req.ID > 0 {
 		db.Where("id = ?", req.ID).First(&dbUser)
 		if dbUser.ID == 0 {
-			return result, errors.New("更新的数据不存在")
+			return result, errors.New("record_not_found_update")
 		}
 		_ = copier.Copy(&dbUser, &req)
 		err = db.Save(&dbUser).Error
@@ -86,7 +86,7 @@ func DelTgUser(db *gorm.DB, id int64) (result string, err error) {
 	var dbUser pojo.TgUser
 	db.Where("id = ?", id).First(&dbUser)
 	if dbUser.ID == 0 {
-		return result, errors.New("删除的数据不存在")
+		return result, errors.New("record_not_found_delete")
 	}
 	err = db.Delete(&dbUser).Error
 	if err != nil {
@@ -100,7 +100,7 @@ func GetTgUserById(db *gorm.DB, id int64) (result pojo.TgUserAdminBack, err erro
 	var dbUser pojo.TgUser
 	db.Where("id = ?", id).First(&dbUser)
 	if dbUser.ID == 0 {
-		return result, errors.New("数据不存在")
+		return result, errors.New("record_not_found")
 	}
 	_ = copier.Copy(&result, &dbUser)
 	return result, nil
@@ -111,7 +111,7 @@ func SetTgUserStatus(db *gorm.DB, id int64, status int8) (result pojo.TgUserAdmi
 	var dbUser pojo.TgUser
 	db.Where("id = ?", id).First(&dbUser)
 	if dbUser.ID == 0 {
-		return result, errors.New("数据不存在")
+		return result, errors.New("record_not_found")
 	}
 	err = db.Model(&dbUser).Update("status", status).Error
 	if err != nil {
@@ -125,10 +125,10 @@ func SetTgUserStatus(db *gorm.DB, id int64, status int8) (result pojo.TgUserAdmi
 func BatchCreateBotTgUsers(db *gorm.DB, req pojo.TgUserBatchCreateBotReq) (result pojo.TgUserBatchCreateBotResp, err error) {
 	names := parseBotNames(req.NameFile)
 	if !req.RandomName && len(names) == 0 {
-		return result, errors.New("名称文件不能为空")
+		return result, errors.New("name_file_required")
 	}
 	if req.Num <= 0 {
-		return result, errors.New("num 必须大于 0")
+		return result, errors.New("num_must_gt_zero")
 	}
 
 	err = db.Transaction(func(tx *gorm.DB) error {

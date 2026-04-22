@@ -2,6 +2,7 @@ package services
 
 import (
 	"BaseGoUni/core/pojo"
+	"BaseGoUni/core/repository"
 	"BaseGoUni/core/utils"
 	"context"
 	"encoding/json"
@@ -47,6 +48,7 @@ func InitLuckyExpireAsynq() error {
 		mux := asynq.NewServeMux()
 		mux.HandleFunc(TaskTypeLuckyExpire, handleLuckyExpireTask)
 		mux.HandleFunc(TaskTypeLuckyBotGrab, handleLuckyBotGrabTask)
+		mux.HandleFunc(pojo.TaskTypeRechargeFirstGiftInstallment, handleRechargeFirstGiftInstallmentTask)
 		go func() {
 			if err := srv.Run(mux); err != nil {
 				log.Printf("asynq server stopped: %v", err)
@@ -125,6 +127,9 @@ func refundExpiredLuckyMoney(db *gorm.DB, tablePrefix string, luckyID int64) err
 		if err := tx.Model(&pojo.TgUser{}).
 			Where("id = ?", sender.ID).
 			Update("balance", gorm.Expr("balance + ?", refundAmount)).Error; err != nil {
+			return err
+		}
+		if err := repository.RestoreLuckyRefundRestrictedBalance(tx, sender, lucky, refundAmount); err != nil {
 			return err
 		}
 

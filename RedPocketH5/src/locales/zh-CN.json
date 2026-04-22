@@ -114,6 +114,12 @@
       "zhEn": "Chinese (Simplified)",
       "enNative": "English",
       "enEn": "English (US)",
+      "ptNative": "Português (Brasil)",
+      "ptEn": "葡萄牙语（巴西）",
+      "esNative": "Español (México)",
+      "esEn": "西班牙语（墨西哥）",
+      "idNative": "Bahasa Indonesia",
+      "idEn": "印度尼西亚语",
       "changed": "语言已切换",
       "autoRefresh": "语言切换后页面将自动刷新"
     }
@@ -226,9 +232,9 @@
     "playModeParityAction": "发这个玩法红包",
     "playModeParityNote": "更快发包，入门门槛更低。",
     "hotPackets": "热门红包",
-    "latestWinners": "最新中奖",
+    "latestWinners": "流水排名",
     "emptyPackets": "暂无热门红包",
-    "emptyWinners": "没有更多了",
+    "emptyWinners": "暂无流水排名",
     "loadingLabel": "loading",
     "statusOngoing": "进行中",
     "statusDone": "已结束",
@@ -257,9 +263,9 @@
     "loginDialogMsg": "抢红包需要登录账号，请先登录或注册。",
     "loginDialogConfirm": "登录 / 注册",
     "packetLoadFailed": "红包列表加载失败",
-    "winnerLoadFailed": "最新中奖加载失败",
-    "gotPrefix": "获得",
-    "timeJustNow": "刚刚"
+    "winnerLoadFailed": "流水排名加载失败",
+    "gotPrefix": "流水",
+    "timeJustNow": "实时"
   },
   "packetListPage": {
     "entryEyebrow": "红包大厅",
@@ -317,6 +323,8 @@
     "promoNone": "不要参与任何促销活动。",
     "firstRechargeTitle": "首次充值优惠",
     "firstRechargeDesc": "首次存款即可获得额外奖励",
+    "firstRechargeInstallmentDesc": "首次存款总赠送 {rate}%，分 {days} 天到账",
+    "firstRechargeInstallmentDetail": "第 1 天赠送充值金额的 {firstDayRate}%（占总赠送 {firstDayRatio}%）",
     "firstRechargeGift": "赠送金额：",
     "todayFirstTitle": "今日首次充值优惠",
     "todayFirstDesc": "今日首次存款即可享受额外奖励"
@@ -341,6 +349,8 @@
     "amountPlaceholder": "请输入提现金额",
     "custom": "自定义",
     "availableBalance": "可用余额",
+    "withdrawableAmount": "可提现金额",
+    "nonWithdrawableAmount": "不可提现金额",
     "normalBalance": "正常余额",
     "bonusBalance": "赠金余额",
     "codingRemain": "剩余打码量",
@@ -639,6 +649,7 @@
     "advancedHint": "高级档奖励更好，推荐优先冲刺。",
     "superHint": "超级档命中大奖概率最高。",
     "availableChance": "剩余抽奖次数",
+    "superGrandPrize": "超级大奖",
     "spinAction": "立即抽奖",
     "spinning": "抽奖中",
     "noChance": "当前没有抽奖次数",

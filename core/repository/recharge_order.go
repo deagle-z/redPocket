@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/hibiken/asynq"
 	"github.com/jinzhu/copier"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -14,6 +15,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -25,6 +27,24 @@ type rechargeFieldDef struct {
 	RegexRule  *string `json:"regexRule"`
 	ErrorTips  *string `json:"errorTips"`
 }
+
+type firstRechargeGiftConfig struct {
+	Rate      float64
+	Ratios    []int
+	RatioBase int
+}
+
+type firstRechargeGiftInstallment struct {
+	Index      int
+	Ratio      int
+	GiftAmount float64
+	ExecuteAt  time.Time
+}
+
+var (
+	rechargeGiftAsynqOnce   sync.Once
+	rechargeGiftAsynqClient *asynq.Client
+)
 
 // GetRechargeOrders 充值订单列表（分页）
 func GetRechargeOrders(db *gorm.DB, search pojo.RechargeOrderSearch) (result pojo.RechargeOrderResp) {
@@ -77,7 +97,7 @@ func SetRechargeOrder(db *gorm.DB, req pojo.RechargeOrderSet) (result pojo.Recha
 	if req.ID > 0 {
 		db.Where("id = ?", req.ID).First(&dbOrder)
 		if dbOrder.ID == 0 {
-			return result, errors.New("更新的数据不存在")
+			return result, errors.New("record_not_found_update")
 		}
 		_ = copier.Copy(&dbOrder, &req)
 		err = db.Save(&dbOrder).Error
@@ -97,7 +117,7 @@ func DelRechargeOrder(db *gorm.DB, id int64) (result string, err error) {
 	var dbOrder pojo.RechargeOrder
 	db.Where("id = ?", id).First(&dbOrder)
 	if dbOrder.ID == 0 {
-		return result, errors.New("删除的数据不存在")
+		return result, errors.New("record_not_found_delete")
 	}
 	err = db.Delete(&dbOrder).Error
 	if err != nil {
@@ -111,7 +131,7 @@ func GetRechargeOrderById(db *gorm.DB, id int64) (result pojo.RechargeOrderBack,
 	var dbOrder pojo.RechargeOrder
 	db.Where("id = ?", id).First(&dbOrder)
 	if dbOrder.ID == 0 {
-		return result, errors.New("数据不存在")
+		return result, errors.New("record_not_found")
 	}
 	_ = copier.Copy(&result, &dbOrder)
 	return result, nil
@@ -124,10 +144,10 @@ func AppCreateRechargeOrder(db *gorm.DB, userID int64, req pojo.RechargeOrderApp
 	req.Currency = strings.ToUpper(strings.TrimSpace(req.Currency))
 	req.MerchantOrderNo = strings.TrimSpace(req.MerchantOrderNo)
 	if req.Amount <= 0 {
-		return result, errors.New("充值金额必须大于0")
+		return result, errors.New("recharge_amount_positive")
 	}
 	if req.Channel == "" {
-		return result, errors.New("充值渠道不能为空")
+		return result, errors.New("recharge_channel_required")
 	}
 	if req.Currency == "" {
 		req.Currency = "BRL"
@@ -139,7 +159,7 @@ func AppCreateRechargeOrder(db *gorm.DB, userID int64, req pojo.RechargeOrderApp
 		var country pojo.SysCountry
 		db.Where("country_code = ? AND status = 1", req.CountryCode).First(&country)
 		if country.ID == 0 {
-			return result, errors.New("国家不存在或已禁用")
+			return result, errors.New("country_not_available")
 		}
 		if country.RechargeFields != nil && *country.RechargeFields != "" {
 			var fieldDefs []rechargeFieldDef
@@ -177,23 +197,18 @@ func AppCreateRechargeOrder(db *gorm.DB, userID int64, req pojo.RechargeOrderApp
 	var tgUser pojo.TgUser
 	if err = db.Where("id = ?", userID).First(&tgUser).Error; err != nil || tgUser.ID == 0 {
 		log.Printf("[AppCreateRechargeOrder] 用户不存在 userID=%d err=%v", userID, err)
-		return result, errors.New("用户不存在")
+		return result, errors.New("user_not_found")
 	}
 	if tgUser.Status != 1 {
 		log.Printf("[AppCreateRechargeOrder] 用户已禁用 userID=%d status=%d", userID, tgUser.Status)
-		return result, errors.New("用户已禁用，请联系管理员处理")
+		return result, errors.New("user_disabled_contact_admin")
 	}
 
 	// 延迟写库策略：先解析渠道、调用三方，成功后再落库，失败不留脏数据
 	provider, providerErr := pay.MustGet(req.Channel)
 	if providerErr != nil {
-		log.Printf("[AppCreateRechargeOrder] 渠道未注册，降级为MANUAL userID=%d channel=%s err=%v", userID, req.Channel, providerErr)
-		// 渠道未注册时降级为 MANUAL
-		provider = pay.Get("MANUAL")
-	}
-	if provider == nil {
-		log.Printf("[AppCreateRechargeOrder] 支付渠道配置错误 userID=%d channel=%s", userID, req.Channel)
-		return result, errors.New("支付渠道配置错误")
+		log.Printf("[AppCreateRechargeOrder] 渠道未注册 userID=%d channel=%s err=%v", userID, req.Channel, providerErr)
+		return result, providerErr
 	}
 
 	orderNo := buildRechargeOrderNo()
@@ -270,14 +285,14 @@ func ProcessRechargeOrderSuccess(db *gorm.DB, orderNo string, providerTradeNo st
 			return err
 		}
 		if order.ID == 0 {
-			return fmt.Errorf("订单不存在: %s", orderNo)
+			return errors.New(utils.I18nMessage("order_not_found_with_no", map[string]interface{}{"orderNo": orderNo}))
 		}
 		// 幂等：已成功则直接返回
 		if order.Status == 1 {
 			return nil
 		}
 		if order.Status != 0 {
-			return fmt.Errorf("订单状态不支持入账: %d", order.Status)
+			return errors.New(utils.I18nMessage("order_status_invalid_credit", map[string]interface{}{"status": order.Status}))
 		}
 
 		var user pojo.TgUser
@@ -285,7 +300,7 @@ func ProcessRechargeOrderSuccess(db *gorm.DB, orderNo string, providerTradeNo st
 			return err
 		}
 		if user.ID == 0 {
-			return fmt.Errorf("用户不存在: %d", order.UserId)
+			return errors.New(utils.I18nMessage("user_not_found_with_id", map[string]interface{}{"userId": order.UserId}))
 		}
 		isFirstRecharge := user.RechargeAmount <= 0
 		bonusAmount := 0.0
@@ -320,6 +335,9 @@ func ProcessRechargeOrderSuccess(db *gorm.DB, orderNo string, providerTradeNo st
 			"gift_total":      gorm.Expr("gift_total + ?", bonusAmount),
 			"recharge_amount": gorm.Expr("recharge_amount + ?", order.Amount),
 		}).Error; err != nil {
+			return err
+		}
+		if err := AddUserWithdrawRestrictedBalance(tx, user, bonusAmount, clampRechargeRestrictedCredit(order.Amount-order.Fee)); err != nil {
 			return err
 		}
 
@@ -378,7 +396,7 @@ func ProcessRechargeOrderSuccess(db *gorm.DB, orderNo string, providerTradeNo st
 		}
 		// 活动赠送：activity_type=1(首充) 或 2(今日首充)
 		if order.ActivityType != nil && *order.ActivityType > 0 {
-			if err := applyFirstRechargeActivityGift(tx, order, user); err != nil {
+			if err := applyFirstRechargeActivityGift(tx, order, user, tablePrefix, now); err != nil {
 				return err
 			}
 		}
@@ -407,10 +425,10 @@ func ProcessRechargeOrderClosed(db *gorm.DB, orderNo string) error {
 func AdminRechargeOrderCallback(db *gorm.DB, id int64, tablePrefix string) (result pojo.RechargeOrderBack, err error) {
 	var order pojo.RechargeOrder
 	if err = db.Where("id = ?", id).First(&order).Error; err != nil || order.ID == 0 {
-		return result, errors.New("订单不存在")
+		return result, errors.New("order_not_found")
 	}
 	if order.Status != 0 {
-		return result, errors.New("订单状态不是待支付，无法回调")
+		return result, errors.New("order_status_not_pending_callback")
 	}
 
 	isDev := int8(1)
@@ -441,7 +459,7 @@ func rechargeOrderDevCallback(db *gorm.DB, orderNo string, tablePrefix string) e
 			return nil
 		}
 		if order.Status != 0 {
-			return fmt.Errorf("订单状态不支持回调:%d", order.Status)
+			return errors.New(utils.I18nMessage("order_status_invalid_callback", map[string]interface{}{"status": order.Status}))
 		}
 
 		var user pojo.TgUser
@@ -449,7 +467,7 @@ func rechargeOrderDevCallback(db *gorm.DB, orderNo string, tablePrefix string) e
 			return err
 		}
 		if user.ID == 0 {
-			return fmt.Errorf("用户不存在")
+			return errors.New("user_not_found")
 		}
 		isFirstRecharge := user.RechargeAmount <= 0
 		bonusAmount := 0.0
@@ -486,6 +504,9 @@ func rechargeOrderDevCallback(db *gorm.DB, orderNo string, tablePrefix string) e
 				"gift_total":      gorm.Expr("gift_total + ?", bonusAmount),
 				"recharge_amount": gorm.Expr("recharge_amount + ?", order.Amount),
 			}).Error; err != nil {
+			return err
+		}
+		if err := AddUserWithdrawRestrictedBalance(tx, user, bonusAmount, clampRechargeRestrictedCredit(order.Amount-order.Fee)); err != nil {
 			return err
 		}
 
@@ -545,7 +566,7 @@ func rechargeOrderDevCallback(db *gorm.DB, orderNo string, tablePrefix string) e
 
 		// 活动赠送：activity_type=1(首充) 或 2(今日首充)
 		if order.ActivityType != nil && *order.ActivityType > 0 {
-			if err := applyFirstRechargeActivityGift(tx, order, user); err != nil {
+			if err := applyFirstRechargeActivityGift(tx, order, user, tablePrefix, now); err != nil {
 				return err
 			}
 		}
@@ -559,26 +580,59 @@ func rechargeOrderDevCallback(db *gorm.DB, orderNo string, tablePrefix string) e
 	return err
 }
 
-// applyFirstRechargeActivityGift 活动赠送：按充值金额百分比赠送余额并记录流水
-func applyFirstRechargeActivityGift(tx *gorm.DB, order pojo.RechargeOrder, user pojo.TgUser) error {
-	// 检查该用户是否已有其他已完成的同类活动订单（排除当前订单）
+// applyFirstRechargeActivityGift 活动赠送：activity_type=1 首充分 3 天赠送；activity_type=2 今日首充仍一次性赠送
+func applyFirstRechargeActivityGift(tx *gorm.DB, order pojo.RechargeOrder, user pojo.TgUser, tablePrefix string, now time.Time) error {
+	if order.ActivityType == nil || *order.ActivityType <= 0 {
+		return nil
+	}
+
 	var completedCount int64
 	tx.Model(&pojo.RechargeOrder{}).
-		Where("user_id = ? AND activity_type = ? AND status = 1 AND id != ?", user.ID, order.ActivityType, order.ID).
+		Where("user_id = ? AND activity_type = ? AND status = 1 AND id != ?", user.ID, *order.ActivityType, order.ID).
 		Count(&completedCount)
 	if completedCount > 0 {
 		return nil
 	}
 
-	// 读取活动赠送比例配置
-	configKey := "first_recharge_gift"
-	awardUniPrefix := "first_recharge_gift"
-	cashMark := "首充活动赠送"
-	if order.ActivityType != nil && *order.ActivityType == 2 {
-		configKey = "today_first_recharge_gift"
-		awardUniPrefix = "today_first_recharge_gift"
-		cashMark = "今日首充活动赠送"
+	if *order.ActivityType == 1 {
+		return applySplitFirstRechargeGift(tx, order, user, tablePrefix, now)
 	}
+	return applyTodayFirstRechargeGift(tx, order, user)
+}
+
+func applySplitFirstRechargeGift(tx *gorm.DB, order pojo.RechargeOrder, user pojo.TgUser, tablePrefix string, now time.Time) error {
+	cfg, err := getFirstRechargeGiftConfig(tablePrefix)
+	if err != nil {
+		log.Printf("[recharge] parse first_recharge_gift_config failed: orderNo=%s err=%v", order.OrderNo, err)
+		return nil
+	}
+
+	installments := buildFirstRechargeGiftInstallments(order.Amount, now, cfg)
+	if len(installments) == 0 {
+		return nil
+	}
+
+	for _, installment := range installments {
+		if installment.GiftAmount <= 0 {
+			continue
+		}
+		if installment.Index == 1 {
+			if err = applyFirstRechargeGiftInstallment(tx, order, user.ID, installment, cfg.Rate, cfg.RatioBase); err != nil {
+				return err
+			}
+			continue
+		}
+		if enqueueErr := enqueueFirstRechargeGiftInstallmentTask(tablePrefix, order, user.ID, installment, cfg.Rate, cfg.RatioBase); enqueueErr != nil {
+			log.Printf("[recharge] enqueue first recharge gift installment failed: orderNo=%s installment=%d err=%v", order.OrderNo, installment.Index, enqueueErr)
+		}
+	}
+	return nil
+}
+
+func applyTodayFirstRechargeGift(tx *gorm.DB, order pojo.RechargeOrder, user pojo.TgUser) error {
+	configKey := "today_first_recharge_gift"
+	awardUniPrefix := "today_first_recharge_gift"
+	cashMark := "今日首充活动赠送"
 
 	var cfg pojo.SysConfig
 	tx.Where("config_key = ?", configKey).First(&cfg)
@@ -595,7 +649,6 @@ func applyFirstRechargeActivityGift(tx *gorm.DB, order pojo.RechargeOrder, user 
 		return nil
 	}
 
-	// 赠送余额
 	if err = tx.Model(&pojo.TgUser{}).Where("id = ?", user.ID).Updates(map[string]any{
 		"balance":     gorm.Expr("balance + ?", giftAmount),
 		"gift_amount": gorm.Expr("gift_amount + ?", giftAmount),
@@ -603,8 +656,10 @@ func applyFirstRechargeActivityGift(tx *gorm.DB, order pojo.RechargeOrder, user 
 	}).Error; err != nil {
 		return err
 	}
+	if err = AddUserWithdrawRestrictedBalance(tx, user, giftAmount, 0); err != nil {
+		return err
+	}
 
-	// 记录流水
 	awardUni := fmt.Sprintf("%s_%s", awardUniPrefix, order.OrderNo)
 	desc := fmt.Sprintf("%s%.3f，订单%s，充值金额%.3f，赠送比例%.2f%%", cashMark, giftAmount, order.OrderNo, order.Amount, rate)
 	history := pojo.CashHistory{
@@ -633,6 +688,195 @@ func applyFirstRechargeActivityGift(tx *gorm.DB, order pojo.RechargeOrder, user 
 		IncomeAmount:    0,
 		ExpenseAmount:   giftAmount,
 		Remark:          desc,
+	})
+}
+
+func getFirstRechargeGiftConfig(tablePrefix string) (firstRechargeGiftConfig, error) {
+	defaultValue := ""
+	val := utils.GetStringCache(tablePrefix, "first_recharge_gift_config", &defaultValue)
+	if val == nil || strings.TrimSpace(*val) == "" {
+		return firstRechargeGiftConfig{}, fmt.Errorf("config is empty")
+	}
+
+	raw := strings.TrimSpace(*val)
+	matches := regexp.MustCompile(`^([0-9]+(?:\.[0-9]+)?)\((\d+)\|(\d+)\|(\d+)\)$`).FindStringSubmatch(raw)
+	if len(matches) != 5 {
+		return firstRechargeGiftConfig{}, fmt.Errorf("invalid config format: %s", raw)
+	}
+
+	rate, err := strconv.ParseFloat(matches[1], 64)
+	if err != nil || rate <= 0 {
+		return firstRechargeGiftConfig{}, fmt.Errorf("invalid rate: %s", matches[1])
+	}
+
+	ratios := make([]int, 0, 3)
+	sum := 0
+	for _, item := range matches[2:] {
+		v, convErr := strconv.Atoi(item)
+		if convErr != nil || v <= 0 {
+			return firstRechargeGiftConfig{}, fmt.Errorf("invalid ratio: %s", item)
+		}
+		sum += v
+		ratios = append(ratios, v)
+	}
+	if sum != 10 && sum != 100 {
+		return firstRechargeGiftConfig{}, fmt.Errorf("ratio sum must be 10 or 100: %s", raw)
+	}
+
+	return firstRechargeGiftConfig{
+		Rate:      rate,
+		Ratios:    ratios,
+		RatioBase: sum,
+	}, nil
+}
+
+func buildFirstRechargeGiftInstallments(orderAmount float64, baseTime time.Time, cfg firstRechargeGiftConfig) []firstRechargeGiftInstallment {
+	totalGiftMoney := utils.ToMoney(orderAmount).Multiply(cfg.Rate / 100)
+	if totalGiftMoney <= 0 {
+		return nil
+	}
+
+	result := make([]firstRechargeGiftInstallment, 0, len(cfg.Ratios))
+	distributed := utils.Money(0)
+	for i, ratio := range cfg.Ratios {
+		amountMoney := utils.Money(0)
+		if i == len(cfg.Ratios)-1 {
+			amountMoney = totalGiftMoney.Subtract(distributed)
+		} else {
+			amountMoney = totalGiftMoney.Multiply(float64(ratio) / float64(cfg.RatioBase))
+			distributed = distributed.Add(amountMoney)
+		}
+		if amountMoney <= 0 {
+			continue
+		}
+		result = append(result, firstRechargeGiftInstallment{
+			Index:      i + 1,
+			Ratio:      ratio,
+			GiftAmount: amountMoney.ToDollars(),
+			ExecuteAt:  baseTime.Add(time.Duration(i) * 24 * time.Hour),
+		})
+	}
+	return result
+}
+
+func applyFirstRechargeGiftInstallment(tx *gorm.DB, order pojo.RechargeOrder, userID int64, installment firstRechargeGiftInstallment, totalRate float64, ratioBase int) error {
+	if installment.GiftAmount <= 0 {
+		return nil
+	}
+
+	awardUni := fmt.Sprintf("first_recharge_gift_%s_%d", order.OrderNo, installment.Index)
+	var existing pojo.CashHistory
+	if err := tx.Where("user_id = ? AND award_uni = ?", userID, awardUni).First(&existing).Error; err == nil && existing.ID > 0 {
+		return nil
+	}
+
+	var user pojo.TgUser
+	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ?", userID).First(&user).Error; err != nil {
+		return err
+	}
+
+	if err := tx.Model(&pojo.TgUser{}).Where("id = ?", userID).Updates(map[string]any{
+		"balance":     gorm.Expr("balance + ?", installment.GiftAmount),
+		"gift_amount": gorm.Expr("gift_amount + ?", installment.GiftAmount),
+		"gift_total":  gorm.Expr("gift_total + ?", installment.GiftAmount),
+	}).Error; err != nil {
+		return err
+	}
+	if err := AddUserWithdrawRestrictedBalance(tx, user, installment.GiftAmount, 0); err != nil {
+		return err
+	}
+
+	desc := fmt.Sprintf(
+		"首充活动赠送第%d天，订单%s，充值金额%.3f，赠送比例%.2f%%，分段比例%d/%d，赠送%.3f",
+		installment.Index,
+		order.OrderNo,
+		order.Amount,
+		totalRate,
+		installment.Ratio,
+		ratioBase,
+		installment.GiftAmount,
+	)
+	history := pojo.CashHistory{
+		UserId:          userID,
+		AwardUni:        awardUni,
+		Amount:          installment.GiftAmount,
+		StartAmount:     user.Balance,
+		EndAmount:       user.Balance + installment.GiftAmount,
+		CashMark:        "首充活动赠送",
+		CashDesc:        desc,
+		Type:            pojo.CashHistoryTypeRechargeCredit,
+		IsGift:          1,
+		FromUserId:      0,
+		SourceChannelID: order.SourceChannelID,
+	}
+	if err := tx.Create(&history).Error; err != nil {
+		return err
+	}
+
+	return CreatePlatformProfitLedgerIfAbsent(tx, pojo.PlatformProfitLedger{
+		TenantId:        order.TenantId,
+		UserId:          userID,
+		SourceChannelID: order.SourceChannelID,
+		SourceType:      pojo.PlatformProfitSourceRechargeGift,
+		SourceId:        awardUni,
+		IncomeAmount:    0,
+		ExpenseAmount:   installment.GiftAmount,
+		Remark:          desc,
+	})
+}
+
+func enqueueFirstRechargeGiftInstallmentTask(tablePrefix string, order pojo.RechargeOrder, userID int64, installment firstRechargeGiftInstallment, totalRate float64, ratioBase int) error {
+	client := getRechargeGiftAsynqClient()
+	if client == nil {
+		return fmt.Errorf("asynq client is nil")
+	}
+
+	payload, _ := json.Marshal(pojo.RechargeFirstGiftInstallmentPayload{
+		TablePrefix:      tablePrefix,
+		OrderNo:          order.OrderNo,
+		UserId:           userID,
+		InstallmentIndex: installment.Index,
+		GiftAmount:       installment.GiftAmount,
+		TotalRate:        totalRate,
+		Ratio:            installment.Ratio,
+		RatioBase:        ratioBase,
+		TenantId:         order.TenantId,
+		SourceChannelId:  order.SourceChannelID,
+	})
+	task := asynq.NewTask(pojo.TaskTypeRechargeFirstGiftInstallment, payload)
+	_, err := client.Enqueue(task, asynq.ProcessAt(installment.ExecuteAt), asynq.MaxRetry(10))
+	return err
+}
+
+func getRechargeGiftAsynqClient() *asynq.Client {
+	rechargeGiftAsynqOnce.Do(func() {
+		rechargeGiftAsynqClient = asynq.NewClient(asynq.RedisClientOpt{
+			Addr:     utils.GlobalConfig.Redis.Host,
+			Password: utils.GlobalConfig.Redis.Pass,
+			DB:       utils.GlobalConfig.Redis.Db,
+		})
+	})
+	return rechargeGiftAsynqClient
+}
+
+func ApplyFirstRechargeGiftInstallmentByOrderNo(db *gorm.DB, orderNo string, installmentIndex int, giftAmount float64, totalRate float64, ratio int, ratioBase int) error {
+	if strings.TrimSpace(orderNo) == "" || installmentIndex <= 0 || giftAmount <= 0 {
+		return nil
+	}
+
+	return db.Transaction(func(tx *gorm.DB) error {
+		var order pojo.RechargeOrder
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("order_no = ?", orderNo).First(&order).Error; err != nil {
+			return err
+		}
+		if order.ID == 0 || order.Status != 1 || order.ActivityType == nil || *order.ActivityType != 1 {
+			return nil
+		}
+		return applyFirstRechargeGiftInstallment(tx, order, order.UserId, firstRechargeGiftInstallment{
+			Index:      installmentIndex,
+			Ratio:      ratio,
+			GiftAmount: giftAmount,
+		}, totalRate, ratioBase)
 	})
 }
 
@@ -738,6 +982,13 @@ func getRechargeGiftAmount(tablePrefix string) float64 {
 	}
 	amount, err := strconv.ParseFloat(strings.TrimSpace(*val), 64)
 	if err != nil || amount < 0 {
+		return 0
+	}
+	return amount
+}
+
+func clampRechargeRestrictedCredit(amount float64) float64 {
+	if amount <= 0 {
 		return 0
 	}
 	return amount

@@ -63,7 +63,7 @@ func SetSysTenantUser(db *gorm.DB, req pojo.SysTenantUserSet) (result pojo.SysTe
 	if req.ID > 0 {
 		db.Where("id = ?", req.ID).First(&dbUser)
 		if dbUser.ID == 0 {
-			return result, errors.New("更新的数据不存在")
+			return result, errors.New("record_not_found_update")
 		}
 		_ = copier.Copy(&dbUser, &req)
 		err = db.Save(&dbUser).Error
@@ -83,7 +83,7 @@ func DelSysTenantUser(db *gorm.DB, id int64) (result string, err error) {
 	var dbUser pojo.SysTenantUser
 	db.Where("id = ?", id).First(&dbUser)
 	if dbUser.ID == 0 {
-		return result, errors.New("删除的数据不存在")
+		return result, errors.New("record_not_found_delete")
 	}
 	err = db.Delete(&dbUser).Error
 	if err != nil {
@@ -97,7 +97,7 @@ func GetSysTenantUserById(db *gorm.DB, id int64) (result pojo.SysTenantUserBack,
 	var dbUser pojo.SysTenantUser
 	db.Where("id = ?", id).First(&dbUser)
 	if dbUser.ID == 0 {
-		return result, errors.New("数据不存在")
+		return result, errors.New("record_not_found")
 	}
 	_ = copier.Copy(&result, &dbUser)
 	return result, nil
@@ -108,28 +108,28 @@ func SysTenantUserLogin(db *gorm.DB, hostInfo pojo.HostInfo, req pojo.SysTenantU
 	var users []pojo.SysTenantUser
 	db.Where("username = ?", req.Username).Order("id desc").Limit(2).Find(&users)
 	if len(users) == 0 {
-		return result, errors.New("user login error")
+		return result, errors.New("user_login_error")
 	}
 	if len(users) > 1 {
-		return result, errors.New("用户名重复，请联系管理员")
+		return result, errors.New("username_duplicate_contact_admin")
 	}
 	dbUser := users[0]
 
 	var dbTenant pojo.SysTenant
 	db.Where("id = ?", dbUser.TenantId).First(&dbTenant)
 	if dbTenant.ID == 0 || dbTenant.Status != 1 {
-		return result, errors.New("User account disabled")
+		return result, errors.New("user_disabled_contact_admin")
 	}
 	if dbUser.Status != 1 {
-		return result, errors.New("User account disabled")
+		return result, errors.New("user_disabled_contact_admin")
 	}
 	if dbUser.LockedUntil != nil && dbUser.LockedUntil.After(time.Now()) {
-		return result, errors.New("账号已锁定")
+		return result, errors.New("account_locked")
 	}
 
 	if err = bcrypt.CompareHashAndPassword([]byte(dbUser.PasswordHash), []byte(req.Password)); err != nil {
 		_ = db.Model(&pojo.SysTenantUser{}).Where("id = ?", dbUser.ID).Update("login_fail_count", gorm.Expr("login_fail_count + 1")).Error
-		return result, errors.New("user login error")
+		return result, errors.New("user_login_error")
 	}
 
 	now := time.Now()

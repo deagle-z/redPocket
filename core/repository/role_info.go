@@ -13,7 +13,7 @@ func GetRoleMenuIds(db *gorm.DB, roleId string) (result []int64, err error) {
 	var role pojo.SysRole
 	db.Where("id = ?", roleId).First(&role)
 	if role.ID == 0 {
-		return nil, errors.New("获取的权限不存在")
+		return nil, errors.New("permission_not_found")
 	}
 	var menus []pojo.SysMenu
 	if role.Code == "admin" {
@@ -49,7 +49,7 @@ func GetRoleMenus(db *gorm.DB, roleSearch pojo.RoleSearch) (result []pojo.BackMe
 func GetRoleIds(db *gorm.DB, hostInfo pojo.HostInfo, userId int64) (result []pojo.RoleBack, err error) {
 	searchUser := utils.GetTempUser(hostInfo.TablePrefix, userId)
 	if searchUser.ID == 0 {
-		return result, errors.New("用户不存在")
+		return result, errors.New("user_not_found")
 	}
 	_ = json.Unmarshal([]byte(searchUser.RoleStr), &searchUser.Roles)
 	var roles []pojo.SysRole
@@ -68,10 +68,10 @@ func DelRole(db *gorm.DB, currentUser pojo.SysUser, id string) (result string, e
 	var dbRole pojo.SysRole
 	db.Where("id = ?", id).Find(&dbRole)
 	if dbRole.ID == 0 {
-		return result, errors.New("删除的权限不存在")
+		return result, errors.New("record_not_found_delete")
 	}
 	if dbRole.Code == "admin" {
-		return result, errors.New("admin角色不可删除")
+		return result, errors.New("admin_role_cannot_delete")
 	}
 	if currentUser.UserType != 1 {
 		_ = json.Unmarshal([]byte(currentUser.RoleStr), &currentUser.Roles)
@@ -89,7 +89,7 @@ func DelRole(db *gorm.DB, currentUser pojo.SysUser, id string) (result string, e
 			}
 		}
 		if !haveRole {
-			return result, errors.New("没有删除该数据的权限")
+			return result, errors.New("permission_delete_denied")
 		}
 	}
 	db.Delete(&dbRole)
@@ -102,7 +102,7 @@ func SetRole(db *gorm.DB, roleSet pojo.RoleSet) (result string, err error) {
 		db.Where("code = ?", roleSet.Code).
 			First(&dbRole)
 		if dbRole.ID != 0 {
-			return "fail", errors.New("权限code不唯一")
+			return "fail", errors.New("permission_code_not_unique")
 		}
 		_ = copier.Copy(&dbRole, &roleSet)
 		menuStr, _ := json.Marshal(roleSet.MenuIds)
@@ -112,7 +112,7 @@ func SetRole(db *gorm.DB, roleSet pojo.RoleSet) (result string, err error) {
 		db.Where("id = ?", roleSet.ID).
 			First(&dbRole)
 		if dbRole.ID == 0 {
-			return "fail", errors.New("更新的权限不存在")
+			return "fail", errors.New("permission_not_found_update")
 		}
 		_ = copier.Copy(&dbRole, roleSet)
 		menuStr, _ := json.Marshal(roleSet.MenuIds)

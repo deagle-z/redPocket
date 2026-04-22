@@ -37,7 +37,7 @@ func DelSysPayChannelMethod(db *gorm.DB, id int64) (result string, err error) {
 	var entity pojo.SysPayChannelMethod
 	db.Where("id = ?", id).First(&entity)
 	if entity.ID == 0 {
-		return result, errors.New("删除的数据不存在")
+		return result, errors.New("record_not_found_delete")
 	}
 	err = db.Delete(&entity).Error
 	if err != nil {

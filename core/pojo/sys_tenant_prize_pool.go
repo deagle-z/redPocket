@@ -38,3 +38,9 @@ type SysTenantPrizePoolSearch struct {
 type SysTenantPrizePoolResp struct {
 	BasePageResponse[SysTenantPrizePool]
 }
+
+type SysTenantPrizePoolBalanceSet struct {
+	PoolCode string   `json:"poolCode"`
+	Balance  float64  `json:"balance"`
+	Remark   *string  `json:"remark"`
+}

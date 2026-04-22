@@ -55,7 +55,7 @@ func SetSysCountry(db *gorm.DB, req pojo.SysCountrySet) (result pojo.SysCountryB
 	if req.ID > 0 {
 		db.Where("id = ?", req.ID).First(&entity)
 		if entity.ID == 0 {
-			return result, errors.New("更新的数据不存在")
+			return result, errors.New("record_not_found_update")
 		}
 		_ = copier.Copy(&entity, &req)
 		err = db.Save(&entity).Error
@@ -75,7 +75,7 @@ func DelSysCountry(db *gorm.DB, id int64) (result string, err error) {
 	var entity pojo.SysCountry
 	db.Where("id = ?", id).First(&entity)
 	if entity.ID == 0 {
-		return result, errors.New("删除的数据不存在")
+		return result, errors.New("record_not_found_delete")
 	}
 	err = db.Delete(&entity).Error
 	if err != nil {
@@ -89,7 +89,7 @@ func GetSysCountryById(db *gorm.DB, id int64) (result pojo.SysCountryBack, err e
 	var entity pojo.SysCountry
 	db.Where("id = ?", id).First(&entity)
 	if entity.ID == 0 {
-		return result, errors.New("数据不存在")
+		return result, errors.New("record_not_found")
 	}
 	_ = copier.Copy(&result, &entity)
 	return result, nil
@@ -136,7 +136,7 @@ func GetCountryRechargeInfo(db *gorm.DB, countryCode string) (result pojo.AppCou
 	var country pojo.SysCountry
 	db.Where("country_code = ? AND status = 1", countryCode).First(&country)
 	if country.ID == 0 {
-		return result, errors.New("国家不存在或已禁用")
+		return result, errors.New("country_not_available")
 	}
 
 	// 2. 解析充值字段配置
@@ -213,7 +213,7 @@ func GetCountryWithdrawFields(db *gorm.DB, countryCode string) (interface{}, err
 	var country pojo.SysCountry
 	db.Where("country_code = ? AND status = 1", countryCode).First(&country)
 	if country.ID == 0 {
-		return nil, errors.New("国家不存在或已禁用")
+		return nil, errors.New("country_not_available")
 	}
 	log.Printf("WithdrawFields:%v\n", *country.WithdrawFields)
 	return parseFieldsJSON(country.WithdrawFields), nil
@@ -224,7 +224,7 @@ func GetCountryRechargeFields(db *gorm.DB, countryCode string) (interface{}, err
 	var country pojo.SysCountry
 	db.Debug().Where("country_code = ? AND status = 1", countryCode).First(&country)
 	if country.ID == 0 {
-		return nil, errors.New("国家不存在或已禁用")
+		return nil, errors.New("country_not_available")
 	}
 	log.Printf("RechargeFields: %v", country)
 	return parseFieldsJSON(country.RechargeFields), nil

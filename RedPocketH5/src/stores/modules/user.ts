@@ -16,8 +16,9 @@ import {
 
 const InitUserInfo = {
   uid: 0,
-  nickname: '',
+  name: '',
   avatar: '',
+  country: '',
 }
 
 export const useUserStore = defineStore('user', () => {
@@ -25,7 +26,7 @@ export const useUserStore = defineStore('user', () => {
 
   // Set user's information
   const setInfo = (partial: Partial<UserState>) => {
-    userInfo.value = { ...partial }
+    userInfo.value = { ...InitUserInfo, ...partial }
   }
 
   const login = async (loginForm: LoginData) => {
@@ -60,6 +61,7 @@ export const useUserStore = defineStore('user', () => {
         uid: Number(data?.uid || 0),
         name: data?.username || '',
         avatar: data?.avatar || '',
+        country: data?.country || '',
       })
     }
     catch (error) {

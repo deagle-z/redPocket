@@ -44,7 +44,7 @@ func SetSysVipLevel(db *gorm.DB, req pojo.SysVipLevelSet) (result pojo.SysVipLev
 	if req.ID > 0 {
 		db.Where("id = ?", req.ID).First(&entity)
 		if entity.ID == 0 {
-			return result, errors.New("更新的数据不存在")
+			return result, errors.New("record_not_found_update")
 		}
 		_ = copier.Copy(&entity, &req)
 		err = db.Save(&entity).Error
@@ -64,7 +64,7 @@ func DelSysVipLevel(db *gorm.DB, id int64) (result string, err error) {
 	var entity pojo.SysVipLevel
 	db.Where("id = ?", id).First(&entity)
 	if entity.ID == 0 {
-		return result, errors.New("删除的数据不存在")
+		return result, errors.New("record_not_found_delete")
 	}
 	err = db.Delete(&entity).Error
 	if err != nil {
@@ -78,7 +78,7 @@ func GetSysVipLevelById(db *gorm.DB, id int64) (result pojo.SysVipLevelBack, err
 	var entity pojo.SysVipLevel
 	db.Where("id = ?", id).First(&entity)
 	if entity.ID == 0 {
-		return result, errors.New("数据不存在")
+		return result, errors.New("record_not_found")
 	}
 	_ = copier.Copy(&result, &entity)
 	return result, nil
@@ -90,7 +90,7 @@ func GetAppVipProgress(db *gorm.DB, userID int64) (pojo.AppVipProgressBack, erro
 
 	var user pojo.TgUser
 	if err := db.Where("id = ?", userID).First(&user).Error; err != nil || user.ID == 0 {
-		return result, errors.New("用户不存在")
+		return result, errors.New("user_not_found")
 	}
 
 	var levels []pojo.SysVipLevel
@@ -342,7 +342,7 @@ func ClaimVipReward(db *gorm.DB, userID int64, rewardLogID int64, tablePrefix st
 		return err
 	}
 	if len(logs) == 0 {
-		return errors.New("暂无可领取的VIP奖励")
+		return errors.New("vip_reward_unavailable")
 	}
 
 	return db.Transaction(func(tx *gorm.DB) error {
@@ -358,10 +358,13 @@ func ClaimVipReward(db *gorm.DB, userID int64, rewardLogID int64, tablePrefix st
 
 		// 更新用户余额
 		if err := tx.Model(&pojo.TgUser{}).Where("id = ?", userID).Updates(map[string]any{
-			"balance":    gorm.Expr("balance + ?", totalBonus),
+			"balance":     gorm.Expr("balance + ?", totalBonus),
 			"gift_amount": gorm.Expr("gift_amount + ?", totalBonus),
 			"gift_total":  gorm.Expr("gift_total + ?", totalBonus),
 		}).Error; err != nil {
+			return err
+		}
+		if err := AddUserWithdrawRestrictedBalance(tx, user, totalBonus, 0); err != nil {
 			return err
 		}
 

@@ -1,5 +1,8 @@
 import { createI18n } from 'vue-i18n'
 import enUS from 'vant/es/locale/lang/en-US'
+import esES from 'vant/es/locale/lang/es-ES'
+import idID from 'vant/es/locale/lang/id-ID'
+import ptBR from 'vant/es/locale/lang/pt-BR'
 import zhCN from 'vant/es/locale/lang/zh-CN'
 import { Locale } from 'vant'
 import type { PickerColumn } from 'vant'
@@ -9,12 +12,48 @@ const FALLBACK_LOCALE = 'zh-CN'
 const vantLocales = {
   'zh-CN': zhCN,
   'en-US': enUS,
+  'pt-BR': ptBR,
+  'es-MX': esES,
+  'id-ID': idID,
 }
 
-export const languageColumns: PickerColumn = [
-  { text: '简体中文', value: 'zh-CN' },
-  { text: 'English', value: 'en-US' },
+export const languageOptions = [
+  {
+    code: 'CN',
+    value: 'zh-CN',
+    nativeTextKey: 'login.language.zhNative',
+    englishTextKey: 'login.language.zhEn',
+  },
+  {
+    code: 'US',
+    value: 'en-US',
+    nativeTextKey: 'login.language.enNative',
+    englishTextKey: 'login.language.enEn',
+  },
+  {
+    code: 'BR',
+    value: 'pt-BR',
+    nativeTextKey: 'login.language.ptNative',
+    englishTextKey: 'login.language.ptEn',
+  },
+  {
+    code: 'MX',
+    value: 'es-MX',
+    nativeTextKey: 'login.language.esNative',
+    englishTextKey: 'login.language.esEn',
+  },
+  {
+    code: 'ID',
+    value: 'id-ID',
+    nativeTextKey: 'login.language.idNative',
+    englishTextKey: 'login.language.idEn',
+  },
 ]
+
+export const languageColumns: PickerColumn = languageOptions.map(item => ({
+  text: item.value,
+  value: item.value,
+}))
 
 export const i18n = setupI18n()
 type I18n = typeof i18n
@@ -59,7 +98,7 @@ async function loadLocaleMsg(locale: string, i18n: I18n) {
 function getI18nLocale() {
   const storedLocale = localStorage.getItem('language') || navigator.language
 
-  const langs = languageColumns.map(v => v.value as string)
+  const langs = languageOptions.map(v => v.value)
 
   // 存在当前语言的语言包 或 存在当前语言的任意地区的语言包
   const foundLocale = langs.find(v => v === storedLocale || v.indexOf(storedLocale) === 0)

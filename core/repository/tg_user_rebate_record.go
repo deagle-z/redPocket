@@ -55,7 +55,7 @@ func SetTgUserRebateRecord(db *gorm.DB, req pojo.TgUserRebateRecordSet) (result 
 	if req.ID > 0 {
 		db.Where("id = ?", req.ID).First(&dbRecord)
 		if dbRecord.ID == 0 {
-			return result, errors.New("更新的数据不存在")
+			return result, errors.New("record_not_found_update")
 		}
 		_ = copier.Copy(&dbRecord, &req)
 		err = db.Save(&dbRecord).Error
@@ -75,7 +75,7 @@ func DelTgUserRebateRecord(db *gorm.DB, id int64) (result string, err error) {
 	var dbRecord pojo.TgUserRebateRecord
 	db.Where("id = ?", id).First(&dbRecord)
 	if dbRecord.ID == 0 {
-		return result, errors.New("删除的数据不存在")
+		return result, errors.New("record_not_found_delete")
 	}
 	err = db.Delete(&dbRecord).Error
 	if err != nil {
@@ -89,7 +89,7 @@ func GetTgUserRebateRecordById(db *gorm.DB, id int64) (result pojo.TgUserRebateR
 	var dbRecord pojo.TgUserRebateRecord
 	db.Where("id = ?", id).First(&dbRecord)
 	if dbRecord.ID == 0 {
-		return result, errors.New("数据不存在")
+		return result, errors.New("record_not_found")
 	}
 	_ = copier.Copy(&result, &dbRecord)
 	return result, nil

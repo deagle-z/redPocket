@@ -10,6 +10,8 @@ export type UserResult = {
     username: string;
     /** 昵称 */
     nickname: string;
+    /** 国家 */
+    country?: string;
     /** 当前登录用户的角色 */
     roles: Array<string>;
     /** 按钮级别权限 */

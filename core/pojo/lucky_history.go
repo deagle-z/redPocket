@@ -44,6 +44,23 @@ type LuckyHistoryResp struct {
 	BasePageResponse[LuckyHistoryBack]
 }
 
+type LuckyHistoryUserFlowSearch struct {
+	PageInfo
+	UserID   int64 `json:"userId"`
+	TenantId int64 `json:"tenantId"`
+}
+
+type LuckyHistoryUserFlowBack struct {
+	UserID     int64   `json:"userId"`
+	Avatar     *string `json:"avatar"`
+	FirstName  string  `json:"firstName"`
+	FlowAmount float64 `json:"flowAmount"`
+}
+
+type LuckyHistoryUserFlowResp struct {
+	BasePageResponse[LuckyHistoryUserFlowBack]
+}
+
 type LuckyRecentWinnerSearch struct {
 	Limit int `json:"limit"` // 返回条数，默认10，最大50
 }

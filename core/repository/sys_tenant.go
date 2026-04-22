@@ -53,7 +53,7 @@ func SetSysTenant(db *gorm.DB, req pojo.SysTenantSet) (result pojo.SysTenantBack
 	if req.ID > 0 {
 		db.Where("id = ?", req.ID).First(&dbTenant)
 		if dbTenant.ID == 0 {
-			return result, errors.New("更新的数据不存在")
+			return result, errors.New("record_not_found_update")
 		}
 		_ = copier.Copy(&dbTenant, &req)
 		err = db.Save(&dbTenant).Error
@@ -73,7 +73,7 @@ func DelSysTenant(db *gorm.DB, id int64) (result string, err error) {
 	var dbTenant pojo.SysTenant
 	db.Where("id = ?", id).First(&dbTenant)
 	if dbTenant.ID == 0 {
-		return result, errors.New("删除的数据不存在")
+		return result, errors.New("record_not_found_delete")
 	}
 	err = db.Delete(&dbTenant).Error
 	if err != nil {
@@ -87,7 +87,7 @@ func GetSysTenantById(db *gorm.DB, id int64) (result pojo.SysTenantBack, err err
 	var dbTenant pojo.SysTenant
 	db.Where("id = ?", id).First(&dbTenant)
 	if dbTenant.ID == 0 {
-		return result, errors.New("数据不存在")
+		return result, errors.New("record_not_found")
 	}
 	_ = copier.Copy(&result, &dbTenant)
 	return result, nil
@@ -96,16 +96,16 @@ func GetSysTenantById(db *gorm.DB, id int64) (result pojo.SysTenantBack, err err
 // ResetSysTenantPassword 重置租户密码（优先重置租户owner账号）
 func ResetSysTenantPassword(db *gorm.DB, req pojo.SysTenantResetPassword) (result string, err error) {
 	if req.TenantId <= 0 {
-		return result, errors.New("参数格式错误")
+		return result, errors.New("invalid_params")
 	}
 	if len(req.Password) < 6 || len(req.Password) > 64 {
-		return result, errors.New("密码长度需在6-64之间")
+		return result, errors.New("tenant_password_length_6_64")
 	}
 
 	var dbTenant pojo.SysTenant
 	db.Where("id = ?", req.TenantId).First(&dbTenant)
 	if dbTenant.ID == 0 {
-		return result, errors.New("租户不存在")
+		return result, errors.New("tenant_not_found")
 	}
 
 	var dbUser pojo.SysTenantUser
@@ -114,7 +114,7 @@ func ResetSysTenantPassword(db *gorm.DB, req pojo.SysTenantResetPassword) (resul
 		db.Where("tenant_id = ?", req.TenantId).Order("id asc").First(&dbUser)
 	}
 	if dbUser.ID == 0 {
-		return result, errors.New("租户未配置用户")
+		return result, errors.New("tenant_user_missing")
 	}
 
 	passwordHash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)

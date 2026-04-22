@@ -69,7 +69,7 @@ func LocalAwardInfo(currentUser pojo.SysUser, reqData pojo.AwardInfo) (result st
 func AwardUser(db *gorm.DB, reqData pojo.AwardInfo) (result []int64, err error) {
 	checkValue := utils.GetRdString(reqData.CheckKey, "")
 	if reqData.CheckValue != checkValue {
-		return result, errors.New(fmt.Sprintf("AwardUser error request not check %s %s->%s", reqData.CheckKey, checkValue, reqData.CheckValue))
+		return result, errors.New("award_request_check_failed")
 	}
 	if len(reqData.AwardUnis) == 0 {
 		return result, errors.New("data error")
@@ -99,7 +99,7 @@ func AwardUser(db *gorm.DB, reqData pojo.AwardInfo) (result []int64, err error) 
 	}()
 	for _, awardUni := range reqData.AwardUnis {
 		if awardUni.UserId == 0 || awardUni.Amount == 0 || awardUni.AwardUni == "" {
-			return result, errors.New("AwardUser error data not check")
+			return result, errors.New("award_data_check_failed")
 		}
 		prefix := utils.GetDbPrefix(db)
 		awardUser := utils.GetTempUser(prefix, awardUni.UserId)
@@ -114,7 +114,7 @@ func AwardUser(db *gorm.DB, reqData pojo.AwardInfo) (result []int64, err error) 
 		}
 		if !acquired {
 			fmt.Printf("AwardUser error acquiring lock for user %s: %v\n", awardUser.Username, err)
-			err = errors.New("block user error")
+			err = errors.New("block_user_error")
 			return result, err
 		}
 		//log.Printf("加锁:%s", blockKey)
@@ -122,7 +122,7 @@ func AwardUser(db *gorm.DB, reqData pojo.AwardInfo) (result []int64, err error) 
 		var currentUser pojo.SysUser
 		tx.Where("id = ?", awardUser.ID).First(&currentUser)
 		if awardUni.Amount < 0 && awardUser.Amount+awardUni.Amount < 0 {
-			err = errors.New(fmt.Sprintf("amount2 not enough.%.3f->%.3f", awardUser.Amount, awardUni.Amount)) // 余额不足
+			err = errors.New(utils.I18nMessage("amount_not_enough", map[string]interface{}{"amount": fmt.Sprintf("%.3f", awardUser.Amount), "required": fmt.Sprintf("%.3f", awardUni.Amount)})) // 余额不足
 			return result, err
 		}
 		cashHistory := pojo.CashHistory{
@@ -221,10 +221,10 @@ func ChangePass(db *gorm.DB, hostInfo pojo.HostInfo, currentUser pojo.SysUser, u
 	}
 	dbUser := utils.GetTempUser(hostInfo.TablePrefix, userAdd.ID)
 	if dbUser.ID == 0 {
-		return result, errors.New("操作的数据不存在")
+		return result, errors.New("operator_data_not_found")
 	}
 	if len(userAdd.Password) < 6 || len(userAdd.Password) > 18 {
-		return result, errors.New("密码长度必须在 6-18 位以内")
+		return result, errors.New("password_length_6_18")
 	}
 	dbUser.Password = utils.EncodePass(hostInfo.Salt, userAdd.Password)
 	err = db.Save(&dbUser).Error
@@ -238,7 +238,7 @@ func SetUser(db *gorm.DB, hostInfo pojo.HostInfo, userAdd pojo.UserAdd, currentU
 	if dbUser.ID == 0 {
 		db.Where("username = ?", userAdd.Username).First(&dbUser)
 		if dbUser.ID != 0 {
-			return result, errors.New("用户名重复")
+			return result, errors.New("username_duplicate")
 		}
 		_ = copier.Copy(&dbUser, &userAdd)
 		roleStr, _ := json.Marshal(userAdd.Roles)
@@ -249,7 +249,7 @@ func SetUser(db *gorm.DB, hostInfo pojo.HostInfo, userAdd pojo.UserAdd, currentU
 		err = db.Create(&dbUser).Error
 	} else {
 		if dbUser.Username != userAdd.Username {
-			return result, errors.New("用户名不可修改")
+			return result, errors.New("username_cannot_modify")
 		}
 		userAdd.Password = ""
 		_ = copier.Copy(&dbUser, userAdd)
@@ -308,17 +308,17 @@ func WhiteUserLogin(db *gorm.DB, hostInfo pojo.HostInfo, reqUserLogin pojo.UserL
 	dbUserStr, _ := json.Marshal(dbUser)
 	log.Printf("dbUser=%s", string(dbUserStr))
 	if dbUser.ID == 0 {
-		return data, errors.New("user login error")
+		return data, errors.New("user_login_error")
 	}
 	if !utils.CheckPasswordHash(reqUserLogin.Password, dbUser.Password, hostInfo.Salt) {
 		log.Printf("user login error.pass error userId = %d,pass=%s", dbUser.ID, reqUserLogin.Password)
-		return data, errors.New("user login error")
+		return data, errors.New("user_login_error")
 	}
 	if dbUser.UserType != 1 && dbUser.UserType != 2 && dbUser.UserType != 3 {
-		return data, errors.New("user error")
+		return data, errors.New("user_error")
 	}
 	if !dbUser.Enabled {
-		return data, errors.New("User account disabled")
+		return data, errors.New("user_disabled_contact_admin")
 	}
 	data = GetUserInfo(*dbUser)
 	token, err := utils.GetJwtToken(hostInfo.AccessSecret, hostInfo.AccessExpire, dbUser.Username, dbUser.ID, dbUser.UserType, hostInfo.HostName)
@@ -341,7 +341,7 @@ func UserLogin(db *gorm.DB, hostInfo pojo.HostInfo, reqUserLogin pojo.UserLogin,
 	dbUserStr, _ := json.Marshal(dbUser)
 	log.Printf("dbUser=%s", string(dbUserStr))
 	if dbUser.ID == 0 {
-		return data, errors.New("user login error")
+		return data, errors.New("user_login_error")
 	}
 	//needBind := false
 	if !utils.CsConfig.PassGoogleAuth {
@@ -360,7 +360,7 @@ func UserLogin(db *gorm.DB, hostInfo pojo.HostInfo, reqUserLogin pojo.UserLogin,
 			valid := totp.Validate(reqUserLogin.Code, dbUser.GoogleCode)
 			if !valid {
 				if dbUser.BindCode {
-					return data, errors.New("验证码错误")
+					return data, errors.New("code_incorrect")
 				}
 				//needBind = true
 			} else {
@@ -395,13 +395,13 @@ func UserLogin(db *gorm.DB, hostInfo pojo.HostInfo, reqUserLogin pojo.UserLogin,
 	//utils.EncodePass(hostInfo.Salt, reqUserLogin.Password)
 	if !utils.CheckPasswordHash(reqUserLogin.Password, dbUser.Password, hostInfo.Salt) {
 		log.Printf("user login error.pass error userId = %d,pass=%s", dbUser.ID, reqUserLogin.Password)
-		return data, errors.New("user login error")
+		return data, errors.New("user_login_error")
 	}
 	if dbUser.UserType != 1 && dbUser.UserType != 2 && dbUser.UserType != 3 {
-		return data, errors.New("user error")
+		return data, errors.New("user_error")
 	}
 	if !dbUser.Enabled {
-		return data, errors.New("User account disabled")
+		return data, errors.New("user_disabled_contact_admin")
 	}
 	data = GetUserInfo(*dbUser)
 	token, err := utils.GetJwtToken(hostInfo.AccessSecret, hostInfo.AccessExpire, dbUser.Username, dbUser.ID, dbUser.UserType, hostInfo.HostName)
@@ -432,7 +432,7 @@ func DelUsers(db *gorm.DB, ids []int64) (result string, err error) {
 	}
 	for _, user := range users {
 		if user.Username == "admin" {
-			return result, errors.New("admin用户不可删除")
+			return result, errors.New("admin_user_cannot_delete")
 		}
 	}
 	if err := db.Where("id IN ?", ids).Delete(&pojo.SysUser{}).Error; err != nil {
@@ -534,7 +534,7 @@ func ResetPwd(db *gorm.DB, salt string, newPassword string, userId int64) (err e
 	}
 
 	if result.RowsAffected == 0 {
-		return fmt.Errorf("no user found with id %d", userId)
+		return errors.New(utils.I18nMessage("user_not_found_with_id", map[string]interface{}{"userId": userId}))
 	}
 
 	return nil

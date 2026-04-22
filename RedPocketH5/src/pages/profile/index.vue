@@ -3,7 +3,7 @@ import { appUpload, claimVipReward, getClaimableVipRewards, getCurrentTgUserInfo
 import type { VipProgressInfo, VipRewardLog } from '@/api/user'
 import { showToast } from 'vant'
 import { clearToken, isLogin } from '@/utils/auth'
-import { locale } from '@/utils/i18n'
+import { languageOptions, locale } from '@/utils/i18n'
 import avatarPlaceholderIcon from '@/assets/my/question-circle.svg'
 import bankCardIcon from '@/assets/my/bank card.svg?raw'
 import chartBarAltIcon from '@/assets/my/chart-bar-alt.svg?raw'
@@ -275,20 +275,6 @@ const showLogoutDialog = ref(false)
 const logoutLoading = ref(false)
 const showLangPopup = ref(false)
 const router = useRouter()
-const languageOptions = [
-  {
-    code: 'CN',
-    value: 'zh-CN',
-    nativeTextKey: 'login.language.zhNative',
-    englishTextKey: 'login.language.zhEn',
-  },
-  {
-    code: 'US',
-    value: 'en-US',
-    nativeTextKey: 'login.language.enNative',
-    englishTextKey: 'login.language.enEn',
-  },
-]
 
 function openLogoutDialog() {
   showLogoutDialog.value = true

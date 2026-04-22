@@ -69,12 +69,12 @@ func SendRedPacketApp(ctx *gin.Context) {
 
 	userIDRaw, ok := ctx.Get("userId")
 	if !ok {
-		utils.UnauthorizedBack(ctx, "token is invalid")
+		utils.UnauthorizedBack(ctx, "token_invalid")
 		return
 	}
 	userID, ok := userIDRaw.(int64)
 	if !ok || userID <= 0 {
-		utils.UnauthorizedBack(ctx, "token is invalid")
+		utils.UnauthorizedBack(ctx, "token_invalid")
 		return
 	}
 
@@ -83,11 +83,11 @@ func SendRedPacketApp(ctx *gin.Context) {
 
 	var tgUser pojo.TgUser
 	if err := db.Where("id = ?", userID).First(&tgUser).Error; err != nil || tgUser.ID == 0 {
-		utils.ErrorBack(ctx, "用户不存在")
+		utils.ErrorBack(ctx, "user_not_found")
 		return
 	}
 	if tgUser.Status != 1 {
-		utils.ErrorBack(ctx, "用户已禁用，请联系管理员处理")
+		utils.ErrorBack(ctx, "user_disabled_contact_admin")
 		return
 	}
 
@@ -267,7 +267,7 @@ func GetRedPacketDetail(ctx *gin.Context) {
 	luckyID := int64(0)
 	_, err := fmt.Sscanf(luckyIDStr, "%d", &luckyID)
 	if err != nil || luckyID <= 0 {
-		utils.ErrorBack(ctx, "无效的红包ID")
+		utils.ErrorBack(ctx, "invalid_red_packet_id")
 		return
 	}
 
@@ -295,7 +295,7 @@ func GetRedPacketStatus(ctx *gin.Context) {
 	luckyID := int64(0)
 	_, err := fmt.Sscanf(luckyIDStr, "%d", &luckyID)
 	if err != nil || luckyID <= 0 {
-		utils.ErrorBack(ctx, "无效的红包ID")
+		utils.ErrorBack(ctx, "invalid_red_packet_id")
 		return
 	}
 
@@ -346,27 +346,27 @@ func CheckGrabBalance(ctx *gin.Context) {
 		return
 	}
 
-	utils.SuccessBack(ctx, "余额充足")
+	utils.SuccessBack(ctx, "balance_sufficient")
 }
 
 // GrabRedPacketApp app端抢红包（TG用户）
 func GrabRedPacketApp(ctx *gin.Context) {
 	authHeader := strings.TrimSpace(ctx.GetHeader("Authorization"))
 	if authHeader == "" {
-		utils.UnauthorizedBack(ctx, "Authorization header is missing")
+		utils.UnauthorizedBack(ctx, "auth_header_missing")
 		return
 	}
 	token := strings.TrimSpace(strings.TrimPrefix(authHeader, "Bearer "))
 	hostInfo := ctx.MustGet("hostInfo").(pojo.HostInfo)
 	userID, userType, _, _, err := utils.ParseToken(hostInfo.AccessSecret, token)
 	if err != nil || userID <= 0 || userType != 5 {
-		utils.UnauthorizedBack(ctx, "token is invalid")
+		utils.UnauthorizedBack(ctx, "token_invalid")
 		return
 	}
 	key := utils.KeyRdTgOnline + utils.MD5(token)
 	data := utils.RD.Get(context.Background(), key)
 	if data == nil || data.Err() != nil || data.Val() == "" {
-		utils.UnauthorizedBack(ctx, "token is passed")
+		utils.UnauthorizedBack(ctx, "token_pass")
 		return
 	}
 
@@ -379,7 +379,7 @@ func GrabRedPacketApp(ctx *gin.Context) {
 	if req.GrabIndex != nil {
 		grabIndex = *req.GrabIndex
 		if grabIndex <= 0 {
-			utils.ErrorBack(ctx, "grabIndex must be greater than 0")
+			utils.ErrorBack(ctx, "grab_index_positive")
 			return
 		}
 	}
@@ -388,6 +388,9 @@ func GrabRedPacketApp(ctx *gin.Context) {
 	if err != nil {
 		utils.ErrorBack(ctx, err.Error())
 		return
+	}
+	if message, ok := result["message"].(string); ok && message != "" {
+		result["message"] = utils.TranslateMessage(ctx, message)
 	}
 
 	_ = services.BroadcastLuckyGrabResult(db, req.LuckyID, result)

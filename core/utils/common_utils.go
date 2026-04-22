@@ -45,7 +45,7 @@ func InWhiteIps(ip string) (result bool) {
 }
 
 func EncErrorBack(ctx *gin.Context, msg string) {
-	message := I18nUtil.Translate(ctx, msg, nil)
+	message := TranslateMessage(ctx, msg)
 	data := pojo.EncBackData{Message: message}
 	dataStr, _ := json.Marshal(data)
 	result, _ := DesEncrypt("c5ede42c", string(dataStr))
@@ -69,7 +69,7 @@ func IsValidAndroidId(id string) bool {
 }
 
 func ErrorBack(ctx *gin.Context, msg string) {
-	msg = I18nUtil.Translate(ctx, msg, nil)
+	msg = TranslateMessage(ctx, msg)
 	ctx.JSON(http.StatusBadRequest, pojo.BaseResponse{
 		Message: msg,
 		Code:    500,
@@ -78,7 +78,7 @@ func ErrorBack(ctx *gin.Context, msg string) {
 }
 
 func ErrorObjBack(ctx *gin.Context, data interface{}, msg string) {
-	msg = I18nUtil.Translate(ctx, msg, nil)
+	msg = TranslateMessage(ctx, msg)
 	ctx.JSON(http.StatusBadRequest, pojo.BaseResponse{
 		Message: msg,
 		Data:    data,
@@ -88,7 +88,7 @@ func ErrorObjBack(ctx *gin.Context, data interface{}, msg string) {
 }
 
 func ErrorMsgBack(ctx *gin.Context, msg string) {
-	msg = I18nUtil.Translate(ctx, msg, nil)
+	msg = TranslateMessage(ctx, msg)
 	ctx.JSON(http.StatusOK, pojo.BaseResponse{
 		Message: msg,
 		Code:    500,
@@ -97,7 +97,7 @@ func ErrorMsgBack(ctx *gin.Context, msg string) {
 }
 
 func SuccessBack(ctx *gin.Context, msg string) {
-	msg = I18nUtil.Translate(ctx, msg, nil)
+	msg = TranslateMessage(ctx, msg)
 	ctx.JSON(http.StatusOK, pojo.BaseResponse{
 		Message: msg,
 		Code:    200,
@@ -115,7 +115,7 @@ func SuccessObjBack(ctx *gin.Context, data interface{}) {
 }
 
 func UnauthorizedBack(ctx *gin.Context, msg string) {
-	msg = I18nUtil.Translate(ctx, msg, nil)
+	msg = TranslateMessage(ctx, msg)
 	ctx.JSON(http.StatusUnauthorized, pojo.BaseResponse{
 		Message: msg,
 		Code:    400,

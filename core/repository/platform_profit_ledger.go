@@ -65,7 +65,7 @@ func SetPlatformProfitLedger(db *gorm.DB, req pojo.PlatformProfitLedgerSet) (res
 	if req.ID > 0 {
 		db.Where("id = ?", req.ID).First(&entity)
 		if entity.ID == 0 {
-			return result, errors.New("更新的数据不存在")
+			return result, errors.New("record_not_found_update")
 		}
 		_ = copier.Copy(&entity, &req)
 		err = db.Save(&entity).Error
@@ -87,7 +87,7 @@ func DelPlatformProfitLedger(db *gorm.DB, id int64) (result string, err error) {
 	var entity pojo.PlatformProfitLedger
 	db.Where("id = ?", id).First(&entity)
 	if entity.ID == 0 {
-		return result, errors.New("删除的数据不存在")
+		return result, errors.New("record_not_found_delete")
 	}
 	err = db.Delete(&entity).Error
 	if err != nil {
@@ -101,7 +101,7 @@ func GetPlatformProfitLedgerById(db *gorm.DB, id int64) (result pojo.PlatformPro
 	var entity pojo.PlatformProfitLedger
 	db.Where("id = ?", id).First(&entity)
 	if entity.ID == 0 {
-		return result, errors.New("数据不存在")
+		return result, errors.New("record_not_found")
 	}
 	_ = copier.Copy(&result, &entity)
 	return result, nil

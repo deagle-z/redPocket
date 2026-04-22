@@ -13,7 +13,7 @@ func DelMenu(db *gorm.DB, currentUser pojo.SysUser, id string) (result string, e
 	var dbMenu pojo.SysMenu
 	db.Where("id = ?", id).Find(&dbMenu)
 	if dbMenu.ID == 0 {
-		return result, errors.New("删除的菜单不存在")
+		return result, errors.New("menu_not_found_delete")
 	}
 	_ = json.Unmarshal([]byte(currentUser.RoleStr), &currentUser.Roles)
 	var roles []pojo.SysRole
@@ -30,7 +30,7 @@ func DelMenu(db *gorm.DB, currentUser pojo.SysUser, id string) (result string, e
 		}
 	}
 	if !haveRole {
-		return result, errors.New("没有删除该菜单的权限")
+		return result, errors.New("menu_delete_permission_denied")
 	}
 	db.Delete(&dbMenu)
 	return "success", nil
@@ -41,7 +41,7 @@ func SetMenus(db *gorm.DB, menuSet pojo.MenuSet) (result string, err error) {
 	if menuSet.ID > 0 {
 		db.Where("id = ?", menuSet.ID).Find(&dbMenu)
 		if dbMenu.ID == 0 {
-			return result, errors.New("更新的菜单不存在")
+			return result, errors.New("menu_not_found_update")
 		}
 		_ = copier.Copy(&dbMenu, menuSet)
 		_ = copier.Copy(&dbMenu.Meta, menuSet)

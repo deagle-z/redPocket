@@ -55,7 +55,7 @@ func SetSysSourceChannel(db *gorm.DB, req pojo.SysSourceChannelSet) (result pojo
 	if req.ID > 0 {
 		db.Where("id = ?", req.ID).First(&entity)
 		if entity.ID == 0 {
-			return result, errors.New("更新的数据不存在")
+			return result, errors.New("record_not_found_update")
 		}
 		req.ChannelCode = entity.ChannelCode
 		_ = copier.Copy(&entity, &req)
@@ -87,7 +87,7 @@ func generateUniqueSourceChannelCode(db *gorm.DB) (string, error) {
 			return code, nil
 		}
 	}
-	return "", errors.New("生成渠道编码失败，请重试")
+	return "", errors.New("source_channel_code_generate_failed")
 }
 
 // DelSysSourceChannel 删除投流来源渠道
@@ -95,7 +95,7 @@ func DelSysSourceChannel(db *gorm.DB, id int64) (result string, err error) {
 	var entity pojo.SysSourceChannel
 	db.Where("id = ?", id).First(&entity)
 	if entity.ID == 0 {
-		return result, errors.New("删除的数据不存在")
+		return result, errors.New("record_not_found_delete")
 	}
 	err = db.Delete(&entity).Error
 	if err != nil {
@@ -109,7 +109,7 @@ func GetSysSourceChannelById(db *gorm.DB, id int64) (result pojo.SysSourceChanne
 	var entity pojo.SysSourceChannel
 	db.Where("id = ?", id).First(&entity)
 	if entity.ID == 0 {
-		return result, errors.New("数据不存在")
+		return result, errors.New("record_not_found")
 	}
 	_ = copier.Copy(&result, &entity)
 	return result, nil

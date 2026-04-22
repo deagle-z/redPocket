@@ -13,34 +13,106 @@ import {
   getRechargeIsFirst,
 } from '@/api/user'
 import AppPageHeader from '@/components/AppPageHeader.vue'
+import { useUserStore } from '@/stores'
 import { formatCurrency } from '@/utils/currency'
 
 const { t } = useI18n()
 const router = useRouter()
+const userStore = useUserStore()
 
 const balance = ref(0)
+const currentUserCountry = ref('')
+const hideCountrySelector = ref(false)
 
 // 促销活动
 // promoChoice: '' = 不参加, 'first' = 首充, 'today_first' = 今日首充
 const hasFirst = ref(false)
 const hasTodayFirst = ref(false)
-const firstRechargeGift = ref('')
+const firstRechargeGiftConfig = ref('')
 const todayFirstRechargeGift = ref('')
 const promoChoice = ref<'' | 'first' | 'today_first'>('')
 
 const showPromo = computed(() => hasFirst.value || hasTodayFirst.value)
 
+function parseFirstRechargeGiftConfig(raw: string) {
+  const text = raw.trim()
+  if (!text)
+    return null
+
+  const normalizedText = text
+    .replaceAll('（', '(')
+    .replaceAll('）', ')')
+    .replaceAll('｜', '|')
+    .replaceAll('％', '%')
+    .replace(/\s+/g, '')
+
+  const match = normalizedText.match(/(\d+(?:\.\d+)?)%?\((\d+)\|(\d+)\|(\d+)\)/)
+  if (!match) {
+    const rateMatch = normalizedText.match(/(\d+(?:\.\d+)?)/)
+    const rate = Number(rateMatch?.[1] ?? '')
+    if (!rate)
+      return null
+    return { rate, ratios: [3, 3, 4], ratioBase: 10 }
+  }
+
+  const rate = Number(match[1])
+  const ratios = [Number(match[2]), Number(match[3]), Number(match[4])]
+  const ratioSum = ratios.reduce((sum, item) => sum + item, 0)
+  if (!rate || ratios.some(item => !item) || ![10, 100].includes(ratioSum))
+    return null
+  return { rate, ratios, ratioBase: ratioSum }
+}
+
+function formatPercent(value: number) {
+  if (!Number.isFinite(value))
+    return '0'
+  return Number(value.toFixed(2)).toString()
+}
+
+const firstRechargeGiftView = computed(() => {
+  const parsed = parseFirstRechargeGiftConfig(firstRechargeGiftConfig.value)
+  if (!parsed)
+    return {
+      badge: '',
+      desc: t('rechargePage.firstRechargeDesc'),
+      detail: '',
+    }
+
+  const firstDayRate = (parsed.rate * parsed.ratios[0]) / parsed.ratioBase
+  return {
+    badge: `+${formatPercent(parsed.rate)}%`,
+    desc: t('rechargePage.firstRechargeInstallmentDesc', {
+      rate: formatPercent(parsed.rate),
+      days: parsed.ratios.length,
+    }),
+    detail: t('rechargePage.firstRechargeInstallmentDetail', {
+      firstDayRate: formatPercent(firstDayRate),
+      firstDayRatio: parsed.ratios[0],
+    }),
+  }
+})
+
 async function loadFirstRechargeStatus() {
   try {
-    const [isFirstRes, giftRes, todayGiftRes] = await Promise.all([
+    const [isFirstRes, giftConfigRes, todayGiftRes] = await Promise.allSettled([
       getRechargeIsFirst(),
-      getAppConfig('first_recharge_gift'),
+      getAppConfig('first_recharge_gift_config'),
       getAppConfig('today_first_recharge_gift'),
     ])
-    hasFirst.value = isFirstRes.data?.hasFirst ?? false
-    hasTodayFirst.value = isFirstRes.data?.hasTodayFirst ?? false
-    firstRechargeGift.value = giftRes.data?.configValue ?? ''
-    todayFirstRechargeGift.value = todayGiftRes.data?.configValue ?? ''
+
+    if (isFirstRes.status === 'fulfilled') {
+      hasFirst.value = isFirstRes.value.data?.hasFirst ?? false
+      hasTodayFirst.value = isFirstRes.value.data?.hasTodayFirst ?? false
+    }
+
+    const newGiftConfig = giftConfigRes.status === 'fulfilled'
+      ? giftConfigRes.value.data?.configValue ?? ''
+      : ''
+    firstRechargeGiftConfig.value = newGiftConfig
+    todayFirstRechargeGift.value = todayGiftRes.status === 'fulfilled'
+      ? todayGiftRes.value.data?.configValue ?? ''
+      : ''
+
     if (hasFirst.value)
       promoChoice.value = 'first'
     else if (hasTodayFirst.value)
@@ -153,9 +225,11 @@ async function loadBalance() {
   try {
     const { data } = await getCurrentTgUserInfo()
     balance.value = Number(data?.balance ?? 0)
+    currentUserCountry.value = String(data?.country || '').trim()
   }
   catch {
     balance.value = 0
+    currentUserCountry.value = String(userStore.userInfo?.country || '').trim()
   }
 }
 
@@ -197,17 +271,30 @@ async function handleSelectCountry(country: AppCountryItem) {
 }
 
 async function loadCountries() {
+  hideCountrySelector.value = false
   try {
     const { data } = await getAppCountries()
     countries.value = data ?? []
     if (countries.value.length) {
-      selectedCountry.value = countries.value[0]
-      await loadRechargeInfo(countries.value[0].countryCode)
+      const normalizedUserCountry = currentUserCountry.value.toUpperCase()
+      const matchedCountry = normalizedUserCountry
+        ? countries.value.find(item => item.countryCode.toUpperCase() === normalizedUserCountry) ?? null
+        : null
+      selectedCountry.value = matchedCountry ?? countries.value[0]
+      hideCountrySelector.value = !!matchedCountry
+      await loadRechargeInfo(selectedCountry.value.countryCode)
     }
   }
   catch {
     countries.value = []
+    hideCountrySelector.value = false
   }
+}
+
+async function initPage() {
+  await loadBalance()
+  await loadCountries()
+  void loadFirstRechargeStatus()
 }
 
 async function handleSubmitRecharge() {
@@ -245,7 +332,7 @@ async function handleSubmitRecharge() {
       currency: selectedCountry.value?.currencyCode,
       countryCode: selectedCountry.value?.countryCode ?? '',
       extraFields: rechargeFields.value.length ? { ...fieldValues.value } : undefined,
-      isFirst: promoChoice.value !== '' ? 1 : 0,
+      activityType: promoChoice.value === 'first' ? 1 : promoChoice.value === 'today_first' ? 2 : 0,
     })
 
     if (data?.payUrl) {
@@ -271,9 +358,7 @@ async function handleSubmitRecharge() {
 }
 
 onMounted(() => {
-  loadBalance()
-  loadCountries()
-  loadFirstRechargeStatus()
+  void initPage()
 })
 </script>
 
@@ -286,7 +371,7 @@ onMounted(() => {
     </AppPageHeader>
 
     <!-- 国家选择行 -->
-    <div class="country-bar">
+    <div v-if="!hideCountrySelector" class="country-bar">
       <div class="country-scroll">
         <button
           v-for="country in countries" :key="country.countryCode" type="button" class="country-pill"
@@ -436,9 +521,10 @@ onMounted(() => {
           <div class="promo-body">
             <div class="promo-header-row">
               <span class="promo-name">{{ t('rechargePage.firstRechargeTitle') }}</span>
-              <span v-if="firstRechargeGift" class="promo-badge">+{{ firstRechargeGift }}%</span>
+              <span v-if="firstRechargeGiftView.badge" class="promo-badge">{{ firstRechargeGiftView.badge }}</span>
             </div>
-            <p class="promo-desc">{{ t('rechargePage.firstRechargeDesc') }}</p>
+            <p class="promo-desc">{{ firstRechargeGiftView.desc }}</p>
+            <p v-if="firstRechargeGiftView.detail" class="promo-desc promo-desc--sub">{{ firstRechargeGiftView.detail }}</p>
           </div>
         </button>
 
@@ -532,6 +618,10 @@ onMounted(() => {
   overflow-x: auto;
   padding-bottom: 4px;
   scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  touch-action: pan-x;
+  scroll-snap-type: x proximity;
 }
 
 .country-scroll::-webkit-scrollbar {
@@ -551,6 +641,7 @@ onMounted(() => {
   font-size: 13px;
   white-space: nowrap;
   transition: all 0.15s;
+  scroll-snap-align: start;
 }
 
 .country-pill.active {
@@ -908,6 +999,11 @@ onMounted(() => {
   font-size: 12px;
   color: rgba(255, 229, 186, 0.55);
   line-height: 1.4;
+}
+
+.promo-desc--sub {
+  margin-top: 4px;
+  color: rgba(255, 229, 186, 0.72);
 }
 
 .local-amount-hint {

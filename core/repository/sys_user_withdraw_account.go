@@ -45,7 +45,7 @@ func GetSysUserWithdrawAccountById(db *gorm.DB, id int64) (result pojo.SysUserWi
 	var entity pojo.SysUserWithdrawAccount
 	db.Where("id = ?", id).First(&entity)
 	if entity.ID == 0 {
-		return result, errors.New("数据不存在")
+		return result, errors.New("record_not_found")
 	}
 	_ = copier.Copy(&result, &entity)
 	return result, nil
@@ -57,7 +57,7 @@ func AdminSetSysUserWithdrawAccount(db *gorm.DB, req pojo.SysUserWithdrawAccount
 	if req.ID > 0 {
 		db.Where("id = ?", req.ID).First(&entity)
 		if entity.ID == 0 {
-			return result, errors.New("更新的数据不存在")
+			return result, errors.New("record_not_found_update")
 		}
 		_ = copier.Copy(&entity, &req)
 		err = db.Save(&entity).Error
@@ -85,7 +85,7 @@ func AdminDelSysUserWithdrawAccount(db *gorm.DB, id int64) (result string, err e
 	var entity pojo.SysUserWithdrawAccount
 	db.Where("id = ?", id).First(&entity)
 	if entity.ID == 0 {
-		return result, errors.New("删除的数据不存在")
+		return result, errors.New("record_not_found_delete")
 	}
 	err = db.Delete(&entity).Error
 	if err != nil {
@@ -138,7 +138,7 @@ func AppUpdateWithdrawAccount(db *gorm.DB, id, userID int64, req pojo.SysUserWit
 	var entity pojo.SysUserWithdrawAccount
 	db.Where("id = ? AND user_id = ? AND status = 1", id, userID).First(&entity)
 	if entity.ID == 0 {
-		return result, errors.New("账户不存在")
+		return result, errors.New("account_not_found")
 	}
 	entity.AccountData = req.AccountData
 	if req.Remark != nil {
@@ -157,7 +157,7 @@ func AppDelWithdrawAccount(db *gorm.DB, id, userID int64) (result string, err er
 	var entity pojo.SysUserWithdrawAccount
 	db.Where("id = ? AND user_id = ?", id, userID).First(&entity)
 	if entity.ID == 0 {
-		return result, errors.New("账户不存在")
+		return result, errors.New("account_not_found")
 	}
 	err = db.Delete(&entity).Error
 	if err != nil {
@@ -179,7 +179,7 @@ func AppSetDefaultWithdrawAccount(db *gorm.DB, id, userID int64) (result string,
 	var entity pojo.SysUserWithdrawAccount
 	db.Where("id = ? AND user_id = ? AND status = 1", id, userID).First(&entity)
 	if entity.ID == 0 {
-		return result, errors.New("账户不存在")
+		return result, errors.New("account_not_found")
 	}
 	// 清除旧默认，设置新默认
 	err = db.Transaction(func(tx *gorm.DB) error {

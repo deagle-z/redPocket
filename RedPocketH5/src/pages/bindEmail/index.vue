@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router'
 import { showToast } from 'vant'
 import { bindCurrentTgEmail, getCurrentTgUserInfo } from '@/api/user'
 import { useUserStore } from '@/stores'
-import { locale } from '@/utils/i18n'
+import { languageOptions, locale } from '@/utils/i18n'
 import AppPageHeader from '@/components/AppPageHeader.vue'
 import languageIcon from '@/assets/svg/language.svg'
 
@@ -22,21 +22,6 @@ const formData = reactive({
   email: '',
   code: '',
 })
-
-const languageOptions = [
-  {
-    code: 'CN',
-    value: 'zh-CN',
-    nativeTextKey: 'login.language.zhNative',
-    englishTextKey: 'login.language.zhEn',
-  },
-  {
-    code: 'US',
-    value: 'en-US',
-    nativeTextKey: 'login.language.enNative',
-    englishTextKey: 'login.language.enEn',
-  },
-]
 
 let timer: ReturnType<typeof setInterval> | null = null
 

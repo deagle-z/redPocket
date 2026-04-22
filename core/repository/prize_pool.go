@@ -3,9 +3,11 @@ package repository
 import (
 	"BaseGoUni/core/pojo"
 	"BaseGoUni/core/utils"
+	"errors"
 	"fmt"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
+	"strings"
 	"sync"
 	"time"
 )
@@ -21,6 +23,91 @@ func GetPrizePoolBalance(db *gorm.DB, poolCode string) (float64, error) {
 		return 0, err
 	}
 	return pool.Balance, nil
+}
+
+// GetPrizePoolByCode 查询指定奖池，不存在则自动创建默认记录。
+func GetPrizePoolByCode(db *gorm.DB, poolCode string) (pojo.SysTenantPrizePool, error) {
+	poolCode = strings.TrimSpace(poolCode)
+	if poolCode == "" {
+		return pojo.SysTenantPrizePool{}, errors.New("pool_code_required")
+	}
+
+	var pool pojo.SysTenantPrizePool
+	err := db.Where("pool_code = ?", poolCode).First(&pool).Error
+	if err == nil && pool.ID > 0 {
+		return pool, nil
+	}
+	if err != nil && err != gorm.ErrRecordNotFound {
+		return pojo.SysTenantPrizePool{}, err
+	}
+
+	pool = pojo.SysTenantPrizePool{
+		PoolCode: poolCode,
+		PoolName: poolCode,
+		Currency: "USD",
+		Status:   1,
+	}
+	if err = db.Create(&pool).Error; err != nil {
+		return pojo.SysTenantPrizePool{}, err
+	}
+	return pool, nil
+}
+
+// SetPrizePoolBalance 直接设置奖池余额，并记录一条流水。
+func SetPrizePoolBalance(db *gorm.DB, req pojo.SysTenantPrizePoolBalanceSet) (pojo.SysTenantPrizePool, error) {
+	poolCode := strings.TrimSpace(req.PoolCode)
+	if poolCode == "" {
+		return pojo.SysTenantPrizePool{}, errors.New("pool_code_required")
+	}
+	if req.Balance < 0 {
+		return pojo.SysTenantPrizePool{}, errors.New("pool_balance_non_negative")
+	}
+
+	var result pojo.SysTenantPrizePool
+	err := db.Transaction(func(tx *gorm.DB) error {
+		pool, err := GetPrizePoolByCode(tx, poolCode)
+		if err != nil {
+			return err
+		}
+
+		beforeBalance := pool.Balance
+		afterBalance := req.Balance
+		changeAmount := afterBalance - beforeBalance
+		changeType := pojo.PrizePoolChangeTypeIn
+		if changeAmount < 0 {
+			changeType = pojo.PrizePoolChangeTypeOut
+		}
+
+		if err = tx.Model(&pojo.SysTenantPrizePool{}).
+			Where("id = ?", pool.ID).
+			Update("balance", afterBalance).Error; err != nil {
+			return err
+		}
+
+		record := pojo.SysTenantPrizePoolRecord{
+			TenantId:      pool.TenantId,
+			PoolId:        pool.ID,
+			ChangeType:    changeType,
+			Amount:        changeAmount,
+			BeforeBalance: beforeBalance,
+			AfterBalance:  afterBalance,
+			Remark:        req.Remark,
+		}
+		if err = tx.Create(&record).Error; err != nil {
+			return err
+		}
+
+		if err = tx.Where("id = ?", pool.ID).First(&result).Error; err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		return pojo.SysTenantPrizePool{}, err
+	}
+
+	go broadcastPrizePoolThrottled(result.TenantId, result.PoolCode, result.Balance)
+	return result, nil
 }
 
 // prizePoolThrottle 节流控制：key = "tenantId:poolCode"，value = 上次推送时间

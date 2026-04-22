@@ -52,11 +52,11 @@ type VerifyCodeTaskData struct {
 func SendWithdrawalTask(ctx *gin.Context) {
 	var req WithdrawalTaskReq
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		utils.ErrorBack(ctx, "参数格式错误")
+		utils.ErrorBack(ctx, "invalid_params")
 		return
 	}
 	if len(req.DeviceIDs) == 0 {
-		utils.ErrorBack(ctx, "deviceIds不能为空")
+		utils.ErrorBack(ctx, "device_ids_required")
 		return
 	}
 	task := WithdrawalTaskData{
@@ -83,15 +83,15 @@ func SendWithdrawalTask(ctx *gin.Context) {
 func SendVerifyCodeTask(ctx *gin.Context) {
 	var req VerifyCodeTaskReq
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		utils.ErrorBack(ctx, "参数格式错误")
+		utils.ErrorBack(ctx, "invalid_params")
 		return
 	}
 	if len(req.DeviceIDs) == 0 {
-		utils.ErrorBack(ctx, "deviceIds不能为空")
+		utils.ErrorBack(ctx, "device_ids_required")
 		return
 	}
 	if req.Code == "" {
-		utils.ErrorBack(ctx, "验证码不能为空")
+		utils.ErrorBack(ctx, "verify_code_required")
 		return
 	}
 	task := VerifyCodeTaskData{

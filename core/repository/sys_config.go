@@ -14,7 +14,7 @@ func GetSysConfigByKey(db *gorm.DB, key string) (result pojo.SysConfigBack, err 
 	var entity pojo.SysConfig
 	db.Where("config_key = ?", key).First(&entity)
 	if entity.ID == 0 {
-		return result, errors.New("配置不存在")
+		return result, errors.New("config_not_found")
 	}
 	_ = copier.Copy(&result, &entity)
 	return result, nil
@@ -52,20 +52,20 @@ func SetSysConfig(db *gorm.DB, req pojo.SysConfigSet) (result pojo.SysConfigBack
 	req.ConfigValue = strings.TrimSpace(req.ConfigValue)
 	req.ConfigDesc = strings.TrimSpace(req.ConfigDesc)
 	if req.ConfigKey == "" {
-		return result, errors.New("配置Key不能为空")
+		return result, errors.New("config_key_required")
 	}
 
 	var entity pojo.SysConfig
 	if req.ID > 0 {
 		db.Where("id = ?", req.ID).First(&entity)
 		if entity.ID == 0 {
-			return result, errors.New("更新的数据不存在")
+			return result, errors.New("record_not_found_update")
 		}
 	} else {
 		var exist pojo.SysConfig
 		db.Where("config_key = ?", req.ConfigKey).First(&exist)
 		if exist.ID > 0 {
-			return result, errors.New("配置Key已存在")
+			return result, errors.New("config_key_exists")
 		}
 	}
 
@@ -87,7 +87,7 @@ func DelSysConfig(db *gorm.DB, id int64) error {
 	var entity pojo.SysConfig
 	db.Where("id = ?", id).First(&entity)
 	if entity.ID == 0 {
-		return errors.New("删除的数据不存在")
+		return errors.New("record_not_found_delete")
 	}
 	return db.Delete(&entity).Error
 }

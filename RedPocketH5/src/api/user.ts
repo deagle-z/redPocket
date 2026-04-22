@@ -9,7 +9,6 @@ export interface ApiResult<T> {
 
 export interface LoginData {
   phone: string
-  country: string
   password: string
 }
 
@@ -44,15 +43,33 @@ export interface TgAuthLoginRes {
 export interface TgCurrentUserInfo {
   avatar?: string
   balance?: number
+  country?: string
   uid?: string
   username?: string
   email?: string
+  phone?: string
   tg_id?: number
   gift_amount?: number
   rebate_amount?: number
   vip_level?: number | null
   vip_level_name?: string | null
   audioOpen?: 0 | 1
+}
+
+export interface TgWithdrawSummary {
+  balance: number
+  withdrawableAmount: number
+  nonWithdrawableAmount: number
+  unrestrictedAmount: number
+  giftRestrictedAmount: number
+  rechargeRestrictedAmount: number
+  withdrawableGiftAmount: number
+  withdrawableRechargeAmount: number
+  availableFlow: number
+  giftFlowConsumed: number
+  rechargeFlowConsumed: number
+  giftLimitMultiplier: number
+  rechargeLimitMultiplier: number
 }
 
 export interface VipLevelSimple {
@@ -106,6 +123,7 @@ export interface UserState {
   uid?: number
   name?: string
   avatar?: string
+  country?: string
 }
 
 export interface RechargeOrderAppReq {
@@ -116,7 +134,7 @@ export interface RechargeOrderAppReq {
   countryCode?: string
   merchantOrderNo?: string
   extraFields?: Record<string, string>
-  isFirst?: 0 | 1
+  activityType?: 0 | 1 | 2
 }
 
 export function getRechargeIsFirst() {
@@ -281,6 +299,26 @@ export interface LuckyRecentWinnerItem {
   timeText: string
 }
 
+export interface LuckyHistoryUserFlowReq {
+  currentPage: number
+  pageSize: number
+  luckyId?: number
+}
+
+export interface LuckyHistoryUserFlowItem {
+  userId: number
+  avatar?: string | null
+  firstName: string
+  flowAmount: number
+}
+
+export interface LuckyHistoryUserFlowResp {
+  list: LuckyHistoryUserFlowItem[]
+  total?: number
+  pageSize?: number
+  currentPage?: number
+}
+
 export interface LuckyAppHistoryReq {
   currentPage: number
   pageSize: number
@@ -354,7 +392,7 @@ export function tgLogin(data: TgAuthLoginData) {
 }
 
 export function loginByPhone(data: LoginData) {
-  return request.post<ApiResult<LoginRes>>('/api/v1/app/tg/loginByPhone', data)
+  return request.post<ApiResult<LoginRes>>('/api/v1/app/tg/phoneLogin', data)
 }
 
 export function logout() {
@@ -368,7 +406,7 @@ export function getUserInfo() {
 export interface RegisterData {
   phone: string
   country: string
-  code: string
+  code?: string
   password: string
   sourceChannelCode?: string
 }
@@ -402,6 +440,10 @@ export function forgotPasswordByPhone(data: ForgotPasswordData): Promise<any> {
 
 export function getCurrentTgUserInfo() {
   return request.get<ApiResult<TgCurrentUserInfo>>('/api/v1/app/tg/currentUserInfo')
+}
+
+export function getCurrentTgWithdrawSummary() {
+  return request.get<ApiResult<TgWithdrawSummary>>('/api/v1/app/tg/withdrawSummary')
 }
 
 export function getVipProgress() {
@@ -485,6 +527,10 @@ export function getLuckyRecentWinners(data: LuckyRecentWinnerReq = {}) {
   return request.post<ApiResult<LuckyRecentWinnerItem[]>>('/api/v1/app/lucky/recentWinners', data)
 }
 
+export function getLuckyHistoryUserFlow(data: LuckyHistoryUserFlowReq) {
+  return request.post<ApiResult<LuckyHistoryUserFlowResp>>('/api/v1/admin/lucky/historyUserFlow', data)
+}
+
 export function getLuckyAppHistory(data: LuckyAppHistoryReq) {
   return request.post<ApiResult<LuckyAppHistoryResp>>('/api/v1/app/lucky/history', data)
 }
@@ -531,7 +577,7 @@ export function register(data: RegisterData): Promise<any> {
   return request.post('/api/v1/app/tg/registerByPhone', {
     phone: data.phone,
     country: data.country,
-    code: data.code,
+    ...(data.code ? { code: data.code } : {}),
     password: data.password,
     sourceChannelCode: data.sourceChannelCode || '',
   })

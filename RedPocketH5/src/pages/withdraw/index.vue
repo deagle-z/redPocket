@@ -6,18 +6,25 @@ import type { AppCountryItem, CreateWithdrawOrderReq, RechargeField, RechargeFie
 import {
   createWithdrawOrder,
   getAppCountries,
+  getCurrentTgWithdrawSummary,
   getCountryWithdrawFields,
   getCurrentTgUserInfo,
   getWithdrawAccounts,
 } from '@/api/user'
 import AppPageHeader from '@/components/AppPageHeader.vue'
+import { useUserStore } from '@/stores'
 import { formatCurrency } from '@/utils/currency'
 
 const { t } = useI18n()
 const router = useRouter()
+const userStore = useUserStore()
 
 const balance = ref(0)
 const frozen = ref(0)
+const withdrawableAmount = ref(0)
+const nonWithdrawableAmount = ref(0)
+const currentUserCountry = ref('')
+const hideCountrySelector = ref(false)
 
 // 国家列表
 const countries = ref<AppCountryItem[]>([])
@@ -124,13 +131,31 @@ function parseAccountData(raw: string): Record<string, string> {
 }
 
 async function loadBalance() {
-  try {
-    const { data } = await getCurrentTgUserInfo()
+  const [userInfoRes, withdrawSummaryRes] = await Promise.allSettled([
+    getCurrentTgUserInfo(),
+    getCurrentTgWithdrawSummary(),
+  ])
+
+  if (userInfoRes.status === 'fulfilled') {
+    const { data } = userInfoRes.value
     balance.value = Number(data?.balance ?? 0)
     frozen.value = Number((data as any)?.frozen ?? 0)
+    currentUserCountry.value = String(data?.country || '').trim()
   }
-  catch {
+  else {
     balance.value = 0
+    currentUserCountry.value = String(userStore.userInfo?.country || '').trim()
+  }
+
+  if (withdrawSummaryRes.status === 'fulfilled') {
+    const { data } = withdrawSummaryRes.value
+    balance.value = Number(data?.balance ?? balance.value)
+    withdrawableAmount.value = Number(data?.withdrawableAmount ?? 0)
+    nonWithdrawableAmount.value = Number(data?.nonWithdrawableAmount ?? 0)
+  }
+  else {
+    withdrawableAmount.value = 0
+    nonWithdrawableAmount.value = 0
   }
 }
 
@@ -191,13 +216,19 @@ async function handleSelectCountry(country: AppCountryItem) {
 
 async function loadCountries() {
   countriesLoading.value = true
+  hideCountrySelector.value = false
   try {
     const { data } = await getAppCountries()
     countries.value = data ?? []
     if (countries.value.length) {
-      selectedCountry.value = countries.value[0]
-      await loadWithdrawFields(countries.value[0].countryCode)
-      await loadBoundAccount(countries.value[0].countryCode)
+      const normalizedUserCountry = currentUserCountry.value.toUpperCase()
+      const matchedCountry = normalizedUserCountry
+        ? countries.value.find(item => item.countryCode.toUpperCase() === normalizedUserCountry) ?? null
+        : null
+      selectedCountry.value = matchedCountry ?? countries.value[0]
+      hideCountrySelector.value = !!matchedCountry
+      await loadWithdrawFields(selectedCountry.value.countryCode)
+      await loadBoundAccount(selectedCountry.value.countryCode)
     }
   }
   catch {
@@ -206,6 +237,11 @@ async function loadCountries() {
   finally {
     countriesLoading.value = false
   }
+}
+
+async function initPage() {
+  await loadBalance()
+  await loadCountries()
 }
 
 async function handleSubmitWithdraw() {
@@ -254,8 +290,7 @@ async function handleSubmitWithdraw() {
 }
 
 onMounted(() => {
-  loadBalance()
-  loadCountries()
+  void initPage()
 })
 </script>
 
@@ -283,7 +318,7 @@ onMounted(() => {
     </section>
 
     <!-- 国家选择行 -->
-    <div class="country-bar">
+    <div v-if="!hideCountrySelector" class="country-bar">
       <div class="country-scroll">
         <button
           v-for="country in countries" :key="country.countryCode" type="button" class="country-pill"
@@ -333,6 +368,26 @@ onMounted(() => {
           </div>
           <div class="balance-amount">
             <CoinAmount :text="formatCurrency(balance)" />
+          </div>
+        </div>
+        <div class="balance-row">
+          <div>
+            <p class="row-title">
+              {{ t('withdrawPage.withdrawableAmount') }}
+            </p>
+          </div>
+          <div class="row-right">
+            <CoinAmount :text="formatCurrency(withdrawableAmount)" />
+          </div>
+        </div>
+        <div class="balance-row">
+          <div>
+            <p class="row-title">
+              {{ t('withdrawPage.nonWithdrawableAmount') }}
+            </p>
+          </div>
+          <div class="row-right">
+            <CoinAmount :text="formatCurrency(nonWithdrawableAmount)" />
           </div>
         </div>
         <div class="balance-row">
@@ -536,6 +591,10 @@ onMounted(() => {
   padding-bottom: 4px;
   scrollbar-width: none;
   align-items: center;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  touch-action: pan-x;
+  scroll-snap-type: x proximity;
 }
 
 .country-scroll::-webkit-scrollbar {
@@ -555,6 +614,7 @@ onMounted(() => {
   font-size: 13px;
   white-space: nowrap;
   transition: all 0.15s;
+  scroll-snap-align: start;
 }
 
 .country-pill.active {

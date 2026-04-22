@@ -44,7 +44,7 @@ func SetSysPayMethod(db *gorm.DB, req pojo.SysPayMethodSet) (result pojo.SysPayM
 	if req.ID > 0 {
 		db.Where("id = ? AND deleted_at = 0", req.ID).First(&entity)
 		if entity.ID == 0 {
-			return result, errors.New("更新的数据不存在")
+			return result, errors.New("record_not_found_update")
 		}
 		_ = copier.Copy(&entity, &req)
 		err = db.Save(&entity).Error
@@ -64,7 +64,7 @@ func DelSysPayMethod(db *gorm.DB, id int64) (result string, err error) {
 	var entity pojo.SysPayMethod
 	db.Where("id = ? AND deleted_at = 0", id).First(&entity)
 	if entity.ID == 0 {
-		return result, errors.New("删除的数据不存在")
+		return result, errors.New("record_not_found_delete")
 	}
 	err = db.Model(&entity).Update("deleted_at", time.Now().Unix()).Error
 	if err != nil {
@@ -78,7 +78,7 @@ func GetSysPayMethodById(db *gorm.DB, id int64) (result pojo.SysPayMethodBack, e
 	var entity pojo.SysPayMethod
 	db.Where("id = ? AND deleted_at = 0", id).First(&entity)
 	if entity.ID == 0 {
-		return result, errors.New("数据不存在")
+		return result, errors.New("record_not_found")
 	}
 	_ = copier.Copy(&result, &entity)
 	return result, nil

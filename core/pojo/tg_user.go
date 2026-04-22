@@ -115,7 +115,6 @@ type TgPhoneRegisterReq struct {
 	Phone             string `json:"phone"`
 	Country           string `json:"country"`
 	Password          string `json:"password"`
-	Code              string `json:"code"`
 	SourceChannelCode string `json:"sourceChannelCode"`
 }
 
@@ -170,6 +169,22 @@ type TgCurrentUserInfo struct {
 	VipLevel     *int    `json:"vip_level"`
 	VipLevelName *string `json:"vip_level_name"`
 	AudioOpen    int8    `json:"audio_open"`
+}
+
+type TgWithdrawSummaryBack struct {
+	Balance                    float64 `json:"balance"`
+	WithdrawableAmount         float64 `json:"withdrawableAmount"`
+	NonWithdrawableAmount      float64 `json:"nonWithdrawableAmount"`
+	UnrestrictedAmount         float64 `json:"unrestrictedAmount"`
+	GiftRestrictedAmount       float64 `json:"giftRestrictedAmount"`
+	RechargeRestrictedAmount   float64 `json:"rechargeRestrictedAmount"`
+	WithdrawableGiftAmount     float64 `json:"withdrawableGiftAmount"`
+	WithdrawableRechargeAmount float64 `json:"withdrawableRechargeAmount"`
+	AvailableFlow              float64 `json:"availableFlow"`
+	GiftFlowConsumed           float64 `json:"giftFlowConsumed"`
+	RechargeFlowConsumed       float64 `json:"rechargeFlowConsumed"`
+	GiftLimitMultiplier        float64 `json:"giftLimitMultiplier"`
+	RechargeLimitMultiplier    float64 `json:"rechargeLimitMultiplier"`
 }
 
 type TgInviteStatsBack struct {

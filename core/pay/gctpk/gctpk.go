@@ -57,9 +57,9 @@ func (g *Provider) CreateOrder(req pay.PayRequest) (pay.PayResponse, error) {
 		"phone":       req.ExtraFields["phone"],
 		"orderAmount": fmt.Sprintf("%.2f", req.Amount),
 		"currency":    req.Currency,
-		"busiCode":    "104004",
+		"busiCode":    resolveBusiCode(req, "104004"),
 		"pageUrl":     resolvePageURL(cfg, req),
-		"notifyUrl":   cfg.NotifyURL,
+		"notifyUrl":   resolveNotifyURL(cfg, req.NotifyURL),
 		"timestamp":   timestamp,
 	}
 
@@ -85,12 +85,15 @@ func (g *Provider) CreateOrder(req pay.PayRequest) (pay.PayResponse, error) {
 	return pay.PayResponse{PayURL: payURL}, nil
 }
 
-// resolveBusiCode 从 ExtraFields["busiCode"] 取，或用 PayMethod 兜底
-func resolveBusiCode(req pay.PayRequest) string {
+// resolveBusiCode 从 ExtraFields["busiCode"] 取，或用 PayMethod 兜底，再回退默认值
+func resolveBusiCode(req pay.PayRequest, defaultCode string) string {
 	if v := strings.TrimSpace(req.ExtraFields["busiCode"]); v != "" {
 		return v
 	}
-	return strings.TrimSpace(req.PayMethod)
+	if v := strings.TrimSpace(req.PayMethod); v != "" {
+		return v
+	}
+	return defaultCode
 }
 
 // resolvePageURL 优先请求级 ReturnURL，其次配置
@@ -99,6 +102,13 @@ func resolvePageURL(cfg base.GctpkPayConfig, req pay.PayRequest) string {
 		return req.ReturnURL
 	}
 	return cfg.PageURL
+}
+
+func resolveNotifyURL(cfg base.GctpkPayConfig, notifyURL string) string {
+	if strings.TrimSpace(notifyURL) != "" {
+		return strings.TrimSpace(notifyURL)
+	}
+	return cfg.NotifyURL
 }
 
 // BuildSign 所有非空参数按 key ASCII 升序排列后 HmacSHA256 签名（供回调验签复用）
@@ -159,10 +169,10 @@ func (g *Provider) CreatePayoutOrder(req pay.PayoutRequest) (pay.PayoutResponse,
 		"accName":     req.AccName,
 		"accNo":       req.AccNo,
 		"bankCode":    req.BankCode,
-		"busiCode":    "202001",
+		"busiCode":    resolvePayoutBusiCode(req, "202001"),
 		"currency":    req.Currency,
 		"email":       req.Email,
-		"notifyUrl":   notifyURL,
+		"notifyUrl":   resolvePayoutNotifyURL(req.NotifyURL, notifyURL),
 		"orderAmount": fmt.Sprintf("%.2f", req.Amount),
 		"phone":       req.Phone,
 		"timestamp":   timestamp,
@@ -202,6 +212,20 @@ func (g *Provider) CreatePayoutOrder(req pay.PayoutRequest) (pay.PayoutResponse,
 		resp.Status = apiResp.Data.Status
 	}
 	return resp, nil
+}
+
+func resolvePayoutBusiCode(req pay.PayoutRequest, defaultCode string) string {
+	if v := strings.TrimSpace(req.BusiCode); v != "" {
+		return v
+	}
+	return defaultCode
+}
+
+func resolvePayoutNotifyURL(reqNotifyURL string, configNotifyURL string) string {
+	if strings.TrimSpace(reqNotifyURL) != "" {
+		return strings.TrimSpace(reqNotifyURL)
+	}
+	return configNotifyURL
 }
 
 // rsaPrivateKeyEncrypt 使用 PKCS#8 RSA-1024 私钥对 data 进行 PKCS1v15 加密（即私钥签名），返回 Base64 字符串

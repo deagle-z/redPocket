@@ -105,6 +105,7 @@ type UserBack struct {
 	GoogleCode  string    `json:"google_code"` // 验证器
 	BindCode    bool      `json:"bindCode"`    // 是否绑定验证器
 	Mark        string    `json:"mark"`        // 备注
+	Country     string    `json:"country"`     // 国家编码
 	RoleStr     string    `json:"roleStr"`     // 角色 (JSON 字符串)
 	Roles       []string  `json:"roles"`       // 角色 (不映射到数据库)
 }

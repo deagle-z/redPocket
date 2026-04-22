@@ -101,6 +101,12 @@ const prizeImg4 = {
   width: '40%',
   top: '45%',
 }
+const superPrizeImg = {
+  src: winPrize,
+  width: '42%',
+  top: '42%',
+}
+const SUPER_PRIZE_TOKEN = '__SUPER_PRIZE__'
 
 const rewardCatalog = ['8', '18', '28', '38', '58', '88', '128', '188', '588', 'Random']
 
@@ -270,24 +276,33 @@ function resolveRewardIndex(awardAmount: number, rewards: string[]) {
   if (exactIndex >= 0)
     return exactIndex
   const zeroIndex = rewards.findIndex(reward => reward === '0')
-  return zeroIndex >= 0 ? zeroIndex : 0
+  if (zeroIndex >= 0)
+    return zeroIndex
+  const fallbackIndex = rewards.findIndex(reward => reward !== SUPER_PRIZE_TOKEN)
+  return fallbackIndex >= 0 ? fallbackIndex : 0
 }
 
 function buildPrizeConfig() {
   const texts = buildRewardSlots(lotteryAmounts.value)
-  state.pageData.rewardList = texts
-  prizes.value = [
-    { background: '#8b0000', imgs: [prizeImg1], fonts: [{ text: texts[0], top: '20%', fontColor: '#ffe59a', fontSize: '13px' }] },
-    { background: '#1a1a1a', imgs: [prizeImg2], fonts: [{ text: texts[1], top: '20%', fontColor: '#ffbb00', fontSize: '13px' }] },
-    { background: '#8b0000', imgs: [prizeImg3], fonts: [{ text: texts[2], top: '20%', fontColor: '#ffe59a', fontSize: '13px' }] },
-    { background: '#1a1a1a', imgs: [prizeImg2], fonts: [{ text: texts[3], top: '20%', fontColor: '#ffbb00', fontSize: '13px' }] },
-    { background: '#8b0000', imgs: [prizeImg3], fonts: [{ text: texts[4], top: '20%', fontColor: '#ffe59a', fontSize: '13px' }] },
-    { background: '#1a1a1a', imgs: [prizeImg4], fonts: [{ text: texts[5], top: '20%', fontColor: '#ffbb00', fontSize: '13px' }] },
-    { background: '#8b0000', imgs: [prizeImg1], fonts: [{ text: texts[6], top: '20%', fontColor: '#ffe59a', fontSize: '13px' }] },
-    { background: '#1a1a1a', imgs: [prizeImg2], fonts: [{ text: texts[7], top: '20%', fontColor: '#ffbb00', fontSize: '13px' }] },
-    { background: '#8b0000', imgs: [prizeImg1], fonts: [{ text: texts[8], top: '20%', fontColor: '#ffe59a', fontSize: '13px' }] },
-    { background: '#1a1a1a', imgs: [prizeImg2], fonts: [{ text: texts[9], top: '20%', fontColor: '#ffbb00', fontSize: '13px' }] },
-  ]
+  const displayRewards = [SUPER_PRIZE_TOKEN, ...texts]
+  const prizeImgs = [prizeImg1, prizeImg2, prizeImg3, prizeImg2, prizeImg3, prizeImg4, prizeImg1, prizeImg2, prizeImg1, prizeImg2]
+  state.pageData.rewardList = displayRewards
+  prizes.value = displayRewards.map((text, index) => {
+    const isSuperPrize = text === SUPER_PRIZE_TOKEN
+    const isRed = index % 2 === 0
+
+    return {
+      background: isSuperPrize ? '#5d0b0b' : (isRed ? '#8b0000' : '#1a1a1a'),
+      imgs: [isSuperPrize ? superPrizeImg : prizeImgs[index - 1]],
+      fonts: [{
+        text: isSuperPrize ? t('prizePage.superGrandPrize') : text,
+        top: isSuperPrize ? '18%' : '20%',
+        fontColor: isSuperPrize ? '#fff1ad' : (isRed ? '#ffe59a' : '#ffbb00'),
+        fontSize: isSuperPrize ? '11px' : '13px',
+        fontWeight: '700',
+      }],
+    }
+  })
 
   buttons.value = [{
     radius: '30%',

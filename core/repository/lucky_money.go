@@ -143,7 +143,7 @@ func CheckLuckyMoneyStatus(db *gorm.DB, luckyID int64) (bool, error) {
 		return false, err
 	}
 	if luckyMoney.Status != 1 {
-		return false, errors.New("红包已结束")
+		return false, errors.New("lucky_finished")
 	}
 	return true, nil
 }
@@ -324,7 +324,7 @@ func GetLuckyMoneyAppDetail(db *gorm.DB, luckyID int64, currentUserID int64) (po
 		Where("l.id = ?", luckyID).
 		Take(&base).Error
 	if err != nil || base.ID == 0 {
-		return result, fmt.Errorf("红包不存在")
+		return result, errors.New("lucky_not_found")
 	}
 
 	expireAt := time.Time{}

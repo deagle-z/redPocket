@@ -67,7 +67,7 @@ func SetWithdrawOrderBr(db *gorm.DB, req pojo.WithdrawOrderBrSet) (result pojo.W
 		if req.ID > 0 {
 			if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ?", req.ID).First(&dbOrder).Error; err != nil {
 				if errors.Is(err, gorm.ErrRecordNotFound) {
-					return errors.New("更新的数据不存在")
+					return errors.New("record_not_found_update")
 				}
 				return err
 			}
@@ -96,7 +96,7 @@ func SetWithdrawOrderBr(db *gorm.DB, req pojo.WithdrawOrderBrSet) (result pojo.W
 			return err
 		}
 		if needWithdrawDeductOnCreate(dbOrder.Status) {
-			if err := deductWithdrawAmount(tx, dbOrder); err != nil {
+			if err := deductWithdrawAmount(tx, &dbOrder); err != nil {
 				return err
 			}
 		}
@@ -114,7 +114,7 @@ func DelWithdrawOrderBr(db *gorm.DB, id int64) (result string, err error) {
 	var dbOrder pojo.WithdrawOrderBr
 	db.Where("id = ?", id).First(&dbOrder)
 	if dbOrder.ID == 0 {
-		return result, errors.New("删除的数据不存在")
+		return result, errors.New("record_not_found_delete")
 	}
 	err = db.Delete(&dbOrder).Error
 	if err != nil {
@@ -128,7 +128,7 @@ func GetWithdrawOrderBrById(db *gorm.DB, id int64) (result pojo.WithdrawOrderBrB
 	var dbOrder pojo.WithdrawOrderBr
 	db.Where("id = ?", id).First(&dbOrder)
 	if dbOrder.ID == 0 {
-		return result, errors.New("数据不存在")
+		return result, errors.New("record_not_found")
 	}
 	_ = copier.Copy(&result, &dbOrder)
 	return result, nil
@@ -146,8 +146,8 @@ func needWithdrawRefund(oldStatus int, newStatus int) bool {
 	return oldActive && newRefund
 }
 
-func deductWithdrawAmount(tx *gorm.DB, order pojo.WithdrawOrderBr) error {
-	if order.UserId <= 0 || order.Amount <= 0 {
+func deductWithdrawAmount(tx *gorm.DB, order *pojo.WithdrawOrderBr) error {
+	if order == nil || order.UserId <= 0 || order.Amount <= 0 {
 		return nil
 	}
 	var user pojo.TgUser
@@ -155,10 +155,13 @@ func deductWithdrawAmount(tx *gorm.DB, order pojo.WithdrawOrderBr) error {
 		return err
 	}
 	if user.ID == 0 {
-		return errors.New("用户不存在")
+		return errors.New("user_not_found")
 	}
 	if user.Balance < order.Amount {
-		return errors.New("用户余额不足")
+		return errors.New("user_balance_insufficient")
+	}
+	if err := ReserveWithdrawLimitForOrder(tx, user, order); err != nil {
+		return err
 	}
 	if err := tx.Model(&pojo.TgUser{}).
 		Where("id = ?", user.ID).
@@ -190,7 +193,10 @@ func refundWithdrawAmount(tx *gorm.DB, order pojo.WithdrawOrderBr) error {
 		return err
 	}
 	if user.ID == 0 {
-		return errors.New("用户不存在")
+		return errors.New("user_not_found")
+	}
+	if err := RefundWithdrawLimitForOrder(tx, user, order); err != nil {
+		return err
 	}
 	if err := tx.Model(&pojo.TgUser{}).
 		Where("id = ?", user.ID).

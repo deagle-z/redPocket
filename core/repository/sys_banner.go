@@ -75,7 +75,7 @@ func SetSysBanner(db *gorm.DB, req pojo.SysBannerSet) (result pojo.SysBannerBack
 		if req.ID > 0 {
 			tx.Where("id = ?", req.ID).First(&entity)
 			if entity.ID == 0 {
-				return errors.New("更新的数据不存在")
+				return errors.New("record_not_found_update")
 			}
 		}
 
@@ -147,7 +147,7 @@ func SetSysBanner(db *gorm.DB, req pojo.SysBannerSet) (result pojo.SysBannerBack
 
 		resultList := buildSysBannerBackList(tx, []pojo.SysBanner{entity})
 		if len(resultList) == 0 {
-			return errors.New("保存后读取Banner失败")
+			return errors.New("service_busy_retry")
 		}
 		result = resultList[0]
 		return nil
@@ -160,7 +160,7 @@ func DelSysBanner(db *gorm.DB, id int64) (result string, err error) {
 	var entity pojo.SysBanner
 	db.Where("id = ?", id).First(&entity)
 	if entity.ID == 0 {
-		return result, errors.New("删除的数据不存在")
+		return result, errors.New("record_not_found_delete")
 	}
 	err = db.Transaction(func(tx *gorm.DB) error {
 		if err = tx.Model(&pojo.SysBanner{}).Where("id = ?", id).Update("is_deleted", 1).Error; err != nil {
@@ -182,11 +182,11 @@ func GetSysBannerById(db *gorm.DB, id int64) (result pojo.SysBannerBack, err err
 	var entity pojo.SysBanner
 	db.Where("id = ?", id).Where("is_deleted = ?", 0).First(&entity)
 	if entity.ID == 0 {
-		return result, errors.New("数据不存在")
+		return result, errors.New("record_not_found")
 	}
 	list := buildSysBannerBackList(db, []pojo.SysBanner{entity})
 	if len(list) == 0 {
-		return result, errors.New("数据不存在")
+		return result, errors.New("record_not_found")
 	}
 	return list[0], nil
 }

@@ -79,6 +79,7 @@ func InitTables(prefix string) (firstInit bool, err error) {
 			&pojo.LuckyHistory{},
 			&pojo.AuthGroup{},
 			&pojo.TgUser{},
+			&pojo.TgUserWithdrawLimitState{},
 			&pojo.RechargeOrder{},
 			&pojo.WithdrawOrderBr{},
 			&pojo.TgUserRebateRecord{},
@@ -114,6 +115,7 @@ func InitTables(prefix string) (firstInit bool, err error) {
 	if err = db.AutoMigrate(
 		&pojo.SysSourceChannel{},
 		&pojo.TgUser{},
+		&pojo.TgUserWithdrawLimitState{},
 		&pojo.RechargeOrder{},
 		&pojo.WithdrawOrderBr{},
 		&pojo.LuckyMoney{},

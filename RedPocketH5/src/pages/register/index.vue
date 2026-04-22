@@ -2,13 +2,13 @@
 import { useRouter } from 'vue-router'
 import type { RouteMap } from 'vue-router'
 import { useUserStore } from '@/stores'
+import { getAuthCountry, setAuthCountry } from '@/utils/auth'
 import { showToast } from 'vant'
-import { locale } from '@/utils/i18n'
+import { languageOptions, locale } from '@/utils/i18n'
 import AppPageHeader from '@/components/AppPageHeader.vue'
 import emailIcon from '@/assets/svg/email.svg'
 import lockIcon from '@/assets/svg/lock.svg'
 import languageIcon from '@/assets/svg/language.svg'
-import verifyIcon from '@/assets/svg/verify.svg'
 import inviteIcon from '@/assets/svg/invite.svg'
 import imgRegisterHeader from '@/assets/images/register-header.jpg'
 import imgTelegram from '@/assets/images/telegram.png'
@@ -17,10 +17,8 @@ const { t } = useI18n()
 const router = useRouter()
 const userStore = useUserStore()
 const loading = ref(false)
-const sendLoading = ref(false)
-const countdown = ref(0)
-const devCode = ref('')
 const showLangPopup = ref(false)
+const showCountryPopup = ref(false)
 const tgBotId = Number(import.meta.env.VITE_TG_BOT_ID || 0)
 const registerHeaderImage = imgRegisterHeader
 const registerCountries = [
@@ -29,64 +27,51 @@ const registerCountries = [
   { code: 'BR', nameKey: 'register.countryBrazil' },
 ] as const
 type RegisterCountryCode = typeof registerCountries[number]['code']
-
-const languageOptions = [
-  {
-    code: 'CN',
-    value: 'zh-CN',
-    nativeTextKey: 'login.language.zhNative',
-    englishTextKey: 'login.language.zhEn',
-  },
-  {
-    code: 'US',
-    value: 'en-US',
-    nativeTextKey: 'login.language.enNative',
-    englishTextKey: 'login.language.enEn',
-  },
-]
+const registerCountryMap = Object.fromEntries(registerCountries.map(item => [item.code, item.nameKey])) as Record<RegisterCountryCode, string>
 
 const postData = reactive<{
   country: RegisterCountryCode
   phone: string
-  code: string
   password: string
   confirmPassword: string
   inviteCode: string
 }>({
-  country: registerCountries[0].code,
+  country: 'BR',
   phone: '',
-  code: '',
   password: '',
   confirmPassword: '',
   inviteCode: '',
 })
+
+const currentCountryLabel = computed(() => t(registerCountryMap[postData.country] || 'register.countryBrazil'))
+
+function detectRegisterCountry(): RegisterCountryCode {
+  const browserLanguages = [
+    ...(navigator.languages || []),
+    navigator.language,
+  ]
+    .filter(Boolean)
+    .map(lang => lang.toUpperCase())
+
+  for (const lang of browserLanguages) {
+    if (lang.includes('-BR') || lang.startsWith('PT'))
+      return 'BR'
+    if (lang.includes('-MX') || lang.startsWith('ES'))
+      return 'MX'
+    if (lang.includes('-ID') || lang.startsWith('ID'))
+      return 'ID'
+  }
+
+  return 'BR'
+}
 
 function normalizePhoneInput(event: Event) {
   const input = event.target as HTMLInputElement
   postData.phone = input.value.replace(/\D+/g, '')
 }
 
-let countdownTimer: ReturnType<typeof setInterval> | null = null
-
-function startCountdown() {
-  countdown.value = 60
-  countdownTimer = setInterval(() => {
-    countdown.value--
-    if (countdown.value <= 0) {
-      clearInterval(countdownTimer!)
-      countdownTimer = null
-      countdown.value = 0
-    }
-  }, 1000)
-}
-
-onUnmounted(() => {
-  if (countdownTimer) {
-    clearInterval(countdownTimer)
-  }
-})
-
 onMounted(() => {
+  postData.country = (getAuthCountry() as RegisterCountryCode) || detectRegisterCountry()
   const queryCode = String(router.currentRoute.value.query.c || '').trim()
   const localCode = String(localStorage.getItem('invite_code') || '').trim()
   const inviteCode = queryCode || localCode
@@ -96,38 +81,6 @@ onMounted(() => {
     localStorage.setItem('invite_code', queryCode)
 })
 
-async function sendCode() {
-  if (!postData.country) {
-    showToast(t('register.pleaseSelectCountry'))
-    return
-  }
-  if (!postData.phone) {
-    showToast(t('register.pleaseEnterPhone'))
-    return
-  }
-  try {
-    sendLoading.value = true
-    const res = await userStore.sendSMSCode(postData.phone, postData.country)
-    const code = res?.data?.code
-    if (code) {
-      devCode.value = String(code)
-      postData.code = String(code)
-      showToast(`dev code: ${code}`)
-    }
-    else {
-      devCode.value = ''
-    }
-    startCountdown()
-    showToast(t('register.sendCodeSuccess'))
-  }
-  catch (error: any) {
-    showToast(error?.message || t('register.sendCodeSuccess'))
-  }
-  finally {
-    sendLoading.value = false
-  }
-}
-
 async function register() {
   if (!postData.country) {
     showToast(t('register.pleaseSelectCountry'))
@@ -135,10 +88,6 @@ async function register() {
   }
   if (!postData.phone) {
     showToast(t('register.pleaseEnterPhone'))
-    return
-  }
-  if (!postData.code) {
-    showToast(t('register.pleaseEnterCode'))
     return
   }
   if (!postData.password) {
@@ -158,10 +107,10 @@ async function register() {
     await userStore.register({
       phone: postData.phone,
       country: postData.country,
-      code: postData.code,
       password: postData.password,
       sourceChannelCode: postData.inviteCode.trim(),
     })
+    setAuthCountry(postData.country)
     showToast(t('register.registerSuccess'))
     router.push({ name: 'Login' as keyof RouteMap })
   }
@@ -237,6 +186,19 @@ function closeLanguagePopup() {
   showLangPopup.value = false
 }
 
+function openCountryPopup() {
+  showCountryPopup.value = true
+}
+
+function closeCountryPopup() {
+  showCountryPopup.value = false
+}
+
+function selectCountry(country: RegisterCountryCode) {
+  postData.country = country
+  showCountryPopup.value = false
+}
+
 function selectLanguage(lang: string) {
   if (locale.value === lang) {
     showLangPopup.value = false
@@ -304,18 +266,10 @@ function selectLanguage(lang: string) {
               </span>
               <span>{{ t('register.country') }}</span>
             </label>
-            <div class="country-options">
-              <button
-                v-for="item in registerCountries"
-                :key="item.code"
-                type="button"
-                class="country-btn"
-                :class="{ active: postData.country === item.code }"
-                @click="postData.country = item.code"
-              >
-                {{ t(item.nameKey) }}
-              </button>
-            </div>
+            <button type="button" class="country-trigger" @click="openCountryPopup">
+              <span>{{ currentCountryLabel }}</span>
+              <span class="country-trigger-arrow" aria-hidden="true">▾</span>
+            </button>
           </div>
 
           <div class="form-row">
@@ -336,38 +290,6 @@ function selectLanguage(lang: string) {
               :placeholder="t('register.pleaseEnterPhone')"
               @input="normalizePhoneInput"
             >
-          </div>
-
-          <div class="form-row form-row--code">
-            <label for="register-code" class="form-label">
-              <span class="icon-wrap">
-                <img :src="verifyIcon" alt="verify code" class="form-icon">
-              </span>
-              <span>{{ t('register.smsCode') }}</span>
-            </label>
-            <div class="code-input-group">
-              <input
-                id="register-code"
-                v-model="postData.code"
-                type="text"
-                inputmode="numeric"
-                class="form-input"
-                :placeholder="t('register.pleaseEnterCode')"
-              >
-              <button
-                type="button"
-                class="send-btn"
-                :disabled="sendLoading || countdown > 0"
-                @click="sendCode"
-              >
-                <span v-if="countdown > 0">{{ countdown }}s</span>
-                <span v-else-if="sendLoading">...</span>
-                <span v-else>{{ t('register.send') }}</span>
-              </button>
-            </div>
-            <p v-if="devCode" class="dev-code-tip">
-              dev code: {{ devCode }}
-            </p>
           </div>
 
           <div class="form-row">
@@ -505,6 +427,31 @@ function selectLanguage(lang: string) {
       <p class="language-tip">
         {{ t('login.language.autoRefresh') }}
       </p>
+    </van-popup>
+
+    <van-popup v-model:show="showCountryPopup" round position="bottom" class="language-popup">
+      <div class="language-popup-header">
+        <span class="language-popup-title">{{ t('register.country') }}</span>
+        <button class="language-popup-close" @click="closeCountryPopup">
+          ×
+        </button>
+      </div>
+
+      <div class="language-list">
+        <button
+          v-for="item in registerCountries"
+          :key="item.code"
+          class="language-item"
+          :class="{ active: postData.country === item.code }"
+          @click="selectCountry(item.code)"
+        >
+          <span class="language-code">{{ item.code }}</span>
+          <span class="language-text">
+            <span class="native">{{ t(item.nameKey) }}</span>
+          </span>
+          <span v-if="postData.country === item.code" class="language-check">✓</span>
+        </button>
+      </div>
     </van-popup>
   </div>
 </template>
@@ -780,75 +727,32 @@ function selectLanguage(lang: string) {
   background: rgba(255, 248, 214, 0.08);
 }
 
-.form-row--code .code-input-group {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.form-row--code .form-input {
-  flex: 1;
-  min-width: 0;
-}
-
-.country-options {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-}
-
-.country-btn {
-  min-height: 44px;
-  padding: 0 10px;
+.country-trigger {
+  width: 100%;
+  min-height: 48px;
+  padding: 0 14px;
   border: 1px solid rgba(212, 175, 55, 0.22);
   border-radius: 14px;
   background: rgba(255, 248, 214, 0.05);
   color: #fff4d1;
-  font-size: 13px;
-  font-weight: 700;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
   transition:
     border-color 0.2s ease,
-    background-color 0.2s ease,
-    box-shadow 0.2s ease;
+    box-shadow 0.2s ease,
+    background-color 0.2s ease;
 }
 
-.country-btn.active {
-  border-color: rgba(255, 223, 135, 0.72);
-  background: rgba(212, 175, 55, 0.16);
-  box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.12);
-  color: #fff8e5;
-}
-
-.dev-code-tip {
-  margin: 4px 0 0;
-  font-size: 12px;
-  color: #ffd98b;
-}
-
-.send-btn {
-  flex-shrink: 0;
-  min-width: 96px;
-  height: 44px;
-  border: 1px solid rgba(255, 248, 214, 0.42);
-  border-radius: 12px;
-  background: linear-gradient(180deg, #ffdf87 0%, #d4af37 100%);
-  color: #5a1b00;
-  font-size: 13px;
-  font-weight: 800;
-  cursor: pointer;
-  box-shadow: 0 8px 18px rgba(90, 27, 0, 0.22);
-  transition:
-    opacity 0.2s ease,
-    transform 0.2s ease;
-}
-
-.send-btn:disabled {
-  opacity: 0.65;
-  cursor: not-allowed;
-}
-
-.send-btn:active {
+.country-trigger:active {
   transform: translateY(1px);
+}
+
+.country-trigger-arrow {
+  color: rgba(255, 233, 188, 0.72);
+  font-size: 14px;
 }
 
 :deep(.register-btn.van-button) {
@@ -1076,20 +980,6 @@ function selectLanguage(lang: string) {
 
   .form-card {
     padding: 8px 12px;
-  }
-
-  .form-row--code .code-input-group {
-    gap: 8px;
-  }
-
-  .country-options {
-    grid-template-columns: 1fr;
-  }
-
-  .send-btn {
-    min-width: 88px;
-    height: 40px;
-    font-size: 12px;
   }
 
   .feature-grid {

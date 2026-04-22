@@ -53,6 +53,27 @@ func GetLuckyHistoryListAdmin(ctx *gin.Context) {
 	utils.SuccessObjBack(ctx, result)
 }
 
+// GetLuckyHistoryUserFlowListAdmin 管理员获取按用户汇总的流水金额
+// @Summary 管理员获取按用户汇总的流水金额
+// @Tags 红包管理-管理员
+// @Accept json
+// @Produce json
+// @Param data body pojo.LuckyHistoryUserFlowSearch true "查询条件"
+// @Success 200 {object} pojo.LuckyHistoryUserFlowResp
+// @Router /api/v1/admin/lucky/historyUserFlow [post]
+func GetLuckyHistoryUserFlowListAdmin(ctx *gin.Context) {
+	var search pojo.LuckyHistoryUserFlowSearch
+	search.SetPageDefaults()
+	if err := ctx.ShouldBindJSON(&search); err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+
+	db := ctx.MustGet("db").(*gorm.DB)
+	result := repository.GetLuckyHistoryUserFlowList(db, search)
+	utils.SuccessObjBack(ctx, result)
+}
+
 // GetLuckyMoneyDetailAdmin 管理员获取红包详情
 // @Summary 管理员获取红包详情
 // @Tags 红包管理-管理员

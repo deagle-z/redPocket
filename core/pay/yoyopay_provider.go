@@ -1,5 +1,7 @@
 package pay
 
+import "fmt"
+
 // YoyopayProvider YOYOPAY 支付渠道
 // TODO: 填写真实的 API 地址、签名方式、请求结构
 type YoyopayProvider struct {
@@ -32,5 +34,5 @@ func (y *YoyopayProvider) CreateOrder(req PayRequest) (PayResponse, error) {
 	//   resp := callYoyopayAPI(y.APIURL+"/createOrder", body, sign)
 	//   return PayResponse{PayURL: resp.PayURL, ProviderTradeNo: resp.TradeNo}, nil
 
-	return PayResponse{}, nil
+	return PayResponse{}, fmt.Errorf("YOYOPAY provider 未实现，禁止使用该支付渠道")
 }

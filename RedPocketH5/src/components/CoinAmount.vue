@@ -9,8 +9,8 @@ const stripped = computed(() => props.text.replace(/\u0E3F\s*/g, '').trim())
 
 <template>
   <span class="coin-amount-wrap">
-    <img class="coin-amount-icon" :src="imgCoin" alt="">
     <span class="coin-amount-text">{{ stripped }}</span>
+    <img class="coin-amount-icon" :src="imgCoin" alt="">
   </span>
 </template>
 

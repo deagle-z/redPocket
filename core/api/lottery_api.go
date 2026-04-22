@@ -176,6 +176,9 @@ func DrawLottery(ctx *gin.Context) {
 			}).Error; err != nil {
 				return err
 			}
+			if err := repository.AddUserWithdrawRestrictedBalance(tx, user, awardAmount, 0); err != nil {
+				return err
+			}
 		}
 
 		if err := tx.Create(&record).Error; err != nil {

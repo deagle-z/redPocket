@@ -6,21 +6,24 @@ import (
 
 type LuckyMoney struct {
 	BaseModel
-	SenderID        int64     `json:"senderId" gorm:"type:bigint;index"`                                 // 发送者ID
-	SenderName      string    `json:"senderName" gorm:"type:varchar(64)"`                                // 发送者名称
-	Amount          float64   `json:"amount" gorm:"type:numeric(20,3)"`                                  // 红包总金额
-	Received        float64   `json:"received" gorm:"type:numeric(20,3);default:0"`                      // 已领取金额
-	Number          int       `json:"number" gorm:"type:int"`                                            // 红包总个数
-	Lucky           int       `json:"lucky" gorm:"type:int;default:1"`                                   // 是否有效 1有效
-	Thunder         int       `json:"thunder" gorm:"type:int"`                                           // 雷号(1-9)
-	GameMode        int       `json:"gameMode" gorm:"type:tinyint;default:0"`                            // 游戏模式 0=雷号模式 1=奇偶模式
-	ChatID          int64     `json:"chatId" gorm:"type:bigint;index"`                                   // Telegram群组ID
-	RedList         string    `json:"redList" gorm:"type:text"`                                          // 红包金额列表(JSON)
-	LoseRate        float64   `json:"loseRate" gorm:"type:numeric(10,2);default:1.8"`                    // 中雷倍数
-	Status          int       `json:"status" gorm:"type:int;default:1"`                                  // 状态 1进行中 2已完成
-	SourceChannelID *int64    `json:"sourceChannelId" gorm:"column:source_channel_id;type:bigint;index"` // 来源渠道ID
-	TenantId        int64     `json:"tenantId" gorm:"type:bigint;"`
-	ExpireTime      time.Time `json:"expireTime" gorm:"column:expire_time;"`
+	SenderID                 int64     `json:"senderId" gorm:"type:bigint;index"`                                                // 发送者ID
+	SenderName               string    `json:"senderName" gorm:"type:varchar(64)"`                                               // 发送者名称
+	Amount                   float64   `json:"amount" gorm:"type:numeric(20,3)"`                                                 // 红包总金额
+	Received                 float64   `json:"received" gorm:"type:numeric(20,3);default:0"`                                     // 已领取金额
+	Number                   int       `json:"number" gorm:"type:int"`                                                           // 红包总个数
+	Lucky                    int       `json:"lucky" gorm:"type:int;default:1"`                                                  // 是否有效 1有效
+	Thunder                  int       `json:"thunder" gorm:"type:int"`                                                          // 雷号(1-9)
+	GameMode                 int       `json:"gameMode" gorm:"type:tinyint;default:0"`                                           // 游戏模式 0=雷号模式 1=奇偶模式
+	ChatID                   int64     `json:"chatId" gorm:"type:bigint;index"`                                                  // Telegram群组ID
+	RedList                  string    `json:"redList" gorm:"type:text"`                                                         // 红包金额列表(JSON)
+	LoseRate                 float64   `json:"loseRate" gorm:"type:numeric(10,2);default:1.8"`                                   // 中雷倍数
+	Status                   int       `json:"status" gorm:"type:int;default:1"`                                                 // 状态 1进行中 2已完成
+	SourceChannelID          *int64    `json:"sourceChannelId" gorm:"column:source_channel_id;type:bigint;index"`                // 来源渠道ID
+	GiftRestrictedAmount     float64   `json:"-" gorm:"column:gift_restricted_amount;type:numeric(20,3);not null;default:0"`     // 发包时占用的赠送受限金额
+	RechargeRestrictedAmount float64   `json:"-" gorm:"column:recharge_restricted_amount;type:numeric(20,3);not null;default:0"` // 发包时占用的充值受限金额
+	UnrestrictedAmount       float64   `json:"-" gorm:"column:unrestricted_amount;type:numeric(20,3);not null;default:0"`        // 发包时占用的不受限金额
+	TenantId                 int64     `json:"tenantId" gorm:"type:bigint;"`
+	ExpireTime               time.Time `json:"expireTime" gorm:"column:expire_time;"`
 }
 
 type LuckyMoneyBack struct {

@@ -114,6 +114,12 @@
       "zhEn": "Chinese (Simplified)",
       "enNative": "English",
       "enEn": "English (US)",
+      "ptNative": "Português (Brasil)",
+      "ptEn": "Portuguese (Brazil)",
+      "esNative": "Español (México)",
+      "esEn": "Spanish (Mexico)",
+      "idNative": "Bahasa Indonesia",
+      "idEn": "Indonesian",
       "changed": "Language changed",
       "autoRefresh": "Page will refresh automatically after language change"
     }
@@ -226,9 +232,9 @@
     "playModeParityAction": "Send This Mode",
     "playModeParityNote": "Faster to send and easier for new users to join.",
     "hotPackets": "Hot Packets",
-    "latestWinners": "Latest Winners",
+    "latestWinners": "Flow Ranking",
     "emptyPackets": "No hot packets",
-    "emptyWinners": "No more",
+    "emptyWinners": "No flow ranking yet",
     "loadingLabel": "loading",
     "statusOngoing": "Ongoing",
     "statusDone": "Ended",
@@ -257,9 +263,9 @@
     "loginDialogMsg": "Please login or register to grab lucky packets.",
     "loginDialogConfirm": "Login / Register",
     "packetLoadFailed": "Failed to load packet list",
-    "winnerLoadFailed": "Failed to load winners",
-    "gotPrefix": "Got",
-    "timeJustNow": "just now"
+    "winnerLoadFailed": "Failed to load flow ranking",
+    "gotPrefix": "Flow",
+    "timeJustNow": "Live"
   },
   "packetListPage": {
     "entryEyebrow": "Packet Hall",
@@ -317,6 +323,8 @@
     "promoNone": "Do not participate in any promotion.",
     "firstRechargeTitle": "First Deposit Bonus",
     "firstRechargeDesc": "Get extra rewards on your first deposit",
+    "firstRechargeInstallmentDesc": "Get a total bonus of {rate}%, credited over {days} days",
+    "firstRechargeInstallmentDetail": "Day 1 gives {firstDayRate}% of your deposit ({firstDayRatio}% of the total bonus)",
     "firstRechargeGift": "Bonus amount:",
     "todayFirstTitle": "Daily First Deposit Bonus",
     "todayFirstDesc": "Get extra rewards on your first deposit today"
@@ -341,6 +349,8 @@
     "amountPlaceholder": "Please enter withdraw amount",
     "custom": "Custom",
     "availableBalance": "Available Balance",
+    "withdrawableAmount": "Withdrawable Amount",
+    "nonWithdrawableAmount": "Non-withdrawable Amount",
     "normalBalance": "Normal Balance",
     "bonusBalance": "Bonus Balance",
     "codingRemain": "Remaining turnover",
@@ -639,6 +649,7 @@
     "advancedHint": "Advanced tier gives better rewards and is the recommended target.",
     "superHint": "Super tier offers the highest jackpot potential.",
     "availableChance": "Available Spins",
+    "superGrandPrize": "Super Prize",
     "spinAction": "Spin Now",
     "spinning": "Spinning",
     "noChance": "No spin chances available right now",

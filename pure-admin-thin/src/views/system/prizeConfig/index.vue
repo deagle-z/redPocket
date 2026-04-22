@@ -1,6 +1,11 @@
 <script setup lang="ts">
 import { ref, onMounted } from "vue";
-import { getPrizePoolConfig, setPrizePoolConfig } from "@/api/prizePoolConfig";
+import {
+  getPrizePoolBalance,
+  getPrizePoolConfig,
+  setPrizePoolBalance,
+  setPrizePoolConfig
+} from "@/api/prizePoolConfig";
 import { message } from "@/utils/message";
 import Segmented from "@/components/ReSegmented";
 
@@ -8,8 +13,10 @@ defineOptions({ name: "SystemPrizeConfig" });
 
 const loading = ref(false);
 const saving = ref(false);
+const balanceSaving = ref(false);
 const poolId = ref<number>(1);
 const formRef = ref();
+const luckyBalance = ref<number>(0);
 
 const form = ref({
   id: 0,
@@ -42,7 +49,11 @@ async function loadConfig() {
   if (!poolId.value) return;
   loading.value = true;
   try {
-    const { data } = await getPrizePoolConfig(poolId.value);
+    const [{ data }, balanceResp] = await Promise.all([
+      getPrizePoolConfig(poolId.value),
+      getPrizePoolBalance("lucky")
+    ]);
+    luckyBalance.value = Number(balanceResp?.data?.balance ?? 0);
     if (data?.id) {
       form.value = {
         id: data.id,
@@ -114,6 +125,23 @@ async function handleSave() {
   });
 }
 
+async function handleSaveBalance() {
+  balanceSaving.value = true;
+  try {
+    await setPrizePoolBalance({
+      poolCode: "lucky",
+      balance: Number(luckyBalance.value),
+      remark: "后台手动修改 lucky 奖池余额"
+    });
+    message("lucky奖池余额保存成功", { type: "success" });
+    loadConfig();
+  } catch {
+    message("lucky奖池余额保存失败", { type: "error" });
+  } finally {
+    balanceSaving.value = false;
+  }
+}
+
 onMounted(() => loadConfig());
 </script>
 
@@ -143,6 +171,26 @@ onMounted(() => loadConfig());
         label-width="110px"
         style="max-width: 700px"
       >
+        <el-form-item label="lucky奖池余额">
+          <div class="flex items-center gap-2 w-full">
+            <el-input-number
+              v-model="luckyBalance"
+              :min="0"
+              :precision="6"
+              controls-position="right"
+              style="width: 220px"
+              placeholder="请输入lucky奖池余额"
+            />
+            <el-button
+              type="primary"
+              :loading="balanceSaving"
+              @click="handleSaveBalance"
+            >
+              保存余额
+            </el-button>
+          </div>
+        </el-form-item>
+
         <el-form-item label="概率列表" prop="probabilities">
           <el-input
             v-model="form.probabilities"

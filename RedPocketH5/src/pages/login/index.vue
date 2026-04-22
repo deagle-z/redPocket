@@ -2,7 +2,7 @@
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores'
 import { showToast } from 'vant'
-import { locale } from '@/utils/i18n'
+import { languageOptions, locale } from '@/utils/i18n'
 import AppPageHeader from '@/components/AppPageHeader.vue'
 import emailIcon from '@/assets/svg/email.svg'
 import lockIcon from '@/assets/svg/lock.svg'
@@ -18,33 +18,11 @@ const loading = ref(false)
 const activeTab = ref<'telegram' | 'phone'>('telegram')
 const tgBotUsername = import.meta.env.VITE_TG_BOT_USERNAME || 'luckRedBoomPacket66Bot'
 const showLangPopup = ref(false)
-const loginCountries = [
-  { code: 'MX', nameKey: 'login.countryMexico' },
-  { code: 'ID', nameKey: 'login.countryIndonesia' },
-  { code: 'BR', nameKey: 'login.countryBrazil' },
-] as const
-type LoginCountryCode = typeof loginCountries[number]['code']
-const languageOptions = [
-  {
-    code: 'CN',
-    value: 'zh-CN',
-    nativeTextKey: 'login.language.zhNative',
-    englishTextKey: 'login.language.zhEn',
-  },
-  {
-    code: 'US',
-    value: 'en-US',
-    nativeTextKey: 'login.language.enNative',
-    englishTextKey: 'login.language.enEn',
-  },
-]
 
 const postData = reactive<{
-  country: LoginCountryCode
   phone: string
   password: string
 }>({
-  country: loginCountries[0].code,
   phone: '',
   password: '',
 })
@@ -55,10 +33,6 @@ function normalizePhoneInput(event: Event) {
 }
 
 async function login() {
-  if (!postData.country) {
-    showToast(t('login.pleaseSelectCountry'))
-    return
-  }
   if (!postData.phone) {
     showToast(t('login.pleaseEnterPhone'))
     return
@@ -231,27 +205,6 @@ function goRegister() {
 
         <section v-else class="email-panel">
           <div class="email-form-card">
-            <div class="email-form-row">
-              <label class="email-form-label">
-                <span class="icon-wrap">
-                  <img :src="languageIcon" alt="country" class="email-form-icon">
-                </span>
-                <span>{{ t('login.country') }}</span>
-              </label>
-              <div class="country-options">
-                <button
-                  v-for="item in loginCountries"
-                  :key="item.code"
-                  type="button"
-                  class="country-btn"
-                  :class="{ active: postData.country === item.code }"
-                  @click="postData.country = item.code"
-                >
-                  {{ t(item.nameKey) }}
-                </button>
-              </div>
-            </div>
-
             <div class="email-form-row">
               <label for="login-phone" class="email-form-label">
                 <span class="icon-wrap">
@@ -679,34 +632,6 @@ function goRegister() {
   background: rgba(255, 248, 214, 0.08);
 }
 
-.country-options {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-}
-
-.country-btn {
-  min-height: 44px;
-  padding: 0 10px;
-  border: 1px solid rgba(212, 175, 55, 0.22);
-  border-radius: 14px;
-  background: rgba(255, 248, 214, 0.05);
-  color: #fff4d1;
-  font-size: 13px;
-  font-weight: 700;
-  transition:
-    border-color 0.2s ease,
-    background-color 0.2s ease,
-    box-shadow 0.2s ease;
-}
-
-.country-btn.active {
-  border-color: rgba(255, 223, 135, 0.72);
-  background: rgba(212, 175, 55, 0.16);
-  box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.12);
-  color: #fff8e5;
-}
-
 .email-actions {
   margin-top: 12px;
   display: flex;
@@ -949,10 +874,6 @@ function goRegister() {
 
   .email-form-card {
     padding: 8px 12px;
-  }
-
-  .country-options {
-    grid-template-columns: 1fr;
   }
 
   .feature-grid {

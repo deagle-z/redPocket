@@ -5,7 +5,6 @@ import (
 	"BaseGoUni/core/repository"
 	"BaseGoUni/core/utils"
 	"encoding/json"
-	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/jinzhu/copier"
 	"gorm.io/gorm"
@@ -23,7 +22,7 @@ func AwardUser(ctx *gin.Context) {
 	}
 	ip := utils.GetIPAddress(ctx)
 	if !utils.InStrings(utils.CsConfig.AwardIps, ip) {
-		utils.ErrorBack(ctx, fmt.Sprintf("not in white ip:%s", ip))
+		utils.ErrorBack(ctx, utils.I18nMessage("ip_not_whitelisted", map[string]interface{}{"ip": ip}))
 		return
 	}
 	result, err := repository.AwardUser(db, reqData)
@@ -44,7 +43,7 @@ func getAwardUserHistory(ctx *gin.Context) {
 	}
 	ip := utils.GetIPAddress(ctx)
 	if !utils.InStrings(utils.CsConfig.AwardIps, ip) {
-		utils.ErrorBack(ctx, fmt.Sprintf("not in white ip:%s", ip))
+		utils.ErrorBack(ctx, utils.I18nMessage("ip_not_whitelisted", map[string]interface{}{"ip": ip}))
 		return
 	}
 	result, err := repository.AwardUser(db, reqData)
@@ -197,7 +196,7 @@ func GetRoutes(ctx *gin.Context) {
 func WhiteUserLogin(ctx *gin.Context) {
 	ip := utils.GetIPAddress(ctx)
 	if !utils.InWhiteIps(ip) {
-		utils.ErrorBack(ctx, fmt.Sprintf("非法ip:%s", ip))
+		utils.ErrorBack(ctx, utils.I18nMessage("illegal_ip", map[string]interface{}{"ip": ip}))
 		return
 	}
 	var reqUserLogin pojo.UserLogin
@@ -245,8 +244,8 @@ func UserLogin(ctx *gin.Context) {
 	db := ctx.MustGet("db").(*gorm.DB)
 	data, err := repository.UserLogin(db, tempHostInfo, reqUserLogin, onlineUser)
 	if err != nil {
-		if err.Error() == "请先绑定二维码" {
-			utils.ErrorObjBack(ctx, data, err.Error())
+		if err.Error() == "请先绑定二维码" || err.Error() == "qr_bind_required" {
+			utils.ErrorObjBack(ctx, data, "qr_bind_required")
 			return
 		}
 		utils.ErrorBack(ctx, err.Error())
@@ -258,12 +257,12 @@ func UserLogin(ctx *gin.Context) {
 func DelUsers(ctx *gin.Context) {
 	var req pojo.Ids
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		utils.ErrorBack(ctx, "参数格式错误")
+		utils.ErrorBack(ctx, "invalid_params")
 		return
 	}
 
 	if len(req.Ids) == 0 {
-		utils.ErrorBack(ctx, "ids 不能为空")
+		utils.ErrorBack(ctx, "ids_required")
 		return
 	}
 
@@ -290,11 +289,11 @@ func UserCashHistory(ctx *gin.Context) {
 	var req pojo.CashHistorySearch
 	req.SetPageDefaults()
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		utils.ErrorBack(ctx, "参数格式错误")
+		utils.ErrorBack(ctx, "invalid_params")
 		return
 	}
 	if req.UserId == 0 {
-		utils.ErrorBack(ctx, "参数格式错误")
+		utils.ErrorBack(ctx, "invalid_params")
 		return
 	}
 	db := ctx.MustGet("db").(*gorm.DB)
@@ -320,6 +319,7 @@ func CurrentUserInfo(ctx *gin.Context) {
 	user := utils.GetTempUser(tempHostInfo.TablePrefix, userId)
 	var tempUserBack pojo.UserBack
 	_ = copier.Copy(&tempUserBack, &user)
+	tempUserBack.Country = resolveCurrentUserCountry(ctx, user.Ip)
 	log.Printf("tempUserBack: %v", user.RoleStr)
 	err := json.Unmarshal([]byte(user.RoleStr), &tempUserBack.Roles)
 	if err != nil {
@@ -328,6 +328,13 @@ func CurrentUserInfo(ctx *gin.Context) {
 	}
 	log.Printf("tempUserBack.Roles:%v", tempUserBack.Roles)
 	utils.SuccessObjBack(ctx, tempUserBack)
+}
+
+func resolveCurrentUserCountry(ctx *gin.Context, loginIP string) string {
+	if country := utils.GetCountryCodeByIP(utils.GetIPAddress(ctx)); country != "" {
+		return country
+	}
+	return utils.GetCountryCodeByIP(loginIP)
 }
 
 // ResetPassword godoc
@@ -345,15 +352,15 @@ func ResetPassword(ctx *gin.Context) {
 	user := utils.GetTempUser(tempHostInfo.TablePrefix, userId)
 	var req pojo.UserResetPwd
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		utils.ErrorBack(ctx, "参数格式错误")
+		utils.ErrorBack(ctx, "invalid_params")
 		return
 	}
 	encPassword := utils.EncodePass(tempHostInfo.Salt, req.OldPassword)
 	if req.OldPassword != encPassword {
-		utils.ErrorBack(ctx, "旧密码输入错误")
+		utils.ErrorBack(ctx, "old_password_incorrect")
 	}
 	if req.NewPassword == "" {
-		utils.ErrorBack(ctx, "请输入有效密码")
+		utils.ErrorBack(ctx, "valid_password_required")
 	}
 	db := ctx.MustGet("db").(*gorm.DB)
 	err := repository.ResetPwd(db, tempHostInfo.Salt, req.NewPassword, user.ID)

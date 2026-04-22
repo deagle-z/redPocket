@@ -28,18 +28,18 @@ func SendRedPacket(db *gorm.DB, senderID int64, senderName string, req pojo.Luck
 func sendRedPacket(db *gorm.DB, senderID int64, senderName string, req pojo.LuckyMoneySend, tablePrefix string) (*pojo.LuckyMoney, error) {
 	// 验证金额
 	if req.Amount < 5 {
-		return nil, errors.New("红包金额不能小于5U")
+		return nil, errors.New("lucky_amount_min")
 	}
 
 	// 验证雷号
 	if req.Thunder < 0 || req.Thunder > 9 {
-		return nil, errors.New("指令有误，雷数应是0~9之间")
+		return nil, errors.New("lucky_thunder_invalid")
 	}
 
 	// 获取红包数量配置
 	luckyNumConfig := GetLuckyNumConfig(db)
 	if luckyNumConfig == "" {
-		return nil, errors.New("配置错误：未找到红包数量配置")
+		return nil, errors.New("lucky_count_config_missing")
 	}
 
 	// 确定红包数量
@@ -62,10 +62,10 @@ func sendRedPacket(db *gorm.DB, senderID int64, senderName string, req pojo.Luck
 		return nil, err
 	}
 	if user.Status != 1 {
-		return nil, errors.New("用户已禁用，请联系管理员处理")
+		return nil, errors.New("user_disabled_contact_admin")
 	}
 	if user.Balance < req.Amount {
-		return nil, errors.New("您的余额已不足发包")
+		return nil, errors.New("lucky_balance_insufficient_send")
 	}
 
 	// 生成红包金额数组
@@ -127,13 +127,19 @@ func sendRedPacket(db *gorm.DB, senderID int64, senderName string, req pojo.Luck
 	}
 	if lockedSender.Balance < req.Amount {
 		tx.Rollback()
-		return nil, errors.New("您的余额已不足发包")
+		return nil, errors.New("lucky_balance_insufficient_send")
 	}
 
 	// 扣除发送者余额，同时扣除赠送余额（不低于0）
 	giftDeduct := req.Amount
 	if lockedSender.GiftAmount < giftDeduct {
 		giftDeduct = lockedSender.GiftAmount
+	}
+	normalDeduct := req.Amount - giftDeduct
+	sourceSplit, err := repository.ConsumeUserBalanceSources(tx, lockedSender, giftDeduct, normalDeduct)
+	if err != nil {
+		tx.Rollback()
+		return nil, fmt.Errorf("更新提现限制状态失败: %v", err)
 	}
 	if err := tx.Model(&pojo.TgUser{}).
 		Where("id = ?", senderID).
@@ -144,9 +150,21 @@ func sendRedPacket(db *gorm.DB, senderID int64, senderName string, req pojo.Luck
 		tx.Rollback()
 		return nil, fmt.Errorf("扣除余额失败: %v", err)
 	}
+	if err := tx.Model(&pojo.LuckyMoney{}).
+		Where("id = ?", luckyMoney.ID).
+		Updates(map[string]any{
+			"gift_restricted_amount":     sourceSplit.GiftRestrictedAmount,
+			"recharge_restricted_amount": sourceSplit.RechargeRestrictedAmount,
+			"unrestricted_amount":        sourceSplit.UnrestrictedAmount,
+		}).Error; err != nil {
+		tx.Rollback()
+		return nil, fmt.Errorf("记录红包来源拆分失败: %v", err)
+	}
+	luckyMoney.GiftRestrictedAmount = sourceSplit.GiftRestrictedAmount
+	luckyMoney.RechargeRestrictedAmount = sourceSplit.RechargeRestrictedAmount
+	luckyMoney.UnrestrictedAmount = sourceSplit.UnrestrictedAmount
 
 	// 记录余额变动
-	normalDeduct := req.Amount - giftDeduct
 	awardUniBase := fmt.Sprintf("lucky_%d", luckyMoney.ID)
 	runningBalance := lockedSender.Balance
 
@@ -529,27 +547,27 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 	// 获取红包信息
 	luckyMoney, err := repository.GetLuckyMoney(db, luckyID)
 	if err != nil {
-		return nil, errors.New("数据有误！红包不存在")
+		return nil, errors.New("lucky_not_found")
 	}
 
 	// 检查红包状态
 	if luckyMoney.Status != 1 {
-		return nil, errors.New("该红包已结束")
+		return nil, errors.New("lucky_finished")
 	}
 
 	// 获取用户信息
 	user, err := getTgUserByID(db, userID)
 	if err != nil {
-		return nil, errors.New("用户未注册，请先注册")
+		return nil, errors.New("user_not_registered")
 	}
 	if user.Status != 1 {
-		return nil, errors.New("用户已禁用，请联系管理员处理")
+		return nil, errors.New("user_disabled_contact_admin")
 	}
 
 	// 检查余额（需满足 lose_rate 倍数）
 	lowestAmount := luckyMoney.Amount * luckyMoney.LoseRate
 	if user.Balance < lowestAmount {
-		return nil, fmt.Errorf("你至少需要有%.2fU才能抢这个红包~", lowestAmount)
+		return nil, errors.New(utils.I18nMessage("lucky_min_balance_required", map[string]interface{}{"amount": fmt.Sprintf("%.2f", lowestAmount)}))
 	}
 
 	// 检查是否已领取
@@ -568,7 +586,7 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 	}
 
 	if int(grabbedCount) >= luckyMoney.Number {
-		return nil, errors.New("该红包已全部被领取")
+		return nil, errors.New("lucky_all_grabbed")
 	}
 
 	// 获取红包金额列表
@@ -578,7 +596,7 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 	}
 
 	if len(redList) == 0 {
-		return nil, errors.New("红包数据异常")
+		return nil, errors.New("lucky_data_exception")
 	}
 
 	// 选择指定包（1-based）
@@ -586,7 +604,7 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 		grabIndex = int(grabbedCount) + 1
 	}
 	if grabIndex > len(redList) {
-		return nil, errors.New("红包数据异常")
+		return nil, errors.New("lucky_data_exception")
 	}
 	redAmount := redList[grabIndex-1]
 	awardTs := time.Now().Unix()
@@ -595,7 +613,7 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 	// 奇偶模式参数校验
 	if luckyMoney.GameMode == 1 {
 		if oddEvenGuess == nil || (*oddEvenGuess != 0 && *oddEvenGuess != 1) {
-			return nil, errors.New("奇偶模式请传入 oddEvenGuess（0=偶，1=奇）")
+			return nil, errors.New("lucky_odd_even_guess_required")
 		}
 	}
 
@@ -643,7 +661,7 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 	lockKey := fmt.Sprintf("lucky_grab:%d", luckyID)
 	acquired, lockErr := utils.AcquireLock(lockKey, 10*time.Second)
 	if lockErr != nil || !acquired {
-		return nil, errors.New("操作频繁，请稍后再试")
+		return nil, errors.New("operation_too_frequent")
 	}
 	defer utils.ReleaseLock(lockKey)
 
@@ -670,7 +688,7 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 		}
 		if lockedUser.Balance < lowestAmount {
 			tx.Rollback()
-			return nil, fmt.Errorf("你至少需要有%.2fU才能抢这个红包~", lowestAmount)
+			return nil, errors.New(utils.I18nMessage("lucky_min_balance_required", map[string]interface{}{"amount": fmt.Sprintf("%.2f", lowestAmount)}))
 		}
 		// 锁定发送者行（在 UPDATE 前读取，得到准确的 StartAmount）
 		var lockedSender pojo.TgUser
@@ -683,6 +701,11 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 		giftDeduct := loseMoney
 		if lockedUser.GiftAmount < giftDeduct {
 			giftDeduct = lockedUser.GiftAmount
+		}
+		normalDeduct := loseMoney - giftDeduct
+		if _, err := repository.ConsumeUserBalanceSources(tx, lockedUser, giftDeduct, normalDeduct); err != nil {
+			tx.Rollback()
+			return nil, fmt.Errorf("更新提现限制状态失败: %v", err)
 		}
 		if err := tx.Model(&pojo.TgUser{}).
 			Where("id = ?", userID).
@@ -717,6 +740,10 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 		}
 
 		// 增加发送者余额（实际到账金额）
+		if err := repository.EnsureUserWithdrawLimitState(tx, lockedSender); err != nil {
+			tx.Rollback()
+			return nil, fmt.Errorf("初始化提现限制状态失败: %v", err)
+		}
 		if err := tx.Model(&pojo.TgUser{}).
 			Where("id = ?", luckyMoney.SenderID).
 			Update("balance", gorm.Expr("balance + ?", actualLoseMoney)).Error; err != nil {
@@ -725,7 +752,6 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 		}
 
 		// 记录余额变动（用户）
-		normalDeduct := loseMoney - giftDeduct
 		awardUniBase := fmt.Sprintf("lucky_grab_%d_%d_%d_%d", luckyID, userID, awardTs, int64(loseMoney*1000))
 		runningBalance := lockedUser.Balance
 
@@ -847,6 +873,10 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 		actualAmount := redAmount - commissionAmount - winPoolFee
 
 		// 增加用户余额（实际到账金额）
+		if err := repository.EnsureUserWithdrawLimitState(tx, user); err != nil {
+			tx.Rollback()
+			return nil, fmt.Errorf("初始化提现限制状态失败: %v", err)
+		}
 		if err := tx.Model(&pojo.TgUser{}).
 			Where("id = ?", userID).
 			Update("balance", gorm.Expr("balance + ?", actualAmount)).Error; err != nil {
@@ -993,16 +1023,16 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 			guessText = "奇"
 		}
 		if isThunder == 1 {
-			result["message"] = fmt.Sprintf("猜%s，猜错！领取 %.2f ，损失 %.2f ", guessText, redAmount, loseMoney)
+			result["message"] = utils.I18nMessage("lucky_guess_wrong", map[string]interface{}{"guess": guessText, "amount": fmt.Sprintf("%.2f", redAmount), "loseAmount": fmt.Sprintf("%.2f", loseMoney)})
 		} else {
-			result["message"] = fmt.Sprintf("猜%s，猜对！获得 %.2f ", guessText, redAmount)
+			result["message"] = utils.I18nMessage("lucky_guess_right", map[string]interface{}{"guess": guessText, "amount": fmt.Sprintf("%.2f", redAmount)})
 		}
 	} else {
 		// 雷号模式
 		if isThunder == 1 {
-			result["message"] = fmt.Sprintf("中雷，领取 %.2f ，损失 %.2f ", redAmount, loseMoney)
+			result["message"] = utils.I18nMessage("lucky_hit_thunder", map[string]interface{}{"amount": fmt.Sprintf("%.2f", redAmount), "loseAmount": fmt.Sprintf("%.2f", loseMoney)})
 		} else {
-			result["message"] = fmt.Sprintf("未中雷，领取 %.2f ", redAmount)
+			result["message"] = utils.I18nMessage("lucky_no_thunder", map[string]interface{}{"amount": fmt.Sprintf("%.2f", redAmount)})
 		}
 	}
 
@@ -1013,22 +1043,22 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 func CheckGrabBalance(db *gorm.DB, luckyID int64, userID int64, tablePrefix string) error {
 	luckyMoney, err := repository.GetLuckyMoney(db, luckyID)
 	if err != nil {
-		return errors.New("数据有误！红包不存在")
+		return errors.New("lucky_not_found")
 	}
 
 	user, err := getTgUserByID(db, userID)
 	if err != nil {
-		return errors.New("用户未注册，请先注册!命令：/register")
+		return errors.New("user_not_registered")
 	}
 
 	if user.Status != 1 {
-		return errors.New("用户已禁用，请联系管理员处理")
+		return errors.New("user_disabled_contact_admin")
 	}
 
 	loseRate := GetLoseRate(db)
 	lowestAmount := luckyMoney.Amount * loseRate
 	if user.Balance < lowestAmount {
-		return fmt.Errorf("你至少需要有%.2fU才能抢这个红包~", lowestAmount)
+		return errors.New(utils.I18nMessage("lucky_min_balance_required", map[string]interface{}{"amount": fmt.Sprintf("%.2f", lowestAmount)}))
 	}
 
 	return nil
@@ -1307,7 +1337,7 @@ func getTgUserByID(db *gorm.DB, userID int64) (pojo.TgUser, error) {
 	var user pojo.TgUser
 	err := db.Where("id = ?", userID).First(&user).Error
 	if err != nil || user.ID == 0 {
-		return user, errors.New("用户不存在")
+		return user, errors.New("user_not_found")
 	}
 	return user, nil
 }

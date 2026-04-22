@@ -10,6 +10,8 @@ export type UserResult = {
     tenantId: number;
     /** 用户名 */
     username: string;
+    /** 国家 */
+    country?: string;
     /** 当前登录用户角色 */
     roleCode: string;
     /** 当前登录用户角色数组（前端权限兼容） */

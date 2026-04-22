@@ -31,6 +31,13 @@ export type LuckyHistory = {
   loseMoney: number;
 };
 
+export type LuckyHistoryUserFlow = {
+  userId: number;
+  avatar?: string | null;
+  firstName: string;
+  flowAmount: number;
+};
+
 /** 红包搜索参数 */
 export type LuckyMoneySearch = {
   currentPage: number;
@@ -98,6 +105,18 @@ export type LuckyHistoryListResult = {
   };
 };
 
+export type LuckyHistoryUserFlowListResult = {
+  code: number;
+  message: string;
+  success: boolean;
+  data: {
+    list: LuckyHistoryUserFlow[];
+    total: number;
+    pageSize: number;
+    currentPage: number;
+  };
+};
+
 /** 红包状态响应 */
 export type LuckyMoneyStatusResult = {
   code: number;
@@ -148,6 +167,11 @@ export const getLuckyMoneyListAdmin = (data: LuckyMoneySearch) => {
 /** 管理员 - 获取领取历史 */
 export const getLuckyHistoryListAdmin = (data: LuckyHistorySearch) => {
   return http.request<LuckyHistoryListResult>("post", "/api/v1/tenant/lucky/history", { data });
+};
+
+/** 租户 - 获取按用户汇总流水 */
+export const getLuckyHistoryUserFlowListAdmin = (data: LuckyHistorySearch) => {
+  return http.request<LuckyHistoryUserFlowListResult>("post", "/api/v1/tenant/lucky/historyUserFlow", { data });
 };
 
 /** 管理员 - 获取红包详情 */

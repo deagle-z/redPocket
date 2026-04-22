@@ -25,6 +25,7 @@ var smsCountryDialCodeMap = map[string]string{
 	"CN": "86",
 	"ID": "62",
 	"IN": "91",
+	"MX": "52",
 	"MY": "60",
 	"PH": "63",
 	"TH": "66",
@@ -196,6 +197,41 @@ func NormalizeSMSPhone(country string, phone string) string {
 		return digits
 	}
 	return dialCode + digits
+}
+
+// InferCountryByPhone 根据手机号中的国际区号推断国家，推断失败时回退 fallbackCountry。
+func InferCountryByPhone(phone string, fallbackCountry string) string {
+	fallbackCountry = strings.TrimSpace(strings.ToUpper(fallbackCountry))
+	trimmedPhone := strings.TrimSpace(phone)
+	digits := onlyDigits(trimmedPhone)
+	if digits == "" {
+		return fallbackCountry
+	}
+
+	explicitIntl := strings.HasPrefix(trimmedPhone, "+") || strings.HasPrefix(digits, "00")
+	if strings.HasPrefix(digits, "00") {
+		digits = strings.TrimPrefix(digits, "00")
+	}
+
+	if country := matchCountryDialCode(digits); country != "" {
+		if explicitIntl || fallbackCountry == "" {
+			return country
+		}
+	}
+
+	return fallbackCountry
+}
+
+func matchCountryDialCode(digits string) string {
+	matchCountry := ""
+	matchLen := 0
+	for country, dialCode := range smsCountryDialCodeMap {
+		if strings.HasPrefix(digits, dialCode) && len(dialCode) > matchLen {
+			matchCountry = country
+			matchLen = len(dialCode)
+		}
+	}
+	return matchCountry
 }
 
 func onlyDigits(value string) string {

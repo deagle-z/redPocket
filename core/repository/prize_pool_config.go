@@ -53,7 +53,7 @@ func DelPrizePoolConfig(db *gorm.DB, id int64) error {
 	var entity pojo.SysTenantPrizePoolConfig
 	db.Where("id = ?", id).First(&entity)
 	if entity.ID == 0 {
-		return errors.New("数据不存在")
+		return errors.New("record_not_found")
 	}
 	err := db.Delete(&entity).Error
 	return err
