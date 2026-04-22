@@ -542,6 +542,41 @@ func toFloat64Value(v interface{}) float64 {
 	}
 }
 
+func lockLuckyTgUsers(tx *gorm.DB, userID int64, senderID int64) (pojo.TgUser, pojo.TgUser, error) {
+	var lockedUser pojo.TgUser
+	var lockedSender pojo.TgUser
+	if tx == nil {
+		return lockedUser, lockedSender, fmt.Errorf("transaction is nil")
+	}
+
+	ids := []int64{userID}
+	if senderID != userID {
+		ids = append(ids, senderID)
+	}
+	if len(ids) == 2 && ids[0] > ids[1] {
+		ids[0], ids[1] = ids[1], ids[0]
+	}
+
+	lockedMap := make(map[int64]pojo.TgUser, len(ids))
+	for _, id := range ids {
+		var temp pojo.TgUser
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ?", id).First(&temp).Error; err != nil {
+			return lockedUser, lockedSender, fmt.Errorf("锁定用户失败: %v", err)
+		}
+		lockedMap[id] = temp
+	}
+
+	user, ok := lockedMap[userID]
+	if !ok {
+		return lockedUser, lockedSender, fmt.Errorf("抢包用户不存在: %d", userID)
+	}
+	sender, ok := lockedMap[senderID]
+	if !ok {
+		return lockedUser, lockedSender, fmt.Errorf("发包用户不存在: %d", senderID)
+	}
+	return user, sender, nil
+}
+
 // GrabRedPacket 抢红包业务逻辑
 func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string, grabIndex int, oddEvenGuess *int) (map[string]interface{}, error) {
 	// 获取红包信息
@@ -680,21 +715,15 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 
 	if hitThunder {
 		// 中雷
-		// 锁定抢包者行，重新校验余额（防止并发抢不同红包导致余额为负）
-		var lockedUser pojo.TgUser
-		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ?", userID).First(&lockedUser).Error; err != nil {
+		// 统一按用户ID升序加锁，避免 A 抢 B、B 抢 A 这类交叉事务死锁。
+		lockedUser, lockedSender, err := lockLuckyTgUsers(tx, userID, luckyMoney.SenderID)
+		if err != nil {
 			tx.Rollback()
-			return nil, fmt.Errorf("锁定用户失败: %v", err)
+			return nil, err
 		}
 		if lockedUser.Balance < lowestAmount {
 			tx.Rollback()
 			return nil, errors.New(utils.I18nMessage("lucky_min_balance_required", map[string]interface{}{"amount": fmt.Sprintf("%.2f", lowestAmount)}))
-		}
-		// 锁定发送者行（在 UPDATE 前读取，得到准确的 StartAmount）
-		var lockedSender pojo.TgUser
-		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ?", luckyMoney.SenderID).First(&lockedSender).Error; err != nil {
-			tx.Rollback()
-			return nil, fmt.Errorf("锁定发送者失败: %v", err)
 		}
 
 		// 扣除用户余额
@@ -872,8 +901,14 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 		// 实际到账金额 = 显示金额 - 平台抽成 - 奖池注入
 		actualAmount := redAmount - commissionAmount - winPoolFee
 
+		var lockedWinner pojo.TgUser
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ?", userID).First(&lockedWinner).Error; err != nil {
+			tx.Rollback()
+			return nil, fmt.Errorf("锁定中奖用户失败: %v", err)
+		}
+
 		// 增加用户余额（实际到账金额）
-		if err := repository.EnsureUserWithdrawLimitState(tx, user); err != nil {
+		if err := repository.EnsureUserWithdrawLimitState(tx, lockedWinner); err != nil {
 			tx.Rollback()
 			return nil, fmt.Errorf("初始化提现限制状态失败: %v", err)
 		}
@@ -889,8 +924,8 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 			UserId:          userID,
 			AwardUni:        fmt.Sprintf("lucky_grab_%d_%d_%d_%s", luckyID, userID, redAmountMilli, utils.RandomString(6)),
 			Amount:          actualAmount,
-			StartAmount:     user.Balance,
-			EndAmount:       user.Balance + actualAmount, // 实际到账金额
+			StartAmount:     lockedWinner.Balance,
+			EndAmount:       lockedWinner.Balance + actualAmount, // 实际到账金额
 			CashMark:        "抢红包",
 			CashDesc:        fmt.Sprintf("抢红包，获得%.2fU", actualAmount),
 			Type:            pojo.CashHistoryTypeGrabRedPacketWin,
@@ -909,8 +944,8 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 				UserId:          userID,
 				AwardUni:        fmt.Sprintf("l_grab_%d_%d_%d_%s", luckyID, userID, awardTs, utils.RandomString(6)),
 				Amount:          commissionAmount,
-				StartAmount:     user.Balance + actualAmount, // 抽成后金额
-				EndAmount:       user.Balance + actualAmount, // 抽成后金额（不变）
+				StartAmount:     lockedWinner.Balance + actualAmount, // 抽成后金额
+				EndAmount:       lockedWinner.Balance + actualAmount, // 抽成后金额（不变）
 				CashMark:        "抢红包抽成",
 				CashDesc:        fmt.Sprintf("抢红包抽成%.2f%%，抽成金额%.2fU", float64(grabbingCommission), commissionAmount),
 				Type:            pojo.CashHistoryTypeRedPacketCommission,

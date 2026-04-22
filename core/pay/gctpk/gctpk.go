@@ -17,6 +17,7 @@ import (
 	"encoding/pem"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"sort"
 	"strings"
@@ -135,6 +136,7 @@ func BuildSign(params map[string]string, secret string) string {
 
 func postJSON(url string, payload map[string]string) ([]byte, error) {
 	body, _ := json.Marshal(payload)
+	log.Printf("[GCTPK] third-party request url=%s params=%s", url, string(body))
 	resp, err := http.Post(url, "application/json", bytes.NewReader(body)) //nolint:noctx
 	if err != nil {
 		return nil, err

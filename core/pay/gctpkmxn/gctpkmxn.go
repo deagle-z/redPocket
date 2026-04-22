@@ -17,6 +17,7 @@ import (
 	"encoding/pem"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"sort"
 	"strings"
@@ -53,8 +54,8 @@ func (g *Provider) CreateOrder(req pay.PayRequest) (pay.PayResponse, error) {
 	params := map[string]string{
 		"merNo":       cfg.MerNo,
 		"merOrderNo":  req.OrderNo,
-		"email":       req.ExtraFields["email"],
-		"phone":       req.ExtraFields["phone"],
+		"email":       req.ExtraFields["emailmxn"],
+		"phone":       req.ExtraFields["phonemxn"],
 		"orderAmount": fmt.Sprintf("%.2f", req.Amount),
 		"currency":    "MXN",
 		"busiCode":    resolveBusiCode(req, "107001"),
@@ -135,6 +136,7 @@ func BuildSign(params map[string]string, secret string) string {
 
 func postJSON(url string, payload map[string]string) ([]byte, error) {
 	body, _ := json.Marshal(payload)
+	log.Printf("[GCTPKMXN] third-party request url=%s params=%s", url, string(body))
 	resp, err := http.Post(url, "application/json", bytes.NewReader(body)) //nolint:noctx
 	if err != nil {
 		return nil, err
