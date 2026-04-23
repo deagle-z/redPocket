@@ -653,7 +653,7 @@ onBeforeUnmount(() => {
                     <span v-if="action.thunder && packet.playType !== 'parity'" aria-hidden="true">💣</span>
                     <span v-else-if="action.thunder && packet.playType === 'parity'" class="parity-lose-coin" aria-hidden="true">-</span>
                     <span v-else-if="action.isGrabMine" class="mine-text">🎁 </span>
-                    <span v-else-if="packet.playType === 'parity' && !action.isGrabbed && packet.status === 'ongoing'" class="choice-mark">奇/偶</span>
+                    <span v-else-if="packet.playType === 'parity' && !action.isGrabbed && packet.status === 'ongoing'" class="choice-mark">{{ t('homeLucky.parityChoiceMark') }}</span>
                     <CoinAmount v-if="action.amount > 0 && !action.thunder && !action.displayLoading && (action.isGrabbed || packet.status !== 'ongoing')" :text="`${action.amount.toFixed(2)}`" />
                     <template v-else>
                       {{ action.label }}
@@ -1049,14 +1049,17 @@ onBeforeUnmount(() => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 42px;
+  width: fit-content;
+  max-width: 100%;
   height: 16px;
+  padding: 0 6px;
   border-radius: 999px;
   background: linear-gradient(180deg, #ffdf87 0%, #d4af37 100%);
   color: #5a1b00;
   font-size: 8px;
   margin: 0 auto 2px;
   font-weight: 700;
+  white-space: nowrap;
 }
 
 .packet-image {

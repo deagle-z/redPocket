@@ -47,7 +47,7 @@ func GetLuckyHistoryUserFlowList(db *gorm.DB, tenantID int64, search pojo.LuckyH
 	var rows []luckyHistoryUserFlowRow
 	_ = query.
 		Joins("left join tg_user on tg_user.id = lucky_history.user_id").
-		Select("lucky_history.user_id, MAX(tg_user.avatar) as avatar, MAX(lucky_history.first_name) AS first_name, COALESCE(SUM(lucky_history.amount + lucky_history.lose_money), 0) AS flow_amount").
+		Select("lucky_history.user_id, MAX(tg_user.avatar) as avatar, COALESCE(NULLIF(MAX(tg_user.first_name), ''), NULLIF(MAX(tg_user.username), ''), '') AS first_name, COALESCE(SUM(lucky_history.amount + lucky_history.lose_money), 0) AS flow_amount").
 		Group("lucky_history.user_id").
 		Order("flow_amount desc, lucky_history.user_id desc").
 		Limit(20).

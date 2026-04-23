@@ -246,6 +246,7 @@
     "hitsCount": "Trovão atinge: {count}",
     "rebate": "Ganhou: {amount}",
     "paritySelectHint": "Escolha ímpar/par antes de pegar",
+    "parityChoiceMark": "Ímpar/Par",
     "paritySelectedCount": "Escolhas feitas: {count}",
     "parityChoiceEyebrow": "Modo de paridade",
     "parityChoiceTitle": "Escolha ímpar ou par primeiro",
@@ -265,7 +266,8 @@
     "packetLoadFailed": "Falha ao carregar lista de pacotes",
     "winnerLoadFailed": "Falha ao carregar a classificação do fluxo",
     "gotPrefix": "Fluxo",
-    "timeJustNow": "Ao vivo"
+    "timeJustNow": "Ao vivo",
+    "txThunderRebateTitle": "Rebate por raio"
   },
   "packetListPage": {
     "entryEyebrow": "Salão de Pacotes",
@@ -287,16 +289,19 @@
     "assetBalance": "Saldo",
     "assetCommission": "Comissão",
     "typeSend": "Enviar pacote",
-    "typeGrabWin": "Lucro ao pegar pacote",
-    "typeGrabThunder": "Acerto de raio ao pegar pacote",
+    "typeGrabNoThunderWin": "Ganho ao pegar pacote sem raio",
+    "typeGrabThunderLoss": "Perda ao pegar pacote com raio",
     "typeSendThunderWin": "Lucro de raio do remetente",
+    "typeLuckyCommission": "Comissão relacionada ao pacote",
     "typeRecharge": "Recarga creditada",
     "typeManualAdd": "Crédito manual",
     "typeManualDeduct": "Dedução manual",
-    "typeWithdrawApply": "Solicitação de saque",
-    "typeWithdrawReturn": "Saque devolvido",
-    "typeRebateTransfer": "Comissão para saldo",
+    "typeWithdrawApply": "Dedução de solicitação de saque",
+    "typeWithdrawReturn": "Estorno por saque falhado/cancelado",
+    "typeRebateTransfer": "Comissão/rebate para saldo",
     "typeLuckyExpiredRefund": "Reembolso de pacote expirado",
+    "typeLotteryConsume": "Consumo de sorteio",
+    "typeLotteryWin": "Prêmio de sorteio",
     "typeAccountChange": "Mudança de conta"
   },
   "rechargePage": {
@@ -327,7 +332,9 @@
     "firstRechargeInstallmentDetail": "O dia 1 dá {firstDayRate}% do seu depósito ({firstDayRatio}% do bônus total)",
     "firstRechargeGift": "Valor do bônus:",
     "todayFirstTitle": "Bônus diário de primeiro depósito",
-    "todayFirstDesc": "Obtenha recompensas extras em seu primeiro depósito hoje"
+    "todayFirstDesc": "Obtenha recompensas extras em seu primeiro depósito hoje",
+    "requiredField": "{field} não pode ficar vazio",
+    "invalidField": "O formato de {field} é inválido"
   },
   "withdrawPage": {
     "title": "Saque",
@@ -369,7 +376,28 @@
     "orderSuccess": "Saque enviado, pedido: {orderNo}",
     "orderFailed": "Falha no saque, tente novamente",
     "bindAccount": "Vincular conta",
-    "noFields": "Nenhum campo de destinatário disponível. Vincule uma conta primeiro"
+    "noFields": "Nenhum campo de destinatário disponível. Vincule uma conta primeiro",
+    "requiredField": "{field} não pode ficar vazio",
+    "invalidField": "O formato de {field} é inválido"
+  },
+  "withdrawAccountPage": {
+    "title": "Conta de saque",
+    "boundAccounts": "Contas vinculadas",
+    "bindNewAccount": "Vincular nova conta",
+    "defaultBadge": "Padrão",
+    "emptyTip": "Ainda não há contas vinculadas. Toque abaixo para vincular uma.",
+    "formTitleEdit": "Editar conta",
+    "formTitleBind": "Vincular conta",
+    "saveChanges": "Salvar alterações",
+    "confirmBind": "Confirmar vínculo",
+    "noFields": "Este país ainda não tem campos de saque configurados",
+    "requiredField": "{field} não pode ficar vazio",
+    "deleteTitle": "Excluir conta",
+    "deleteConfirm": "Tem certeza de que deseja excluir esta conta de saque?",
+    "toastUpdateSuccess": "Conta atualizada",
+    "toastBindSuccess": "Conta vinculada com sucesso",
+    "toastSetDefaultSuccess": "Definida como padrão",
+    "toastDeleteSuccess": "Conta excluída"
   },
   "transformPage": {
     "title": "Transferência de Comissão",
@@ -547,7 +575,22 @@
     "avatarPopupTitle": "Alterar avatar",
     "avatarPopupOr": "ou",
     "avatarUpload": "Carregar avatar personalizado",
-    "avatarUploading": "Fazendo upload..."
+    "avatarUploading": "Fazendo upload...",
+    "toastClaimSuccess": "Recompensa resgatada",
+    "toastClaimAllSuccess": "Todas as recompensas foram resgatadas",
+    "vipTitle": "Nível VIP",
+    "vipDefaultLevel": "VIP 0",
+    "vipPrevLevel": "Nível anterior",
+    "vipCurrentLevel": "Nível atual",
+    "vipNextLevel": "Próximo nível",
+    "vipProgressHint": "Recarregue mais {amount} para alcançar {level}",
+    "vipTopLevelReached": "Você já alcançou o nível máximo",
+    "vipUpgradeReward": "Recompensa de upgrade",
+    "vipPendingRewards": "Recompensas pendentes",
+    "vipClaiming": "Resgatando...",
+    "vipClaimAll": "Resgatar tudo",
+    "vipRewardName": "Recompensa de upgrade {level}",
+    "vipClaim": "Resgatar"
   },
   "settingPage": {
     "title": "Configurações",

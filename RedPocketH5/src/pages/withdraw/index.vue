@@ -257,13 +257,13 @@ async function handleSubmitWithdraw() {
   for (const f of withdrawFields.value) {
     const val = fieldValues.value[f.fieldKey]?.trim() ?? ''
     if (f.isRequired === 1 && !val) {
-      showCenterToast(f.errorTips || `${f.fieldLabel} 不能为空`)
+      showCenterToast(f.errorTips || t('withdrawPage.requiredField', { field: f.fieldLabel }))
       return
     }
     if (val && f.regexRule) {
       const regex = new RegExp(f.regexRule)
       if (!regex.test(val)) {
-        showCenterToast(f.errorTips || `${f.fieldLabel} 格式不正确`)
+        showCenterToast(f.errorTips || t('withdrawPage.invalidField', { field: f.fieldLabel }))
         return
       }
     }

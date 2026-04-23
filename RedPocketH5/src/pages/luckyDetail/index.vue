@@ -594,8 +594,10 @@ onBeforeUnmount(() => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 56px;
+  width: fit-content;
+  max-width: 100%;
   height: 20px;
+  padding: 0 8px;
   margin-bottom: 4px;
   border-radius: 999px;
   background: linear-gradient(180deg, #ffdf87 0%, #d4af37 100%);
@@ -606,6 +608,7 @@ onBeforeUnmount(() => {
   box-shadow:
     0 2px 6px rgba(0, 0, 0, 0.2),
     inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  white-space: nowrap;
 }
 
 .packet-image {

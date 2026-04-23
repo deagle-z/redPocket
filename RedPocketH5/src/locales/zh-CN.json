@@ -246,6 +246,7 @@
     "hitsCount": "撞雷次数: {count}",
     "rebate": "发包赢: {amount}",
     "paritySelectHint": "抢前先选奇/偶",
+    "parityChoiceMark": "奇/偶",
     "paritySelectedCount": "已选择: {count} 人",
     "parityChoiceEyebrow": "奇偶玩法",
     "parityChoiceTitle": "先选择奇偶",
@@ -265,7 +266,8 @@
     "packetLoadFailed": "红包列表加载失败",
     "winnerLoadFailed": "流水排名加载失败",
     "gotPrefix": "流水",
-    "timeJustNow": "实时"
+    "timeJustNow": "实时",
+    "txThunderRebateTitle": "中雷返利"
   },
   "packetListPage": {
     "entryEyebrow": "红包大厅",
@@ -287,9 +289,10 @@
     "assetBalance": "余额",
     "assetCommission": "佣金",
     "typeSend": "发送红包",
-    "typeGrabWin": "抢红包收益",
-    "typeGrabThunder": "抢红包中雷",
+    "typeGrabNoThunderWin": "抢红包未中雷收益",
+    "typeGrabThunderLoss": "抢红包中雷损失",
     "typeSendThunderWin": "发包雷收益",
+    "typeLuckyCommission": "红包相关抽成",
     "typeRecharge": "充值到账",
     "typeManualAdd": "手工加款",
     "typeManualDeduct": "手工扣款",
@@ -297,6 +300,8 @@
     "typeWithdrawReturn": "提现退回",
     "typeRebateTransfer": "佣金转余额",
     "typeLuckyExpiredRefund": "红包过期退回",
+    "typeLotteryConsume": "抽奖消耗",
+    "typeLotteryWin": "抽奖中奖",
     "typeAccountChange": "账户变动"
   },
   "rechargePage": {
@@ -327,7 +332,9 @@
     "firstRechargeInstallmentDetail": "第 1 天赠送充值金额的 {firstDayRate}%（占总赠送 {firstDayRatio}%）",
     "firstRechargeGift": "赠送金额：",
     "todayFirstTitle": "今日首次充值优惠",
-    "todayFirstDesc": "今日首次存款即可享受额外奖励"
+    "todayFirstDesc": "今日首次存款即可享受额外奖励",
+    "requiredField": "{field} 不能为空",
+    "invalidField": "{field} 格式不正确"
   },
   "withdrawPage": {
     "title": "提现",
@@ -369,7 +376,28 @@
     "orderSuccess": "提现申请已提交，订单号: {orderNo}",
     "orderFailed": "提现申请失败，请重试",
     "bindAccount": "绑定账户",
-    "noFields": "暂无收款字段，请先绑定账户"
+    "noFields": "暂无收款字段，请先绑定账户",
+    "requiredField": "{field} 不能为空",
+    "invalidField": "{field} 格式不正确"
+  },
+  "withdrawAccountPage": {
+    "title": "提现账户",
+    "boundAccounts": "已绑定账户",
+    "bindNewAccount": "绑定新账户",
+    "defaultBadge": "默认",
+    "emptyTip": "暂无绑定账户，请点击下方绑定",
+    "formTitleEdit": "修改账户",
+    "formTitleBind": "绑定账户",
+    "saveChanges": "保存修改",
+    "confirmBind": "确认绑定",
+    "noFields": "该国家暂未配置提现字段",
+    "requiredField": "{field} 不能为空",
+    "deleteTitle": "删除账户",
+    "deleteConfirm": "确认删除该提现账户？",
+    "toastUpdateSuccess": "修改成功",
+    "toastBindSuccess": "绑定成功",
+    "toastSetDefaultSuccess": "已设为默认",
+    "toastDeleteSuccess": "删除成功"
   },
   "transformPage": {
     "title": "佣金转账",
@@ -547,7 +575,22 @@
     "avatarPopupTitle": "更换头像",
     "avatarPopupOr": "或",
     "avatarUpload": "上传自定义头像",
-    "avatarUploading": "上传中..."
+    "avatarUploading": "上传中...",
+    "toastClaimSuccess": "领取成功",
+    "toastClaimAllSuccess": "全部领取成功",
+    "vipTitle": "VIP 等级",
+    "vipDefaultLevel": "VIP 0",
+    "vipPrevLevel": "上一等级",
+    "vipCurrentLevel": "当前等级",
+    "vipNextLevel": "下一等级",
+    "vipProgressHint": "距 {level} 还需充值 {amount}",
+    "vipTopLevelReached": "已达最高等级",
+    "vipUpgradeReward": "升级奖励",
+    "vipPendingRewards": "待领取奖励",
+    "vipClaiming": "领取中...",
+    "vipClaimAll": "全部领取",
+    "vipRewardName": "{level} 升级奖励",
+    "vipClaim": "领取"
   },
   "settingPage": {
     "title": "设置",

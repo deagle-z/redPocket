@@ -66,16 +66,13 @@ function formatTxTime(raw: string) {
   return `${month}/${day} ${hh}:${mm}`
 }
 
-function mapCashTypeTitle(type: number, cashMark?: string, cashDesc?: string) {
-  if (cashDesc)
-    return cashDesc
-  if (cashMark)
-    return cashMark
+function mapCashTypeTitle(type: number) {
   const map: Record<number, string> = {
     1: t('walletPage.typeSend'),
-    2: t('walletPage.typeGrabWin'),
-    3: t('walletPage.typeGrabThunder'),
+    2: t('walletPage.typeGrabNoThunderWin'),
+    3: t('walletPage.typeGrabThunderLoss'),
     4: t('walletPage.typeSendThunderWin'),
+    5: t('walletPage.typeLuckyCommission'),
     6: t('walletPage.typeRecharge'),
     7: t('walletPage.typeManualAdd'),
     8: t('walletPage.typeManualDeduct'),
@@ -83,6 +80,8 @@ function mapCashTypeTitle(type: number, cashMark?: string, cashDesc?: string) {
     10: t('walletPage.typeWithdrawReturn'),
     11: t('walletPage.typeRebateTransfer'),
     12: t('walletPage.typeLuckyExpiredRefund'),
+    13: t('walletPage.typeLotteryConsume'),
+    14: t('walletPage.typeLotteryWin'),
   }
   return map[Number(type) || 0] || t('walletPage.typeAccountChange')
 }
@@ -90,7 +89,7 @@ function mapCashTypeTitle(type: number, cashMark?: string, cashDesc?: string) {
 function mapTxItem(item: any): WalletTx {
   return {
     id: String(`${item?.userId || 0}_${item?.createdAt || ''}_${item?.type || 0}_${item?.amount || 0}`),
-    title: mapCashTypeTitle(Number(item?.type || 0), item?.cashMark, item?.cashDesc),
+    title: mapCashTypeTitle(Number(item?.type || 0)),
     time: formatTxTime(item?.createdAt || ''),
     amount: Number(item?.amount || 0),
   }
@@ -156,7 +155,6 @@ onMounted(() => {
 
 <template>
   <div class="wallet-page">
-
     <section class="asset-card card">
       <p class="asset-label">
         {{ t('walletPage.totalAsset') }}

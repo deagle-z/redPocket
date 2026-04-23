@@ -258,7 +258,7 @@ function mapHistoryItem(item: any): TxItem {
     avatar: item?.avatar || DEFAULT_AVATAR,
     title: isSend
       ? t('historyPage.txSendTitle', { amount: formatCurrency(luckyAmount) })
-      : item?.grabType === 2 ? '中雷返利' : t('historyPage.txGrabTitle', { sender: senderName, amount: formatCurrency(grabAmount) }),
+      : item?.grabType === 2 ? t('historyPage.txThunderRebateTitle') : t('historyPage.txGrabTitle', { sender: senderName, amount: formatCurrency(grabAmount) }),
     sub: t('historyPage.thunderNo', { no: thunder }),
     time: formatTime(item?.createdAt || ''),
     amount,

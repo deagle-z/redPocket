@@ -707,6 +707,19 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 		}
 	}()
 
+	// 与红包过期退款统一锁顺序：先锁 lucky_money，再锁 tg_user，
+	// 避免过期任务（lucky -> user）与抢包事务（user -> lucky）形成死锁。
+	var lockedLucky pojo.LuckyMoney
+	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ?", luckyID).First(&lockedLucky).Error; err != nil {
+		tx.Rollback()
+		return nil, fmt.Errorf("锁定红包失败: %v", err)
+	}
+	if lockedLucky.Status != 1 {
+		tx.Rollback()
+		return nil, errors.New("lucky_finished")
+	}
+	luckyMoney = lockedLucky
+
 	// 标记子红包被抢（防止同一序号被重复抢），并记录是否中雷
 	if err := repository.MarkLuckyMoneyItemGrabbed(tx, luckyID, grabIndex, userID, isThunder, loseMoney, thunderFee, winFee, time.Now()); err != nil {
 		tx.Rollback()

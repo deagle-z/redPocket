@@ -246,6 +246,7 @@
     "hitsCount": "Guntur melanda: {count}",
     "rebate": "Menang: {amount}",
     "paritySelectHint": "Pilih ganjil/genap sebelum meraih",
+    "parityChoiceMark": "Ganjil/Genap",
     "paritySelectedCount": "Pilihan dibuat: {count}",
     "parityChoiceEyebrow": "Modus Paritas",
     "parityChoiceTitle": "Pilih ganjil atau genap terlebih dahulu",
@@ -265,7 +266,8 @@
     "packetLoadFailed": "Gagal memuat daftar paket",
     "winnerLoadFailed": "Gagal memuat peringkat aliran",
     "gotPrefix": "Mengalir",
-    "timeJustNow": "Hidup"
+    "timeJustNow": "Hidup",
+    "txThunderRebateTitle": "Rebate kena petir"
   },
   "packetListPage": {
     "entryEyebrow": "Aula Paket",
@@ -287,16 +289,19 @@
     "assetBalance": "Keseimbangan",
     "assetCommission": "Komisi",
     "typeSend": "Kirim Paket",
-    "typeGrabWin": "Ambil Keuntungan Paket",
-    "typeGrabThunder": "Ambil Paket Guntur Hit",
-    "typeSendThunderWin": "Pengirim Untung Guntur",
+    "typeGrabNoThunderWin": "Keuntungan ambil paket tanpa kena petir",
+    "typeGrabThunderLoss": "Kerugian ambil paket kena petir",
+    "typeSendThunderWin": "Keuntungan pengirim kena petir",
+    "typeLuckyCommission": "Potongan terkait paket",
     "typeRecharge": "Isi Ulang Dikreditkan",
     "typeManualAdd": "Tambah Manual",
     "typeManualDeduct": "Pengurangan Manual",
-    "typeWithdrawApply": "Permintaan Penarikan",
-    "typeWithdrawReturn": "Penarikan Dikembalikan",
-    "typeRebateTransfer": "Komisi untuk Menyeimbangkan",
+    "typeWithdrawApply": "Potongan permohonan penarikan",
+    "typeWithdrawReturn": "Pengembalian penarikan gagal/batal",
+    "typeRebateTransfer": "Komisi/rebate ke saldo",
     "typeLuckyExpiredRefund": "Pengembalian Dana Paket Kedaluwarsa",
+    "typeLotteryConsume": "Konsumsi undian",
+    "typeLotteryWin": "Menang undian",
     "typeAccountChange": "Perubahan Akun"
   },
   "rechargePage": {
@@ -327,7 +332,9 @@
     "firstRechargeInstallmentDetail": "Hari ke-1 memberikan {firstDayRate}% dari deposit Anda ({firstDayRatio}% dari total bonus)",
     "firstRechargeGift": "Jumlah bonus:",
     "todayFirstTitle": "Bonus Setoran Pertama Harian",
-    "todayFirstDesc": "Dapatkan hadiah ekstra pada deposit pertama Anda hari ini"
+    "todayFirstDesc": "Dapatkan hadiah ekstra pada deposit pertama Anda hari ini",
+    "requiredField": "{field} tidak boleh kosong",
+    "invalidField": "Format {field} tidak valid"
   },
   "withdrawPage": {
     "title": "Penarikan",
@@ -369,7 +376,28 @@
     "orderSuccess": "Penarikan telah diajukan, pesanan: {orderNo}",
     "orderFailed": "Penarikan gagal, silakan coba lagi",
     "bindAccount": "Tautkan Akun",
-    "noFields": "Tidak ada kolom penerima yang tersedia, silakan tautkan akun terlebih dahulu"
+    "noFields": "Tidak ada kolom penerima yang tersedia, silakan tautkan akun terlebih dahulu",
+    "requiredField": "{field} tidak boleh kosong",
+    "invalidField": "Format {field} tidak valid"
+  },
+  "withdrawAccountPage": {
+    "title": "Akun Penarikan",
+    "boundAccounts": "Akun Tertaut",
+    "bindNewAccount": "Tautkan Akun Baru",
+    "defaultBadge": "Default",
+    "emptyTip": "Belum ada akun tertaut. Ketuk tombol di bawah untuk menautkan.",
+    "formTitleEdit": "Ubah Akun",
+    "formTitleBind": "Tautkan Akun",
+    "saveChanges": "Simpan Perubahan",
+    "confirmBind": "Konfirmasi Tautkan",
+    "noFields": "Negara ini belum memiliki field penarikan",
+    "requiredField": "{field} tidak boleh kosong",
+    "deleteTitle": "Hapus Akun",
+    "deleteConfirm": "Yakin ingin menghapus akun penarikan ini?",
+    "toastUpdateSuccess": "Akun berhasil diperbarui",
+    "toastBindSuccess": "Akun berhasil ditautkan",
+    "toastSetDefaultSuccess": "Berhasil dijadikan default",
+    "toastDeleteSuccess": "Akun berhasil dihapus"
   },
   "transformPage": {
     "title": "Transfer Komisi",
@@ -547,7 +575,22 @@
     "avatarPopupTitle": "Ubah Avatar",
     "avatarPopupOr": "atau",
     "avatarUpload": "Unggah Avatar Khusus",
-    "avatarUploading": "Mengunggah..."
+    "avatarUploading": "Mengunggah...",
+    "toastClaimSuccess": "Berhasil klaim",
+    "toastClaimAllSuccess": "Semua hadiah berhasil diklaim",
+    "vipTitle": "Level VIP",
+    "vipDefaultLevel": "VIP 0",
+    "vipPrevLevel": "Level sebelumnya",
+    "vipCurrentLevel": "Level saat ini",
+    "vipNextLevel": "Level berikutnya",
+    "vipProgressHint": "Isi ulang {amount} lagi untuk mencapai {level}",
+    "vipTopLevelReached": "Sudah mencapai level tertinggi",
+    "vipUpgradeReward": "Hadiah naik level",
+    "vipPendingRewards": "Hadiah yang belum diklaim",
+    "vipClaiming": "Sedang klaim...",
+    "vipClaimAll": "Klaim semua",
+    "vipRewardName": "Hadiah naik level {level}",
+    "vipClaim": "Klaim"
   },
   "settingPage": {
     "title": "Pengaturan",

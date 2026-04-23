@@ -71,7 +71,7 @@ async function handleClaimReward(id: number) {
   claimingId.value = id
   try {
     await claimVipReward(id)
-    showToast('领取成功')
+    showToast(t('profilePage.toastClaimSuccess'))
     vipRewards.value = vipRewards.value.filter(r => r.id !== id)
     // refresh balance
     await loadCurrentTgUserInfo()
@@ -89,7 +89,7 @@ async function handleClaimAll() {
   claimingId.value = 0
   try {
     await claimVipReward(0)
-    showToast('全部领取成功')
+    showToast(t('profilePage.toastClaimAllSuccess'))
     vipRewards.value = []
     await loadCurrentTgUserInfo()
   }
@@ -409,7 +409,7 @@ async function handleConfirmLogout() {
               {{ displayName }}
             </h3>
             <button type="button" class="vip-tag" @click="openVipPopup">
-              {{ profile.vipLevelName || 'VIP 0' }}
+              {{ profile.vipLevelName || t('profilePage.vipDefaultLevel') }}
             </button>
           </div>
           <p class="user-id">
@@ -504,7 +504,7 @@ async function handleConfirmLogout() {
     <!-- VIP Progress Popup -->
     <van-popup v-model:show="showVipPopup" round position="bottom" class="vip-popup">
       <div class="vip-popup-header">
-        <span class="vip-popup-title">VIP 等级</span>
+        <span class="vip-popup-title">{{ t('profilePage.vipTitle') }}</span>
         <button class="vip-popup-close" @click="showVipPopup = false">×</button>
       </div>
 
@@ -517,15 +517,15 @@ async function handleConfirmLogout() {
         <div class="vip-levels-row">
           <div class="vip-level-badge" :class="{ active: false }">
             <span class="vip-badge-name">{{ vipProgress.prevLevel?.levelName || '—' }}</span>
-            <span class="vip-badge-label">上一等级</span>
+            <span class="vip-badge-label">{{ t('profilePage.vipPrevLevel') }}</span>
           </div>
           <div class="vip-level-badge current">
-            <span class="vip-badge-name">{{ vipProgress.currentLevel?.levelName || 'VIP 0' }}</span>
-            <span class="vip-badge-label">当前等级</span>
+            <span class="vip-badge-name">{{ vipProgress.currentLevel?.levelName || t('profilePage.vipDefaultLevel') }}</span>
+            <span class="vip-badge-label">{{ t('profilePage.vipCurrentLevel') }}</span>
           </div>
           <div class="vip-level-badge">
             <span class="vip-badge-name">{{ vipProgress.nextLevel?.levelName || '—' }}</span>
-            <span class="vip-badge-label">下一等级</span>
+            <span class="vip-badge-label">{{ t('profilePage.vipNextLevel') }}</span>
           </div>
         </div>
 
@@ -540,35 +540,37 @@ async function handleConfirmLogout() {
             <div class="vip-progress-fill" :style="{ width: `${vipProgress.progress}%` }" />
           </div>
           <p v-if="vipProgress.nextLevel" class="vip-progress-hint">
-            距 {{ vipProgress.nextLevel.levelName }} 还需充值
-            <strong>{{ Math.max(0, vipProgress.targetValue - vipProgress.currentValue).toFixed(2) }}</strong>
+            {{ t('profilePage.vipProgressHint', {
+              level: vipProgress.nextLevel.levelName,
+              amount: Math.max(0, vipProgress.targetValue - vipProgress.currentValue).toFixed(2),
+            }) }}
           </p>
           <p v-else class="vip-progress-hint">
-            已达最高等级
+            {{ t('profilePage.vipTopLevelReached') }}
           </p>
         </div>
 
         <!-- Next level bonus -->
         <div v-if="vipProgress.nextLevel && vipProgress.nextBonusAmount > 0" class="vip-next-bonus">
-          <span class="vip-next-bonus-label">升级奖励</span>
+          <span class="vip-next-bonus-label">{{ t('profilePage.vipUpgradeReward') }}</span>
           <span class="vip-next-bonus-amount">+{{ vipProgress.nextBonusAmount.toFixed(2) }}</span>
         </div>
 
         <!-- Claimable rewards -->
         <div v-if="vipRewards.length > 0" class="vip-rewards-section">
           <div class="vip-rewards-header">
-            <span class="vip-rewards-title">待领取奖励</span>
+            <span class="vip-rewards-title">{{ t('profilePage.vipPendingRewards') }}</span>
             <button
               class="vip-claim-all-btn"
               :disabled="claimingId !== null"
               @click="handleClaimAll"
             >
-              {{ claimingId === 0 ? '领取中...' : '全部领取' }}
+              {{ claimingId === 0 ? t('profilePage.vipClaiming') : t('profilePage.vipClaimAll') }}
             </button>
           </div>
           <div v-for="reward in vipRewards" :key="reward.id" class="vip-reward-item">
             <div class="vip-reward-info">
-              <span class="vip-reward-name">{{ reward.levelName }} 升级奖励</span>
+              <span class="vip-reward-name">{{ t('profilePage.vipRewardName', { level: reward.levelName }) }}</span>
               <span class="vip-reward-amount">+{{ reward.bonusAmount.toFixed(2) }}</span>
             </div>
             <button
@@ -576,7 +578,7 @@ async function handleConfirmLogout() {
               :disabled="claimingId !== null"
               @click="handleClaimReward(reward.id)"
             >
-              {{ claimingId === reward.id ? '领取中...' : '领取' }}
+              {{ claimingId === reward.id ? t('profilePage.vipClaiming') : t('profilePage.vipClaim') }}
             </button>
           </div>
         </div>

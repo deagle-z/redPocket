@@ -311,13 +311,13 @@ async function handleSubmitRecharge() {
     const val = fieldValues.value[f.fieldKey]?.trim() ?? ''
     const tip = f.errorTips || ''
     if (f.isRequired === 1 && !val) {
-      showCenterToast(tip || `${f.fieldLabel} 不能为空`)
+      showCenterToast(tip || t('rechargePage.requiredField', { field: f.fieldLabel }))
       return
     }
     if (val && f.regexRule) {
       const regex = new RegExp(f.regexRule)
       if (!regex.test(val)) {
-        showCenterToast(tip || `${f.fieldLabel} 格式不正确`)
+        showCenterToast(tip || t('rechargePage.invalidField', { field: f.fieldLabel }))
         return
       }
     }

@@ -246,6 +246,7 @@
     "hitsCount": "Thunder hits: {count}",
     "rebate": "Win: {amount}",
     "paritySelectHint": "Choose odd/even before grabbing",
+    "parityChoiceMark": "Odd/Even",
     "paritySelectedCount": "Choices made: {count}",
     "parityChoiceEyebrow": "Parity Mode",
     "parityChoiceTitle": "Choose odd or even first",
@@ -265,7 +266,8 @@
     "packetLoadFailed": "Failed to load packet list",
     "winnerLoadFailed": "Failed to load flow ranking",
     "gotPrefix": "Flow",
-    "timeJustNow": "Live"
+    "timeJustNow": "Live",
+    "txThunderRebateTitle": "Thunder Rebate"
   },
   "packetListPage": {
     "entryEyebrow": "Packet Hall",
@@ -287,16 +289,19 @@
     "assetBalance": "Balance",
     "assetCommission": "Commission",
     "typeSend": "Send Packet",
-    "typeGrabWin": "Grab Packet Profit",
-    "typeGrabThunder": "Grab Packet Thunder Hit",
+    "typeGrabNoThunderWin": "Grab Packet Non-thunder Profit",
+    "typeGrabThunderLoss": "Grab Packet Thunder Loss",
     "typeSendThunderWin": "Sender Thunder Profit",
+    "typeLuckyCommission": "Packet-related Commission",
     "typeRecharge": "Recharge Credited",
     "typeManualAdd": "Manual Add",
     "typeManualDeduct": "Manual Deduct",
-    "typeWithdrawApply": "Withdraw Request",
-    "typeWithdrawReturn": "Withdraw Returned",
-    "typeRebateTransfer": "Commission to Balance",
+    "typeWithdrawApply": "Withdraw Request Deduction",
+    "typeWithdrawReturn": "Withdraw Failed/Canceled Return",
+    "typeRebateTransfer": "Commission/Rebate to Balance",
     "typeLuckyExpiredRefund": "Packet Expired Refund",
+    "typeLotteryConsume": "Lottery Consumption",
+    "typeLotteryWin": "Lottery Prize",
     "typeAccountChange": "Account Change"
   },
   "rechargePage": {
@@ -327,7 +332,9 @@
     "firstRechargeInstallmentDetail": "Day 1 gives {firstDayRate}% of your deposit ({firstDayRatio}% of the total bonus)",
     "firstRechargeGift": "Bonus amount:",
     "todayFirstTitle": "Daily First Deposit Bonus",
-    "todayFirstDesc": "Get extra rewards on your first deposit today"
+    "todayFirstDesc": "Get extra rewards on your first deposit today",
+    "requiredField": "{field} cannot be empty",
+    "invalidField": "{field} format is invalid"
   },
   "withdrawPage": {
     "title": "Withdraw",
@@ -369,7 +376,28 @@
     "orderSuccess": "Withdrawal submitted, order: {orderNo}",
     "orderFailed": "Withdrawal failed, please try again",
     "bindAccount": "Bind Account",
-    "noFields": "No receiver fields available, please bind an account first"
+    "noFields": "No receiver fields available, please bind an account first",
+    "requiredField": "{field} cannot be empty",
+    "invalidField": "{field} format is invalid"
+  },
+  "withdrawAccountPage": {
+    "title": "Withdraw Account",
+    "boundAccounts": "Bound Accounts",
+    "bindNewAccount": "Bind New Account",
+    "defaultBadge": "Default",
+    "emptyTip": "No bound accounts yet. Tap below to bind one.",
+    "formTitleEdit": "Edit Account",
+    "formTitleBind": "Bind Account",
+    "saveChanges": "Save Changes",
+    "confirmBind": "Confirm Binding",
+    "noFields": "This country has no withdraw fields configured yet",
+    "requiredField": "{field} cannot be empty",
+    "deleteTitle": "Delete Account",
+    "deleteConfirm": "Are you sure you want to delete this withdraw account?",
+    "toastUpdateSuccess": "Account updated",
+    "toastBindSuccess": "Account bound successfully",
+    "toastSetDefaultSuccess": "Set as default",
+    "toastDeleteSuccess": "Account deleted"
   },
   "transformPage": {
     "title": "Commission Transfer",
@@ -547,7 +575,22 @@
     "avatarPopupTitle": "Change Avatar",
     "avatarPopupOr": "or",
     "avatarUpload": "Upload Custom Avatar",
-    "avatarUploading": "Uploading..."
+    "avatarUploading": "Uploading...",
+    "toastClaimSuccess": "Claim successful",
+    "toastClaimAllSuccess": "All rewards claimed",
+    "vipTitle": "VIP Level",
+    "vipDefaultLevel": "VIP 0",
+    "vipPrevLevel": "Previous Level",
+    "vipCurrentLevel": "Current Level",
+    "vipNextLevel": "Next Level",
+    "vipProgressHint": "Recharge {amount} more to reach {level}",
+    "vipTopLevelReached": "Highest level reached",
+    "vipUpgradeReward": "Upgrade Reward",
+    "vipPendingRewards": "Pending Rewards",
+    "vipClaiming": "Claiming...",
+    "vipClaimAll": "Claim All",
+    "vipRewardName": "{level} Upgrade Reward",
+    "vipClaim": "Claim"
   },
   "settingPage": {
     "title": "Settings",

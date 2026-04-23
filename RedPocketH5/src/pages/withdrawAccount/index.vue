@@ -14,6 +14,7 @@ import {
 } from '@/api/user'
 import AppPageHeader from '@/components/AppPageHeader.vue'
 
+const { t } = useI18n()
 const router = useRouter()
 
 // 国家
@@ -74,7 +75,9 @@ function onPickerConfirm({ selectedOptions }: { selectedOptions: Array<{ text: s
   pickerVisible.value = false
 }
 
-const formTitle = computed(() => editingId.value ? '修改账户' : '绑定账户')
+const formTitle = computed(() =>
+  editingId.value ? t('withdrawAccountPage.formTitleEdit') : t('withdrawAccountPage.formTitleBind'),
+)
 
 function showCenterToast(message: string) {
   showToast({ message, position: 'middle', teleport: '#app', wordBreak: 'break-word' })
@@ -197,7 +200,7 @@ async function handleSubmit() {
   // 必填校验
   for (const f of withdrawFields.value) {
     if (f.isRequired === 1 && !fieldValues.value[f.fieldKey]?.trim()) {
-      showCenterToast(f.errorTips || `${f.fieldLabel} 不能为空`)
+      showCenterToast(f.errorTips || t('withdrawAccountPage.requiredField', { field: f.fieldLabel }))
       return
     }
   }
@@ -210,14 +213,14 @@ async function handleSubmit() {
         countryCode: selectedCountry.value.countryCode,
         accountData,
       })
-      showCenterToast('修改成功')
+      showCenterToast(t('withdrawAccountPage.toastUpdateSuccess'))
     }
     else {
       await addWithdrawAccount({
         countryCode: selectedCountry.value.countryCode,
         accountData,
       })
-      showCenterToast('绑定成功')
+      showCenterToast(t('withdrawAccountPage.toastBindSuccess'))
     }
     closeForm()
     await loadAccounts()
@@ -235,7 +238,7 @@ async function handleSetDefault(account: WithdrawAccountItem) {
     return
   try {
     await setDefaultWithdrawAccount(account.id)
-    showCenterToast('已设为默认')
+    showCenterToast(t('withdrawAccountPage.toastSetDefaultSuccess'))
     await loadAccounts()
   }
   catch {}
@@ -244,13 +247,13 @@ async function handleSetDefault(account: WithdrawAccountItem) {
 async function handleDelete(account: WithdrawAccountItem) {
   try {
     await showConfirmDialog({
-      title: '删除账户',
-      message: '确认删除该提现账户？',
+      title: t('withdrawAccountPage.deleteTitle'),
+      message: t('withdrawAccountPage.deleteConfirm'),
       teleport: '#app',
       confirmButtonColor: '#d4af37',
     })
     await deleteWithdrawAccount(account.id)
-    showCenterToast('删除成功')
+    showCenterToast(t('withdrawAccountPage.toastDeleteSuccess'))
     await loadAccounts()
   }
   catch {}
@@ -263,7 +266,7 @@ onMounted(() => {
 
 <template>
   <div class="wa-page">
-    <AppPageHeader class="wa-header" title="提现账户" @back="goBack" />
+    <AppPageHeader class="wa-header" :title="t('withdrawAccountPage.title')" @back="goBack" />
 
     <!-- 国家选择 -->
     <div class="country-bar">
@@ -288,10 +291,10 @@ onMounted(() => {
     <!-- 账户列表 -->
     <section class="card">
       <div class="section-head">
-        <h2>已绑定账户</h2>
+        <h2>{{ t('withdrawAccountPage.boundAccounts') }}</h2>
         <button v-if="!showForm && withdrawFields.length" type="button" class="add-btn" @click="openAddForm">
           <van-icon name="plus" />
-          绑定新账户
+          {{ t('withdrawAccountPage.bindNewAccount') }}
         </button>
       </div>
 
@@ -306,7 +309,7 @@ onMounted(() => {
             :class="{ 'account-card--default': account.isDefault === 1 }"
           >
             <div class="account-card__head">
-              <span v-if="account.isDefault === 1" class="default-badge">默认</span>
+              <span v-if="account.isDefault === 1" class="default-badge">{{ t('withdrawAccountPage.defaultBadge') }}</span>
               <span class="account-country">{{ account.countryCode }}</span>
               <div class="account-actions">
                 <button type="button" class="action-btn" @click="openEditForm(account)">
@@ -339,7 +342,7 @@ onMounted(() => {
         </div>
 
         <p v-else-if="!showForm" class="empty-tip">
-          暂无绑定账户，请点击下方绑定
+          {{ t('withdrawAccountPage.emptyTip') }}
         </p>
       </template>
 
@@ -351,7 +354,7 @@ onMounted(() => {
         @click="openAddForm"
       >
         <van-icon name="plus" />
-        绑定账户
+        {{ t('withdrawPage.bindAccount') }}
       </button>
     </section>
 
@@ -400,12 +403,12 @@ onMounted(() => {
           :loading="submitLoading"
           @click="handleSubmit"
         >
-          {{ editingId ? '保存修改' : '确认绑定' }}
+          {{ editingId ? t('withdrawAccountPage.saveChanges') : t('withdrawAccountPage.confirmBind') }}
         </van-button>
       </template>
 
       <p v-else class="empty-tip">
-        该国家暂未配置提现字段
+        {{ t('withdrawAccountPage.noFields') }}
       </p>
     </section>
 

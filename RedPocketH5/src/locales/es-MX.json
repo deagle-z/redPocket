@@ -246,6 +246,7 @@
     "hitsCount": "Trueno golpea: {count}",
     "rebate": "Ganar: {amount}",
     "paritySelectHint": "Elija par/impar antes de agarrar",
+    "parityChoiceMark": "Impar/Par",
     "paritySelectedCount": "Elecciones realizadas: {count}",
     "parityChoiceEyebrow": "Modo de paridad",
     "parityChoiceTitle": "Elige primero par o impar",
@@ -265,7 +266,8 @@
     "packetLoadFailed": "No se pudo cargar la lista de paquetes",
     "winnerLoadFailed": "No se pudo cargar la clasificación de flujo",
     "gotPrefix": "Fluir",
-    "timeJustNow": "Vivir"
+    "timeJustNow": "Vivir",
+    "txThunderRebateTitle": "Reembolso por trueno"
   },
   "packetListPage": {
     "entryEyebrow": "Sala de paquetes",
@@ -287,16 +289,19 @@
     "assetBalance": "Balance",
     "assetCommission": "Comisión",
     "typeSend": "Enviar paquete",
-    "typeGrabWin": "Aprovechar el beneficio del paquete",
-    "typeGrabThunder": "Agarrar paquete Trueno Golpe",
-    "typeSendThunderWin": "Beneficio del trueno del remitente",
+    "typeGrabNoThunderWin": "Ganancia por tomar sobre sin trueno",
+    "typeGrabThunderLoss": "Pérdida por tomar sobre con trueno",
+    "typeSendThunderWin": "Ganancia del remitente por trueno",
+    "typeLuckyCommission": "Comisión relacionada con sobres",
     "typeRecharge": "Recarga acreditada",
     "typeManualAdd": "Agregar manualmente",
     "typeManualDeduct": "Deducción manual",
-    "typeWithdrawApply": "Solicitud de retiro",
-    "typeWithdrawReturn": "Retirar Devuelto",
-    "typeRebateTransfer": "Comisión para equilibrar",
+    "typeWithdrawApply": "Descuento por solicitud de retiro",
+    "typeWithdrawReturn": "Devolución por retiro fallido/cancelado",
+    "typeRebateTransfer": "Comisión/reembolso a saldo",
     "typeLuckyExpiredRefund": "Reembolso del paquete vencido",
+    "typeLotteryConsume": "Consumo de sorteo",
+    "typeLotteryWin": "Premio del sorteo",
     "typeAccountChange": "Cambio de cuenta"
   },
   "rechargePage": {
@@ -327,7 +332,9 @@
     "firstRechargeInstallmentDetail": "El día 1 otorga {firstDayRate}% de tu depósito ({firstDayRatio}% del bono total)",
     "firstRechargeGift": "Monto del bono:",
     "todayFirstTitle": "Bono diario por primer depósito",
-    "todayFirstDesc": "Obtenga recompensas adicionales en su primer depósito hoy"
+    "todayFirstDesc": "Obtenga recompensas adicionales en su primer depósito hoy",
+    "requiredField": "{field} no puede estar vacío",
+    "invalidField": "El formato de {field} no es válido"
   },
   "withdrawPage": {
     "title": "Retiro",
@@ -369,7 +376,28 @@
     "orderSuccess": "Retiro enviado, orden: {orderNo}",
     "orderFailed": "El retiro falló, inténtalo de nuevo",
     "bindAccount": "Vincular cuenta",
-    "noFields": "No hay campos de receptor disponibles, vincule primero una cuenta"
+    "noFields": "No hay campos de receptor disponibles, vincule primero una cuenta",
+    "requiredField": "{field} no puede estar vacío",
+    "invalidField": "El formato de {field} no es válido"
+  },
+  "withdrawAccountPage": {
+    "title": "Cuenta de retiro",
+    "boundAccounts": "Cuentas vinculadas",
+    "bindNewAccount": "Vincular nueva cuenta",
+    "defaultBadge": "Predeterminada",
+    "emptyTip": "No hay cuentas vinculadas. Toca abajo para vincular una.",
+    "formTitleEdit": "Editar cuenta",
+    "formTitleBind": "Vincular cuenta",
+    "saveChanges": "Guardar cambios",
+    "confirmBind": "Confirmar vinculación",
+    "noFields": "Este país aún no tiene campos de retiro configurados",
+    "requiredField": "{field} no puede estar vacío",
+    "deleteTitle": "Eliminar cuenta",
+    "deleteConfirm": "¿Seguro que deseas eliminar esta cuenta de retiro?",
+    "toastUpdateSuccess": "Cuenta actualizada",
+    "toastBindSuccess": "Cuenta vinculada con éxito",
+    "toastSetDefaultSuccess": "Establecida como predeterminada",
+    "toastDeleteSuccess": "Cuenta eliminada"
   },
   "transformPage": {
     "title": "Transferencia de comisión",
@@ -547,7 +575,22 @@
     "avatarPopupTitle": "Cambiar avatar",
     "avatarPopupOr": "o",
     "avatarUpload": "Subir avatar personalizado",
-    "avatarUploading": "Subiendo..."
+    "avatarUploading": "Subiendo...",
+    "toastClaimSuccess": "Recompensa reclamada",
+    "toastClaimAllSuccess": "Todas las recompensas fueron reclamadas",
+    "vipTitle": "Nivel VIP",
+    "vipDefaultLevel": "VIP 0",
+    "vipPrevLevel": "Nivel anterior",
+    "vipCurrentLevel": "Nivel actual",
+    "vipNextLevel": "Siguiente nivel",
+    "vipProgressHint": "Recarga {amount} más para llegar a {level}",
+    "vipTopLevelReached": "Ya alcanzaste el nivel más alto",
+    "vipUpgradeReward": "Recompensa de mejora",
+    "vipPendingRewards": "Recompensas pendientes",
+    "vipClaiming": "Reclamando...",
+    "vipClaimAll": "Reclamar todo",
+    "vipRewardName": "Recompensa de mejora {level}",
+    "vipClaim": "Reclamar"
   },
   "settingPage": {
     "title": "Ajustes",
