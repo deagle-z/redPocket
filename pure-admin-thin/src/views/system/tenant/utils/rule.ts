@@ -18,6 +18,10 @@ export const formRules = reactive(<FormRules>{
     { required: true, message: "请选择租户类型", trigger: "change" }
   ],
   status: [{ required: true, message: "请选择状态", trigger: "change" }],
+  loginPassword: [
+    { required: true, message: "登录密码为必填项", trigger: "blur" },
+    { min: 6, max: 64, message: "登录密码长度需在6-64位之间", trigger: "blur" }
+  ],
   timezone: [
     { required: true, message: "时区为必填项", trigger: "blur" },
     { max: 64, message: "时区长度不能超过64个字符", trigger: "blur" }
@@ -42,7 +46,5 @@ export const formRules = reactive(<FormRules>{
       trigger: "blur"
     }
   ],
-  remark: [
-    { max: 255, message: "备注长度不能超过255个字符", trigger: "blur" }
-  ]
+  remark: [{ max: 255, message: "备注长度不能超过255个字符", trigger: "blur" }]
 });

@@ -3,6 +3,8 @@ package repository
 import (
 	"BaseGoUni/core/pojo"
 	"errors"
+	"strings"
+
 	"github.com/jinzhu/copier"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
@@ -73,10 +75,54 @@ func SetSysTenant(db *gorm.DB, req pojo.SysTenantSet) (result pojo.SysTenantBack
 		}
 		err = db.Save(&dbTenant).Error
 	} else {
+		loginAccount := strings.TrimSpace(req.LoginAccount)
+		if loginAccount == "" {
+			loginAccount = strings.TrimSpace(req.TenantCode)
+		}
+		loginPassword := req.LoginPassword
+		if loginPassword == "" {
+			loginPassword = req.Password
+		}
+		if loginAccount == "" || len(loginAccount) > 64 {
+			return result, errors.New("tenant_login_account_required")
+		}
+		if len(loginPassword) < 6 || len(loginPassword) > 64 {
+			return result, errors.New("tenant_password_length_6_64")
+		}
+
 		err = db.Transaction(func(tx *gorm.DB) error {
+			var userCount int64
+			if countErr := tx.Model(&pojo.SysTenantUser{}).Where("username = ?", loginAccount).Count(&userCount).Error; countErr != nil {
+				return countErr
+			}
+			if userCount > 0 {
+				return errors.New("username_duplicate_contact_admin")
+			}
+
 			_ = copier.Copy(&dbTenant, &req)
 			if createErr := tx.Create(&dbTenant).Error; createErr != nil {
 				return createErr
+			}
+			passwordHash, hashErr := bcrypt.GenerateFromPassword([]byte(loginPassword), bcrypt.DefaultCost)
+			if hashErr != nil {
+				return hashErr
+			}
+			tenantUser := pojo.SysTenantUser{
+				TenantId:     dbTenant.ID,
+				Username:     loginAccount,
+				PasswordHash: string(passwordHash),
+				PasswordAlgo: "bcrypt",
+				BindDomain:   dbTenant.BindDomain,
+				RoleCode:     "owner",
+				IsOwner:      true,
+				Status:       1,
+			}
+			if createUserErr := tx.Create(&tenantUser).Error; createUserErr != nil {
+				return createUserErr
+			}
+			dbTenant.OwnerUserId = &tenantUser.ID
+			if updateErr := tx.Model(&pojo.SysTenant{}).Where("id = ?", dbTenant.ID).Update("owner_user_id", tenantUser.ID).Error; updateErr != nil {
+				return updateErr
 			}
 			if req.BindDomain != nil {
 				if nginxErr := createNginxBindDomainConfig(*req.BindDomain); nginxErr != nil {

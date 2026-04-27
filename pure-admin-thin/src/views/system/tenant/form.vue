@@ -13,6 +13,7 @@ const props = withDefaults(defineProps<FormProps>(), {
     tenantName: "",
     tenantType: 1,
     status: 1,
+    loginPassword: "",
     ownerUserId: undefined,
     planCode: "",
     bindDomain: "",
@@ -116,13 +117,35 @@ defineExpose({ getRef });
         </el-form-item>
       </re-col>
 
-      <re-col v-if="newFormInline.title === '新增'" :value="12" :xs="24" :sm="24">
+      <re-col
+        v-if="newFormInline.title === '新增'"
+        :value="12"
+        :xs="24"
+        :sm="24"
+      >
         <el-form-item label="绑定域名" prop="bindDomain">
           <el-input
             v-model="newFormInline.bindDomain"
             placeholder="example.com"
             clearable
             @blur="normalizeBindDomain"
+          />
+        </el-form-item>
+      </re-col>
+
+      <re-col
+        v-if="newFormInline.title === '新增'"
+        :value="12"
+        :xs="24"
+        :sm="24"
+      >
+        <el-form-item label="登录密码" prop="loginPassword">
+          <el-input
+            v-model="newFormInline.loginPassword"
+            placeholder="请输入6-64位登录密码"
+            clearable
+            show-password
+            type="password"
           />
         </el-form-item>
       </re-col>

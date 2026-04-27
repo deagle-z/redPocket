@@ -29,17 +29,20 @@ type SysTenantSearch struct {
 }
 
 type SysTenantSet struct {
-	ID          int64   `json:"id"` // ID
-	TenantCode  string  `json:"tenantCode"`
-	TenantName  string  `json:"tenantName"`
-	TenantType  int     `json:"tenantType"`
-	Status      int     `json:"status"`
-	OwnerUserId *int64  `json:"ownerUserId"`
-	PlanCode    *string `json:"planCode"`
-	BindDomain  *string `json:"bindDomain"`
-	Timezone    string  `json:"timezone"`
-	Locale      string  `json:"locale"`
-	Remark      *string `json:"remark"`
+	ID            int64   `json:"id"` // ID
+	TenantCode    string  `json:"tenantCode"`
+	TenantName    string  `json:"tenantName"`
+	TenantType    int     `json:"tenantType"`
+	Status        int     `json:"status"`
+	LoginAccount  string  `json:"loginAccount"`
+	LoginPassword string  `json:"loginPassword"`
+	Password      string  `json:"password"`
+	OwnerUserId   *int64  `json:"ownerUserId"`
+	PlanCode      *string `json:"planCode"`
+	BindDomain    *string `json:"bindDomain"`
+	Timezone      string  `json:"timezone"`
+	Locale        string  `json:"locale"`
+	Remark        *string `json:"remark"`
 }
 
 type SysTenantBack struct {

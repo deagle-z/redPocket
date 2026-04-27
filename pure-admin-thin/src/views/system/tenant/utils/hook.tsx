@@ -44,7 +44,7 @@ function getQrCodeUrl(value: string, size = 72) {
   return `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(value)}`;
 }
 
-export function useTenant(tableRef: Ref) {
+export function useTenant(_tableRef: Ref) {
   const form = reactive({
     tenantCode: "",
     tenantName: "",
@@ -252,6 +252,7 @@ export function useTenant(tableRef: Ref) {
           tenantName: row?.tenantName ?? "",
           tenantType: row?.tenantType ?? 1,
           status: row?.status ?? 1,
+          loginPassword: title === "新增" ? "" : undefined,
           ownerUserId: row?.ownerUserId ?? undefined,
           planCode: row?.planCode ?? "",
           bindDomain: title === "新增" ? "" : undefined,
@@ -272,7 +273,10 @@ export function useTenant(tableRef: Ref) {
 
         function chores() {
           const submitData = { ...curData };
-          if (submitData.id > 0) delete submitData.bindDomain;
+          if (submitData.id > 0) {
+            delete submitData.bindDomain;
+            delete submitData.loginPassword;
+          }
 
           setSysTenant(submitData)
             .then(() => {
