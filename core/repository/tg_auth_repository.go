@@ -358,7 +358,7 @@ func SendTgSMSCode(phone string, country string, ip string, isDev bool) (string,
 }
 
 // RegisterTgByEmail 邮箱注册。
-func RegisterTgByEmail(db *gorm.DB, email string, password string, code string, sourceChannelCode string, tenantID int64) (pojo.TgUser, error) {
+func RegisterTgByEmail(db *gorm.DB, email string, password string, code string, sourceChannelCode string, tenantID int64, inviteCode string) (pojo.TgUser, error) {
 	email = strings.TrimSpace(strings.ToLower(email))
 	code = strings.TrimSpace(code)
 	if !utils.IsEmail(email) {
@@ -405,13 +405,20 @@ func RegisterTgByEmail(db *gorm.DB, email string, password string, code string, 
 
 	var newUser pojo.TgUser
 	err = db.Transaction(func(tx *gorm.DB) error {
+		parentID, parentTenantID, err := resolveRegisterInviteParent(tx, tenantID, inviteCode)
+		if err != nil {
+			return err
+		}
+		if tenantID == 0 && parentTenantID > 0 {
+			tenantID = parentTenantID
+		}
 		sourceChannel, err := ResolveSourceChannelByCode(tx, tenantID, sourceChannelCode)
 		if err != nil {
 			return err
 		}
 		for i := 0; i < 5; i++ {
 			//tgID := time.Now().UnixNano()/1e3 + int64(rand.IntN(1000))
-			inviteCode := fmt.Sprintf("%06d", rand.IntN(1000000))
+			ownInviteCode := fmt.Sprintf("%06d", rand.IntN(1000000))
 			uid, uidErr := generateUniqueUID(tx)
 			if uidErr != nil {
 				return uidErr
@@ -425,7 +432,8 @@ func RegisterTgByEmail(db *gorm.DB, email string, password string, code string, 
 				Password:          string(passwordHash),
 				Email:             email,
 				Status:            1,
-				InviteCode:        &inviteCode,
+				ParentID:          parentID,
+				InviteCode:        &ownInviteCode,
 				SourceChannelID:   nil,
 				SourceChannelCode: nil,
 				TenantId:          tenantID,
@@ -454,7 +462,7 @@ func RegisterTgByEmail(db *gorm.DB, email string, password string, code string, 
 }
 
 // RegisterTgByPhone 手机号注册。
-func RegisterTgByPhone(db *gorm.DB, phone string, country string, password string, sourceChannelCode string, tenantID int64) (pojo.TgUser, error) {
+func RegisterTgByPhone(db *gorm.DB, phone string, country string, password string, sourceChannelCode string, tenantID int64, inviteCode string) (pojo.TgUser, error) {
 	phone = strings.TrimSpace(phone)
 	country = utils.InferCountryByPhone(phone, country)
 	if !utils.IsPhone(phone) {
@@ -487,12 +495,19 @@ func RegisterTgByPhone(db *gorm.DB, phone string, country string, password strin
 
 	var newUser pojo.TgUser
 	err = db.Transaction(func(tx *gorm.DB) error {
+		parentID, parentTenantID, err := resolveRegisterInviteParent(tx, tenantID, inviteCode)
+		if err != nil {
+			return err
+		}
+		if tenantID == 0 && parentTenantID > 0 {
+			tenantID = parentTenantID
+		}
 		sourceChannel, err := ResolveSourceChannelByCode(tx, tenantID, sourceChannelCode)
 		if err != nil {
 			return err
 		}
 		for i := 0; i < 5; i++ {
-			inviteCode := fmt.Sprintf("%06d", rand.IntN(1000000))
+			ownInviteCode := fmt.Sprintf("%06d", rand.IntN(1000000))
 			uid, uidErr := generateUniqueUID(tx)
 			if uidErr != nil {
 				return uidErr
@@ -505,7 +520,8 @@ func RegisterTgByPhone(db *gorm.DB, phone string, country string, password strin
 				Phone:             &phone,
 				Country:           nullableString(country),
 				Status:            1,
-				InviteCode:        &inviteCode,
+				ParentID:          parentID,
+				InviteCode:        &ownInviteCode,
 				SourceChannelID:   nil,
 				SourceChannelCode: nil,
 				TenantId:          tenantID,
@@ -536,6 +552,26 @@ func RegisterTgByPhone(db *gorm.DB, phone string, country string, password strin
 		return pojo.TgUser{}, err
 	}
 	return newUser, nil
+}
+
+func resolveRegisterInviteParent(db *gorm.DB, tenantID int64, inviteCode string) (*int64, int64, error) {
+	inviteCode = strings.TrimSpace(inviteCode)
+	if inviteCode == "" {
+		return nil, 0, nil
+	}
+
+	var parent pojo.TgUser
+	query := db.Where("invite_code = ? AND status = ?", inviteCode, 1)
+	if tenantID > 0 {
+		query = query.Where("tenant_id = ?", tenantID)
+	}
+	if err := query.First(&parent).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, 0, nil
+		}
+		return nil, 0, err
+	}
+	return &parent.ID, parent.TenantId, nil
 }
 
 func buildTgPhoneCacheKey(country string, phone string) string {

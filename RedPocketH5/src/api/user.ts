@@ -416,6 +416,7 @@ export interface RegisterData {
   phone: string
   country: string
   code?: string
+  inviteCode?: string
   password: string
   sourceChannelCode?: string
   channelCode?: string
@@ -588,6 +589,7 @@ export function register(data: RegisterData): Promise<any> {
   return request.post('/api/v1/app/tg/registerByPhone', {
     phone: data.phone,
     country: data.country,
+    ...(data.inviteCode ? { inviteCode: data.inviteCode } : {}),
     ...(data.code ? { code: data.code } : {}),
     password: data.password,
     sourceChannelCode,

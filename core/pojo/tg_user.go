@@ -121,6 +121,7 @@ type TgEmailRegisterReq struct {
 	Email             string `json:"email"`
 	Password          string `json:"password"`
 	Code              string `json:"code"`
+	InviteCode        string `json:"inviteCode"`
 	SourceChannelCode string `json:"sourceChannelCode"`
 	ChannelCode       string `json:"channelCode"`
 	Referrer          string `json:"referrer"`
@@ -130,6 +131,8 @@ type TgPhoneRegisterReq struct {
 	Phone             string `json:"phone"`
 	Country           string `json:"country"`
 	Password          string `json:"password"`
+	Code              string `json:"code"`
+	InviteCode        string `json:"inviteCode"`
 	SourceChannelCode string `json:"sourceChannelCode"`
 	ChannelCode       string `json:"channelCode"`
 	Referrer          string `json:"referrer"`

@@ -138,7 +138,7 @@ async function register() {
       phone,
       country: postData.country,
       password: postData.password,
-      code: postData.inviteCode.trim(),
+      inviteCode: postData.inviteCode.trim(),
       sourceChannelCode: getSourceChannelCode(),
     })
     trackAttributionEvent({
