@@ -132,10 +132,10 @@ function handleSubStatsCurrentChange(page: number) {
         :model="form"
         class="search-form bg-bg_color w-[99/100] pl-8 pt-[12px] overflow-auto"
       >
-        <el-form-item label="TG用户ID：" prop="tgId">
+        <el-form-item label="用户ID：" prop="tgId">
           <el-input
             v-model.number="form.tgId"
-            placeholder="请输入TG用户ID"
+            placeholder="请输入用户ID"
             clearable
             class="!w-[180px]"
           />
@@ -143,7 +143,7 @@ function handleSubStatsCurrentChange(page: number) {
         <el-form-item label="用户名：" prop="username">
           <el-input
             v-model="form.username"
-            placeholder="Telegram用户名"
+            placeholder="用户名"
             clearable
             class="!w-[180px]"
           />
@@ -202,7 +202,7 @@ function handleSubStatsCurrentChange(page: number) {
         </el-form-item>
       </el-form>
 
-      <PureTableBar title="Telegram用户" :columns="columns" @refresh="onSearch">
+      <PureTableBar title="用户" :columns="columns" @refresh="onSearch">
         <template v-slot="{ size, dynamicColumns }">
           <pure-table
             ref="tableRef"
@@ -266,7 +266,7 @@ function handleSubStatsCurrentChange(page: number) {
 
     <el-dialog
       v-model="subStatsDialogVisible"
-      :title="`下级统计汇总（TG用户ID: ${currentDialogTgId ?? '-'}）`"
+      :title="`下级统计汇总（用户ID: ${currentDialogTgId ?? '-'}）`"
       width="78%"
       destroy-on-close
     >
@@ -301,7 +301,7 @@ function handleSubStatsCurrentChange(page: number) {
 
       <el-table :data="subStatsList" border stripe v-loading="subStatsLoading">
         <el-table-column prop="id" label="ID" width="80" />
-        <el-table-column prop="tgId" label="TG用户ID" min-width="140" />
+        <el-table-column prop="tgId" label="用户ID" min-width="140" />
         <el-table-column prop="username" label="用户名" min-width="120" />
         <el-table-column prop="firstName" label="昵称" min-width="120" />
         <el-table-column prop="subRechargeAmount" label="下级充值" min-width="120">

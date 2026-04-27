@@ -1,5 +1,6 @@
 import request from '@/utils/request'
 import { i18n } from '@/utils/i18n'
+import { getSourceChannelCode, normalizeSourceChannelCode } from '@/utils/source-channel'
 
 export interface ApiResult<T> {
   code: number
@@ -10,6 +11,7 @@ export interface ApiResult<T> {
 export interface LoginData {
   phone: string
   password: string
+  country?: string
 }
 
 export interface LoginRes {
@@ -25,6 +27,8 @@ export interface TgAuthLoginData {
   photo_url?: string
   auth_date: number
   hash: string
+  sourceChannelCode?: string
+  channelCode?: string
 }
 
 export interface TgAuthLoginRes {
@@ -388,7 +392,12 @@ export function login(data: LoginData) {
 }
 
 export function tgLogin(data: TgAuthLoginData) {
-  return request.post<ApiResult<TgAuthLoginRes>>('/api/v1/app/tg/login', data)
+  const sourceChannelCode = getRequestSourceChannelCode(data.sourceChannelCode, data.channelCode)
+  return request.post<ApiResult<TgAuthLoginRes>>('/api/v1/app/tg/login', {
+    ...data,
+    sourceChannelCode,
+    channelCode: sourceChannelCode,
+  })
 }
 
 export function loginByPhone(data: LoginData) {
@@ -409,6 +418,7 @@ export interface RegisterData {
   code?: string
   password: string
   sourceChannelCode?: string
+  channelCode?: string
 }
 
 export interface ForgotPasswordData {
@@ -574,13 +584,24 @@ export function getAppCashHistoryList(data: AppCashHistoryReq) {
 }
 
 export function register(data: RegisterData): Promise<any> {
+  const sourceChannelCode = getRequestSourceChannelCode(data.sourceChannelCode, data.channelCode)
   return request.post('/api/v1/app/tg/registerByPhone', {
     phone: data.phone,
     country: data.country,
     ...(data.code ? { code: data.code } : {}),
     password: data.password,
-    sourceChannelCode: data.sourceChannelCode || '',
+    sourceChannelCode,
+    channelCode: sourceChannelCode,
   })
+}
+
+function getRequestSourceChannelCode(...values: Array<string | undefined>) {
+  for (const value of values) {
+    const normalizedCode = normalizeSourceChannelCode(value)
+    if (normalizedCode)
+      return normalizedCode
+  }
+  return getSourceChannelCode()
 }
 
 export interface AppCountryItem {

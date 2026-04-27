@@ -11,6 +11,7 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 	"io"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -168,6 +169,31 @@ func BatchCreateBotTgUsers(ctx *gin.Context) {
 	utils.SuccessObjBack(ctx, result)
 }
 
+// BatchUpdateBotTgUsers godoc
+//
+//	@Summary		批量修改机器人 Telegram 用户
+//	@Tags			Telegram用户
+//	@Accept			json
+//	@Produce		json
+//	@Param			data body		pojo.TgUserBatchUpdateBotReq	true	"批量修改机器人参数"
+//	@Success		200	{object}		pojo.TgUserBatchUpdateBotResp
+//	@Router			/api/v1/admin/tgUser/batchUpdateBot [post]
+func BatchUpdateBotTgUsers(ctx *gin.Context) {
+	var req pojo.TgUserBatchUpdateBotReq
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+
+	db := ctx.MustGet("db").(*gorm.DB)
+	result, err := repository.BatchUpdateBotTgUsers(db, req)
+	if err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	utils.SuccessObjBack(ctx, result)
+}
+
 // GetTgUsersWithSubStats 列表返回所有下级（不限层级）的充值金额、流水、提现金额
 func GetTgUsersWithSubStats(ctx *gin.Context) {
 	var search pojo.TgUserSearch
@@ -176,7 +202,7 @@ func GetTgUsersWithSubStats(ctx *gin.Context) {
 		utils.ErrorBack(ctx, err.Error())
 		return
 	}
-	result := tenantRepo.GetTgUsersWithSubStats(getDB(ctx), search)
+	result := tenantRepo.GetTgUsersWithSubStats(getDB(ctx), 0, search)
 	utils.SuccessObjBack(ctx, result)
 }
 
@@ -187,7 +213,7 @@ func GetTgUsersWithSubStatsSummary(ctx *gin.Context) {
 		utils.ErrorBack(ctx, err.Error())
 		return
 	}
-	result := tenantRepo.GetTgUsersWithSubStatsSummary(getDB(ctx), search)
+	result := tenantRepo.GetTgUsersWithSubStatsSummary(getDB(ctx), 0, search)
 	utils.SuccessObjBack(ctx, result)
 }
 
@@ -245,7 +271,9 @@ func RegisterTgByEmail(ctx *gin.Context) {
 		return
 	}
 	db := ctx.MustGet("db").(*gorm.DB)
-	newUser, err := repository.RegisterTgByEmail(db, req.Email, req.Password, req.Code, req.SourceChannelCode)
+	sourceChannelCode := repository.FirstSourceChannelCode(req.SourceChannelCode, req.ChannelCode)
+	tenantID := resolveTenantIDByRegisterReferrer(db, registerReferrer(ctx, req.Referrer))
+	newUser, err := repository.RegisterTgByEmail(db, req.Email, req.Password, req.Code, sourceChannelCode, tenantID)
 	if err != nil {
 		utils.ErrorBack(ctx, err.Error())
 		return
@@ -266,7 +294,9 @@ func RegisterTgByPhone(ctx *gin.Context) {
 		return
 	}
 	db := ctx.MustGet("db").(*gorm.DB)
-	newUser, err := repository.RegisterTgByPhone(db, req.Phone, req.Country, req.Password, req.SourceChannelCode)
+	sourceChannelCode := repository.FirstSourceChannelCode(req.SourceChannelCode, req.ChannelCode)
+	tenantID := resolveTenantIDByRegisterReferrer(db, registerReferrer(ctx, req.Referrer))
+	newUser, err := repository.RegisterTgByPhone(db, req.Phone, req.Country, req.Password, sourceChannelCode, tenantID)
 	if err != nil {
 		utils.ErrorBack(ctx, err.Error())
 		return
@@ -278,6 +308,59 @@ func RegisterTgByPhone(ctx *gin.Context) {
 		"phone":   newUser.Phone,
 		"country": newUser.Country,
 	})
+}
+
+func registerReferrer(ctx *gin.Context, bodyReferrer string) string {
+	if referrer := strings.TrimSpace(bodyReferrer); referrer != "" {
+		return referrer
+	}
+	if referrer := strings.TrimSpace(ctx.GetHeader("Referer")); referrer != "" {
+		return referrer
+	}
+	return strings.TrimSpace(ctx.GetHeader("Referrer"))
+}
+
+func resolveTenantIDByRegisterReferrer(db *gorm.DB, referrer string) int64 {
+	host := normalizeRegisterReferrerHost(referrer)
+	if host == "" {
+		return 0
+	}
+
+	candidates := []string{host}
+	if strings.HasPrefix(host, "www.") {
+		candidates = append(candidates, strings.TrimPrefix(host, "www."))
+	}
+	parts := strings.Split(host, ".")
+	for i := 1; i < len(parts)-1; i++ {
+		candidates = append(candidates, "*."+strings.Join(parts[i:], "."))
+	}
+
+	for _, candidate := range candidates {
+		var tenant pojo.SysTenant
+		err := db.Model(&pojo.SysTenant{}).
+			Where("status = ? AND bind_domain = ?", 1, candidate).
+			First(&tenant).Error
+		if err == nil && tenant.ID > 0 {
+			return tenant.ID
+		}
+	}
+	return 0
+}
+
+func normalizeRegisterReferrerHost(referrer string) string {
+	referrer = strings.TrimSpace(strings.ToLower(referrer))
+	if referrer == "" {
+		return ""
+	}
+	if !strings.Contains(referrer, "://") {
+		referrer = "https://" + referrer
+	}
+	parsed, err := url.Parse(referrer)
+	if err != nil {
+		return ""
+	}
+	host := strings.TrimSpace(parsed.Hostname())
+	return strings.TrimSuffix(host, ".")
 }
 
 // LoginTgByEmail 邮箱登录

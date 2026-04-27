@@ -33,7 +33,7 @@ export type CashHistoryListResult = {
   };
 };
 
-/** 获取余额变动记录列表（管理端） */
-export const getCashHistoryListAdmin = (data: CashHistorySearch) => {
-  return http.request<CashHistoryListResult>("post", "/api/v1/admin/cashHistory/list", { data });
+/** 获取余额变动记录列表（商户端） */
+export const getCashHistoryList = (data: CashHistorySearch) => {
+  return http.request<CashHistoryListResult>("post", "/api/v1/tenant/cashHistory/list", { data });
 };

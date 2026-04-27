@@ -29,7 +29,7 @@ const emit = defineEmits<{
 
 const { t } = useI18n()
 
-const amountPresets = [100, 200, 300, 500, 1000, 2000]
+const amountPresets = [10, 20, 50, 100, 500, 1000]
 const mineOptions = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
 const selectedPlayType = ref<LuckyPlayType>(props.defaultPlayType)
 const selectedAmountPreset = ref<number | null>(null)

@@ -46,6 +46,7 @@ export function useBotUser(tableRef: Ref) {
   const dataList = ref<TgUser[]>([]);
   const loading = ref(true);
   const selectedNum = ref(0);
+  const selectedRows = ref<TgUser[]>([]);
   const pagination = reactive<PaginationProps>({
     total: 0,
     pageSize: 10,
@@ -112,10 +113,8 @@ export function useBotUser(tableRef: Ref) {
       prop: "status",
       minWidth: 100,
       cellRenderer: scope =>
-        h(
-          ElTag,
-          { type: getStatusType(scope.row.status) },
-          () => getStatusLabel(scope.row.status)
+        h(ElTag, { type: getStatusType(scope.row.status) }, () =>
+          getStatusLabel(scope.row.status)
         )
     },
     {
@@ -144,11 +143,13 @@ export function useBotUser(tableRef: Ref) {
   }
 
   function handleSelectionChange(val) {
+    selectedRows.value = val;
     selectedNum.value = val.length;
     tableRef.value?.setAdaptive?.();
   }
 
   function onSelectionCancel() {
+    selectedRows.value = [];
     selectedNum.value = 0;
     tableRef.value?.getTableRef?.().clearSelection();
   }
@@ -160,11 +161,12 @@ export function useBotUser(tableRef: Ref) {
   }
 
   async function onBatchDel() {
-    const curSelected = tableRef.value?.getTableRef?.().getSelectionRows?.() || [];
+    const curSelected = selectedRows.value;
     const ids = getKeyList(curSelected, "id");
     await Promise.all(ids.map(id => delAdminTgUser(Number(id))));
     message(`已删除机器人编号为 ${ids} 的数据`, { type: "success" });
     tableRef.value?.getTableRef?.().clearSelection();
+    selectedRows.value = [];
     selectedNum.value = 0;
     onSearch();
   }
@@ -233,6 +235,7 @@ export function useBotUser(tableRef: Ref) {
     columns,
     dataList,
     selectedNum,
+    selectedRows,
     pagination,
     statusOptions,
     onSearch,

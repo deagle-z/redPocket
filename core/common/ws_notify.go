@@ -19,17 +19,17 @@ import (
 )
 
 const (
-	wsPingInterval  = 25 * time.Second
-	wsPongTimeout   = 60 * time.Second
-	wsSendBuffer    = 64
-	wsConnWindow    = 60 * time.Second
-	wsConnMax       = 30
-	wsReconnectMin  = 2 * time.Second
-	wsMsgBufMax     = 200
-	wsMsgBufExpire  = 5 * time.Minute
-	wsMsgBufKey     = "ws:msgbuf:"
-	wsMsgSeqKey     = "ws:seq:"
-	wsDefaultScope  = "all"
+	wsPingInterval = 25 * time.Second
+	wsPongTimeout  = 60 * time.Second
+	wsSendBuffer   = 64
+	wsConnWindow   = 60 * time.Second
+	wsConnMax      = 30
+	wsReconnectMin = 2 * time.Second
+	wsMsgBufMax    = 200
+	wsMsgBufExpire = 5 * time.Minute
+	wsMsgBufKey    = "ws:msgbuf:"
+	wsMsgSeqKey    = "ws:seq:"
+	wsDefaultScope = "all"
 )
 
 type wsMessage struct {
@@ -67,6 +67,7 @@ type wsClient struct {
 	ip         string
 	userId     int64
 	userType   int
+	tenantId   int64
 	token      string
 }
 
@@ -305,9 +306,9 @@ func wsTokenOnline(userType int, userID int64, token string) bool {
 	return false
 }
 
-func validateWsToken(c *gin.Context, token string) (int64, int, error) {
+func validateWsToken(c *gin.Context, token string) (int64, int, int64, error) {
 	if token == "" {
-		return 0, 0, fmt.Errorf("token is required")
+		return 0, 0, 0, fmt.Errorf("token is required")
 	}
 	accessSecret := utils.CsConfig.DefaultHost.AccessSecret
 	hostInfo := utils.GetTempHostInfo(utils.GetRequestHost(c))
@@ -318,21 +319,46 @@ func validateWsToken(c *gin.Context, token string) (int64, int, error) {
 	if err != nil && accessSecret != utils.CsConfig.DefaultHost.AccessSecret {
 		// 兼容历史token：尝试默认host密钥
 		userID, userType, hostName, _, err = utils.ParseToken(utils.CsConfig.DefaultHost.AccessSecret, token)
+		if err == nil {
+			accessSecret = utils.CsConfig.DefaultHost.AccessSecret
+		}
 	}
 	if err != nil {
-		return 0, 0, fmt.Errorf("invalid token")
+		return 0, 0, 0, fmt.Errorf("invalid token")
 	}
 	if userID <= 0 {
-		return 0, 0, fmt.Errorf("invalid user")
+		return 0, 0, 0, fmt.Errorf("invalid user")
 	}
 	reqHost := getRequestHost(c.Request.Host)
 	if hostName != "" && reqHost != "" && !strings.EqualFold(hostName, reqHost) {
-		return 0, 0, fmt.Errorf("token host mismatch")
+		return 0, 0, 0, fmt.Errorf("token host mismatch")
 	}
 	if !wsTokenOnline(userType, userID, token) {
-		return 0, 0, fmt.Errorf("token is expired")
+		return 0, 0, 0, fmt.Errorf("token is expired")
 	}
-	return userID, userType, nil
+	var tenantID int64
+	if userType == 4 {
+		user := utils.GetTempTenantUser(hostInfo.TablePrefix, userID)
+		tenantID = user.TenantId
+	}
+	if userType == 5 {
+		_, _, tenantID, _ = utils.ParseAppToken(accessSecret, token)
+	}
+	return userID, userType, tenantID, nil
+}
+
+func touchWsOnline(client *wsClient) {
+	if client == nil {
+		return
+	}
+	switch client.userType {
+	case 1, 2, 3:
+		utils.TouchAdminOnlineUser(client.userId)
+	case 4:
+		utils.TouchTenantOnlineUser(client.tenantId, client.userId)
+	case 5:
+		utils.TouchTgOnlineUser(client.tenantId, client.userId)
+	}
 }
 
 func allowWsConnect(ip string) (bool, string) {
@@ -382,7 +408,7 @@ func WsHandler(c *gin.Context) {
 		return
 	}
 	token := extractWsToken(c)
-	userID, userType, err := validateWsToken(c, token)
+	userID, userType, tenantID, err := validateWsToken(c, token)
 	if err != nil {
 		log.Printf("ws auth failed: ip=%s host=%s reason=%v", clientIP, c.Request.Host, err)
 		c.String(http.StatusUnauthorized, err.Error())
@@ -400,8 +426,10 @@ func WsHandler(c *gin.Context) {
 				ip:       clientIP,
 				userId:   userID,
 				userType: userType,
+				tenantId: tenantID,
 				token:    token,
 			}
+			touchWsOnline(client)
 			hub.register <- client
 			go client.writePump()
 			client.readPump()
@@ -420,6 +448,7 @@ func (c *wsClient) readPump() {
 		if err := websocket.Message.Receive(c.conn, &raw); err != nil {
 			return
 		}
+		touchWsOnline(c)
 		log.Printf("websocket raw: %s", raw)
 		if raw == "" {
 			continue
@@ -541,6 +570,7 @@ func (c *wsClient) writePump() {
 				return
 			}
 		case <-ticker.C:
+			touchWsOnline(c)
 			last := time.Unix(0, atomic.LoadInt64(&c.lastPong))
 			if time.Since(last) > wsPongTimeout {
 				return

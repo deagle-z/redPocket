@@ -132,10 +132,13 @@ type tgUserTreeAmount struct {
 }
 
 // GetTgUsersWithSubStats 列表并返回所有下级（不限层级）的充值/流水/提现聚合金额
-func GetTgUsersWithSubStats(db *gorm.DB, search pojo.TgUserSearch) (result TgUserWithSubStatsResp) {
+func GetTgUsersWithSubStats(db *gorm.DB, tenantID int64, search pojo.TgUserSearch) (result TgUserWithSubStatsResp) {
 	// 构建整棵用户树：parent -> []children
 	var allUsers []pojo.TgUser
 	allUsersQuery := db.Model(&pojo.TgUser{})
+	if tenantID > 0 {
+		allUsersQuery = allUsersQuery.Where("tenant_id = ?", tenantID)
+	}
 	if search.IsBot != nil {
 		allUsersQuery = allUsersQuery.Where("is_bot = ?", *search.IsBot)
 	}
@@ -167,6 +170,9 @@ func GetTgUsersWithSubStats(db *gorm.DB, search pojo.TgUserSearch) (result TgUse
 
 	var users []pojo.TgUser
 	query := db.Model(&pojo.TgUser{})
+	if tenantID > 0 {
+		query = query.Where("tenant_id = ?", tenantID)
+	}
 	if search.TgID > 0 {
 		query = query.Where("tg_id = ?", search.TgID)
 	}
@@ -198,7 +204,11 @@ func GetTgUsersWithSubStats(db *gorm.DB, search pojo.TgUserSearch) (result TgUse
 	flowOwn := make(map[int64]float64)
 
 	var rechargeSums []tgUserMetricRow
-	_ = db.Model(&pojo.RechargeOrder{}).
+	rechargeQuery := db.Model(&pojo.RechargeOrder{})
+	if tenantID > 0 {
+		rechargeQuery = rechargeQuery.Where("tenant_id = ?", tenantID)
+	}
+	_ = rechargeQuery.
 		Select("user_id as user_id, sum(amount) as amount").
 		Where("status = ?", 2).
 		Group("user_id").
@@ -208,7 +218,11 @@ func GetTgUsersWithSubStats(db *gorm.DB, search pojo.TgUserSearch) (result TgUse
 	}
 
 	var withdrawSums []tgUserMetricRow
-	_ = db.Model(&pojo.WithdrawOrderBr{}).
+	withdrawQuery := db.Model(&pojo.WithdrawOrderBr{})
+	if tenantID > 0 {
+		withdrawQuery = withdrawQuery.Where("tenant_id = ?", tenantID)
+	}
+	_ = withdrawQuery.
 		Select("user_id as user_id, sum(amount) as amount").
 		Where("status = ?", 3).
 		Group("user_id").
@@ -219,7 +233,11 @@ func GetTgUsersWithSubStats(db *gorm.DB, search pojo.TgUserSearch) (result TgUse
 
 	// 流水口径：lucky_history.amount 聚合
 	var flowSums []tgUserMetricRow
-	_ = db.Model(&pojo.LuckyHistory{}).
+	flowQuery := db.Model(&pojo.LuckyHistory{})
+	if tenantID > 0 {
+		flowQuery = flowQuery.Where("tenant_id = ?", tenantID)
+	}
+	_ = flowQuery.
 		Select("user_id as user_id, sum(amount) as amount").
 		Group("user_id").
 		Scan(&flowSums).Error
@@ -272,27 +290,42 @@ func GetTgUsersWithSubStats(db *gorm.DB, search pojo.TgUserSearch) (result TgUse
 // GetTgUsersWithSubStatsSummary 返回下级（不限层级）的充值金额之和、流水之和、提现金额之和
 // parentID 为空：口径为全量 parent_id 非空的用户集合
 // parentID 非空：口径为该 parentID 的所有后代（不含自身）
-func GetTgUsersWithSubStatsSummary(db *gorm.DB, search pojo.TgUserSearch) (result TgUsersSubStatsSummary) {
+func GetTgUsersWithSubStatsSummary(db *gorm.DB, tenantID int64, search pojo.TgUserSearch) (result TgUsersSubStatsSummary) {
 	parentID := search.ParentID
 	if parentID == nil {
 		subUsersQuery := db.Model(&pojo.TgUser{}).
 			Select("id").
 			Where("parent_id is not null")
+		if tenantID > 0 {
+			subUsersQuery = subUsersQuery.Where("tenant_id = ?", tenantID)
+		}
 		if search.IsBot != nil {
 			subUsersQuery = subUsersQuery.Where("is_bot = ?", *search.IsBot)
 		}
 
-		_ = db.Model(&pojo.RechargeOrder{}).
+		rechargeQuery := db.Model(&pojo.RechargeOrder{})
+		if tenantID > 0 {
+			rechargeQuery = rechargeQuery.Where("tenant_id = ?", tenantID)
+		}
+		_ = rechargeQuery.
 			Select("coalesce(sum(amount), 0)").
 			Where("status = ? and user_id in (?)", 2, subUsersQuery).
 			Scan(&result.SubRechargeAmount).Error
 
-		_ = db.Model(&pojo.LuckyHistory{}).
+		flowQuery := db.Model(&pojo.LuckyHistory{})
+		if tenantID > 0 {
+			flowQuery = flowQuery.Where("tenant_id = ?", tenantID)
+		}
+		_ = flowQuery.
 			Select("coalesce(sum(amount), 0)").
 			Where("user_id in (?)", subUsersQuery).
 			Scan(&result.SubFlowAmount).Error
 
-		_ = db.Model(&pojo.WithdrawOrderBr{}).
+		withdrawQuery := db.Model(&pojo.WithdrawOrderBr{})
+		if tenantID > 0 {
+			withdrawQuery = withdrawQuery.Where("tenant_id = ?", tenantID)
+		}
+		_ = withdrawQuery.
 			Select("coalesce(sum(amount), 0)").
 			Where("status = ? and user_id in (?)", 3, subUsersQuery).
 			Scan(&result.SubWithdrawAmount).Error
@@ -301,6 +334,9 @@ func GetTgUsersWithSubStatsSummary(db *gorm.DB, search pojo.TgUserSearch) (resul
 
 	var allUsers []pojo.TgUser
 	allUsersQuery := db.Model(&pojo.TgUser{})
+	if tenantID > 0 {
+		allUsersQuery = allUsersQuery.Where("tenant_id = ?", tenantID)
+	}
 	if search.IsBot != nil {
 		allUsersQuery = allUsersQuery.Where("is_bot = ?", *search.IsBot)
 	}
@@ -328,17 +364,29 @@ func GetTgUsersWithSubStatsSummary(db *gorm.DB, search pojo.TgUserSearch) (resul
 		return result
 	}
 
-	_ = db.Model(&pojo.RechargeOrder{}).
+	rechargeQuery := db.Model(&pojo.RechargeOrder{})
+	if tenantID > 0 {
+		rechargeQuery = rechargeQuery.Where("tenant_id = ?", tenantID)
+	}
+	_ = rechargeQuery.
 		Select("coalesce(sum(amount), 0)").
 		Where("status = ? and user_id in (?)", 2, descendantIDs).
 		Scan(&result.SubRechargeAmount).Error
 
-	_ = db.Model(&pojo.LuckyHistory{}).
+	flowQuery := db.Model(&pojo.LuckyHistory{})
+	if tenantID > 0 {
+		flowQuery = flowQuery.Where("tenant_id = ?", tenantID)
+	}
+	_ = flowQuery.
 		Select("coalesce(sum(amount), 0)").
 		Where("user_id in (?)", descendantIDs).
 		Scan(&result.SubFlowAmount).Error
 
-	_ = db.Model(&pojo.WithdrawOrderBr{}).
+	withdrawQuery := db.Model(&pojo.WithdrawOrderBr{})
+	if tenantID > 0 {
+		withdrawQuery = withdrawQuery.Where("tenant_id = ?", tenantID)
+	}
+	_ = withdrawQuery.
 		Select("coalesce(sum(amount), 0)").
 		Where("status = ? and user_id in (?)", 3, descendantIDs).
 		Scan(&result.SubWithdrawAmount).Error

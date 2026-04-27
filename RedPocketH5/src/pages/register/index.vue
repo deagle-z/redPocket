@@ -3,6 +3,8 @@ import { useRouter } from 'vue-router'
 import type { RouteMap } from 'vue-router'
 import { useUserStore } from '@/stores'
 import { getAuthCountry, setAuthCountry } from '@/utils/auth'
+import { trackAttributionEvent } from '@/utils/attribution'
+import { getSourceChannelCode } from '@/utils/source-channel'
 import { showToast } from 'vant'
 import { languageOptions, locale } from '@/utils/i18n'
 import AppPageHeader from '@/components/AppPageHeader.vue'
@@ -22,12 +24,21 @@ const showCountryPopup = ref(false)
 const tgBotId = Number(import.meta.env.VITE_TG_BOT_ID || 0)
 const registerHeaderImage = imgRegisterHeader
 const registerCountries = [
-  { code: 'MX', nameKey: 'register.countryMexico' },
-  { code: 'ID', nameKey: 'register.countryIndonesia' },
-  { code: 'BR', nameKey: 'register.countryBrazil' },
+  { code: 'MX', nameKey: 'register.countryMexico', dialCode: '+52' },
+  { code: 'ID', nameKey: 'register.countryIndonesia', dialCode: '+62' },
+  { code: 'BR', nameKey: 'register.countryBrazil', dialCode: '+55' },
 ] as const
 type RegisterCountryCode = typeof registerCountries[number]['code']
 const registerCountryMap = Object.fromEntries(registerCountries.map(item => [item.code, item.nameKey])) as Record<RegisterCountryCode, string>
+const registerCountryDialCodeMap = Object.fromEntries(registerCountries.map(item => [item.code, item.dialCode])) as Record<
+  RegisterCountryCode,
+  string
+>
+const registerPhoneRules: Record<RegisterCountryCode, RegExp> = {
+  MX: /^[2-9]\d{9}$/,
+  ID: /^0?8\d{8,11}$/,
+  BR: /^[1-9]{2}9\d{8}$/,
+}
 
 const postData = reactive<{
   country: RegisterCountryCode
@@ -44,6 +55,7 @@ const postData = reactive<{
 })
 
 const currentCountryLabel = computed(() => t(registerCountryMap[postData.country] || 'register.countryBrazil'))
+const currentCountryDialCode = computed(() => registerCountryDialCodeMap[postData.country] || '+55')
 
 function detectRegisterCountry(): RegisterCountryCode {
   const browserLanguages = [
@@ -70,6 +82,10 @@ function normalizePhoneInput(event: Event) {
   postData.phone = input.value.replace(/\D+/g, '')
 }
 
+function isValidRegisterPhone(country: RegisterCountryCode, phone: string) {
+  return registerPhoneRules[country].test(phone)
+}
+
 onMounted(() => {
   postData.country = (getAuthCountry() as RegisterCountryCode) || detectRegisterCountry()
   const queryCode = String(router.currentRoute.value.query.c || '').trim()
@@ -82,12 +98,19 @@ onMounted(() => {
 })
 
 async function register() {
+  const phone = postData.phone.replace(/\D+/g, '')
+  postData.phone = phone
+
   if (!postData.country) {
     showToast(t('register.pleaseSelectCountry'))
     return
   }
-  if (!postData.phone) {
+  if (!phone) {
     showToast(t('register.pleaseEnterPhone'))
+    return
+  }
+  if (!isValidRegisterPhone(postData.country, phone)) {
+    showToast(t('register.invalidPhone'))
     return
   }
   if (!postData.password) {
@@ -104,11 +127,26 @@ async function register() {
   }
   try {
     loading.value = true
+    trackAttributionEvent({
+      eventName: 'register_submit',
+      metadata: {
+        country: postData.country,
+        method: 'phone',
+      },
+    })
     await userStore.register({
-      phone: postData.phone,
+      phone,
       country: postData.country,
       password: postData.password,
-      sourceChannelCode: postData.inviteCode.trim(),
+      code: postData.inviteCode.trim(),
+      sourceChannelCode: getSourceChannelCode(),
+    })
+    trackAttributionEvent({
+      eventName: 'register_success',
+      metadata: {
+        country: postData.country,
+        method: 'phone',
+      },
     })
     setAuthCountry(postData.country)
     showToast(t('register.registerSuccess'))
@@ -148,7 +186,19 @@ async function handleTelegramLogin() {
           return
         }
         try {
+          trackAttributionEvent({
+            eventName: 'telegram_auth_submit',
+            metadata: {
+              source: 'register',
+            },
+          })
           await userStore.loginByTelegram(data)
+          trackAttributionEvent({
+            eventName: 'telegram_auth_success',
+            metadata: {
+              source: 'register',
+            },
+          })
           resolve()
         }
         catch (error) {
@@ -279,17 +329,20 @@ function selectLanguage(lang: string) {
               </span>
               <span>{{ t('register.phone') }}</span>
             </label>
-            <input
-              id="register-phone"
-              v-model="postData.phone"
-              type="tel"
-              inputmode="tel"
-              pattern="[0-9]*"
-              autocomplete="tel"
-              class="form-input"
-              :placeholder="t('register.pleaseEnterPhone')"
-              @input="normalizePhoneInput"
-            >
+            <div class="phone-input-wrap">
+              <span class="phone-dial-code">{{ currentCountryDialCode }}</span>
+              <input
+                id="register-phone"
+                v-model="postData.phone"
+                type="tel"
+                inputmode="tel"
+                pattern="[0-9]*"
+                autocomplete="tel-national"
+                class="form-input phone-input"
+                :placeholder="t('register.pleaseEnterPhone')"
+                @input="normalizePhoneInput"
+              >
+            </div>
           </div>
 
           <div class="form-row">
@@ -488,7 +541,8 @@ function selectLanguage(lang: string) {
 .lang-icon {
   width: 24px;
   height: 24px;
-  filter: brightness(0) saturate(100%) invert(84%) sepia(39%) saturate(612%) hue-rotate(338deg) brightness(105%) contrast(96%);
+  filter: brightness(0) saturate(100%) invert(84%) sepia(39%) saturate(612%) hue-rotate(338deg) brightness(105%)
+    contrast(96%);
 }
 
 .hero-card,
@@ -698,7 +752,8 @@ function selectLanguage(lang: string) {
 .form-icon {
   width: 16px;
   height: 16px;
-  filter: brightness(0) saturate(100%) invert(85%) sepia(39%) saturate(649%) hue-rotate(335deg) brightness(105%) contrast(97%);
+  filter: brightness(0) saturate(100%) invert(85%) sepia(39%) saturate(649%) hue-rotate(335deg) brightness(105%)
+    contrast(97%);
 }
 
 .form-input {
@@ -725,6 +780,47 @@ function selectLanguage(lang: string) {
   border-color: rgba(255, 223, 135, 0.72);
   box-shadow: 0 0 0 4px rgba(212, 175, 55, 0.14);
   background: rgba(255, 248, 214, 0.08);
+}
+
+.phone-input-wrap {
+  display: flex;
+  align-items: center;
+  min-height: 48px;
+  border: 1px solid rgba(212, 175, 55, 0.22);
+  border-radius: 14px;
+  background: rgba(255, 248, 214, 0.05);
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    background-color 0.2s ease;
+}
+
+.phone-input-wrap:focus-within {
+  border-color: rgba(255, 223, 135, 0.72);
+  box-shadow: 0 0 0 4px rgba(212, 175, 55, 0.14);
+  background: rgba(255, 248, 214, 0.08);
+}
+
+.phone-dial-code {
+  flex: 0 0 auto;
+  min-width: 58px;
+  padding: 0 10px 0 14px;
+  color: #ffd77a;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
+  border-right: 1px solid rgba(212, 175, 55, 0.24);
+}
+
+.phone-input {
+  min-width: 0;
+  border: 0;
+  background: transparent;
+}
+
+.phone-input:focus {
+  box-shadow: none;
+  background: transparent;
 }
 
 .country-trigger {
@@ -843,7 +939,8 @@ function selectLanguage(lang: string) {
   width: 24px;
   height: 24px;
   object-fit: contain;
-  filter: brightness(0) saturate(100%) invert(97%) sepia(44%) saturate(534%) hue-rotate(320deg) brightness(104%) contrast(96%);
+  filter: brightness(0) saturate(100%) invert(97%) sepia(44%) saturate(534%) hue-rotate(320deg) brightness(104%)
+    contrast(96%);
 }
 
 .feature-title {

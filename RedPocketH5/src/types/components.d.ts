@@ -19,6 +19,7 @@ declare module 'vue' {
     CoinAmount: typeof import('./../components/CoinAmount.vue')['default']
     CurrencyText: typeof import('./../components/CurrencyText.vue')['default']
     GhostButton: typeof import('./../components/GhostButton.vue')['default']
+    LuckyActionGrid: typeof import('./../components/LuckyActionGrid.vue')['default']
     LuckyGrabModal: typeof import('./../components/LuckyGrabModal.vue')['default']
     NavBar: typeof import('./../components/NavBar.vue')['default']
     ParityChoiceDialog: typeof import('./../components/ParityChoiceDialog.vue')['default']

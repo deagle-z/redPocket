@@ -1,13 +1,15 @@
 <script setup lang="ts">
 import { showConfirmDialog, showToast } from 'vant'
 import type { LuckyPlayType, ParityChoice } from '@/utils/lucky-play'
-import { getLuckyPacketList, getPrizePoolBalance } from '@/api/user'
+import { getCurrentTgUserInfo, getLuckyPacketList, getPrizePoolBalance } from '@/api/user'
 import AppPageHeader from '@/components/AppPageHeader.vue'
+import LuckyActionGrid from '@/components/LuckyActionGrid.vue'
 import LuckyGrabModal from '@/components/LuckyGrabModal.vue'
 import ParityChoiceDialog from '@/components/ParityChoiceDialog.vue'
 import SendPacketForm from '@/components/SendPacketForm.vue'
 import { isLogin } from '@/utils/auth'
 import { formatCurrency } from '@/utils/currency'
+import { formatLuckyActionLabel } from '@/utils/lucky-actions'
 import { isParityPlayType, resolveLuckyPlayType } from '@/utils/lucky-play'
 import wsClient from '@/plugins/websocket'
 import imgAvatarPlaceholder from '@/assets/images/avatar-placeholder.png'
@@ -32,6 +34,7 @@ const sendPacketModalVisible = ref(false)
 const pendingGrabTarget = ref<{ packet: any, action: any, choice?: ParityChoice | null } | null>(null)
 const pendingParityTarget = ref<{ packet: any, action: any } | null>(null)
 const prizePoolBalance = ref<number>(0)
+const currentUserBalance = ref(0)
 let countdownTimer: number | undefined
 
 // ── Audio ─────────────────────────────────────────────────────────
@@ -90,6 +93,7 @@ const modePlayType = computed<LuckyPlayType>(() => currentMode.value === 1 ? 'pa
 const pageTitle = computed(() => currentMode.value === 1 ? t('packetListPage.modeParity') : t('packetListPage.modeThunder'))
 const showPacketEmpty = computed(() => !packetLoading.value && packetList.value.length === 0)
 const showPacketLoading = computed(() => packetLoading.value && packetList.value.length === 0)
+const currentUserBalanceText = computed(() => formatAmount(currentUserBalance.value))
 
 function syncModeFromRoute() {
   currentMode.value = String(route.query.mode || '0') === '1' ? 1 : 0
@@ -113,6 +117,7 @@ function closeSendPacketDialog() {
 
 async function handleSendPacketSuccess() {
   sendPacketModalVisible.value = false
+  await loadCurrentUserBalance()
   await loadPacketList()
 }
 
@@ -149,16 +154,6 @@ function getPlayTypeText(playType: LuckyPlayType) {
   return playType === 'parity' ? t('homeLucky.playTypeParity') : t('homeLucky.playTypeThunder')
 }
 
-function formatActionLabel(isOngoing: boolean, isGrabged: boolean, amount: number, seqNo: number) {
-  if (!isGrabged && isOngoing)
-    return t('homeLucky.grabAction', { seq: seqNo })
-  if (isGrabged && isOngoing && amount <= 0)
-    return t('homeLucky.loadingLabel')
-  if (!isGrabged && !isOngoing)
-    return amount > 0 ? Number(amount).toFixed(2) : '—'
-  return Number(amount || 0).toFixed(2)
-}
-
 function formatRemainText(seconds: number) {
   const s = Math.max(0, Math.floor(seconds))
   return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`
@@ -192,7 +187,7 @@ function refreshPacketCountdowns() {
         packetImage: imgRedpacketJpg,
         actions: (packet.actions || []).map((action: any) => ({
           ...action,
-          label: formatActionLabel(false, Boolean(action?.isGrabbed), Number(action?.amount || 0), Number(action?.seqNo || 0)),
+          label: formatLuckyActionLabel(t, action, false),
         })),
       }
     }
@@ -214,12 +209,11 @@ function mapPacket(item: any) {
     isGrabMine: Number(it?.isGrabMine) === 1,
     amount: Number(it?.amount || 0),
     thunder: Number(it?.thunder || 0),
-    label: formatActionLabel(
-      isOngoing,
-      Number(it?.isGrabbed) === 1,
-      Number(it?.amount || 0),
-      Number(it?.seqNo || 0),
-    ),
+    label: formatLuckyActionLabel(t, {
+      seqNo: Number(it?.seqNo || 0),
+      isGrabbed: Number(it?.isGrabbed) === 1,
+      amount: Number(it?.amount || 0),
+    }, isOngoing),
   }))
 
   if (actions.length === 0 && isOngoing) {
@@ -230,7 +224,7 @@ function mapPacket(item: any) {
       isGrabMine: false,
       amount: 0,
       thunder: 0,
-      label: formatActionLabel(true, false, 0, idx + 1),
+      label: formatLuckyActionLabel(t, { seqNo: idx + 1 }, true),
     }))
   }
 
@@ -346,11 +340,12 @@ function handleGrabSuccess(payload: { luckyId: number, grabIndex: number, data: 
           displayLoading: showLoading,
           label: showLoading
             ? t('homeLucky.loadingLabel')
-            : formatActionLabel(true, Boolean(action?.isGrabbed), Number(action?.amount || 0), Number(action?.seqNo || 0)),
+            : formatLuckyActionLabel(t, action, true),
         }
       }),
     }
   })
+  void loadCurrentUserBalance()
 }
 
 function applyLuckySent(message: any) {
@@ -396,7 +391,7 @@ function applyLuckyBroadcast(message: any) {
             isGrabbed: true,
             thunder: Number(lucky?.isThunder || 0),
             amount: nextAmount,
-            label: formatActionLabel(true, true, nextAmount, Number(nextActions[idx]?.seqNo || grabbedSeqNo)),
+            label: formatLuckyActionLabel(t, { ...nextActions[idx], isGrabbed: true, amount: nextAmount }, true),
           }
         }
       }
@@ -449,7 +444,7 @@ function applyLuckyFinished(message: any) {
     const updatedActions = existingActions.map((action: any) => {
       const participant = participantMap.get(Number(action.seqNo))
       if (!participant)
-        return { ...action, isGrabbed: false, displayLoading: false, label: formatActionLabel(false, false, Number(action.amount || 0), Number(action.seqNo)) }
+        return { ...action, isGrabbed: false, displayLoading: false, label: formatLuckyActionLabel(t, { ...action, isGrabbed: false, displayLoading: false }, false) }
       const grabbed = Number(participant.isGrabbed ?? 1) === 1
       const amount = Number(participant.amount || 0)
       return {
@@ -458,7 +453,7 @@ function applyLuckyFinished(message: any) {
         amount,
         thunder: grabbed ? Number(participant.isThunder || 0) : 0,
         displayLoading: false,
-        label: formatActionLabel(false, grabbed, amount, Number(action.seqNo)),
+        label: formatLuckyActionLabel(t, { ...action, isGrabbed: grabbed, amount, displayLoading: false }, false),
       }
     })
     const grabbedCount = normalizeGrabbedCount(
@@ -487,6 +482,20 @@ async function loadPrizePoolBalance() {
     prizePoolBalance.value = Number(data?.balance ?? 0)
   }
   catch {}
+}
+
+async function loadCurrentUserBalance() {
+  if (!isLogin()) {
+    currentUserBalance.value = 0
+    return
+  }
+  try {
+    const { data } = await getCurrentTgUserInfo()
+    currentUserBalance.value = Number(data?.balance ?? 0)
+  }
+  catch {
+    currentUserBalance.value = 0
+  }
 }
 
 function applyPrizePoolBalance(message: any) {
@@ -540,6 +549,7 @@ onMounted(() => {
   wsClient.on('lucky_finished', applyLuckyFinished)
   wsClient.on('prize_pool_balance', applyPrizePoolBalance)
   loadPrizePoolBalance()
+  loadCurrentUserBalance()
 })
 
 onBeforeUnmount(() => {
@@ -579,6 +589,10 @@ onBeforeUnmount(() => {
         <span class="send-entry-btn__copy">
           <strong>{{ t('homeLucky.sendQuickAction') }}</strong>
           <small>{{ pageTitle }}</small>
+          <small class="send-entry-btn__balance">
+            {{ t('appTopHeader.balance') }}
+            <CoinAmount :text="currentUserBalanceText" />
+          </small>
         </span>
       </span>
       <van-icon name="arrow" class="send-entry-btn__arrow" />
@@ -640,26 +654,14 @@ onBeforeUnmount(() => {
                   <span v-if="packet.ruleText">{{ packet.ruleText }}</span>
                   <span v-if="packet.statText" class="meta-chip--accent"><CurrencyText :text="packet.statText" /></span>
                 </div>
-                <div v-if="packet.actions?.length" class="packet-actions-inline">
-                  <button
-                    v-for="action in packet.actions"
-                    :key="`${packet.id}-${action.seqNo}`"
-                    type="button"
-                    class="action-pill"
-                    :class="{ grabbed: action.isGrabbed, mined: action.isGrabMine, locked: packet.status !== 'ongoing' && !action.isGrabbed }"
-                    :disabled="packet.status !== 'ongoing' || action.isGrabbed"
-                    @click="openGrabDialog(packet, action)"
-                  >
-                    <span v-if="action.thunder && packet.playType !== 'parity'" aria-hidden="true">💣</span>
-                    <span v-else-if="action.thunder && packet.playType === 'parity'" class="parity-lose-coin" aria-hidden="true">-</span>
-                    <span v-else-if="action.isGrabMine" class="mine-text">🎁 </span>
-                    <span v-else-if="packet.playType === 'parity' && !action.isGrabbed && packet.status === 'ongoing'" class="choice-mark">{{ t('homeLucky.parityChoiceMark') }}</span>
-                    <CoinAmount v-if="action.amount > 0 && !action.thunder && !action.displayLoading && (action.isGrabbed || packet.status !== 'ongoing')" :text="`${action.amount.toFixed(2)}`" />
-                    <template v-else>
-                      {{ action.label }}
-                    </template>
-                  </button>
-                </div>
+                <LuckyActionGrid
+                  v-if="packet.actions?.length"
+                  :actions="packet.actions"
+                  :status="packet.status"
+                  :play-type="packet.playType"
+                  :key-prefix="packet.id"
+                  @grab="action => openGrabDialog(packet, action)"
+                />
               </div>
             </div>
           </div>
@@ -904,6 +906,25 @@ onBeforeUnmount(() => {
   line-height: 1.2;
 }
 
+.send-entry-btn__balance {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.send-entry-btn__balance :deep(.coin-amount-text) {
+  color: rgba(89, 36, 0, 0.88);
+  font-weight: 900;
+  font-size: 15px;
+}
+
+.send-entry-btn__balance :deep(.coin-amount-icon) {
+  width: 15px;
+  height: 15px;
+}
+
 .send-entry-btn__arrow {
   flex: 0 0 auto;
   font-size: 18px;
@@ -1142,13 +1163,6 @@ onBeforeUnmount(() => {
   color: rgba(255, 232, 160, 0.85) !important;
 }
 
-.packet-actions-inline {
-  margin-top: 3px;
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 4px;
-}
-
 .packet-actions {
   position: relative;
   z-index: 1;
@@ -1160,52 +1174,22 @@ onBeforeUnmount(() => {
   background: linear-gradient(180deg, rgba(0, 0, 0, 0.2) 0%, rgba(0, 0, 0, 0.35) 100%);
 }
 
-.parity-lose-coin {
-  font-size: 1.15em;
-  line-height: 1;
-  font-weight: 700;
-  opacity: 0.6;
-}
-
-.action-pill {
+.action-pill.done {
   border: none;
   border-radius: 999px;
-  background: linear-gradient(180deg, #9e1010 0%, #6a0000 100%);
-  color: #fff3de;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 4px 3px;
-  font-size: 7px;
-  line-height: 1.15;
-  text-align: center;
-  word-break: break-word;
-  min-height: 28px;
-}
-
-.action-pill.grabbed,
-.action-pill.locked {
-  background: rgba(255, 255, 255, 0.1);
-  color: rgba(255, 248, 214, 0.6);
-  border: 1px solid rgba(255, 255, 255, 0.14);
-}
-
-.action-pill.done {
   width: 100%;
   background: rgba(212, 175, 55, 0.08);
   color: rgba(255, 248, 214, 0.6);
   border: 1px solid rgba(212, 175, 55, 0.28);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 3px;
   font-size: 9px;
+  line-height: 1.15;
+  text-align: center;
+  word-break: break-word;
   min-height: 24px;
-}
-
-.mine-text {
-  margin-right: 3px;
-  color: #ffd45d;
-}
-
-.choice-mark {
-  color: #8fd5ff;
 }
 
 .time-text {

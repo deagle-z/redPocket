@@ -25,7 +25,7 @@ const tgAppName = (import.meta.env.VITE_TG_APP_NAME || 'luckyapp').trim()
 
 const webInviteLink = computed(() => {
   const code = encodeURIComponent(state.inviteCode || '')
-  return `https://red.ai3-mountain.com/register?c=${code}`
+  return `https://${window.location.host}/register?c=${code}`
 })
 
 const telegramInviteLink = computed(() => {
@@ -142,7 +142,7 @@ onMounted(() => {
     </section>
 
     <section class="card link-card">
-      <div class="link-row">
+      <!-- <div class="link-row">
         <p class="link-title">
           {{ t('invitePage.linkTelegram') }}
         </p>
@@ -152,7 +152,7 @@ onMounted(() => {
             {{ t('invitePage.copy') }}
           </button>
         </div>
-      </div>
+      </div> -->
       <div class="link-row">
         <p class="link-title">
           {{ t('invitePage.linkH5') }}
@@ -224,8 +224,14 @@ onMounted(() => {
       </h3>
       <ul class="rule-list">
         <li>{{ t('invitePage.rule1', { reward: state.inviteFirstRechargeReward }) }}</li>
-        <li>{{ t('invitePage.rule2', { commission: state.luckyGrabbingCommission, rebate: state.inviteLuckyRebateRate }) }}</li>
-        <li>{{ t('invitePage.rule3', { commission: state.luckySendCommission, rebate: state.inviteThunderRebateRate }) }}</li>
+        <li>
+          {{ t('invitePage.rule2', { commission: state.luckyGrabbingCommission, rebate: state.inviteLuckyRebateRate })
+          }}
+        </li>
+        <li>
+          {{ t('invitePage.rule3', { commission: state.luckySendCommission, rebate: state.inviteThunderRebateRate })
+          }}
+        </li>
       </ul>
     </section>
 

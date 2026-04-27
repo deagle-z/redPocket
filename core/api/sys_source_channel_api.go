@@ -27,7 +27,7 @@ func GetSysSourceChannels(ctx *gin.Context) {
 		return
 	}
 	db := ctx.MustGet("db").(*gorm.DB)
-	result := repository.GetSysSourceChannels(db, search)
+	result := repository.GetSysSourceChannels(db, search, utils.GetRequestFullHost(ctx))
 	utils.SuccessObjBack(ctx, result)
 }
 
@@ -97,7 +97,32 @@ func GetSysSourceChannelById(ctx *gin.Context) {
 		return
 	}
 	db := ctx.MustGet("db").(*gorm.DB)
-	result, err := repository.GetSysSourceChannelById(db, id)
+	result, err := repository.GetSysSourceChannelById(db, id, utils.GetRequestFullHost(ctx))
+	if err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	utils.SuccessObjBack(ctx, result)
+}
+
+// GetSysSourceChannelStats godoc
+//
+//	@Summary		获取投流来源渠道基础统计
+//	@Tags			投流来源渠道
+//	@Accept			json
+//	@Produce		json
+//	@Param			id path		int	true	"渠道ID"
+//	@Success		200	{object}		pojo.SysSourceChannelStatsBack
+//	@Router			/api/v1/admin/sysSourceChannel/:id/stats [get]
+func GetSysSourceChannelStats(ctx *gin.Context) {
+	idStr := ctx.Param("id")
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		utils.ErrorBack(ctx, "参数格式错误")
+		return
+	}
+	db := ctx.MustGet("db").(*gorm.DB)
+	result, err := repository.GetSysSourceChannelStats(db, id)
 	if err != nil {
 		utils.ErrorBack(ctx, err.Error())
 		return

@@ -15,6 +15,7 @@ const props = withDefaults(defineProps<FormProps>(), {
     status: 1,
     ownerUserId: undefined,
     planCode: "",
+    bindDomain: "",
     timezone: "UTC",
     locale: "en-US",
     remark: ""
@@ -23,6 +24,18 @@ const props = withDefaults(defineProps<FormProps>(), {
 
 const tenantFormRef = ref();
 const newFormInline = ref(props.formInline);
+
+function normalizeBindDomain() {
+  const value = newFormInline.value.bindDomain?.trim();
+  if (!value) {
+    newFormInline.value.bindDomain = "";
+    return;
+  }
+  newFormInline.value.bindDomain = value
+    .replace(/^https?:\/\//i, "")
+    .replace(/\/+$/, "")
+    .toLowerCase();
+}
 
 function getRef() {
   return tenantFormRef.value;
@@ -99,6 +112,17 @@ defineExpose({ getRef });
             v-model="newFormInline.planCode"
             placeholder="free/pro/enterprise"
             clearable
+          />
+        </el-form-item>
+      </re-col>
+
+      <re-col v-if="newFormInline.title === '新增'" :value="12" :xs="24" :sm="24">
+        <el-form-item label="绑定域名" prop="bindDomain">
+          <el-input
+            v-model="newFormInline.bindDomain"
+            placeholder="example.com"
+            clearable
+            @blur="normalizeBindDomain"
           />
         </el-form-item>
       </re-col>

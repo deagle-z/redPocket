@@ -7,6 +7,7 @@ interface FormItemProps {
   status: number;
   ownerUserId?: number;
   planCode?: string;
+  bindDomain?: string;
   timezone: string;
   locale: string;
   remark?: string;

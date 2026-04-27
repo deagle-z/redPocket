@@ -103,7 +103,7 @@ func DelTgUser(ctx *gin.Context) {
 
 // GetTgUsersWithSubStats 列表返回所有下级（不限层级）的充值金额、流水、提现金额
 func GetTgUsersWithSubStats(ctx *gin.Context) {
-	_, ok := getTenantID(ctx)
+	tenantID, ok := getTenantID(ctx)
 	if !ok {
 		return
 	}
@@ -113,13 +113,13 @@ func GetTgUsersWithSubStats(ctx *gin.Context) {
 		utils.ErrorBack(ctx, err.Error())
 		return
 	}
-	result := tenantRepo.GetTgUsersWithSubStats(getDB(ctx), search)
+	result := tenantRepo.GetTgUsersWithSubStats(getDB(ctx), tenantID, search)
 	utils.SuccessObjBack(ctx, result)
 }
 
 // GetTgUsersWithSubStatsSummary 展示所有不限层级下级的充值金额之和、流水之和、提现金额之和
 func GetTgUsersWithSubStatsSummary(ctx *gin.Context) {
-	_, ok := getTenantID(ctx)
+	tenantID, ok := getTenantID(ctx)
 	if !ok {
 		return
 	}
@@ -128,6 +128,6 @@ func GetTgUsersWithSubStatsSummary(ctx *gin.Context) {
 		utils.ErrorBack(ctx, err.Error())
 		return
 	}
-	result := tenantRepo.GetTgUsersWithSubStatsSummary(getDB(ctx), search)
+	result := tenantRepo.GetTgUsersWithSubStatsSummary(getDB(ctx), tenantID, search)
 	utils.SuccessObjBack(ctx, result)
 }

@@ -10,6 +10,7 @@ type SysTenantUser struct { // 租户用户表（独立账号密码）
 	PasswordAlgo   string     `json:"passwordAlgo" gorm:"column:password_algo;type:varchar(32);default:bcrypt"`
 	Email          *string    `json:"email" gorm:"column:email;type:varchar(128)"`                // 邮箱（可选）
 	Mobile         *string    `json:"mobile" gorm:"column:mobile;type:varchar(32)"`               // 手机号（可选）
+	BindDomain     *string    `json:"bindDomain" gorm:"column:bind_domain;type:varchar(128)"`     // 绑定域名（可选）
 	RoleCode       string     `json:"roleCode" gorm:"column:role_code;type:varchar(64);not null"` // 角色编码（owner/admin/member）
 	IsOwner        bool       `json:"isOwner" gorm:"column:is_owner;type:tinyint(1);default:0"`   // 是否租户所有者
 	Status         int        `json:"status" gorm:"column:status;type:tinyint;default:1"`         // 状态：0=禁用 1=启用 2=冻结
@@ -29,6 +30,7 @@ type SysTenantUserSearch struct {
 	Username   string `json:"username"`
 	Email      string `json:"email"`
 	Mobile     string `json:"mobile"`
+	BindDomain string `json:"bindDomain"`
 	RoleCode   string `json:"roleCode"`
 	IsOwner    *bool  `json:"isOwner"`
 	Status     *int   `json:"status"`
@@ -43,6 +45,7 @@ type SysTenantUserSet struct {
 	PasswordAlgo string  `json:"passwordAlgo"`
 	Email        *string `json:"email"`
 	Mobile       *string `json:"mobile"`
+	BindDomain   *string `json:"bindDomain"`
 	RoleCode     string  `json:"roleCode"`
 	IsOwner      bool    `json:"isOwner"`
 	Status       int     `json:"status"`
@@ -61,6 +64,7 @@ type SysTenantUserBack struct {
 	PasswordAlgo   string     `json:"passwordAlgo"`
 	Email          *string    `json:"email"`
 	Mobile         *string    `json:"mobile"`
+	BindDomain     *string    `json:"bindDomain"`
 	RoleCode       string     `json:"roleCode"`
 	IsOwner        bool       `json:"isOwner"`
 	Status         int        `json:"status"`

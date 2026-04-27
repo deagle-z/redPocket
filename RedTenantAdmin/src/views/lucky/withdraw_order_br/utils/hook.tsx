@@ -7,7 +7,6 @@ import {
   setWithdrawOrderBr,
   type WithdrawOrderBr
 } from "@/api/withdrawOrderBr";
-import { setBalance } from "@/api/system";
 import { type Ref, reactive, ref, onMounted, toRaw } from "vue";
 import { ElForm, ElFormItem, ElInput, ElTag } from "element-plus";
 
@@ -224,11 +223,6 @@ export function useWithdrawOrderBr(tableRef: Ref) {
               status: 6,
               failMsg: rejectForm.failMsg,
               reviewedAt: dayjs().format("YYYY-MM-DD HH:mm:ss")
-            });
-            await setBalance({
-              userId: row.userId,
-              amount: row.amount,
-              cashMark: `提现驳回返还（订单号：${row.orderNo}）`
             });
             message("驳回成功，已返还余额", { type: "success" });
             done();

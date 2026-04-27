@@ -75,6 +75,7 @@ func InitTables(prefix string) (firstInit bool, err error) {
 			&pojo.SysMenu{},
 			&pojo.ManageLog{},
 			&pojo.SysSourceChannel{},
+			&pojo.AttributionEvent{},
 			&pojo.LuckyMoney{},
 			&pojo.LuckyHistory{},
 			&pojo.AuthGroup{},
@@ -114,6 +115,7 @@ func InitTables(prefix string) (firstInit bool, err error) {
 	// 兼容增量字段/新表变更
 	if err = db.AutoMigrate(
 		&pojo.SysSourceChannel{},
+		&pojo.AttributionEvent{},
 		&pojo.TgUser{},
 		&pojo.TgUserWithdrawLimitState{},
 		&pojo.RechargeOrder{},

@@ -165,6 +165,7 @@
     "inviteCode": "邀请码",
     "pleaseSelectCountry": "请选择国家",
     "pleaseEnterPhone": "请输入手机号码",
+    "invalidPhone": "请输入所选国家的有效手机号码",
     "pleaseEnterCode": "请输入短信验证码",
     "pleaseEnterNickname": "请输入昵称",
     "pleaseEnterPassword": "请输入密码",

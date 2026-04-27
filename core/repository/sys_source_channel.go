@@ -5,13 +5,14 @@ import (
 	"BaseGoUni/core/utils"
 	"errors"
 	"strings"
+	"time"
 
 	"github.com/jinzhu/copier"
 	"gorm.io/gorm"
 )
 
 // GetSysSourceChannels 投流来源渠道列表（分页）
-func GetSysSourceChannels(db *gorm.DB, search pojo.SysSourceChannelSearch) (result pojo.SysSourceChannelResp) {
+func GetSysSourceChannels(db *gorm.DB, search pojo.SysSourceChannelSearch, linkBaseURL string) (result pojo.SysSourceChannelResp) {
 	var list []pojo.SysSourceChannel
 	query := db.Model(&pojo.SysSourceChannel{})
 
@@ -19,7 +20,7 @@ func GetSysSourceChannels(db *gorm.DB, search pojo.SysSourceChannelSearch) (resu
 		query = query.Where("tenant_id = ?", search.TenantId)
 	}
 	if search.ChannelCode != "" {
-		query = query.Where("channel_code LIKE ?", "%"+search.ChannelCode+"%")
+		query = query.Where("channel_code LIKE ?", "%"+NormalizeSourceChannelCode(search.ChannelCode)+"%")
 	}
 	if search.ChannelName != "" {
 		query = query.Where("channel_name LIKE ?", "%"+search.ChannelName+"%")
@@ -39,9 +40,7 @@ func GetSysSourceChannels(db *gorm.DB, search pojo.SysSourceChannelSearch) (resu
 	query.Find(&list)
 
 	for _, item := range list {
-		var temp pojo.SysSourceChannelBack
-		_ = copier.Copy(&temp, &item)
-		result.List = append(result.List, temp)
+		result.List = append(result.List, buildSysSourceChannelBack(db, item, linkBaseURL))
 	}
 
 	result.PageSize = search.PageSize
@@ -59,7 +58,7 @@ func SetSysSourceChannel(db *gorm.DB, req pojo.SysSourceChannelSet) (result pojo
 		}
 		req.ChannelCode = entity.ChannelCode
 		_ = copier.Copy(&entity, &req)
-		entity.ChannelCode = strings.TrimSpace(entity.ChannelCode)
+		entity.ChannelCode = NormalizeSourceChannelCode(entity.ChannelCode)
 		err = db.Save(&entity).Error
 	} else {
 		_ = copier.Copy(&entity, &req)
@@ -73,6 +72,9 @@ func SetSysSourceChannel(db *gorm.DB, req pojo.SysSourceChannelSet) (result pojo
 		return result, err
 	}
 	_ = copier.Copy(&result, &entity)
+	result.LinkURL = BuildSourceChannelLinkURL("", entity.ChannelCode)
+	stats, _ := GetSysSourceChannelStats(db, entity.ID)
+	result.Stats = stats
 	return result, nil
 }
 
@@ -105,12 +107,108 @@ func DelSysSourceChannel(db *gorm.DB, id int64) (result string, err error) {
 }
 
 // GetSysSourceChannelById 根据ID获取投流来源渠道
-func GetSysSourceChannelById(db *gorm.DB, id int64) (result pojo.SysSourceChannelBack, err error) {
+func GetSysSourceChannelById(db *gorm.DB, id int64, linkBaseURL string) (result pojo.SysSourceChannelBack, err error) {
 	var entity pojo.SysSourceChannel
 	db.Where("id = ?", id).First(&entity)
 	if entity.ID == 0 {
 		return result, errors.New("record_not_found")
 	}
+	return buildSysSourceChannelBack(db, entity, linkBaseURL), nil
+}
+
+func buildSysSourceChannelBack(db *gorm.DB, entity pojo.SysSourceChannel, linkBaseURL string) pojo.SysSourceChannelBack {
+	var result pojo.SysSourceChannelBack
 	_ = copier.Copy(&result, &entity)
+	result.LinkURL = BuildSourceChannelLinkURL(linkBaseURL, entity.ChannelCode)
+	stats, _ := GetSysSourceChannelStats(db, entity.ID)
+	result.Stats = stats
+	return result
+}
+
+func GetSysSourceChannelStats(db *gorm.DB, channelID int64) (pojo.SysSourceChannelStatsBack, error) {
+	var result pojo.SysSourceChannelStatsBack
+	if db == nil || channelID <= 0 {
+		return result, errors.New("invalid_params")
+	}
+
+	var channel pojo.SysSourceChannel
+	if err := db.Select("id").Where("id = ?", channelID).First(&channel).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return result, errors.New("record_not_found")
+		}
+		return result, err
+	}
+
+	startOfDay, endOfDay := todayRange()
+
+	if err := db.Model(&pojo.TgUser{}).
+		Where("source_channel_id = ?", channelID).
+		Count(&result.RegisterUsers).Error; err != nil {
+		return result, err
+	}
+	if err := db.Model(&pojo.TgUser{}).
+		Where("source_channel_id = ? AND created_at >= ? AND created_at < ?", channelID, startOfDay, endOfDay).
+		Count(&result.TodayRegisterUsers).Error; err != nil {
+		return result, err
+	}
+	if err := db.Model(&pojo.RechargeOrder{}).
+		Where("source_channel_id = ? AND status = ?", channelID, 1).
+		Select("COUNT(DISTINCT user_id)").
+		Scan(&result.RechargeUsers).Error; err != nil {
+		return result, err
+	}
+	if err := db.Model(&pojo.RechargeOrder{}).
+		Where("source_channel_id = ? AND status = ? AND pay_time >= ? AND pay_time < ?", channelID, 1, startOfDay, endOfDay).
+		Select("COUNT(DISTINCT user_id)").
+		Scan(&result.TodayRechargeUsers).Error; err != nil {
+		return result, err
+	}
+	if err := db.Model(&pojo.RechargeOrder{}).
+		Where("source_channel_id = ? AND status = ?", channelID, 1).
+		Select("COALESCE(SUM(amount), 0)").
+		Scan(&result.TotalRechargeAmount).Error; err != nil {
+		return result, err
+	}
+	if err := db.Model(&pojo.RechargeOrder{}).
+		Where("source_channel_id = ? AND status = ? AND pay_time >= ? AND pay_time < ?", channelID, 1, startOfDay, endOfDay).
+		Select("COALESCE(SUM(amount), 0)").
+		Scan(&result.TodayRechargeAmount).Error; err != nil {
+		return result, err
+	}
+	if err := db.Model(&pojo.WithdrawOrderBr{}).
+		Where("source_channel_id = ? AND status = ?", channelID, 3).
+		Select("COALESCE(SUM(amount), 0)").
+		Scan(&result.TotalWithdrawAmount).Error; err != nil {
+		return result, err
+	}
+	if err := db.Model(&pojo.WithdrawOrderBr{}).
+		Where("source_channel_id = ? AND status = ? AND paid_at >= ? AND paid_at < ?", channelID, 3, startOfDay, endOfDay).
+		Select("COALESCE(SUM(amount), 0)").
+		Scan(&result.TodayWithdrawAmount).Error; err != nil {
+		return result, err
+	}
+	if err := db.Model(&pojo.AttributionEvent{}).
+		Where("source_channel_id = ?", channelID).
+		Count(&result.EventCount).Error; err != nil {
+		return result, err
+	}
+	if err := db.Model(&pojo.AttributionEvent{}).
+		Where("source_channel_id = ?", channelID).
+		Select("COUNT(DISTINCT NULLIF(visitor_id, ''))").
+		Scan(&result.UniqueVisitors).Error; err != nil {
+		return result, err
+	}
+	if err := db.Model(&pojo.AttributionEvent{}).
+		Where("source_channel_id = ?", channelID).
+		Select("COUNT(DISTINCT user_id)").
+		Scan(&result.UniqueUsers).Error; err != nil {
+		return result, err
+	}
 	return result, nil
+}
+
+func todayRange() (time.Time, time.Time) {
+	now := time.Now()
+	startOfDay := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	return startOfDay, startOfDay.Add(24 * time.Hour)
 }

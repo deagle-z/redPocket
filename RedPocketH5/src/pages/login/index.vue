@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores'
+import { trackAttributionEvent } from '@/utils/attribution'
+import { getAuthCountry, setAuthCountry } from '@/utils/auth'
 import { showToast } from 'vant'
 import { languageOptions, locale } from '@/utils/i18n'
 import AppPageHeader from '@/components/AppPageHeader.vue'
@@ -15,25 +17,69 @@ const { t } = useI18n()
 const router = useRouter()
 const userStore = useUserStore()
 const loading = ref(false)
-const activeTab = ref<'telegram' | 'phone'>('telegram')
+const activeTab = ref<'telegram' | 'phone'>('phone')
 const tgBotUsername = import.meta.env.VITE_TG_BOT_USERNAME || 'luckRedBoomPacket66Bot'
 const showLangPopup = ref(false)
+const showCountryPopup = ref(false)
+const loginCountries = [
+  { code: 'MX', nameKey: 'login.countryMexico', dialCode: '+52' },
+  { code: 'ID', nameKey: 'login.countryIndonesia', dialCode: '+62' },
+  { code: 'BR', nameKey: 'login.countryBrazil', dialCode: '+55' },
+] as const
+type LoginCountryCode = typeof loginCountries[number]['code']
+const loginCountryMap = Object.fromEntries(loginCountries.map(item => [item.code, item.nameKey])) as Record<LoginCountryCode, string>
+const loginCountryDialCodeMap = Object.fromEntries(loginCountries.map(item => [item.code, item.dialCode])) as Record<
+  LoginCountryCode,
+  string
+>
 
 const postData = reactive<{
+  country: LoginCountryCode
   phone: string
   password: string
 }>({
+  country: 'BR',
   phone: '',
   password: '',
 })
+
+const currentCountryDialCode = computed(() => loginCountryDialCodeMap[postData.country] || '+55')
+
+function detectLoginCountry(): LoginCountryCode {
+  const browserLanguages = [
+    ...(navigator.languages || []),
+    navigator.language,
+  ]
+    .filter(Boolean)
+    .map(lang => lang.toUpperCase())
+
+  for (const lang of browserLanguages) {
+    if (lang.includes('-BR') || lang.startsWith('PT'))
+      return 'BR'
+    if (lang.includes('-MX') || lang.startsWith('ES'))
+      return 'MX'
+    if (lang.includes('-ID') || lang.startsWith('ID'))
+      return 'ID'
+  }
+
+  return 'BR'
+}
 
 function normalizePhoneInput(event: Event) {
   const input = event.target as HTMLInputElement
   postData.phone = input.value.replace(/\D+/g, '')
 }
 
+onMounted(() => {
+  const storedCountry = getAuthCountry() as LoginCountryCode
+  postData.country = loginCountryMap[storedCountry] ? storedCountry : detectLoginCountry()
+})
+
 async function login() {
-  if (!postData.phone) {
+  const phone = postData.phone.replace(/\D+/g, '')
+  postData.phone = phone
+
+  if (!phone) {
     showToast(t('login.pleaseEnterPhone'))
     return
   }
@@ -43,7 +89,20 @@ async function login() {
   }
   try {
     loading.value = true
-    await userStore.login({ ...postData })
+    trackAttributionEvent({
+      eventName: 'login_submit',
+      metadata: {
+        method: 'phone',
+      },
+    })
+    await userStore.login({ ...postData, phone })
+    trackAttributionEvent({
+      eventName: 'login_success',
+      metadata: {
+        method: 'phone',
+      },
+    })
+    setAuthCountry(postData.country)
     const { redirect, ...othersQuery } = router.currentRoute.value.query
     const redirectPath = typeof redirect === 'string' && redirect ? redirect : '/'
     router.replace({
@@ -71,7 +130,19 @@ interface TgAuthPayload {
 async function handleTelegramAuth(user: TgAuthPayload) {
   try {
     loading.value = true
+    trackAttributionEvent({
+      eventName: 'telegram_auth_submit',
+      metadata: {
+        source: 'login',
+      },
+    })
     await userStore.loginByTelegram(user)
+    trackAttributionEvent({
+      eventName: 'telegram_auth_success',
+      metadata: {
+        source: 'login',
+      },
+    })
     const { redirect, ...othersQuery } = router.currentRoute.value.query
     const redirectPath = typeof redirect === 'string' && redirect ? redirect : '/'
     router.push({
@@ -99,6 +170,19 @@ function openLanguagePopup() {
 
 function closeLanguagePopup() {
   showLangPopup.value = false
+}
+
+function openCountryPopup() {
+  showCountryPopup.value = true
+}
+
+function closeCountryPopup() {
+  showCountryPopup.value = false
+}
+
+function selectCountry(country: LoginCountryCode) {
+  postData.country = country
+  showCountryPopup.value = false
 }
 
 function selectLanguage(lang: string) {
@@ -160,19 +244,19 @@ function goRegister() {
         <div class="tabs">
           <button
             class="tab"
-            :class="{ active: activeTab === 'telegram' }"
-            type="button"
-            @click="activeTab = 'telegram'"
-          >
-            Telegram
-          </button>
-          <button
-            class="tab"
             :class="{ active: activeTab === 'phone' }"
             type="button"
             @click="activeTab = 'phone'"
           >
             {{ t('login.phoneTab') }}
+          </button>
+          <button
+            class="tab"
+            :class="{ active: activeTab === 'telegram' }"
+            type="button"
+            @click="activeTab = 'telegram'"
+          >
+            Telegram
           </button>
         </div>
 
@@ -212,17 +296,23 @@ function goRegister() {
                 </span>
                 <span>{{ t('login.phone') }}</span>
               </label>
-              <input
-                id="login-phone"
-                v-model="postData.phone"
-                type="tel"
-                inputmode="tel"
-                pattern="[0-9]*"
-                autocomplete="tel"
-                class="email-form-input"
-                :placeholder="t('login.pleaseEnterPhone')"
-                @input="normalizePhoneInput"
-              >
+              <div class="phone-input-wrap">
+                <button type="button" class="phone-country-trigger" @click="openCountryPopup">
+                  <span>{{ currentCountryDialCode }}</span>
+                  <span class="phone-country-arrow" aria-hidden="true">▾</span>
+                </button>
+                <input
+                  id="login-phone"
+                  v-model="postData.phone"
+                  type="tel"
+                  inputmode="tel"
+                  pattern="[0-9]*"
+                  autocomplete="tel-national"
+                  class="email-form-input phone-input"
+                  :placeholder="t('login.pleaseEnterPhone')"
+                  @input="normalizePhoneInput"
+                >
+              </div>
             </div>
 
             <div class="email-form-row">
@@ -333,6 +423,32 @@ function goRegister() {
       <p class="language-tip">
         {{ t('login.language.autoRefresh') }}
       </p>
+    </van-popup>
+
+    <van-popup v-model:show="showCountryPopup" round position="bottom" class="language-popup">
+      <div class="language-popup-header">
+        <span class="language-popup-title">{{ t('login.country') }}</span>
+        <button class="language-popup-close" @click="closeCountryPopup">
+          ×
+        </button>
+      </div>
+
+      <div class="language-list">
+        <button
+          v-for="item in loginCountries"
+          :key="item.code"
+          class="language-item"
+          :class="{ active: postData.country === item.code }"
+          @click="selectCountry(item.code)"
+        >
+          <span class="language-code">{{ item.dialCode }}</span>
+          <span class="language-text">
+            <span class="native">{{ t(item.nameKey) }}</span>
+            <span class="english">{{ item.code }}</span>
+          </span>
+          <span v-if="postData.country === item.code" class="language-check">✓</span>
+        </button>
+      </div>
     </van-popup>
   </div>
 </template>
@@ -630,6 +746,60 @@ function goRegister() {
   border-color: rgba(255, 223, 135, 0.72);
   box-shadow: 0 0 0 4px rgba(212, 175, 55, 0.14);
   background: rgba(255, 248, 214, 0.08);
+}
+
+.phone-input-wrap {
+  display: flex;
+  align-items: center;
+  min-height: 48px;
+  border: 1px solid rgba(212, 175, 55, 0.22);
+  border-radius: 14px;
+  background: rgba(255, 248, 214, 0.05);
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    background-color 0.2s ease;
+}
+
+.phone-input-wrap:focus-within {
+  border-color: rgba(255, 223, 135, 0.72);
+  box-shadow: 0 0 0 4px rgba(212, 175, 55, 0.14);
+  background: rgba(255, 248, 214, 0.08);
+}
+
+.phone-country-trigger {
+  flex: 0 0 auto;
+  min-width: 76px;
+  min-height: 48px;
+  padding: 0 10px 0 14px;
+  border: 0;
+  border-right: 1px solid rgba(212, 175, 55, 0.24);
+  background: transparent;
+  color: #ffd77a;
+  font-size: 14px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.phone-country-arrow {
+  color: rgba(255, 229, 186, 0.76);
+  font-size: 11px;
+  line-height: 1;
+}
+
+.phone-input {
+  min-width: 0;
+  border: 0;
+  background: transparent;
+}
+
+.phone-input:focus {
+  box-shadow: none;
+  background: transparent;
 }
 
 .email-actions {

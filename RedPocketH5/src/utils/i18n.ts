@@ -7,7 +7,7 @@ import zhCN from 'vant/es/locale/lang/zh-CN'
 import { Locale } from 'vant'
 import type { PickerColumn } from 'vant'
 
-const FALLBACK_LOCALE = 'zh-CN'
+const FALLBACK_LOCALE = 'en-US'
 
 const vantLocales = {
   'zh-CN': zhCN,
@@ -18,12 +18,7 @@ const vantLocales = {
 }
 
 export const languageOptions = [
-  {
-    code: 'CN',
-    value: 'zh-CN',
-    nativeTextKey: 'login.language.zhNative',
-    englishTextKey: 'login.language.zhEn',
-  },
+
   {
     code: 'US',
     value: 'en-US',
@@ -47,6 +42,12 @@ export const languageOptions = [
     value: 'id-ID',
     nativeTextKey: 'login.language.idNative',
     englishTextKey: 'login.language.idEn',
+  },
+  {
+    code: 'CN',
+    value: 'zh-CN',
+    nativeTextKey: 'login.language.zhNative',
+    englishTextKey: 'login.language.zhEn',
   },
 ]
 
@@ -96,7 +97,7 @@ async function loadLocaleMsg(locale: string, i18n: I18n) {
 
 // 获取当前语言对应的语言包名称
 function getI18nLocale() {
-  const storedLocale = localStorage.getItem('language') || navigator.language
+  const storedLocale = localStorage.getItem('language')
 
   const langs = languageOptions.map(v => v.value)
 

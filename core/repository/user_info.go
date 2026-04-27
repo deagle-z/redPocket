@@ -330,6 +330,7 @@ func WhiteUserLogin(db *gorm.DB, hostInfo pojo.HostInfo, reqUserLogin pojo.UserL
 	userJSON, _ := json.Marshal(onlineUser)
 	//log.Printf("userJSON=%v", string(userJSON))
 	utils.RD.SetEX(context.Background(), key, string(userJSON), time.Duration(hostInfo.AccessExpire)*time.Second)
+	utils.TouchAdminOnlineUser(dbUser.ID)
 	return data, err
 }
 
@@ -413,6 +414,7 @@ func UserLogin(db *gorm.DB, hostInfo pojo.HostInfo, reqUserLogin pojo.UserLogin,
 	userJSON, _ := json.Marshal(onlineUser)
 	//log.Printf("userJSON=%v", string(userJSON))
 	utils.RD.SetEX(context.Background(), key, string(userJSON), time.Duration(hostInfo.AccessExpire)*time.Second)
+	utils.TouchAdminOnlineUser(dbUser.ID)
 	return data, err
 }
 

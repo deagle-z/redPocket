@@ -90,7 +90,20 @@ type TgUserBatchCreateBotReq struct {
 	AvatarLinks []string `json:"avatarLinks"`
 }
 
+type TgUserBatchUpdateBotReq struct {
+	IDs         []int64  `json:"ids"`
+	RandomName  bool     `json:"randomName"`
+	NameFile    string   `json:"nameFile"`
+	AvatarLinks []string `json:"avatarLinks"`
+	Status      *int8    `json:"status"`
+}
+
 type TgUserBatchCreateBotResp struct {
+	Count int               `json:"count"`
+	List  []TgUserAdminBack `json:"list"`
+}
+
+type TgUserBatchUpdateBotResp struct {
 	Count int               `json:"count"`
 	List  []TgUserAdminBack `json:"list"`
 }
@@ -109,6 +122,8 @@ type TgEmailRegisterReq struct {
 	Password          string `json:"password"`
 	Code              string `json:"code"`
 	SourceChannelCode string `json:"sourceChannelCode"`
+	ChannelCode       string `json:"channelCode"`
+	Referrer          string `json:"referrer"`
 }
 
 type TgPhoneRegisterReq struct {
@@ -116,6 +131,8 @@ type TgPhoneRegisterReq struct {
 	Country           string `json:"country"`
 	Password          string `json:"password"`
 	SourceChannelCode string `json:"sourceChannelCode"`
+	ChannelCode       string `json:"channelCode"`
+	Referrer          string `json:"referrer"`
 }
 
 type TgEmailLoginReq struct {

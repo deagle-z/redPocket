@@ -9,6 +9,7 @@ type TgAuthLoginReq struct {
 	AuthDate          int64  `json:"auth_date"`
 	Hash              string `json:"hash"`
 	SourceChannelCode string `json:"sourceChannelCode"`
+	ChannelCode       string `json:"channelCode"`
 }
 
 type TgAuthLoginBack struct {

@@ -182,6 +182,84 @@ func BatchCreateBotTgUsers(db *gorm.DB, req pojo.TgUserBatchCreateBotReq) (resul
 	return result, err
 }
 
+func BatchUpdateBotTgUsers(db *gorm.DB, req pojo.TgUserBatchUpdateBotReq) (result pojo.TgUserBatchUpdateBotResp, err error) {
+	ids := uniqueInt64s(req.IDs)
+	if len(ids) == 0 {
+		return result, errors.New("ids_required")
+	}
+	if req.Status != nil && *req.Status != 1 && *req.Status != 0 && *req.Status != -1 {
+		return result, errors.New("invalid_status")
+	}
+
+	names := parseBotNames(req.NameFile)
+	shouldUpdateName := req.RandomName || len(names) > 0
+	shouldUpdateAvatar := len(req.AvatarLinks) > 0
+	shouldUpdateStatus := req.Status != nil
+	if !shouldUpdateName && !shouldUpdateAvatar && !shouldUpdateStatus {
+		return result, errors.New("no_fields_to_update")
+	}
+
+	err = db.Transaction(func(tx *gorm.DB) error {
+		var bots []pojo.TgUser
+		if err := tx.Where("id IN ? AND is_bot = ?", ids, true).Find(&bots).Error; err != nil {
+			return err
+		}
+		if len(bots) != len(ids) {
+			return errors.New("bot_user_not_found")
+		}
+
+		botMap := make(map[int64]pojo.TgUser, len(bots))
+		for _, bot := range bots {
+			botMap[bot.ID] = bot
+		}
+
+		result.List = make([]pojo.TgUserAdminBack, 0, len(ids))
+		for index, id := range ids {
+			bot := botMap[id]
+			updates := map[string]any{}
+
+			if shouldUpdateName {
+				displayName := buildBotDisplayName(req.RandomName, names, index)
+				username := buildBotUsername(displayName, bot.Uid, index)
+				updates["first_name"] = displayName
+				updates["username"] = username
+				bot.FirstName = &displayName
+				bot.Username = &username
+			}
+
+			if shouldUpdateAvatar {
+				avatar := pickBotAvatar(req.AvatarLinks, index)
+				if avatar == nil {
+					updates["avatar"] = nil
+				} else {
+					updates["avatar"] = *avatar
+				}
+				bot.Avatar = avatar
+			}
+
+			if shouldUpdateStatus {
+				updates["status"] = *req.Status
+				bot.Status = *req.Status
+			}
+
+			if len(updates) == 0 {
+				continue
+			}
+			if err := tx.Model(&pojo.TgUser{}).Where("id = ? AND is_bot = ?", id, true).Updates(updates).Error; err != nil {
+				return err
+			}
+
+			var temp pojo.TgUserAdminBack
+			_ = copier.Copy(&temp, &bot)
+			result.List = append(result.List, temp)
+		}
+		result.Count = len(result.List)
+		return nil
+	})
+
+	return result, err
+}
+
 func parseBotNames(nameFile string) []string {
 	lines := strings.Split(strings.ReplaceAll(nameFile, "\r\n", "\n"), "\n")
 	result := make([]string, 0, len(lines))
@@ -259,4 +337,20 @@ func buildHumanLikeName() string {
 		return firstName
 	}
 	return fmt.Sprintf("%s %s", firstName, lastName)
+}
+
+func uniqueInt64s(values []int64) []int64 {
+	result := make([]int64, 0, len(values))
+	seen := make(map[int64]struct{}, len(values))
+	for _, value := range values {
+		if value <= 0 {
+			continue
+		}
+		if _, ok := seen[value]; ok {
+			continue
+		}
+		seen[value] = struct{}{}
+		result = append(result, value)
+	}
+	return result
 }

@@ -3,8 +3,10 @@ package repository
 import (
 	"BaseGoUni/core/pojo"
 	"errors"
+	"fmt"
 	"github.com/jinzhu/copier"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 func GetWithdrawOrderBrs(db *gorm.DB, tenantID int64, search pojo.WithdrawOrderBrSearch) (result pojo.WithdrawOrderBrResp) {
@@ -63,22 +65,80 @@ func GetWithdrawOrderBrByID(db *gorm.DB, tenantID int64, id int64) (result pojo.
 func SetWithdrawOrderBr(db *gorm.DB, tenantID int64, req pojo.WithdrawOrderBrSet) (result pojo.WithdrawOrderBrBack, err error) {
 	req.TenantId = tenantID
 	var dbOrder pojo.WithdrawOrderBr
-	if req.ID > 0 {
-		db.Where("id = ? and tenant_id = ?", req.ID, tenantID).First(&dbOrder)
-		if dbOrder.ID == 0 {
-			return result, errors.New("更新的数据不存在")
+	err = db.Transaction(func(tx *gorm.DB) error {
+		if req.ID > 0 {
+			if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+				Where("id = ? and tenant_id = ?", req.ID, tenantID).
+				First(&dbOrder).Error; err != nil {
+				if errors.Is(err, gorm.ErrRecordNotFound) {
+					return errors.New("更新的数据不存在")
+				}
+				return err
+			}
+			oldStatus := dbOrder.Status
+			_ = copier.Copy(&dbOrder, &req)
+			if err := tx.Save(&dbOrder).Error; err != nil {
+				return err
+			}
+			if needTenantWithdrawRefund(oldStatus, dbOrder.Status) {
+				if err := refundTenantWithdrawAmount(tx, tenantID, dbOrder); err != nil {
+					return err
+				}
+			}
+			return nil
 		}
+
 		_ = copier.Copy(&dbOrder, &req)
-		err = db.Save(&dbOrder).Error
-	} else {
-		_ = copier.Copy(&dbOrder, &req)
-		err = db.Create(&dbOrder).Error
-	}
+		return tx.Create(&dbOrder).Error
+	})
 	if err != nil {
 		return result, err
 	}
 	_ = copier.Copy(&result, &dbOrder)
 	return result, nil
+}
+
+func needTenantWithdrawRefund(oldStatus int, newStatus int) bool {
+	oldActive := oldStatus == 0 || oldStatus == 1 || oldStatus == 2 || oldStatus == 3
+	newRefund := newStatus == 4 || newStatus == 5 || newStatus == 6
+	return oldActive && newRefund
+}
+
+func refundTenantWithdrawAmount(tx *gorm.DB, tenantID int64, order pojo.WithdrawOrderBr) error {
+	if order.UserId <= 0 || order.Amount <= 0 {
+		return nil
+	}
+
+	var user pojo.TgUser
+	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+		Where("id = ? and tenant_id = ?", order.UserId, tenantID).
+		First(&user).Error; err != nil {
+		return err
+	}
+	if user.ID == 0 {
+		return errors.New("用户不存在")
+	}
+
+	if err := tx.Model(&pojo.TgUser{}).
+		Where("id = ? and tenant_id = ?", user.ID, tenantID).
+		Update("balance", gorm.Expr("balance + ?", order.Amount)).Error; err != nil {
+		return err
+	}
+
+	cashHistory := pojo.CashHistory{
+		UserId:          user.ID,
+		AwardUni:        fmt.Sprintf("withdraw_refund_%s", order.OrderNo),
+		Amount:          order.Amount,
+		StartAmount:     user.Balance,
+		EndAmount:       user.Balance + order.Amount,
+		CashMark:        "提现退回",
+		CashDesc:        fmt.Sprintf("提现订单%s退回，返还%.2f", order.OrderNo, order.Amount),
+		Type:            pojo.CashHistoryTypeWithdrawRefund,
+		IsGift:          0,
+		FromUserId:      0,
+		SourceChannelID: order.SourceChannelID,
+	}
+	return tx.Create(&cashHistory).Error
 }
 
 func DelWithdrawOrderBr(db *gorm.DB, tenantID int64, id int64) (result string, err error) {

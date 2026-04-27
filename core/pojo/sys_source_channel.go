@@ -38,17 +38,33 @@ type SysSourceChannelSet struct {
 }
 
 type SysSourceChannelBack struct {
-	ID          int64     `json:"id"`
-	CreatedAt   time.Time `json:"createdAt"`
-	UpdatedAt   time.Time `json:"updatedAt"`
-	TenantId    int64     `json:"tenantId"`
-	ChannelCode string    `json:"channelCode"`
-	ChannelName string    `json:"channelName"`
-	ParentID    *int64    `json:"parentId"`
-	Level       int8      `json:"level"`
-	Status      int8      `json:"status"`
-	Sort        int       `json:"sort"`
-	Remark      *string   `json:"remark"`
+	ID          int64                     `json:"id"`
+	CreatedAt   time.Time                 `json:"createdAt"`
+	UpdatedAt   time.Time                 `json:"updatedAt"`
+	TenantId    int64                     `json:"tenantId"`
+	ChannelCode string                    `json:"channelCode"`
+	ChannelName string                    `json:"channelName"`
+	ParentID    *int64                    `json:"parentId"`
+	Level       int8                      `json:"level"`
+	Status      int8                      `json:"status"`
+	Sort        int                       `json:"sort"`
+	Remark      *string                   `json:"remark"`
+	LinkURL     string                    `json:"linkUrl"`
+	Stats       SysSourceChannelStatsBack `json:"stats"`
+}
+
+type SysSourceChannelStatsBack struct {
+	RegisterUsers       int64   `json:"registerUsers"`
+	TodayRegisterUsers  int64   `json:"todayRegisterUsers"`
+	RechargeUsers       int64   `json:"rechargeUsers"`
+	TodayRechargeUsers  int64   `json:"todayRechargeUsers"`
+	TotalRechargeAmount float64 `json:"totalRechargeAmount"`
+	TodayRechargeAmount float64 `json:"todayRechargeAmount"`
+	TotalWithdrawAmount float64 `json:"totalWithdrawAmount"`
+	TodayWithdrawAmount float64 `json:"todayWithdrawAmount"`
+	EventCount          int64   `json:"eventCount"`
+	UniqueVisitors      int64   `json:"uniqueVisitors"`
+	UniqueUsers         int64   `json:"uniqueUsers"`
 }
 
 type SysSourceChannelResp struct {

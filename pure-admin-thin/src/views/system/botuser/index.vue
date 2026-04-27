@@ -4,11 +4,16 @@ import { deviceDetection } from "@pureadmin/utils";
 import { message } from "@/utils/message";
 import { PureTableBar } from "@/components/RePureTableBar";
 import { useRenderIcon } from "@/components/ReIcon/src/hooks";
-import { batchCreateBotUsers } from "@/api/tgUser";
+import {
+  batchCreateBotUsers,
+  batchUpdateBotUsers,
+  type TgUser
+} from "@/api/tgUser";
 import { useBotUser } from "./utils/hook";
 import { getToken, formatToken } from "@/utils/auth";
 
 import Delete from "@iconify-icons/ep/delete";
+import Edit from "@iconify-icons/ep/edit";
 import Refresh from "@iconify-icons/ep/refresh";
 import AddFill from "@iconify-icons/ri/add-circle-line";
 
@@ -16,21 +21,45 @@ defineOptions({
   name: "SysBotUser"
 });
 
+type AvatarUploadState = {
+  avatarUrlList: string[];
+  avatarUploading: boolean;
+  uploadingCount: number;
+};
+
 const formRef = ref();
 const tableRef = ref();
 const submitLoading = ref(false);
 const fileInputLoading = ref(false);
-const dialogVisible = ref(false);
-const avatarUploading = ref(false);
-const avatarUrlList = ref<string[]>([]);
-const uploadingCount = ref(0);
+const createDialogVisible = ref(false);
+const editDialogVisible = ref(false);
 const uploadUrl = `${import.meta.env.VITE_BASE_URL}/api/v1/admin/upload`;
 
-const batchForm = reactive({
+const batchCreateForm = reactive({
   num: 10,
   randomName: false,
   nameFile: "",
   avatarText: ""
+});
+
+const batchEditForm = reactive({
+  randomName: false,
+  nameFile: "",
+  avatarText: "",
+  statusEnabled: false,
+  status: 1
+});
+
+const createAvatarState = reactive<AvatarUploadState>({
+  avatarUrlList: [],
+  avatarUploading: false,
+  uploadingCount: 0
+});
+
+const editAvatarState = reactive<AvatarUploadState>({
+  avatarUrlList: [],
+  avatarUploading: false,
+  uploadingCount: 0
 });
 
 const {
@@ -39,6 +68,7 @@ const {
   columns,
   dataList,
   selectedNum,
+  selectedRows,
   pagination,
   statusOptions,
   onSearch,
@@ -59,12 +89,15 @@ function parseLines(text: string) {
     .filter(Boolean);
 }
 
-async function handleNameFileChange(uploadFile: any) {
+async function handleNameFileChange(
+  uploadFile: any,
+  targetForm: { nameFile: string }
+) {
   const raw = uploadFile?.raw as File | undefined;
   if (!raw) return;
   fileInputLoading.value = true;
   try {
-    batchForm.nameFile = await raw.text();
+    targetForm.nameFile = await raw.text();
     message("名称文件已读取", { type: "success" });
   } catch (error) {
     console.error("读取名称文件失败", error);
@@ -74,23 +107,48 @@ async function handleNameFileChange(uploadFile: any) {
   }
 }
 
-function resetBatchForm() {
-  batchForm.num = 10;
-  batchForm.randomName = false;
-  batchForm.nameFile = "";
-  batchForm.avatarText = "";
-  avatarUrlList.value = [];
-  uploadingCount.value = 0;
-  avatarUploading.value = false;
+function syncAvatarText(
+  targetForm: { avatarText: string },
+  uploadState: AvatarUploadState
+) {
+  targetForm.avatarText = uploadState.avatarUrlList.join("\n");
 }
 
-function openBatchDialog() {
-  resetBatchForm();
-  dialogVisible.value = true;
+function resetAvatarState(uploadState: AvatarUploadState) {
+  uploadState.avatarUrlList = [];
+  uploadState.uploadingCount = 0;
+  uploadState.avatarUploading = false;
 }
 
-function syncAvatarText() {
-  batchForm.avatarText = avatarUrlList.value.join("\n");
+function resetBatchCreateForm() {
+  batchCreateForm.num = 10;
+  batchCreateForm.randomName = false;
+  batchCreateForm.nameFile = "";
+  batchCreateForm.avatarText = "";
+  resetAvatarState(createAvatarState);
+}
+
+function resetBatchEditForm() {
+  batchEditForm.randomName = false;
+  batchEditForm.nameFile = "";
+  batchEditForm.avatarText = "";
+  batchEditForm.statusEnabled = false;
+  batchEditForm.status = 1;
+  resetAvatarState(editAvatarState);
+}
+
+function openBatchCreateDialog() {
+  resetBatchCreateForm();
+  createDialogVisible.value = true;
+}
+
+function openBatchEditDialog() {
+  if (selectedRows.value.length === 0) {
+    message("请先勾选要修改的机器人", { type: "warning" });
+    return;
+  }
+  resetBatchEditForm();
+  editDialogVisible.value = true;
 }
 
 function getUploadHeaders() {
@@ -107,38 +165,42 @@ function handleBeforeAvatarUpload() {
   return true;
 }
 
-function ensureImageFile(file: File) {
+function ensureImageFile(file: File, uploadState: AvatarUploadState) {
   if (!file.type || !file.type.startsWith("image/")) {
     message(`仅支持图片格式：${file.name}`, { type: "error" });
     return false;
   }
-  uploadingCount.value += 1;
-  avatarUploading.value = uploadingCount.value > 0;
+  uploadState.uploadingCount += 1;
+  uploadState.avatarUploading = uploadState.uploadingCount > 0;
   return true;
 }
 
-function finishAvatarUpload() {
-  uploadingCount.value = Math.max(0, uploadingCount.value - 1);
-  avatarUploading.value = uploadingCount.value > 0;
+function finishAvatarUpload(uploadState: AvatarUploadState) {
+  uploadState.uploadingCount = Math.max(0, uploadState.uploadingCount - 1);
+  uploadState.avatarUploading = uploadState.uploadingCount > 0;
 }
 
-function handleAvatarUploadSuccess(response: any) {
+function handleAvatarUploadSuccess(
+  response: any,
+  targetForm: { avatarText: string },
+  uploadState: AvatarUploadState
+) {
   const url = response?.data?.url || response?.url;
   if (!url) {
-    finishAvatarUpload();
+    finishAvatarUpload(uploadState);
     message("上传失败，未返回URL", { type: "error" });
     return;
   }
-  if (!avatarUrlList.value.includes(url)) {
-    avatarUrlList.value.push(url);
-    syncAvatarText();
+  if (!uploadState.avatarUrlList.includes(url)) {
+    uploadState.avatarUrlList.push(url);
+    syncAvatarText(targetForm, uploadState);
   }
-  finishAvatarUpload();
+  finishAvatarUpload(uploadState);
   message("图片上传成功", { type: "success" });
 }
 
-function handleAvatarUploadError() {
-  finishAvatarUpload();
+function handleAvatarUploadError(uploadState: AvatarUploadState) {
+  finishAvatarUpload(uploadState);
   message("图片上传失败", { type: "error" });
 }
 
@@ -150,17 +212,23 @@ function handleAvatarUploadExceed() {
   message("单次最多选择 100 张图片", { type: "warning" });
 }
 
-function clearAvatarList() {
-  avatarUrlList.value = [];
-  syncAvatarText();
+function clearAvatarList(
+  targetForm: { avatarText: string },
+  uploadState: AvatarUploadState
+) {
+  uploadState.avatarUrlList = [];
+  syncAvatarText(targetForm, uploadState);
 }
 
 async function submitBatchCreate() {
-  if (!Number.isInteger(batchForm.num) || batchForm.num <= 0) {
+  if (!Number.isInteger(batchCreateForm.num) || batchCreateForm.num <= 0) {
     message("生成数量必须大于 0", { type: "warning" });
     return;
   }
-  if (!batchForm.randomName && parseLines(batchForm.nameFile).length === 0) {
+  if (
+    !batchCreateForm.randomName &&
+    parseLines(batchCreateForm.nameFile).length === 0
+  ) {
     message("请上传或填写名称文件内容", { type: "warning" });
     return;
   }
@@ -168,17 +236,66 @@ async function submitBatchCreate() {
   submitLoading.value = true;
   try {
     const { data } = await batchCreateBotUsers({
-      num: batchForm.num,
-      randomName: batchForm.randomName,
-      nameFile: batchForm.nameFile,
-      avatarLinks: parseLines(batchForm.avatarText)
+      num: batchCreateForm.num,
+      randomName: batchCreateForm.randomName,
+      nameFile: batchCreateForm.nameFile,
+      avatarLinks: parseLines(batchCreateForm.avatarText)
     });
     message(`已生成 ${data?.count || 0} 个机器人`, { type: "success" });
-    dialogVisible.value = false;
+    createDialogVisible.value = false;
     onSearch();
   } catch (error) {
     console.error("批量生成机器人失败", error);
     message("批量生成机器人失败", { type: "error" });
+  } finally {
+    submitLoading.value = false;
+  }
+}
+
+async function submitBatchUpdate() {
+  const ids = selectedRows.value.map((item: TgUser) => Number(item.id));
+  if (ids.length === 0) {
+    message("请先勾选要修改的机器人", { type: "warning" });
+    return;
+  }
+
+  const nameList = parseLines(batchEditForm.nameFile);
+  const avatarLinks = parseLines(batchEditForm.avatarText);
+  const shouldUpdateName = batchEditForm.randomName || nameList.length > 0;
+  const shouldUpdateAvatar = avatarLinks.length > 0;
+  const shouldUpdateStatus = batchEditForm.statusEnabled;
+  if (!shouldUpdateName && !shouldUpdateAvatar && !shouldUpdateStatus) {
+    message("请至少提供一项修改内容", { type: "warning" });
+    return;
+  }
+
+  submitLoading.value = true;
+  try {
+    const payload: {
+      ids: number[];
+      randomName: boolean;
+      nameFile: string;
+      avatarLinks: string[];
+      status?: number;
+    } = {
+      ids,
+      randomName: batchEditForm.randomName,
+      nameFile: batchEditForm.nameFile,
+      avatarLinks
+    };
+    if (shouldUpdateStatus) {
+      payload.status = batchEditForm.status;
+    }
+    const { data } = await batchUpdateBotUsers(payload);
+    message(`已批量修改 ${data?.count || 0} 个机器人`, {
+      type: "success"
+    });
+    editDialogVisible.value = false;
+    onSelectionCancel();
+    onSearch();
+  } catch (error) {
+    console.error("批量修改机器人失败", error);
+    message("批量修改机器人失败", { type: "error" });
   } finally {
     submitLoading.value = false;
   }
@@ -253,7 +370,7 @@ async function submitBatchCreate() {
           <el-button
             type="primary"
             :icon="useRenderIcon(AddFill)"
-            @click="openBatchDialog"
+            @click="openBatchCreateDialog"
           >
             批量添加机器人
           </el-button>
@@ -275,7 +392,18 @@ async function submitBatchCreate() {
                 取消选择
               </el-button>
             </div>
-            <el-popconfirm title="是否确认批量删除机器人?" @confirm="onBatchDel">
+            <el-button
+              type="primary"
+              text
+              class="mr-1"
+              @click="openBatchEditDialog"
+            >
+              批量修改
+            </el-button>
+            <el-popconfirm
+              title="是否确认批量删除机器人?"
+              @confirm="onBatchDel"
+            >
               <template #reference>
                 <el-button type="danger" text class="mr-1">
                   批量删除
@@ -351,17 +479,21 @@ async function submitBatchCreate() {
       </PureTableBar>
 
       <el-dialog
-        v-model="dialogVisible"
+        v-model="createDialogVisible"
         title="批量添加机器人"
         width="900px"
         destroy-on-close
       >
-        <el-form :inline="true" :model="batchForm" class="search-form">
+        <el-form :inline="true" :model="batchCreateForm" class="search-form">
           <el-form-item label="生成数量">
-            <el-input-number v-model="batchForm.num" :min="1" :max="1000" />
+            <el-input-number
+              v-model="batchCreateForm.num"
+              :min="1"
+              :max="1000"
+            />
           </el-form-item>
           <el-form-item label="随机名称">
-            <el-switch v-model="batchForm.randomName" />
+            <el-switch v-model="batchCreateForm.randomName" />
           </el-form-item>
         </el-form>
 
@@ -373,7 +505,7 @@ async function submitBatchCreate() {
                 :auto-upload="false"
                 :show-file-list="false"
                 accept=".txt"
-                :on-change="handleNameFileChange"
+                :on-change="file => handleNameFileChange(file, batchCreateForm)"
               >
                 <el-button :loading="fileInputLoading" type="primary" plain>
                   上传 txt
@@ -382,7 +514,7 @@ async function submitBatchCreate() {
               <span class="helper-text">每行一个名字，数量不足会从头循环</span>
             </div>
             <el-input
-              v-model="batchForm.nameFile"
+              v-model="batchCreateForm.nameFile"
               type="textarea"
               :rows="10"
               placeholder="可直接粘贴名字列表，一行一个"
@@ -398,12 +530,23 @@ async function submitBatchCreate() {
               <el-upload
                 :action="uploadUrl"
                 :headers="getUploadHeaders()"
-                :before-upload="file => handleBeforeAvatarUpload() && ensureImageFile(file)"
+                :before-upload="
+                  file =>
+                    handleBeforeAvatarUpload() &&
+                    ensureImageFile(file, createAvatarState)
+                "
                 :show-file-list="false"
                 :multiple="true"
                 accept="image/*"
-                :on-success="handleAvatarUploadSuccess"
-                :on-error="handleAvatarUploadError"
+                :on-success="
+                  response =>
+                    handleAvatarUploadSuccess(
+                      response,
+                      batchCreateForm,
+                      createAvatarState
+                    )
+                "
+                :on-error="() => handleAvatarUploadError(createAvatarState)"
                 :on-change="handleAvatarUploadChange"
                 :on-exceed="handleAvatarUploadExceed"
                 :limit="100"
@@ -413,17 +556,23 @@ async function submitBatchCreate() {
                 <el-button
                   type="primary"
                   plain
-                  :loading="avatarUploading"
+                  :loading="createAvatarState.avatarUploading"
                 >
                   上传图片/文件夹
                 </el-button>
               </el-upload>
-              <el-button @click="clearAvatarList">清空头像</el-button>
+              <el-button
+                @click="clearAvatarList(batchCreateForm, createAvatarState)"
+                >清空头像</el-button
+              >
             </div>
             <el-scrollbar max-height="260px">
-              <div v-if="avatarUrlList.length" class="avatar-grid">
+              <div
+                v-if="createAvatarState.avatarUrlList.length"
+                class="avatar-grid"
+              >
                 <div
-                  v-for="url in avatarUrlList"
+                  v-for="url in createAvatarState.avatarUrlList"
                   :key="url"
                   class="avatar-item"
                 >
@@ -431,30 +580,171 @@ async function submitBatchCreate() {
                     :src="url"
                     fit="cover"
                     class="avatar-preview"
-                    :preview-src-list="avatarUrlList"
+                    :preview-src-list="createAvatarState.avatarUrlList"
                     preview-teleported
                   />
                 </div>
               </div>
-              <el-empty
-                v-else
-                description="暂无已上传头像"
-                :image-size="96"
-              />
+              <el-empty v-else description="暂无已上传头像" :image-size="96" />
             </el-scrollbar>
           </el-card>
         </div>
 
         <template #footer>
           <div class="flex justify-end gap-3">
-            <el-button @click="dialogVisible = false">取消</el-button>
-            <el-button @click="resetBatchForm">重置</el-button>
+            <el-button @click="createDialogVisible = false">取消</el-button>
+            <el-button @click="resetBatchCreateForm">重置</el-button>
             <el-button
               type="primary"
               :loading="submitLoading"
               @click="submitBatchCreate"
             >
               立即生成
+            </el-button>
+          </div>
+        </template>
+      </el-dialog>
+
+      <el-dialog
+        v-model="editDialogVisible"
+        title="批量修改机器人"
+        width="900px"
+        destroy-on-close
+      >
+        <el-form :inline="true" :model="batchEditForm" class="search-form">
+          <el-form-item label="已选数量">
+            <el-tag type="primary">{{ selectedNum }} 个机器人</el-tag>
+          </el-form-item>
+          <el-form-item label="随机名称">
+            <el-switch v-model="batchEditForm.randomName" />
+          </el-form-item>
+          <el-form-item label="批量状态">
+            <div class="flex items-center gap-3">
+              <el-switch v-model="batchEditForm.statusEnabled" />
+              <el-select
+                v-model="batchEditForm.status"
+                :disabled="!batchEditForm.statusEnabled"
+                class="!w-[160px]"
+              >
+                <el-option
+                  v-for="item in statusOptions.filter(
+                    item => item.value !== -1
+                  )"
+                  :key="item.value"
+                  :label="item.label"
+                  :value="item.value"
+                />
+              </el-select>
+            </div>
+          </el-form-item>
+        </el-form>
+
+        <div class="grid-wrap">
+          <el-card shadow="never">
+            <template #header>批量昵称/用户名</template>
+            <div class="mb-3 flex items-center gap-3">
+              <el-upload
+                :auto-upload="false"
+                :show-file-list="false"
+                accept=".txt"
+                :on-change="file => handleNameFileChange(file, batchEditForm)"
+              >
+                <el-button :loading="fileInputLoading" type="primary" plain>
+                  上传 txt
+                </el-button>
+              </el-upload>
+              <span class="helper-text">
+                每行一个名字，按勾选顺序循环覆盖；开启随机名称后会忽略这里的内容
+              </span>
+            </div>
+            <el-input
+              v-model="batchEditForm.nameFile"
+              type="textarea"
+              :rows="10"
+              placeholder="留空则不修改昵称和用户名"
+            />
+          </el-card>
+
+          <el-card shadow="never">
+            <template #header>批量头像</template>
+            <div class="helper-text mb-3">
+              上传后的头像会按勾选顺序循环使用；不上传则保持原头像不变。
+            </div>
+            <div class="mb-3 flex items-center gap-3">
+              <el-upload
+                :action="uploadUrl"
+                :headers="getUploadHeaders()"
+                :before-upload="
+                  file =>
+                    handleBeforeAvatarUpload() &&
+                    ensureImageFile(file, editAvatarState)
+                "
+                :show-file-list="false"
+                :multiple="true"
+                accept="image/*"
+                :on-success="
+                  response =>
+                    handleAvatarUploadSuccess(
+                      response,
+                      batchEditForm,
+                      editAvatarState
+                    )
+                "
+                :on-error="() => handleAvatarUploadError(editAvatarState)"
+                :on-change="handleAvatarUploadChange"
+                :on-exceed="handleAvatarUploadExceed"
+                :limit="100"
+                directory
+                webkitdirectory
+              >
+                <el-button
+                  type="primary"
+                  plain
+                  :loading="editAvatarState.avatarUploading"
+                >
+                  上传图片/文件夹
+                </el-button>
+              </el-upload>
+              <el-button
+                @click="clearAvatarList(batchEditForm, editAvatarState)"
+                >清空头像</el-button
+              >
+            </div>
+            <el-scrollbar max-height="260px">
+              <div
+                v-if="editAvatarState.avatarUrlList.length"
+                class="avatar-grid"
+              >
+                <div
+                  v-for="url in editAvatarState.avatarUrlList"
+                  :key="url"
+                  class="avatar-item"
+                >
+                  <el-image
+                    :src="url"
+                    fit="cover"
+                    class="avatar-preview"
+                    :preview-src-list="editAvatarState.avatarUrlList"
+                    preview-teleported
+                  />
+                </div>
+              </div>
+              <el-empty v-else description="暂无待替换头像" :image-size="96" />
+            </el-scrollbar>
+          </el-card>
+        </div>
+
+        <template #footer>
+          <div class="flex justify-end gap-3">
+            <el-button @click="editDialogVisible = false">取消</el-button>
+            <el-button @click="resetBatchEditForm">重置</el-button>
+            <el-button
+              type="primary"
+              :icon="useRenderIcon(Edit)"
+              :loading="submitLoading"
+              @click="submitBatchUpdate"
+            >
+              立即修改
             </el-button>
           </div>
         </template>

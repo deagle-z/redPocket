@@ -73,6 +73,7 @@ func TgAuthLogin(db *gorm.DB, hostInfo pojo.HostInfo, req pojo.TgAuthLoginReq, o
 		onlineUser.Key = key
 		userJSON, _ := json.Marshal(onlineUser)
 		_ = utils.RD.SetEX(context.Background(), key, string(userJSON), time.Duration(hostInfo.AccessExpire)*time.Second).Err()
+		utils.TouchTgOnlineUser(dbUser.TenantId, dbUser.ID)
 
 		var tgUserBack pojo.TgUserBack
 		_ = copier.Copy(&tgUserBack, &dbUser)
@@ -130,6 +131,7 @@ func TgEmailLogin(db *gorm.DB, hostInfo pojo.HostInfo, req pojo.TgEmailLoginReq,
 	onlineUser.Key = key
 	userJSON, _ := json.Marshal(onlineUser)
 	_ = utils.RD.SetEX(context.Background(), key, string(userJSON), time.Duration(hostInfo.AccessExpire)*time.Second).Err()
+	utils.TouchTgOnlineUser(dbUser.TenantId, dbUser.ID)
 
 	var tgUserBack pojo.TgUserBack
 	_ = copier.Copy(&tgUserBack, &dbUser)
@@ -186,6 +188,7 @@ func TgPhoneLogin(db *gorm.DB, hostInfo pojo.HostInfo, req pojo.TgPhoneLoginReq,
 	onlineUser.Key = key
 	userJSON, _ := json.Marshal(onlineUser)
 	_ = utils.RD.SetEX(context.Background(), key, string(userJSON), time.Duration(hostInfo.AccessExpire)*time.Second).Err()
+	utils.TouchTgOnlineUser(dbUser.TenantId, dbUser.ID)
 
 	var tgUserBack pojo.TgUserBack
 	_ = copier.Copy(&tgUserBack, &dbUser)
@@ -206,7 +209,8 @@ func createTgUserFromAuth(tx *gorm.DB, req pojo.TgAuthLoginReq) (pojo.TgUser, er
 	username := nullableString(req.Username)
 	firstName := nullableString(displayName)
 	avatar := nullableString(req.PhotoURL)
-	sourceChannel, err := ResolveSourceChannelByCode(tx, 0, req.SourceChannelCode)
+	sourceChannelCode := FirstSourceChannelCode(req.SourceChannelCode, req.ChannelCode)
+	sourceChannel, err := ResolveSourceChannelByCode(tx, 0, sourceChannelCode)
 	if err != nil {
 		return pojo.TgUser{}, err
 	}
@@ -354,7 +358,7 @@ func SendTgSMSCode(phone string, country string, ip string, isDev bool) (string,
 }
 
 // RegisterTgByEmail 邮箱注册。
-func RegisterTgByEmail(db *gorm.DB, email string, password string, code string, sourceChannelCode string) (pojo.TgUser, error) {
+func RegisterTgByEmail(db *gorm.DB, email string, password string, code string, sourceChannelCode string, tenantID int64) (pojo.TgUser, error) {
 	email = strings.TrimSpace(strings.ToLower(email))
 	code = strings.TrimSpace(code)
 	if !utils.IsEmail(email) {
@@ -401,7 +405,7 @@ func RegisterTgByEmail(db *gorm.DB, email string, password string, code string, 
 
 	var newUser pojo.TgUser
 	err = db.Transaction(func(tx *gorm.DB) error {
-		sourceChannel, err := ResolveSourceChannelByCode(tx, 0, sourceChannelCode)
+		sourceChannel, err := ResolveSourceChannelByCode(tx, tenantID, sourceChannelCode)
 		if err != nil {
 			return err
 		}
@@ -424,7 +428,7 @@ func RegisterTgByEmail(db *gorm.DB, email string, password string, code string, 
 				InviteCode:        &inviteCode,
 				SourceChannelID:   nil,
 				SourceChannelCode: nil,
-				TenantId:          0,
+				TenantId:          tenantID,
 			}
 			if sourceChannel != nil {
 				user.SourceChannelID = &sourceChannel.ID
@@ -450,7 +454,7 @@ func RegisterTgByEmail(db *gorm.DB, email string, password string, code string, 
 }
 
 // RegisterTgByPhone 手机号注册。
-func RegisterTgByPhone(db *gorm.DB, phone string, country string, password string, sourceChannelCode string) (pojo.TgUser, error) {
+func RegisterTgByPhone(db *gorm.DB, phone string, country string, password string, sourceChannelCode string, tenantID int64) (pojo.TgUser, error) {
 	phone = strings.TrimSpace(phone)
 	country = utils.InferCountryByPhone(phone, country)
 	if !utils.IsPhone(phone) {
@@ -483,7 +487,7 @@ func RegisterTgByPhone(db *gorm.DB, phone string, country string, password strin
 
 	var newUser pojo.TgUser
 	err = db.Transaction(func(tx *gorm.DB) error {
-		sourceChannel, err := ResolveSourceChannelByCode(tx, 0, sourceChannelCode)
+		sourceChannel, err := ResolveSourceChannelByCode(tx, tenantID, sourceChannelCode)
 		if err != nil {
 			return err
 		}
@@ -504,7 +508,7 @@ func RegisterTgByPhone(db *gorm.DB, phone string, country string, password strin
 				InviteCode:        &inviteCode,
 				SourceChannelID:   nil,
 				SourceChannelCode: nil,
-				TenantId:          0,
+				TenantId:          tenantID,
 			}
 			if sourceChannel != nil {
 				newUser.SourceChannelID = &sourceChannel.ID

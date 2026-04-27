@@ -165,6 +165,7 @@
     "inviteCode": "Kode Undangan",
     "pleaseSelectCountry": "Silakan pilih negara",
     "pleaseEnterPhone": "Silakan masukkan nomor telepon",
+    "invalidPhone": "Masukkan nomor telepon yang valid untuk negara yang dipilih",
     "pleaseEnterCode": "Silakan masukkan kode SMS",
     "pleaseEnterNickname": "Silakan masukkan nama panggilan",
     "pleaseEnterPassword": "Silakan masukkan kata sandi",

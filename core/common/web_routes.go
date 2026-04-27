@@ -114,6 +114,7 @@ func InitGin() {
 		adminGroup.POST("/manage/logs", api.GetManageLogs) // 获取管理员操作日志
 		//adminGroup.POST("/host_infos", api2.GetHostInfos)
 		adminGroup.GET("/onlineDevices", api.GetOnlineDevices)
+		adminGroup.GET("/onlineUsers/stats", api.GetAdminOnlineUserStats)
 		adminGroup.POST("/withdrawalTask", api.SendWithdrawalTask)
 		adminGroup.POST("/verifyCodeTask", api.SendVerifyCodeTask)
 		adminGroup.POST("/tgUser/list", api.GetTgUsers)                    // 获取Telegram用户列表
@@ -148,7 +149,10 @@ func InitGin() {
 		adminGroup.POST("/sysPayChannel/list", api.GetSysPayChannels)                  // 获取支付通道列表
 		adminGroup.GET("/sysPayChannel/:id", api.GetSysPayChannelById)                 // 获取支付通道详情
 		adminGroup.POST("/sysSourceChannel/list", api.GetSysSourceChannels)            // 获取投流来源渠道列表
+		adminGroup.GET("/sysSourceChannel/:id/stats", api.GetSysSourceChannelStats)    // 获取投流来源渠道统计
 		adminGroup.GET("/sysSourceChannel/:id", api.GetSysSourceChannelById)           // 获取投流来源渠道详情
+		adminGroup.POST("/attributionEvent/list", api.GetAttributionEvents)            // 获取事件归因明细列表
+		adminGroup.POST("/attributionEvent/summary", api.GetAttributionEventSummary)   // 获取事件归因汇总
 		adminGroup.POST("/sysPayMethod/list", api.GetSysPayMethods)                    // 获取支付方式列表
 		adminGroup.GET("/sysPayMethod/:id", api.GetSysPayMethodById)                   // 获取支付方式详情
 		adminGroup.GET("/sysPayChannelMethod/:channelId", api.GetSysPayChannelMethods) // 获取通道绑定的支付方式
@@ -177,6 +181,7 @@ func InitGin() {
 		adminGroupLog.POST("/upload", api.AdminUpload) // 文件上传（R2）
 		adminGroupLog.POST("/tgUser", api.SetTgUser)   // 创建或更新Telegram用户
 		adminGroupLog.POST("/tgUser/batchCreateBot", api.BatchCreateBotTgUsers)
+		adminGroupLog.POST("/tgUser/batchUpdateBot", api.BatchUpdateBotTgUsers)
 		adminGroupLog.POST("/tgUser/status", api.SetTgUserStatus)            // 封禁/解封Telegram用户
 		adminGroupLog.DELETE("/tgUser/:id", api.DelTgUser)                   // 删除Telegram用户
 		adminGroupLog.POST("/tgUserRebate", api.SetTgUserRebateRecord)       // 创建或更新Telegram反水记录
@@ -227,6 +232,10 @@ func InitGin() {
 	tenantGroup := router.Group("/api/v1/tenant")
 	tenantGroup.Use(tenantAuthMiddleware(false), manageLog())
 	{
+		tenantGroup.GET("/dashboard/stats", tenantApi.GetDashboardStats)
+		tenantGroup.POST("/dashboard/onlineUsers", tenantApi.GetDashboardOnlineUsers)
+		tenantGroup.POST("/dashboard/rechargeUsers", tenantApi.GetDashboardRechargeUsers)
+
 		tenantGroup.POST("/authGroup/list", tenantApi.GetAuthGroups)
 		tenantGroup.POST("/authGroup", tenantApi.SetAuthGroup)
 		tenantGroup.DELETE("/authGroup/:id", tenantApi.DelAuthGroup)
@@ -254,6 +263,9 @@ func InitGin() {
 		tenantGroup.POST("/tgUserRebate", tenantApi.SetTgUserRebateRecord)
 		tenantGroup.DELETE("/tgUserRebate/:id", tenantApi.DelTgUserRebateRecord)
 
+		tenantGroup.POST("/cashHistory/list", tenantApi.GetCashHistoryList)
+		tenantGroup.GET("/onlineUsers/stats", api.GetTenantOnlineUserStats)
+
 		tenantGroup.POST("/withdrawOrderBr/list", tenantApi.GetWithdrawOrderBrs)
 		tenantGroup.GET("/withdrawOrderBr/:id", tenantApi.GetWithdrawOrderBrById)
 		tenantGroup.POST("/withdrawOrderBr", tenantApi.SetWithdrawOrderBr)
@@ -278,6 +290,7 @@ func InitGin() {
 		appRouter.POST("/tg/sendSMSCode", api.SendTgSMSCode)
 		appRouter.POST("/tg/registerByEmail", api.RegisterTgByEmail)
 		appRouter.POST("/tg/registerByPhone", api.RegisterTgByPhone)
+		appRouter.POST("/attribution/event", api.CreateAttributionEvent)
 		appRouter.POST("/tg/forgotPasswordByEmail", api.ForgotPasswordByEmail)
 		appRouter.POST("/tg/forgotPasswordByPhone", api.ForgotPasswordByPhone)
 		appRouter.POST("/lucky/list", api.GetRedPacketListApp)          // 不校验token
@@ -491,6 +504,7 @@ func authMiddleware(types []int, singleLogin bool, passChild bool) gin.HandlerFu
 				return
 			}
 		}
+		utils.TouchAdminOnlineUser(userId)
 		//requestKey := utils.MD5(fmt.Sprintf("%s_%s", c.Request.Method, c.Request.RequestURI))
 		//lockKey := fmt.Sprintf(utils.KeyLockRequest, userId, requestKey)
 		//lock, _ := utils.AcquireLock(lockKey, 1*time.Second)
@@ -554,6 +568,7 @@ func tenantAuthMiddleware(singleLogin bool) gin.HandlerFunc {
 				return
 			}
 		}
+		utils.TouchTenantOnlineUser(user.TenantId, userId)
 		//requestKey := utils.MD5(fmt.Sprintf("%s_%s", c.Request.Method, c.Request.RequestURI))
 		//lockKey := fmt.Sprintf(utils.KeyLockRequest, userId, requestKey)
 		//lock, _ := utils.AcquireLock(lockKey, 1*time.Second)
@@ -610,6 +625,7 @@ func appAuthMiddle(singleLogin bool) gin.HandlerFunc {
 			}
 		}
 
+		utils.TouchTgOnlineUser(tenantId, userId)
 		c.Set("userId", userId)
 		c.Set("userType", 5)
 		c.Set("token", authHeader)

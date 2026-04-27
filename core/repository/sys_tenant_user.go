@@ -29,6 +29,9 @@ func GetSysTenantUsers(db *gorm.DB, search pojo.SysTenantUserSearch) (result poj
 	if search.Mobile != "" {
 		query = query.Where("mobile = ?", search.Mobile)
 	}
+	if search.BindDomain != "" {
+		query = query.Where("bind_domain = ?", search.BindDomain)
+	}
 	if search.RoleCode != "" {
 		query = query.Where("role_code = ?", search.RoleCode)
 	}
@@ -162,5 +165,6 @@ func SysTenantUserLogin(db *gorm.DB, hostInfo pojo.HostInfo, req pojo.SysTenantU
 	onlineUser.Key = key
 	userJSON, _ := json.Marshal(onlineUser)
 	utils.RD.SetEX(context.Background(), key, string(userJSON), time.Duration(hostInfo.AccessExpire)*time.Second)
+	utils.TouchTenantOnlineUser(dbUser.TenantId, dbUser.ID)
 	return result, nil
 }

@@ -8,7 +8,9 @@ import type { EnhancedRouteLocation } from './types'
 import { useRouteCacheStore, useUserStore } from '@/stores'
 
 import { isLogin } from '@/utils/auth'
+import { trackPageView } from '@/utils/attribution'
 import setPageTitle from '@/utils/set-page-title'
+import { captureSourceChannelCode } from '@/utils/source-channel'
 
 NProgress.configure({ showSpinner: true, parent: '#app' })
 
@@ -38,6 +40,7 @@ router.beforeEach(async (to: EnhancedRouteLocation) => {
 
   // Route cache
   routeCacheStore.addRoute(to)
+  captureSourceChannelCode(to.query as Record<string, unknown>)
 
   // Set page title
   setPageTitle(to.name)
@@ -65,7 +68,8 @@ router.beforeEach(async (to: EnhancedRouteLocation) => {
     await userStore.loadCurrentUserInfo()
 })
 
-router.afterEach(() => {
+router.afterEach((to) => {
+  trackPageView(to.fullPath)
   NProgress.done()
 })
 

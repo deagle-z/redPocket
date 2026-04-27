@@ -1,6 +1,9 @@
 import { reactive } from "vue";
 import type { FormRules } from "element-plus";
 
+const domainPattern =
+  /^(\*\.)?([a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,63}$/;
+
 /** 自定义表单规则校验 */
 export const formRules = reactive(<FormRules>{
   tenantCode: [
@@ -25,6 +28,19 @@ export const formRules = reactive(<FormRules>{
   ],
   planCode: [
     { max: 64, message: "套餐标识长度不能超过64个字符", trigger: "blur" }
+  ],
+  bindDomain: [
+    { max: 128, message: "绑定域名长度不能超过128个字符", trigger: "blur" },
+    {
+      validator: (_rule, value, callback) => {
+        if (!value || domainPattern.test(String(value))) {
+          callback();
+          return;
+        }
+        callback(new Error("请输入合法域名，如 example.com"));
+      },
+      trigger: "blur"
+    }
   ],
   remark: [
     { max: 255, message: "备注长度不能超过255个字符", trigger: "blur" }

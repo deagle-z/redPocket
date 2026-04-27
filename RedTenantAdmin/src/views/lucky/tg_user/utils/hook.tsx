@@ -57,7 +57,7 @@ export function useTgUser(tableRef: Ref) {
       minWidth: 80
     },
     {
-      label: "TG用户ID",
+      label: "用户ID",
       prop: "tgId",
       minWidth: 140
     },
@@ -211,8 +211,8 @@ export function useTgUser(tableRef: Ref) {
       pagination.pageSize = data.pageSize;
       pagination.currentPage = data.currentPage;
     } catch (error) {
-      console.error("获取TG用户失败", error);
-      message("获取TG用户失败", { type: "error" });
+      console.error("获取用户失败", error);
+      message("获取用户失败", { type: "error" });
     } finally {
       setTimeout(() => {
         loading.value = false;

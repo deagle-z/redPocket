@@ -11,6 +11,7 @@ export type SysTenant = {
   status: number;
   ownerUserId?: number | null;
   planCode?: string | null;
+  bindDomain?: string | null;
   timezone: string;
   locale: string;
   remark?: string | null;
@@ -25,6 +26,7 @@ export type SysTenantSearch = {
   status?: number;
   ownerUserId?: number;
   planCode?: string;
+  bindDomain?: string;
 };
 
 export type SysTenantSet = {
@@ -37,6 +39,7 @@ export type SysTenantSet = {
   loginPassword?: string;
   ownerUserId?: number | null;
   planCode?: string | null;
+  bindDomain?: string | null;
   timezone: string;
   locale: string;
   remark?: string | null;

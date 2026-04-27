@@ -54,6 +54,14 @@ export type TgUserBatchCreateBotReq = {
   avatarLinks: string[];
 };
 
+export type TgUserBatchUpdateBotReq = {
+  ids: number[];
+  randomName: boolean;
+  nameFile: string;
+  avatarLinks: string[];
+  status?: number;
+};
+
 export type TgUserListResult = {
   code: number;
   message: string;
@@ -94,6 +102,16 @@ export type TgUserBatchCreateBotResult = {
   };
 };
 
+export type TgUserBatchUpdateBotResult = {
+  code: number;
+  message: string;
+  success: boolean;
+  data: {
+    count: number;
+    list: TgUser[];
+  };
+};
+
 export const getTgUserList = (data: TgUserSearch) => {
   return http.request<TgUserListResult>("post", "/api/v1/admin/tgUser/list", {
     data
@@ -101,15 +119,23 @@ export const getTgUserList = (data: TgUserSearch) => {
 };
 
 export const getTgUserListWithSubStats = (data: TgUserSearch) => {
-  return http.request<TgUserListResult>("post", "/api/v1/admin/tgUser/listWithSubStats", {
-    data
-  });
+  return http.request<TgUserListResult>(
+    "post",
+    "/api/v1/admin/tgUser/listWithSubStats",
+    {
+      data
+    }
+  );
 };
 
 export const getTgUserSubStatsSummary = (data: TgUserSubStatsSummarySearch) => {
-  return http.request<TgUserSubStatsSummaryResult>("post", "/api/v1/admin/tgUser/subStatsSummary", {
-    data
-  });
+  return http.request<TgUserSubStatsSummaryResult>(
+    "post",
+    "/api/v1/admin/tgUser/subStatsSummary",
+    {
+      data
+    }
+  );
 };
 
 export const setTgUserStatus = (data: TgUserStatusSet) => {
@@ -128,6 +154,16 @@ export const batchCreateBotUsers = (data: TgUserBatchCreateBotReq) => {
   return http.request<TgUserBatchCreateBotResult>(
     "post",
     "/api/v1/admin/tgUser/batchCreateBot",
+    {
+      data
+    }
+  );
+};
+
+export const batchUpdateBotUsers = (data: TgUserBatchUpdateBotReq) => {
+  return http.request<TgUserBatchUpdateBotResult>(
+    "post",
+    "/api/v1/admin/tgUser/batchUpdateBot",
     {
       data
     }

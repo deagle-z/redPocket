@@ -5,10 +5,12 @@ import type { ParityChoice } from '@/utils/lucky-play'
 import { showConfirmDialog, showToast } from 'vant'
 import { getLuckyDetail } from '@/api/user'
 import AppPageHeader from '@/components/AppPageHeader.vue'
+import LuckyActionGrid from '@/components/LuckyActionGrid.vue'
 import LuckyGrabModal from '@/components/LuckyGrabModal.vue'
 import ParityChoiceDialog from '@/components/ParityChoiceDialog.vue'
 import wsClient from '@/plugins/websocket'
 import { formatCurrency } from '@/utils/currency'
+import type { LuckyPacketAction } from '@/utils/lucky-actions'
 import { isLogin } from '@/utils/auth'
 import { isParityPlayType, resolveLuckyPlayType } from '@/utils/lucky-play'
 import imgAvatarPlaceholder from '@/assets/images/avatar-placeholder.png'
@@ -93,7 +95,7 @@ const overview = computed(() => {
   }
 })
 
-const positionList = computed(() => {
+const positionList = computed<LuckyPacketAction[]>(() => {
   const summary = detail.value?.summary || {}
   const participants = detail.value?.participants || []
   const participantMap = new Map<number, any>()
@@ -110,24 +112,15 @@ const positionList = computed(() => {
     const seqNo = idx + 1
     const participant = participantMap.get(seqNo)
     const isGrabbed = !!participant
-    const isThunder = Number(participant?.isThunder || 0) === 1
     const amount = Number(participant?.amount || 0)
-
     const isSecondToLast = isGrabbed && isOngoing && seqNo === secondToLastSeqNo.value
-
-    let label = ''
-    if (isGrabbed)
-      label = (isSecondToLast || amount <= 0) ? t('homeLucky.loadingLabel') : formatCurrency(amount)
-    else if (isOngoing)
-      label = t('homeLucky.grabAction', { seq: seqNo })
-    else
-      label = t('homeLucky.statusDone')
 
     return {
       seqNo,
       isGrabbed,
-      isThunder,
-      label,
+      amount,
+      thunder: Number(participant?.isThunder || 0),
+      displayLoading: isSecondToLast,
     }
   })
 })
@@ -199,7 +192,7 @@ function promptLogin() {
   }).catch(() => {})
 }
 
-function openGrabDialog(item: { seqNo: number, isGrabbed: boolean }) {
+function openGrabDialog(item: LuckyPacketAction) {
   if (!loggedIn.value) {
     promptLogin()
     return
@@ -297,7 +290,9 @@ onBeforeUnmount(() => {
                 <img :src="overview.senderAvatar" alt="" class="user-avatar">
                 <div class="user-copy">
                   <strong class="user-name">{{ overview.senderName }}</strong>
-                  <p class="sender-time">{{ t('luckyDetailPage.sendTime', { time: overview.sentTimeText }) }}</p>
+                  <p class="sender-time">
+                    {{ t('luckyDetailPage.sendTime', { time: overview.sentTimeText }) }}
+                  </p>
                 </div>
               </div>
               <div class="amount-wrap">
@@ -360,25 +355,14 @@ onBeforeUnmount(() => {
             </div>
           </header>
 
-          <div class="packet-actions detail-actions">
-            <button
-              v-for="item in positionList"
-              :key="item.seqNo"
-              type="button"
-              class="action-pill"
-              :class="{
-                grabbed: item.isGrabbed,
-                ended: overview.status !== 'ongoing' && !item.isGrabbed,
-                thunder: item.isThunder,
-              }"
-              :disabled="overview.status !== 'ongoing' || item.isGrabbed"
-              @click="openGrabDialog(item)"
-            >
-              <span v-if="item.isThunder && overview.playType !== 'parity'" aria-hidden="true">💣</span>
-              <span v-else-if="item.isThunder && overview.playType === 'parity'">-</span>
-              {{ item.label }}
-            </button>
-          </div>
+          <LuckyActionGrid
+            :actions="positionList"
+            :status="overview.status"
+            :play-type="overview.playType"
+            :key-prefix="overview.id"
+            variant="detail"
+            @grab="openGrabDialog"
+          />
         </section>
 
         <section class="detail-card records-card">
@@ -766,43 +750,6 @@ onBeforeUnmount(() => {
   color: #ffd87f;
 }
 
-.detail-actions {
-  padding: 10px 12px 12px;
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 6px;
-}
-
-.action-pill {
-  min-height: 28px;
-  border: none;
-  border-radius: 999px;
-  background: linear-gradient(180deg, #9e1010 0%, #6a0000 100%);
-  color: #fff3de;
-  font-size: 8px;
-  box-shadow:
-    inset 0 1px 0 rgba(212, 175, 55, 0.45),
-    0 2px 6px rgba(0, 0, 0, 0.3);
-}
-
-.action-pill.grabbed {
-  background: rgba(255, 255, 255, 0.1);
-  color: rgba(255, 248, 214, 0.45);
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  box-shadow: none;
-}
-
-.action-pill.ended {
-  background: rgba(212, 175, 55, 0.08);
-  color: rgba(255, 248, 214, 0.6);
-  border: 1px solid rgba(212, 175, 55, 0.2);
-  box-shadow: none;
-}
-
-.action-pill.thunder {
-  color: #ffe088;
-}
-
 .record-card {
   margin: 0 12px 12px;
   border-radius: 16px;
@@ -887,10 +834,6 @@ onBeforeUnmount(() => {
   .packet-image-wrap {
     width: 74px;
     flex-basis: 74px;
-  }
-
-  .detail-actions {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
 </style>

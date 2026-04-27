@@ -1,7 +1,7 @@
 import dayjs from "dayjs";
 import { message } from "@/utils/message";
 import type { PaginationProps } from "@pureadmin/table";
-import { getCashHistoryListAdmin, type CashHistory } from "@/api/cashHistory";
+import { getCashHistoryList, type CashHistory } from "@/api/cashHistory";
 import { type Ref, reactive, ref, onMounted, toRaw } from "vue";
 import { ElTag } from "element-plus";
 
@@ -94,7 +94,7 @@ export function useCashHistory(tableRef: Ref) {
   async function onSearch() {
     loading.value = true;
     try {
-      const { data } = await getCashHistoryListAdmin({
+      const { data } = await getCashHistoryList({
         ...toRaw(form),
         ...toRaw(pagination)
       });

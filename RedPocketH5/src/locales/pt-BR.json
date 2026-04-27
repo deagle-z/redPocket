@@ -165,6 +165,7 @@
     "inviteCode": "Código de convite",
     "pleaseSelectCountry": "Selecione um país",
     "pleaseEnterPhone": "Digite o número de telefone",
+    "invalidPhone": "Digite um número de telefone válido para o país selecionado",
     "pleaseEnterCode": "Digite o código SMS",
     "pleaseEnterNickname": "Digite o apelido",
     "pleaseEnterPassword": "Digite a senha",

@@ -2,28 +2,6 @@ const Layout = () => import("@/layout/index.vue");
 
 export default [
   {
-    path: "/auth-group",
-    name: "AuthGroupMenu",
-    component: Layout,
-    redirect: "/auth-group/index",
-    meta: {
-      icon: "ri:group-fill",
-      title: "授权群组",
-      rank: 1
-    },
-    children: [
-      {
-        path: "/auth-group/index",
-        name: "LuckyAuthGroup",
-        component: () => import("@/views/lucky/auth_group/index.vue"),
-        meta: {
-          title: "授权群组",
-          showLink: true
-        }
-      }
-    ]
-  },
-  {
     path: "/lucky-history",
     name: "LuckyHistoryMenu",
     component: Layout,
@@ -96,7 +74,7 @@ export default [
     redirect: "/tg-user/index",
     meta: {
       icon: "ri:telegram-fill",
-      title: "TG用户",
+      title: "用户",
       rank: 5
     },
     children: [
@@ -105,7 +83,7 @@ export default [
         name: "TgUser",
         component: () => import("@/views/lucky/tg_user/index.vue"),
         meta: {
-          title: "TG用户",
+          title: "用户",
           showLink: true
         }
       }
