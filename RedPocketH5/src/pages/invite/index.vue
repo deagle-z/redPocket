@@ -20,18 +20,18 @@ const state = reactive({
   inviteThunderRebateRate: 40,
 })
 // https://t.me/goodLuckEveryOne66Bot/?start=597811
-const tgBotName = (import.meta.env.VITE_TG_BOT_NAME || 'goodLuckEveryOne66Bot').trim()
-const tgAppName = (import.meta.env.VITE_TG_APP_NAME || 'luckyapp').trim()
+// const tgBotName = (import.meta.env.VITE_TG_BOT_NAME || 'goodLuckEveryOne66Bot').trim()
+// const tgAppName = (import.meta.env.VITE_TG_APP_NAME || 'luckyapp').trim()
 
 const webInviteLink = computed(() => {
   const code = encodeURIComponent(state.inviteCode || '')
   return `https://${window.location.host}/register?c=${code}`
 })
 
-const telegramInviteLink = computed(() => {
-  const startapp = encodeURIComponent(state.inviteCode || '')
-  return `https://t.me/${tgBotName}/${tgAppName}?startapp=${startapp}`
-})
+// const telegramInviteLink = computed(() => {
+//   const startapp = encodeURIComponent(state.inviteCode || '')
+//   return `https://t.me/${tgBotName}/${tgAppName}?startapp=${startapp}`
+// })
 
 const qrCodeUrl = computed(() => {
   const text = encodeURIComponent(webInviteLink.value)

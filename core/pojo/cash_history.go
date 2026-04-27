@@ -10,7 +10,7 @@ type CashHistory struct { // 积分变动记录
 	StartAmount     float64 `yaml:"startAmount" json:"startAmount" gorm:"type:numeric(20,3)"`                                     // 变动前积分
 	EndAmount       float64 `yaml:"endAmount" json:"endAmount" gorm:"type:numeric(20,3)"`                                         // 变动后积分
 	CashMark        string  `yaml:"cashMark" json:"cashMark" gorm:"type:varchar(32);index:ccf"`                                   // 积分备注
-	CashDesc        string  `yaml:"cashDesc" json:"cashDesc" gorm:"type:varchar(64);index:ccf"`                                   // 积分描述
+	CashDesc        string  `yaml:"cashDesc" json:"cashDesc" gorm:"type:varchar(255);index:ccf"`                                  // 积分描述
 	Type            int8    `yaml:"type" json:"type" gorm:"type:tinyint;default:1"`                                               // 变动类型，见 CashHistoryType 常量
 	IsGift          int8    `yaml:"isGift" json:"isGift" gorm:"type:tinyint(1);default:0"`                                        // 0否 1是
 	FromUserId      int64   `yaml:"fromUserId" json:"fromUserId" gorm:"type:bigint;index:ccf"`                                    // 来源用户id
