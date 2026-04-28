@@ -10,8 +10,8 @@ import { ElTag } from "element-plus";
 
 const statusOptions = [
   { label: "待支付", value: 0 },
-  { label: "支付中", value: 1 },
-  { label: "成功", value: 2 },
+  { label: "支付成功", value: 1 },
+  { label: "状态2", value: 2 },
   { label: "失败", value: 3 },
   { label: "取消", value: 4 },
   { label: "关闭/超时", value: 5 },
@@ -25,14 +25,22 @@ function getStatusLabel(status: number) {
 }
 
 function getStatusType(status: number) {
-  if (status === 2) return "success";
-  if (status === 1 || status === 6) return "warning";
+  if (status === 1) return "success";
+  if (status === 6) return "warning";
   if (status === 3) return "danger";
   if (status === 4 || status === 5 || status === 7) return "info";
   return "info";
 }
 
-export function useRechargeOrder(tableRef: Ref) {
+function formatMoney(
+  value: number | string | null | undefined,
+  currency: string
+) {
+  const amount = Number(value ?? 0);
+  return `${Number.isFinite(amount) ? amount.toFixed(6) : "0.000000"} ${currency || ""}`.trim();
+}
+
+export function useRechargeOrder(_tableRef: Ref) {
   const form = reactive({
     userId: undefined as number | undefined,
     orderNo: "",
@@ -42,7 +50,6 @@ export function useRechargeOrder(tableRef: Ref) {
     channel: "",
     payMethod: ""
   });
-  const formRef = ref();
   const dataList = ref<RechargeOrder[]>([]);
   const loading = ref(true);
   const pagination = reactive<PaginationProps>({
@@ -67,20 +74,19 @@ export function useRechargeOrder(tableRef: Ref) {
       label: "金额",
       prop: "amount",
       minWidth: 140,
-      formatter: ({ amount, currency }) => `${amount.toFixed(6)} ${currency}`
+      formatter: ({ amount, currency }) => formatMoney(amount, currency)
     },
     {
       label: "手续费",
       prop: "fee",
       minWidth: 120,
-      formatter: ({ fee, currency }) => `${fee.toFixed(6)} ${currency}`
+      formatter: ({ fee, currency }) => formatMoney(fee, currency)
     },
     {
       label: "净入账",
       prop: "netAmount",
       minWidth: 120,
-      formatter: ({ netAmount, currency }) =>
-        `${netAmount.toFixed(6)} ${currency}`
+      formatter: ({ netAmount, currency }) => formatMoney(netAmount, currency)
     },
     {
       label: "渠道",

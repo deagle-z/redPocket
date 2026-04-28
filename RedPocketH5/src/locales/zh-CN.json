@@ -481,6 +481,7 @@
     "dateCustom": "自定义",
     "txSendTitle": "发出红包 {amount}",
     "txGrabTitle": "抢到{sender}的红包 {amount}",
+    "txThunderRebateTitle": "中雷返利",
     "thunderNo": "尾号: {no}",
     "badgeWin": "中奖",
     "badgeLoss": "亏损",

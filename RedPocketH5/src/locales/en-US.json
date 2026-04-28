@@ -481,6 +481,7 @@
     "dateCustom": "Custom",
     "txSendTitle": "Sent packet {amount}",
     "txGrabTitle": "Grabbed {sender}'s packet {amount}",
+    "txThunderRebateTitle": "Thunder Rebate",
     "thunderNo": "Thunder: {no}",
     "badgeWin": "Win",
     "badgeLoss": "Loss",

@@ -99,6 +99,7 @@ func sendRedPacket(db *gorm.DB, senderID int64, senderName string, req pojo.Luck
 		Lucky:           1, // 有效
 		Received:        0,
 		SourceChannelID: user.SourceChannelID,
+		TenantId:        user.TenantId,
 		ExpireTime:      expireAt,
 	}
 
@@ -774,6 +775,7 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 			Amount:          actualLoseMoney,
 			GrabType:        2,
 			SourceChannelID: luckyMoney.SourceChannelID,
+			TenantId:        luckyMoney.TenantId,
 		}
 
 		if err := repository.CreateLuckyHistory(tx, history); err != nil {
@@ -1014,6 +1016,7 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 		Amount:          redAmount,
 		LoseMoney:       loseMoney,
 		SourceChannelID: user.SourceChannelID,
+		TenantId:        luckyMoney.TenantId,
 	}
 	if err := repository.CreateLuckyHistory(tx, history); err != nil {
 		tx.Rollback()

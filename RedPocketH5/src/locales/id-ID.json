@@ -481,6 +481,7 @@
     "dateCustom": "Kebiasaan",
     "txSendTitle": "Paket terkirim {amount}",
     "txGrabTitle": "Mengambil paket {sender} {amount}",
+    "txThunderRebateTitle": "Rebate kena petir",
     "thunderNo": "Guntur: {no}",
     "badgeWin": "Menang",
     "badgeLoss": "Kehilangan",

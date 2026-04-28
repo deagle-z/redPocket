@@ -481,6 +481,7 @@
     "dateCustom": "Costumbre",
     "txSendTitle": "Paquete enviado {amount}",
     "txGrabTitle": "Agarré el paquete de {sender} {amount}",
+    "txThunderRebateTitle": "Reembolso por trueno",
     "thunderNo": "Trueno: {no}",
     "badgeWin": "Ganar",
     "badgeLoss": "Pérdida",

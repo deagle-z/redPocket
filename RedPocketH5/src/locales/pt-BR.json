@@ -481,6 +481,7 @@
     "dateCustom": "Personalizado",
     "txSendTitle": "Pacote enviado {amount}",
     "txGrabTitle": "Peguei o pacote {amount} de {sender}",
+    "txThunderRebateTitle": "Rebate por raio",
     "thunderNo": "Trovão: {no}",
     "badgeWin": "Ganhar",
     "badgeLoss": "Perda",
