@@ -433,12 +433,12 @@
     "commissionToday": "Comissão de hoje",
     "ruleTitle": "Regras de comissão",
     "ruleIntroTitle": "Regras de recompensa de comissão:",
-    "ruleItem1": "Convide um novo usuário para fazer a primeira recarga de 100 e ganhe 10 de comissão",
-    "ruleItem2": "Convide usuários para pegar pacotes: taxa de plataforma de 5%, desconto de 40% na receita da plataforma",
-    "ruleItem3": "Convide usuários que enviam pacotes de trovão: taxa da plataforma de 5%, com 40% de comissão sobre a receita da plataforma",
+    "ruleItem1": "Convide um novo usuário para fazer a primeira recarga e ganhe {reward}% de comissão sobre o valor",
+    "ruleItem2": "Convide usuários para pegar pacotes: taxa de plataforma de {commission}%, desconto de {rebate}% na receita da plataforma",
+    "ruleItem3": "Convide usuários que enviam pacotes de trovão: taxa da plataforma de {commission}%, com {rebate}% de comissão sobre a receita da plataforma",
     "ruleText1": "Tanto a captura quanto o envio de pacotes podem gerar renda. Mais convites, mais comissões.",
     "exampleTitle": "Exemplo",
-    "exampleText": "Se um amigo gerar 50 de receita para a plataforma ao pegar pacotes, você recebe 20; se gerar 30 ao enviar pacotes de trovão, você recebe 12.",
+    "exampleText": "Se um amigo gerar {grabIncome} de receita para a plataforma ao pegar pacotes, você recebe {grabRebate}; se gerar {thunderIncome} ao enviar pacotes de trovão, você recebe {thunderRebate}.",
     "highlightText": "Mais amigos convidados significam comissões mais altas a longo prazo. Promova com seu código de convite exclusivo."
   },
   "sendPacketPage": {

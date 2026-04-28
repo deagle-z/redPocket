@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive } from 'vue'
 import { useRouter } from 'vue-router'
-import { getCurrentTgInviteStats } from '@/api/user'
+import { getCurrentTgInviteRuleConfig, getCurrentTgInviteStats } from '@/api/user'
 import { formatCurrency } from '@/utils/currency'
 import imgTeamJpg from '@/assets/images/team.jpg'
 
@@ -20,6 +20,17 @@ const stats = reactive({
   todayCommission: 0,
 })
 
+const ruleConfig = reactive({
+  luckySendCommission: 5,
+  luckyGrabbingCommission: 5,
+  inviteFirstRechargeReward: 10,
+  inviteLuckyRebateRate: 40,
+  inviteThunderRebateRate: 40,
+})
+
+const exampleGrabIncome = 50
+const exampleThunderIncome = 30
+
 const overviewCards = computed(() => [
   { key: 'inviteUsers', icon: 'friends-o', label: t('teamPage.statInviteUsers'), value: stats.inviteUsers },
   { key: 'rechargeUsers', icon: 'cash-back-record', label: t('teamPage.statRechargeUsers'), value: stats.rechargeUsers },
@@ -33,9 +44,20 @@ const commissionCards = computed(() => [
   { key: 'today', label: t('teamPage.commissionToday'), value: stats.todayCommission, tone: 'info' },
 ])
 
+const exampleParams = computed(() => ({
+  grabIncome: formatRuleNumber(exampleGrabIncome),
+  grabRebate: formatRuleNumber(exampleGrabIncome * ruleConfig.inviteLuckyRebateRate / 100),
+  thunderIncome: formatRuleNumber(exampleThunderIncome),
+  thunderRebate: formatRuleNumber(exampleThunderIncome * ruleConfig.inviteThunderRebateRate / 100),
+}))
 
 function formatAmount(value: number) {
   return formatCurrency(Number(value || 0))
+}
+
+function formatRuleNumber(value: number) {
+  const normalized = Number(value || 0)
+  return Number.isInteger(normalized) ? String(normalized) : normalized.toFixed(2).replace(/\.?0+$/, '')
 }
 
 async function loadTeamData() {
@@ -54,8 +76,27 @@ async function loadTeamData() {
   }
 }
 
+async function loadInviteRuleConfig() {
+  try {
+    const { data } = await getCurrentTgInviteRuleConfig()
+    ruleConfig.luckySendCommission = Number(data?.luckySendCommission || 5)
+    ruleConfig.luckyGrabbingCommission = Number(data?.luckyGrabbingCommission || 5)
+    ruleConfig.inviteFirstRechargeReward = Number(data?.inviteFirstRechargeReward || 10)
+    ruleConfig.inviteLuckyRebateRate = Number(data?.inviteLuckyRebateRate || 40)
+    ruleConfig.inviteThunderRebateRate = Number(data?.inviteThunderRebateRate || 40)
+  }
+  catch {
+    ruleConfig.luckySendCommission = 5
+    ruleConfig.luckyGrabbingCommission = 5
+    ruleConfig.inviteFirstRechargeReward = 10
+    ruleConfig.inviteLuckyRebateRate = 40
+    ruleConfig.inviteThunderRebateRate = 40
+  }
+}
+
 onMounted(() => {
   loadTeamData()
+  loadInviteRuleConfig()
 })
 </script>
 
@@ -114,15 +155,21 @@ onMounted(() => {
         <ul class="rule-list">
           <li>
             <van-icon name="friends-o" />
-            {{ t('teamPage.ruleItem1') }}
+            {{ t('teamPage.ruleItem1', { reward: formatRuleNumber(ruleConfig.inviteFirstRechargeReward) }) }}
           </li>
           <li>
             <van-icon name="gift-o" />
-            {{ t('teamPage.ruleItem2') }}
+            {{ t('teamPage.ruleItem2', {
+              commission: formatRuleNumber(ruleConfig.luckyGrabbingCommission),
+              rebate: formatRuleNumber(ruleConfig.inviteLuckyRebateRate),
+            }) }}
           </li>
           <li>
             <van-icon name="flash" />
-            {{ t('teamPage.ruleItem3') }}
+            {{ t('teamPage.ruleItem3', {
+              commission: formatRuleNumber(ruleConfig.luckySendCommission),
+              rebate: formatRuleNumber(ruleConfig.inviteThunderRebateRate),
+            }) }}
           </li>
         </ul>
 
@@ -132,7 +179,7 @@ onMounted(() => {
 
         <h3>{{ t('teamPage.exampleTitle') }}</h3>
         <p class="rule-text">
-          {{ t('teamPage.exampleText') }}
+          {{ t('teamPage.exampleText', exampleParams) }}
         </p>
 
         <div class="rule-highlight">

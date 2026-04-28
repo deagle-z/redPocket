@@ -433,12 +433,12 @@
     "commissionToday": "今日佣金",
     "ruleTitle": "佣金规则",
     "ruleIntroTitle": "邀请佣金奖励说明：",
-    "ruleItem1": "邀请新用户首次充值 100，奖励 10 佣金",
-    "ruleItem2": "邀请用户抢红包平台收益5%，平台收益40%返佣",
-    "ruleItem3": "邀请用户发红包中雷收益平台抽成5%，平台收益40%返佣",
+    "ruleItem1": "邀请新用户首次充值，奖励充值金额 {reward}% 佣金",
+    "ruleItem2": "邀请用户抢红包平台收益 {commission}%，平台收益 {rebate}% 返佣",
+    "ruleItem3": "邀请用户发红包中雷收益平台抽成 {commission}%，平台收益 {rebate}% 返佣",
     "ruleText1": "抢红包和发红包系统都有收益，邀请越多人越高佣金。",
     "exampleTitle": "收益示例",
-    "exampleText": "若好友抢红包产生平台收益 50，你可获得 20 佣金；若发红包中雷平台收益 30，你可获得 12 佣金。",
+    "exampleText": "若好友抢红包产生平台收益 {grabIncome}，你可获得 {grabRebate} 佣金；若发红包中雷平台收益 {thunderIncome}，你可获得 {thunderRebate} 佣金。",
     "highlightText": "邀请好友越多，长期佣金越高；建议通过专属邀请码持续推广。"
   },
   "sendPacketPage": {

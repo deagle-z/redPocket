@@ -22,6 +22,7 @@ type PayRequest struct {
 type PayResponse struct {
 	PayURL          string // 跳转支付页面的 URL，为空表示无需跳转（手动入账）
 	ProviderTradeNo string // 三方交易号，可空
+	AutoSuccess     bool   // 测试通道使用：创建本地订单后立即按支付成功处理
 }
 
 // Provider 代收支付渠道策略接口

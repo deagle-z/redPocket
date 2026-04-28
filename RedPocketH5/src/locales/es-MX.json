@@ -433,12 +433,12 @@
     "commissionToday": "La Comisión de hoy",
     "ruleTitle": "Reglas de la Comisión",
     "ruleIntroTitle": "Reglas de recompensa de comisiones:",
-    "ruleItem1": "Invita a un nuevo usuario a recargar 100 por primera vez y obtén 10 de comisión",
-    "ruleItem2": "Invite a los usuarios a tomar paquetes: tarifa de plataforma del 5%, reembolso del 40% de los ingresos de la plataforma",
-    "ruleItem3": "Invitar a los usuarios a enviar paquetes de truenos: tarifa de plataforma del 5%, reembolso del 40% de los ingresos de la plataforma",
+    "ruleItem1": "Invita a un nuevo usuario a realizar su primera recarga y obtén {reward}% de comisión sobre el importe",
+    "ruleItem2": "Invite a los usuarios a tomar paquetes: tarifa de plataforma del {commission}%, reembolso del {rebate}% de los ingresos de la plataforma",
+    "ruleItem3": "Invitar a los usuarios a enviar paquetes de truenos: tarifa de plataforma del {commission}%, reembolso del {rebate}% de los ingresos de la plataforma",
     "ruleText1": "Tanto la captura como el envío de paquetes pueden generar ingresos. Más invitaciones, más comisiones.",
     "exampleTitle": "Ejemplo",
-    "exampleText": "Si un amigo genera 50 ingresos en la plataforma al tomar paquetes, tú obtienes 20; Si los ingresos por envío de paquetes Thunder son 30, obtendrás 12.",
+    "exampleText": "Si un amigo genera {grabIncome} ingresos en la plataforma al tomar paquetes, tú obtienes {grabRebate}; si los ingresos por envío de paquetes Thunder son {thunderIncome}, obtendrás {thunderRebate}.",
     "highlightText": "Más amigos invitados significan comisiones más altas a largo plazo. Promocione con su código de invitación exclusivo."
   },
   "sendPacketPage": {

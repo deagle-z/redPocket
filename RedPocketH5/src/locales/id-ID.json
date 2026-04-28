@@ -433,12 +433,12 @@
     "commissionToday": "Komisi hari ini",
     "ruleTitle": "Peraturan Komisi",
     "ruleIntroTitle": "Aturan Hadiah Komisi:",
-    "ruleItem1": "Undang pengguna baru untuk mengisi ulang 100 untuk pertama kalinya, dapatkan komisi 10",
-    "ruleItem2": "Undang pengguna untuk mengambil paket: biaya platform 5%, rabat 40% dari pendapatan platform",
-    "ruleItem3": "Undang pengguna mengirimkan paket guntur: biaya platform 5%, rabat 40% dari pendapatan platform",
+    "ruleItem1": "Undang pengguna baru untuk isi ulang pertama dan dapatkan komisi {reward}% dari jumlah isi ulang",
+    "ruleItem2": "Undang pengguna untuk mengambil paket: biaya platform {commission}%, rabat {rebate}% dari pendapatan platform",
+    "ruleItem3": "Undang pengguna mengirimkan paket guntur: biaya platform {commission}%, rabat {rebate}% dari pendapatan platform",
     "ruleText1": "Baik mengambil maupun mengirim paket dapat menghasilkan pendapatan. Lebih banyak undangan, lebih banyak komisi.",
     "exampleTitle": "Contoh",
-    "exampleText": "Jika seorang teman menghasilkan pendapatan platform 50 dengan mengambil paket, Anda mendapat 20; jika mengirim paket thunder pendapatannya 30, anda mendapat 12.",
+    "exampleText": "Jika seorang teman menghasilkan pendapatan platform {grabIncome} dengan mengambil paket, Anda mendapat {grabRebate}; jika mengirim paket thunder pendapatannya {thunderIncome}, anda mendapat {thunderRebate}.",
     "highlightText": "Semakin banyak teman yang diundang berarti komisi jangka panjang yang lebih tinggi. Promosikan dengan kode undangan eksklusif Anda."
   },
   "sendPacketPage": {

@@ -259,6 +259,16 @@ func AppCreateRechargeOrder(db *gorm.DB, userID int64, req pojo.RechargeOrderApp
 		log.Printf("[AppCreateRechargeOrder] 写库失败 userID=%d orderNo=%s err=%v", userID, orderNo, err)
 		return result, err
 	}
+
+	if payResp.AutoSuccess {
+		if err = ProcessRechargeOrderSuccess(db, order.OrderNo, payResp.ProviderTradeNo, order.Amount, tablePrefix); err != nil {
+			log.Printf("[AppCreateRechargeOrder] 测试通道自动入账失败 userID=%d orderNo=%s channel=%s err=%v", userID, orderNo, req.Channel, err)
+			return result, err
+		}
+		if err = db.Where("id = ?", order.ID).First(&order).Error; err != nil {
+			return result, err
+		}
+	}
 	log.Printf("[AppCreateRechargeOrder] 订单创建成功 userID=%d orderNo=%s channel=%s amount=%.3f activityType=%d", userID, orderNo, req.Channel, req.Amount, req.ActivityType)
 
 	result = pojo.RechargeOrderAppBack{

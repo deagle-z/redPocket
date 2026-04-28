@@ -433,12 +433,12 @@
     "commissionToday": "Today's Commission",
     "ruleTitle": "Commission Rules",
     "ruleIntroTitle": "Commission Reward Rules:",
-    "ruleItem1": "Invite a new user to recharge 100 for the first time, get 10 commission",
-    "ruleItem2": "Invite users grabbing packets: platform fee 5%, 40% rebate from platform income",
-    "ruleItem3": "Invite users sending packet thunder: platform fee 5%, 40% rebate from platform income",
+    "ruleItem1": "Invite a new user to make the first recharge and earn {reward}% commission on the recharge amount",
+    "ruleItem2": "Invite users grabbing packets: platform fee {commission}%, {rebate}% rebate from platform income",
+    "ruleItem3": "Invite users sending packet thunder: platform fee {commission}%, {rebate}% rebate from platform income",
     "ruleText1": "Both grabbing and sending packets can generate income. More invites, more commission.",
     "exampleTitle": "Example",
-    "exampleText": "If a friend generates platform income 50 by grabbing packets, you get 20; if sending packet thunder income is 30, you get 12.",
+    "exampleText": "If a friend generates platform income {grabIncome} by grabbing packets, you get {grabRebate}; if sending packet thunder income is {thunderIncome}, you get {thunderRebate}.",
     "highlightText": "More invited friends means higher long-term commissions. Promote with your exclusive invite code."
   },
   "sendPacketPage": {
