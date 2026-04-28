@@ -2,7 +2,12 @@ package repository
 
 import (
 	"BaseGoUni/core/pojo"
+	"BaseGoUni/core/utils"
+	"context"
 	"errors"
+	"log"
+	"strconv"
+
 	"github.com/jinzhu/copier"
 	"gorm.io/gorm"
 )
@@ -35,6 +40,9 @@ func SetPrizePoolConfig(db *gorm.DB, req pojo.SysTenantPrizePoolConfigSet) (pojo
 	if err != nil {
 		return entity, err
 	}
+	if clearErr := ClearLotteryPoolBatchCache(entity.ID); clearErr != nil {
+		log.Printf("[prize_pool_config] clear lottery pool batch cache failed configID=%d err=%v", entity.ID, clearErr)
+	}
 	return entity, nil
 }
 
@@ -55,6 +63,37 @@ func DelPrizePoolConfig(db *gorm.DB, id int64) error {
 	if entity.ID == 0 {
 		return errors.New("record_not_found")
 	}
-	err := db.Delete(&entity).Error
-	return err
+	if err := db.Delete(&entity).Error; err != nil {
+		return err
+	}
+	if clearErr := ClearLotteryPoolBatchCache(entity.ID); clearErr != nil {
+		log.Printf("[prize_pool_config] clear lottery pool batch cache failed configID=%d err=%v", entity.ID, clearErr)
+	}
+	return nil
+}
+
+// ClearLotteryPoolBatchCache clears generated lottery batches for a config across tenants.
+func ClearLotteryPoolBatchCache(configID int64) error {
+	if configID <= 0 || utils.RD == nil {
+		return nil
+	}
+
+	ctx := context.Background()
+	pattern := "lottery_pool:*:" + strconv.FormatInt(configID, 10)
+	var cursor uint64
+	for {
+		keys, nextCursor, err := utils.RD.Scan(ctx, cursor, pattern, 100).Result()
+		if err != nil {
+			return err
+		}
+		if len(keys) > 0 {
+			if err := utils.RD.Del(ctx, keys...).Err(); err != nil {
+				return err
+			}
+		}
+		if nextCursor == 0 {
+			return nil
+		}
+		cursor = nextCursor
+	}
 }
