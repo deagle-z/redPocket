@@ -775,7 +775,7 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 			Amount:          actualLoseMoney,
 			GrabType:        2,
 			SourceChannelID: luckyMoney.SourceChannelID,
-			TenantId:        luckyMoney.TenantId,
+			TenantId:        lockedSender.TenantId,
 		}
 
 		if err := repository.CreateLuckyHistory(tx, history); err != nil {
@@ -1016,7 +1016,7 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 		Amount:          redAmount,
 		LoseMoney:       loseMoney,
 		SourceChannelID: user.SourceChannelID,
-		TenantId:        luckyMoney.TenantId,
+		TenantId:        user.TenantId,
 	}
 	if err := repository.CreateLuckyHistory(tx, history); err != nil {
 		tx.Rollback()

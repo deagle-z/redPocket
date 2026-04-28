@@ -86,6 +86,10 @@ func maskLuckyHistoryUserName(name string) string {
 }
 
 func GetLuckyHistoryByLuckyID(db *gorm.DB, tenantID int64, luckyID int64) (result []pojo.LuckyHistory, err error) {
-	err = db.Where("tenant_id = ? and lucky_id = ?", tenantID, luckyID).Order("id asc").Find(&result).Error
+	err = db.Model(&pojo.LuckyHistory{}).
+		Joins("JOIN lucky_money ON lucky_money.id = lucky_history.lucky_id").
+		Where("lucky_history.lucky_id = ? AND lucky_money.tenant_id = ?", luckyID, tenantID).
+		Order("lucky_history.id asc").
+		Find(&result).Error
 	return result, err
 }
