@@ -2,7 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { LuckyWheel } from '@lucky-canvas/vue'
 import { showToast } from 'vant'
-import { drawLottery, getLotteryChances, getLotteryHistory, getPrizePoolBalance } from '@/api/user'
+import { drawLottery, getLotteryChances, getPrizePoolBalance, getPrizePoolOutRecords } from '@/api/user'
 import imgCoin from '@/assets/svg/coin.svg'
 
 interface PageData {
@@ -144,9 +144,15 @@ const listContainer = ref<HTMLElement | null>(null)
 const listWrapper = ref<HTMLElement | null>(null)
 const audioRef = ref<HTMLAudioElement | null>(null)
 const animationFrame = ref<number>()
+let recordScrollOffset = 0
 const spinning = ref(false)
 const availableSpins = ref(0)
 const lotteryAmounts = ref<number[]>([...DEFAULT_REWARD_AMOUNTS])
+
+const scrollingRecordList = computed(() => {
+  const records = state.pageData.recordList
+  return records.length > 0 ? [...records, ...records] : []
+})
 
 const canvasWidth = computed(() => {
   if (typeof window === 'undefined')
@@ -225,15 +231,23 @@ function createMockPageData(): PageData {
   }
 }
 
+function formatRecordUid(userId?: number) {
+  const raw = String(userId || 0)
+  if (!raw || raw === '0')
+    return 'UID*---'
+  return `UID*${raw.slice(-3).padStart(3, '0')}`
+}
+
 async function loadLotteryHistory(limit = 10) {
   try {
-    const { data } = await getLotteryHistory(limit)
-    const nextRecords = Array.isArray(data)
-      ? data.map(item => ({
-          uid: String(item?.name || 'User'),
-          reward: formatAwardText(Number(item?.awardAmount || 0)),
-        }))
-      : []
+    const { data } = await getPrizePoolOutRecords(0, limit)
+    const list = Array.isArray(data?.list) ? data.list : []
+    const nextRecords = list
+      .map(item => ({
+        uid: formatRecordUid(item?.userId),
+        reward: formatAwardText(Number(item?.consumedAmount || 0)),
+      }))
+      .filter(item => Number(item.reward) > 0)
 
     if (nextRecords.length > 0) {
       state.pageData.recordList = nextRecords
@@ -340,16 +354,19 @@ function pauseSound() {
 }
 
 function startScrolling() {
+  if (animationFrame.value)
+    cancelAnimationFrame(animationFrame.value)
+
   const step = () => {
     const container = listContainer.value
     const wrapper = listWrapper.value
     if (container && wrapper) {
-      container.scrollTop += 0.5
-      if (container.scrollTop >= wrapper.scrollHeight / 2) {
-        container.scrollTop = 0
-        const first = state.pageData.recordList.shift()
-        if (first)
-          state.pageData.recordList.push(first)
+      const loopHeight = wrapper.scrollHeight / 2
+      if (loopHeight > container.clientHeight) {
+        recordScrollOffset += 0.25
+        if (recordScrollOffset >= loopHeight)
+          recordScrollOffset -= loopHeight
+        container.scrollTop = recordScrollOffset
       }
     }
     animationFrame.value = window.requestAnimationFrame(step)
@@ -507,7 +524,7 @@ onBeforeUnmount(() => {
         <div ref="listContainer" class="winning-list">
           <div ref="listWrapper" class="scroll-up">
             <div
-              v-for="(item, index) in state.pageData.recordList"
+              v-for="(item, index) in scrollingRecordList"
               :key="`${item.uid}-${item.reward}-${index}`"
               class="winning-item"
             >

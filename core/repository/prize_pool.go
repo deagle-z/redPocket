@@ -209,13 +209,51 @@ func GetUsedLotteryCount(db *gorm.DB, userID int64) (int64, error) {
 	return count, err
 }
 
-// CreateLotteryDrawRecord 写入一条抽奖消耗流水（change_type=out，consumed_amount=1000）
-// 不改变奖池余额（amount=0），等奖品逻辑上线后再补充
-func CreateLotteryDrawRecord(db *gorm.DB, userID int64) error {
+// GetPrizePoolOutRecordsApp returns latest lottery consumption records for app display.
+func GetPrizePoolOutRecordsApp(db *gorm.DB, page pojo.PageInfo) (result pojo.SysTenantPrizePoolRecordResp) {
+	if page.PageSize <= 0 || page.PageSize > 10 {
+		page.PageSize = 10
+	}
+	if page.CurrentPage < 0 {
+		page.CurrentPage = 0
+	}
+
+	query := db.Model(&pojo.SysTenantPrizePoolRecord{}).
+		Where("change_type = ?", pojo.PrizePoolChangeTypeOut)
+
+	query.Count(&result.Total)
+	query.Order("id desc").
+		Limit(page.PageSize).
+		Offset(page.PageSize * page.CurrentPage).
+		Find(&result.List)
+
+	result.PageSize = page.PageSize
+	result.CurrentPage = page.CurrentPage
+	return result
+}
+
+// CreateLotteryDrawRecord writes one lottery consumption record.
+// It records consumed_amount only and does not change prize pool balance.
+func CreateLotteryDrawRecord(db *gorm.DB, tenantID int64, poolID int64, userID int64, consumedAmount float64, remark *string) error {
+	if consumedAmount <= 0 {
+		return nil
+	}
+
 	var pool pojo.SysTenantPrizePool
-	err := db.Where("tenant_id = ? AND pool_code = ?", "lucky").First(&pool).Error
+	err := gorm.ErrRecordNotFound
+	if poolID > 0 {
+		err = db.Clauses(clause.Locking{Strength: "UPDATE"}).
+			Where("id = ? AND tenant_id = ?", poolID, tenantID).
+			First(&pool).Error
+	}
+	if err == gorm.ErrRecordNotFound {
+		err = db.Clauses(clause.Locking{Strength: "UPDATE"}).
+			Where("tenant_id = ? AND pool_code = ?", tenantID, "lucky").
+			First(&pool).Error
+	}
 	if err == gorm.ErrRecordNotFound {
 		pool = pojo.SysTenantPrizePool{
+			TenantId: tenantID,
 			PoolCode: "lucky",
 			PoolName: "lucky",
 			Currency: "USD",
@@ -229,15 +267,16 @@ func CreateLotteryDrawRecord(db *gorm.DB, userID int64) error {
 	}
 
 	userIdPtr := &userID
-	consumed := 1000.0
 	record := pojo.SysTenantPrizePoolRecord{
+		TenantId:       tenantID,
 		PoolId:         pool.ID,
 		UserId:         userIdPtr,
 		ChangeType:     pojo.PrizePoolChangeTypeOut,
 		Amount:         0,
 		BeforeBalance:  pool.Balance,
 		AfterBalance:   pool.Balance,
-		ConsumedAmount: &consumed,
+		ConsumedAmount: &consumedAmount,
+		Remark:         remark,
 	}
 	return db.Create(&record).Error
 }

@@ -568,6 +568,31 @@ export function getPrizePoolBalance(poolCode = 'lucky') {
   return request.get<ApiResult<{ poolCode: string, balance: number }>>(`/api/v1/app/prizePool/balance?poolCode=${poolCode}`)
 }
 
+export interface PrizePoolOutRecordItem {
+  id: number
+  tenantId: number
+  poolId: number
+  userId?: number
+  changeType: 'out'
+  amount: number
+  beforeBalance: number
+  afterBalance: number
+  consumedAmount?: number
+  remark?: string
+  createdAt: string
+}
+
+export interface PrizePoolOutRecordResp {
+  list: PrizePoolOutRecordItem[]
+  total: number
+  pageSize: number
+  currentPage: number
+}
+
+export function getPrizePoolOutRecords(currentPage = 0, pageSize = 10) {
+  return request.get<ApiResult<PrizePoolOutRecordResp>>(`/api/v1/app/prizePool/outRecords?currentPage=${currentPage}&pageSize=${pageSize}`)
+}
+
 export interface LotteryChancesResp {
   totalFlow: number
   earnedCount: number

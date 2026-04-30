@@ -185,6 +185,11 @@ func DrawLottery(ctx *gin.Context) {
 		}
 		recordID = record.ID
 
+		poolRecordRemark := fmt.Sprintf("lottery_draw_%d", record.ID)
+		if err := repository.CreateLotteryDrawRecord(tx, tenantId, config.PoolId, userID, peerAmount, &poolRecordRemark); err != nil {
+			return err
+		}
+
 		// 写中奖流水
 		if awardAmount > 0 {
 			cashHistory := pojo.CashHistory{

@@ -342,6 +342,7 @@ func InitGin() {
 		appAuthRouter.GET("/lottery/chances", api.GetLotteryChances)                            // App端查询抽奖次数
 		appAuthRouter.POST("/lottery/draw", api.DrawLottery)                                    // App端消耗一次抽奖机会
 		appAuthRouter.GET("/lottery/history", api.GetLotteryHistory)                            // App端查询抽奖历史
+		appAuthRouter.GET("/prizePool/outRecords", api.GetPrizePoolOutRecordsApp)               // App端查询奖池消耗流水
 	}
 
 	log.Printf("Start server at %s:%d ", utils.GlobalConfig.Host, utils.GlobalConfig.Port)

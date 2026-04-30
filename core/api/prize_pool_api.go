@@ -43,3 +43,23 @@ func SetPrizePoolBalanceAdmin(ctx *gin.Context) {
 	}
 	utils.SuccessObjBack(ctx, result)
 }
+
+// GetPrizePoolOutRecordsApp app端查询奖池消耗流水，固定 change_type=out，不按商户过滤。
+func GetPrizePoolOutRecordsApp(ctx *gin.Context) {
+	var page pojo.PageInfo
+	page.SetPageDefaults()
+	if err := ctx.ShouldBindQuery(&page); err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	if page.PageSize <= 0 || page.PageSize > 10 {
+		page.PageSize = 10
+	}
+	if page.CurrentPage < 0 {
+		page.CurrentPage = 0
+	}
+
+	db := ctx.MustGet("db").(*gorm.DB)
+	result := repository.GetPrizePoolOutRecordsApp(db, page)
+	utils.SuccessObjBack(ctx, result)
+}
