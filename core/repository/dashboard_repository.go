@@ -8,7 +8,7 @@ import (
 	"gorm.io/gorm"
 )
 
-func GetDashboardStats(db *gorm.DB, tenantID int64) pojo.TenantDashboardStatsBack {
+func GetAdminDashboardStats(db *gorm.DB) pojo.TenantDashboardStatsBack {
 	now := time.Now()
 	todayStart := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
 	tomorrowStart := todayStart.AddDate(0, 0, 1)
@@ -16,16 +16,16 @@ func GetDashboardStats(db *gorm.DB, tenantID int64) pojo.TenantDashboardStatsBac
 	nextMonthStart := monthStart.AddDate(0, 1, 0)
 
 	return pojo.TenantDashboardStatsBack{
-		Today:       getDashboardPeriodStats(db, tenantID, todayStart, tomorrowStart),
-		Month:       getDashboardPeriodStats(db, tenantID, monthStart, nextMonthStart),
-		OnlineUsers: utils.CountOnlineUsers(utils.OnlineTgUsersKey(tenantID)),
+		Today:       getAdminDashboardPeriodStats(db, todayStart, tomorrowStart),
+		Month:       getAdminDashboardPeriodStats(db, monthStart, nextMonthStart),
+		OnlineUsers: utils.CountOnlineUsers(utils.KeyOnlineTgUsersAll),
 	}
 }
 
-func GetDashboardOnlineUsers(db *gorm.DB, tenantID int64, search pojo.TenantDashboardDetailSearch) pojo.TenantDashboardUserDetailResp {
+func GetAdminDashboardOnlineUsers(db *gorm.DB, search pojo.TenantDashboardDetailSearch) pojo.TenantDashboardUserDetailResp {
 	var result pojo.TenantDashboardUserDetailResp
 	offset := int64(search.PageSize * search.CurrentPage)
-	items, total := utils.ListOnlineUsers(utils.OnlineTgUsersKey(tenantID), offset, int64(search.PageSize))
+	items, total := utils.ListOnlineUsers(utils.KeyOnlineTgUsersAll, offset, int64(search.PageSize))
 	result.Total = total
 	result.PageSize = search.PageSize
 	result.CurrentPage = search.CurrentPage
@@ -42,7 +42,7 @@ func GetDashboardOnlineUsers(db *gorm.DB, tenantID int64, search pojo.TenantDash
 
 	var users []pojo.TgUser
 	_ = db.Model(&pojo.TgUser{}).
-		Where("tenant_id = ? AND id IN ?", tenantID, userIDs).
+		Where("id IN ?", userIDs).
 		Find(&users).Error
 
 	userMap := make(map[int64]pojo.TgUser, len(users))
@@ -72,16 +72,17 @@ func GetDashboardOnlineUsers(db *gorm.DB, tenantID int64, search pojo.TenantDash
 	return result
 }
 
-func GetDashboardRechargeUsers(db *gorm.DB, tenantID int64, search pojo.TenantDashboardDetailSearch) pojo.TenantDashboardUserDetailResp {
-	start, end := dashboardPeriodRange(search.Period)
+func GetAdminDashboardRechargeUsers(db *gorm.DB, search pojo.TenantDashboardDetailSearch) pojo.TenantDashboardUserDetailResp {
+	start, end := adminDashboardPeriodRange(search.Period)
 	var result pojo.TenantDashboardUserDetailResp
 
 	baseQuery := db.Model(&pojo.RechargeOrder{}).
-		Where("tenant_id = ? AND status = ? AND pay_time >= ? AND pay_time < ?", tenantID, 1, start, end)
+		Where("status = ? AND pay_time >= ? AND pay_time < ?", 1, start, end)
 	_ = baseQuery.Distinct("user_id").Count(&result.Total).Error
 
 	type rechargeUserRow struct {
 		UserID         int64      `gorm:"column:user_id"`
+		TenantId       int64      `gorm:"column:tenant_id"`
 		RechargeAmount float64    `gorm:"column:recharge_amount"`
 		RechargeCount  int64      `gorm:"column:recharge_count"`
 		LastRechargeAt *time.Time `gorm:"column:last_recharge_at"`
@@ -98,13 +99,14 @@ func GetDashboardRechargeUsers(db *gorm.DB, tenantID int64, search pojo.TenantDa
 	var rows []rechargeUserRow
 	_ = db.Table(pojo.RechargeOrderTableName+" ro").
 		Select(`ro.user_id,
+			ro.tenant_id,
 			COALESCE(SUM(ro.amount), 0) AS recharge_amount,
 			COUNT(*) AS recharge_count,
 			MAX(ro.pay_time) AS last_recharge_at,
 			tu.id, tu.uid, tu.tg_id, tu.username, tu.first_name, tu.phone, tu.balance, tu.status`).
-		Joins("LEFT JOIN "+pojo.TgUserTableName+" tu ON tu.id = ro.user_id AND tu.tenant_id = ?", tenantID).
-		Where("ro.tenant_id = ? AND ro.status = ? AND ro.pay_time >= ? AND ro.pay_time < ?", tenantID, 1, start, end).
-		Group("ro.user_id, tu.id, tu.uid, tu.tg_id, tu.username, tu.first_name, tu.phone, tu.balance, tu.status").
+		Joins("LEFT JOIN "+pojo.TgUserTableName+" tu ON tu.id = ro.user_id").
+		Where("ro.status = ? AND ro.pay_time >= ? AND ro.pay_time < ?", 1, start, end).
+		Group("ro.user_id, ro.tenant_id, tu.id, tu.uid, tu.tg_id, tu.username, tu.first_name, tu.phone, tu.balance, tu.status").
 		Order("recharge_amount DESC, recharge_count DESC, ro.user_id DESC").
 		Limit(search.PageSize).
 		Offset(search.PageSize * search.CurrentPage).
@@ -116,7 +118,7 @@ func GetDashboardRechargeUsers(db *gorm.DB, tenantID int64, search pojo.TenantDa
 	for _, row := range rows {
 		result.List = append(result.List, pojo.TenantDashboardUserDetailBack{
 			ID:             row.ID,
-			TenantId:       tenantID,
+			TenantId:       row.TenantId,
 			Uid:            row.Uid,
 			TgID:           row.TgID,
 			Username:       row.Username,
@@ -132,7 +134,7 @@ func GetDashboardRechargeUsers(db *gorm.DB, tenantID int64, search pojo.TenantDa
 	return result
 }
 
-func dashboardPeriodRange(period string) (time.Time, time.Time) {
+func adminDashboardPeriodRange(period string) (time.Time, time.Time) {
 	now := time.Now()
 	todayStart := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
 	if period == "month" {
@@ -142,34 +144,34 @@ func dashboardPeriodRange(period string) (time.Time, time.Time) {
 	return todayStart, todayStart.AddDate(0, 0, 1)
 }
 
-func getDashboardPeriodStats(db *gorm.DB, tenantID int64, start time.Time, end time.Time) pojo.TenantDashboardPeriodStats {
+func getAdminDashboardPeriodStats(db *gorm.DB, start time.Time, end time.Time) pojo.TenantDashboardPeriodStats {
 	var result pojo.TenantDashboardPeriodStats
 
-	result.RechargeAmount = sumDashboardAmount(db.Model(&pojo.RechargeOrder{}).
-		Where("tenant_id = ? AND status = ? AND pay_time >= ? AND pay_time < ?", tenantID, 1, start, end),
+	result.RechargeAmount = sumAdminDashboardAmount(db.Model(&pojo.RechargeOrder{}).
+		Where("status = ? AND pay_time >= ? AND pay_time < ?", 1, start, end),
 		"amount")
 
 	_ = db.Model(&pojo.RechargeOrder{}).
-		Where("tenant_id = ? AND status = ? AND pay_time >= ? AND pay_time < ?", tenantID, 1, start, end).
+		Where("status = ? AND pay_time >= ? AND pay_time < ?", 1, start, end).
 		Distinct("user_id").
 		Count(&result.RechargeUsers).Error
 
-	result.BetAmount = sumDashboardAmount(db.Model(&pojo.LuckyHistory{}).
-		Where("tenant_id = ? AND created_at >= ? AND created_at < ?", tenantID, start, end),
+	result.BetAmount = sumAdminDashboardAmount(db.Model(&pojo.LuckyHistory{}).
+		Where("created_at >= ? AND created_at < ?", start, end),
 		"amount + lose_money")
 
-	result.WithdrawAmount = sumDashboardAmount(db.Model(&pojo.WithdrawOrderBr{}).
-		Where("tenant_id = ? AND status = ? AND paid_at >= ? AND paid_at < ?", tenantID, 3, start, end),
+	result.WithdrawAmount = sumAdminDashboardAmount(db.Model(&pojo.WithdrawOrderBr{}).
+		Where("status = ? AND paid_at >= ? AND paid_at < ?", 3, start, end),
 		"amount")
 
-	result.RebateAmount = sumDashboardAmount(db.Model(&pojo.TgUserRebateRecord{}).
-		Where("tenant_id = ? AND status = ? AND created_at >= ? AND created_at < ?", tenantID, 1, start, end),
+	result.RebateAmount = sumAdminDashboardAmount(db.Model(&pojo.TgUserRebateRecord{}).
+		Where("status = ? AND created_at >= ? AND created_at < ?", 1, start, end),
 		"rebate_amount")
 
 	return result
 }
 
-func sumDashboardAmount(query *gorm.DB, expr string) float64 {
+func sumAdminDashboardAmount(query *gorm.DB, expr string) float64 {
 	var row struct {
 		Value float64 `gorm:"column:value"`
 	}

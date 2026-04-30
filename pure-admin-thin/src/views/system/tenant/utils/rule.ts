@@ -46,5 +46,11 @@ export const formRules = reactive(<FormRules>{
       trigger: "blur"
     }
   ],
+  tgServiceUrl: [
+    { max: 255, message: "TG客服链接长度不能超过255个字符", trigger: "blur" }
+  ],
+  wsServiceUrl: [
+    { max: 255, message: "WS客服链接长度不能超过255个字符", trigger: "blur" }
+  ],
   remark: [{ max: 255, message: "备注长度不能超过255个字符", trigger: "blur" }]
 });

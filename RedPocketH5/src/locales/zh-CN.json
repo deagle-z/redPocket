@@ -168,6 +168,7 @@
     "invalidPhone": "请输入所选国家的有效手机号码",
     "pleaseEnterCode": "请输入短信验证码",
     "pleaseEnterNickname": "请输入昵称",
+    "nicknameTooLong": "昵称不能超过 128 个字符",
     "pleaseEnterPassword": "请输入密码",
     "pleaseEnterConfirmPassword": "请再次输入密码",
     "pleaseEnterInviteCode": "请输入邀请码",
@@ -275,7 +276,10 @@
     "entryTitle": "进入列表后按玩法筛选红包",
     "modeThunder": "雷号模式",
     "modeParity": "奇偶模式",
-    "prizePoolLabel": "奖池余额"
+    "prizePoolLabel": "奖池余额",
+    "ruleAction": "规则",
+    "ruleTitle": "玩法规则",
+    "rulePlaceholder": "规则内容预留"
   },
   "walletPage": {
     "title": "我的钱包",
@@ -596,6 +600,18 @@
   },
   "settingPage": {
     "title": "设置",
+    "name": "昵称",
+    "currentName": "当前昵称",
+    "changeName": "点击修改昵称",
+    "nameUnset": "未设置",
+    "namePopupTitle": "修改昵称",
+    "nameInputLabel": "昵称",
+    "namePlaceholder": "请输入昵称",
+    "nameRequired": "请输入昵称",
+    "nameTooLong": "昵称不能超过 128 个字符",
+    "nameUpdated": "昵称已更新",
+    "saveName": "保存昵称",
+    "savingName": "保存中...",
     "avatar": "头像",
     "changeAvatar": "点击更换头像",
     "uploading": "上传中...",

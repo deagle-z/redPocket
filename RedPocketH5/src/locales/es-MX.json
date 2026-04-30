@@ -168,6 +168,7 @@
     "invalidPhone": "Ingrese un número de teléfono válido para el país seleccionado",
     "pleaseEnterCode": "Por favor introduce el código SMS",
     "pleaseEnterNickname": "Por favor ingresa el apodo",
+    "nicknameTooLong": "El apodo no puede superar 128 caracteres",
     "pleaseEnterPassword": "Por favor ingrese la contraseña",
     "pleaseEnterConfirmPassword": "Por favor confirme la contraseña",
     "pleaseEnterInviteCode": "Por favor ingresa el código de invitación",
@@ -275,7 +276,10 @@
     "entryTitle": "Abra la página de lista y filtre paquetes por modo de reproducción",
     "modeThunder": "Modo trueno",
     "modeParity": "Modo de paridad",
-    "prizePoolLabel": "Bolsa de premios"
+    "prizePoolLabel": "Bolsa de premios",
+    "ruleAction": "Reglas",
+    "ruleTitle": "Reglas del juego",
+    "rulePlaceholder": "Contenido de reglas reservado"
   },
   "walletPage": {
     "title": "Mi billetera",
@@ -596,6 +600,18 @@
   },
   "settingPage": {
     "title": "Ajustes",
+    "name": "Apodo",
+    "currentName": "Apodo actual",
+    "changeName": "Toca para editar",
+    "nameUnset": "Sin configurar",
+    "namePopupTitle": "Editar apodo",
+    "nameInputLabel": "Apodo",
+    "namePlaceholder": "Ingresa un apodo",
+    "nameRequired": "Ingresa un apodo",
+    "nameTooLong": "El apodo no puede superar 128 caracteres",
+    "nameUpdated": "Apodo actualizado",
+    "saveName": "Guardar apodo",
+    "savingName": "Guardando...",
     "avatar": "Avatar",
     "changeAvatar": "Toca para cambiar de avatar",
     "uploading": "Subiendo...",

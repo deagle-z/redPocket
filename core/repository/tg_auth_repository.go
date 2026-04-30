@@ -277,6 +277,17 @@ func nullableString(v string) *string {
 	return &v
 }
 
+func truncateRunes(v string, max int) string {
+	if max <= 0 {
+		return ""
+	}
+	runes := []rune(strings.TrimSpace(v))
+	if len(runes) <= max {
+		return string(runes)
+	}
+	return string(runes[:max])
+}
+
 func stringPtrEquals(a, b *string) bool {
 	if a == nil && b == nil {
 		return true
@@ -358,11 +369,15 @@ func SendTgSMSCode(phone string, country string, ip string, isDev bool) (string,
 }
 
 // RegisterTgByEmail 邮箱注册。
-func RegisterTgByEmail(db *gorm.DB, email string, password string, code string, sourceChannelCode string, tenantID int64, inviteCode string) (pojo.TgUser, error) {
+func RegisterTgByEmail(db *gorm.DB, email string, firstName string, password string, code string, sourceChannelCode string, tenantID int64, inviteCode string) (pojo.TgUser, error) {
 	email = strings.TrimSpace(strings.ToLower(email))
+	firstName = strings.TrimSpace(firstName)
 	code = strings.TrimSpace(code)
 	if !utils.IsEmail(email) {
 		return pojo.TgUser{}, errors.New("email_format_error")
+	}
+	if len([]rune(firstName)) > 128 {
+		return pojo.TgUser{}, errors.New("first_name_too_long")
 	}
 	if len(password) < 6 || len(password) > 64 {
 		return pojo.TgUser{}, errors.New("password_length_6_64")
@@ -393,15 +408,19 @@ func RegisterTgByEmail(db *gorm.DB, email string, password string, code string, 
 		return pojo.TgUser{}, errors.New("service_busy_retry")
 	}
 
-	displayName := email
-	if idx := strings.Index(displayName, "@"); idx > 0 {
-		displayName = displayName[:idx]
-	}
-	displayName = strings.TrimSpace(displayName)
+	displayName := firstName
 	if displayName == "" {
-		displayName = fmt.Sprintf("User_%06d", rand.IntN(1000000))
+		displayName = email
+		if idx := strings.Index(displayName, "@"); idx > 0 {
+			displayName = displayName[:idx]
+		}
+		displayName = strings.TrimSpace(displayName)
+		if displayName == "" {
+			displayName = fmt.Sprintf("User_%06d", rand.IntN(1000000))
+		}
 	}
-	username := displayName
+	displayName = truncateRunes(displayName, 128)
+	username := truncateRunes(displayName, 64)
 
 	var newUser pojo.TgUser
 	err = db.Transaction(func(tx *gorm.DB) error {
@@ -462,11 +481,15 @@ func RegisterTgByEmail(db *gorm.DB, email string, password string, code string, 
 }
 
 // RegisterTgByPhone 手机号注册。
-func RegisterTgByPhone(db *gorm.DB, phone string, country string, password string, sourceChannelCode string, tenantID int64, inviteCode string) (pojo.TgUser, error) {
+func RegisterTgByPhone(db *gorm.DB, phone string, country string, firstName string, password string, sourceChannelCode string, tenantID int64, inviteCode string) (pojo.TgUser, error) {
 	phone = strings.TrimSpace(phone)
 	country = utils.InferCountryByPhone(phone, country)
+	firstName = strings.TrimSpace(firstName)
 	if !utils.IsPhone(phone) {
 		return pojo.TgUser{}, errors.New("phone_format_error")
+	}
+	if len([]rune(firstName)) > 128 {
+		return pojo.TgUser{}, errors.New("first_name_too_long")
 	}
 	if len(password) < 6 || len(password) > 64 {
 		return pojo.TgUser{}, errors.New("password_length_6_64")
@@ -486,12 +509,16 @@ func RegisterTgByPhone(db *gorm.DB, phone string, country string, password strin
 		return pojo.TgUser{}, errors.New("service_busy_retry")
 	}
 
-	displayName := phone
-	if len(displayName) > 4 {
-		displayName = displayName[len(displayName)-4:]
+	displayName := firstName
+	if displayName == "" {
+		displayName = phone
+		if len(displayName) > 4 {
+			displayName = displayName[len(displayName)-4:]
+		}
+		displayName = fmt.Sprintf("User_%s", displayName)
 	}
-	displayName = fmt.Sprintf("User_%s", displayName)
-	username := displayName
+	displayName = truncateRunes(displayName, 128)
+	username := truncateRunes(displayName, 64)
 
 	var newUser pojo.TgUser
 	err = db.Transaction(func(tx *gorm.DB) error {
@@ -732,9 +759,11 @@ func GetCurrentTgUserInfo(db *gorm.DB, accessSecret string, token string) (pojo.
 
 	return pojo.TgCurrentUserInfo{
 		Avatar:       user.Avatar,
+		TenantId:     user.TenantId,
 		Balance:      user.Balance,
 		Uid:          user.Uid,
 		Username:     user.Username,
+		FirstName:    user.FirstName,
 		TgID:         user.TgID,
 		GiftAmount:   user.GiftAmount,
 		RebateAmount: user.RebateAmount,

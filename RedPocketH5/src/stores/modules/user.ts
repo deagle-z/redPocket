@@ -1,16 +1,17 @@
 import { defineStore } from 'pinia'
-import type { ForgotPasswordData, LoginData, RegisterData, TgAuthLoginData, UserState } from '@/api/user'
+import type { EmailRegisterData, ForgotPasswordData, LoginData, RegisterData, TgAuthLoginData, UserState } from '@/api/user'
 import { clearToken, setToken } from '@/utils/auth'
 
 import {
   forgotPasswordByPhone,
-  getEmailCode,
   getCurrentTgUserInfo,
+  getEmailCode,
   sendRegisterEmailCode,
   sendRegisterSMSCode,
   loginByPhone as userLoginByPhone,
   logout as userLogout,
   register as userRegister,
+  registerByEmail as userRegisterByEmail,
   tgLogin as userTgLogin,
 } from '@/api/user'
 
@@ -19,6 +20,7 @@ const InitUserInfo = {
   name: '',
   avatar: '',
   country: '',
+  tenantId: 0,
 }
 
 export const useUserStore = defineStore('user', () => {
@@ -62,6 +64,7 @@ export const useUserStore = defineStore('user', () => {
         name: data?.username || '',
         avatar: data?.avatar || '',
         country: data?.country || '',
+        tenantId: Number(data?.tenantId || 0),
       })
     }
     catch (error) {
@@ -98,6 +101,11 @@ export const useUserStore = defineStore('user', () => {
     return data
   }
 
+  const registerByEmail = async (form: EmailRegisterData) => {
+    const data = await userRegisterByEmail(form)
+    return data
+  }
+
   const sendCode = async (email: string) => {
     const data = await sendRegisterEmailCode(email)
     return data
@@ -118,6 +126,7 @@ export const useUserStore = defineStore('user', () => {
     getCode,
     reset,
     register,
+    registerByEmail,
     sendCode,
     sendSMSCode,
   }

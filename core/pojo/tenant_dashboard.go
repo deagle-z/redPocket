@@ -6,6 +6,7 @@ type TenantDashboardPeriodStats struct {
 	RechargeAmount float64 `json:"rechargeAmount"`
 	BetAmount      float64 `json:"betAmount"`
 	WithdrawAmount float64 `json:"withdrawAmount"`
+	RebateAmount   float64 `json:"rebateAmount"`
 	RechargeUsers  int64   `json:"rechargeUsers"`
 }
 
@@ -22,6 +23,7 @@ type TenantDashboardDetailSearch struct {
 
 type TenantDashboardUserDetailBack struct {
 	ID             int64      `json:"id"`
+	TenantId       int64      `json:"tenantId"`
 	Uid            string     `json:"uid"`
 	TgID           int64      `json:"tgId"`
 	Username       *string    `json:"username"`

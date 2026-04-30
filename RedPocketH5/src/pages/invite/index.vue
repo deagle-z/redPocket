@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { showToast } from 'vant'
 import { getCurrentTgInviteRuleConfig, getCurrentTgInviteStats } from '@/api/user'
 import AppPageHeader from '@/components/AppPageHeader.vue'
+import { isMerchantTenant } from '@/utils/auth'
 
 const router = useRouter()
 const { t } = useI18n()
@@ -63,6 +64,9 @@ async function loadInviteData() {
 }
 
 async function loadInviteRuleConfig() {
+  if (!isMerchantTenant())
+    return
+
   try {
     const { data } = await getCurrentTgInviteRuleConfig()
     state.luckySendCommission = Number(data?.luckySendCommission || 5)

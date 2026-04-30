@@ -4,6 +4,7 @@ export type TenantDashboardPeriodStats = {
   rechargeAmount: number;
   betAmount: number;
   withdrawAmount: number;
+  rebateAmount: number;
   rechargeUsers: number;
 };
 

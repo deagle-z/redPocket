@@ -21,12 +21,14 @@ const stats = ref<TenantDashboardStats>({
     rechargeAmount: 0,
     betAmount: 0,
     withdrawAmount: 0,
+    rebateAmount: 0,
     rechargeUsers: 0
   },
   month: {
     rechargeAmount: 0,
     betAmount: 0,
     withdrawAmount: 0,
+    rebateAmount: 0,
     rechargeUsers: 0
   },
   onlineUsers: 0
@@ -96,6 +98,12 @@ const metricCards = computed(() => [
     value: formatAmount(stats.value.month.withdrawAmount),
     unit: "",
     tone: "orange"
+  },
+  {
+    title: "当月返佣总额",
+    value: formatAmount(stats.value.month.rebateAmount),
+    unit: "",
+    tone: "cyan"
   },
   {
     title: "在线人数",
@@ -395,6 +403,10 @@ onMounted(() => {
 
 .metric-card--orange {
   border-top: 3px solid #f79009;
+}
+
+.metric-card--cyan {
+  border-top: 3px solid #06aed4;
 }
 
 .metric-card--purple {

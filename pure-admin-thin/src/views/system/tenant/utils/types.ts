@@ -9,6 +9,8 @@ interface FormItemProps {
   ownerUserId?: number;
   planCode?: string;
   bindDomain?: string;
+  tgServiceUrl?: string;
+  wsServiceUrl?: string;
   timezone: string;
   locale: string;
   remark?: string;

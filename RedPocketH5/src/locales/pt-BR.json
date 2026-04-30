@@ -168,6 +168,7 @@
     "invalidPhone": "Digite um número de telefone válido para o país selecionado",
     "pleaseEnterCode": "Digite o código SMS",
     "pleaseEnterNickname": "Digite o apelido",
+    "nicknameTooLong": "O apelido não pode exceder 128 caracteres",
     "pleaseEnterPassword": "Digite a senha",
     "pleaseEnterConfirmPassword": "Confirme a senha",
     "pleaseEnterInviteCode": "Digite o código de convite",
@@ -275,7 +276,10 @@
     "entryTitle": "Abra a página da lista e filtre os pacotes por modo de reprodução",
     "modeThunder": "Modo Trovão",
     "modeParity": "Modo de paridade",
-    "prizePoolLabel": "Conjunto de prêmios"
+    "prizePoolLabel": "Conjunto de prêmios",
+    "ruleAction": "Regras",
+    "ruleTitle": "Regras do jogo",
+    "rulePlaceholder": "Conteúdo das regras reservado"
   },
   "walletPage": {
     "title": "Minha carteira",
@@ -596,6 +600,18 @@
   },
   "settingPage": {
     "title": "Configurações",
+    "name": "Apelido",
+    "currentName": "Apelido atual",
+    "changeName": "Toque para editar",
+    "nameUnset": "Não definido",
+    "namePopupTitle": "Editar apelido",
+    "nameInputLabel": "Apelido",
+    "namePlaceholder": "Digite um apelido",
+    "nameRequired": "Digite um apelido",
+    "nameTooLong": "O apelido não pode exceder 128 caracteres",
+    "nameUpdated": "Apelido atualizado",
+    "saveName": "Salvar apelido",
+    "savingName": "Salvando...",
     "avatar": "avatar",
     "changeAvatar": "Toque para alterar o avatar",
     "uploading": "Fazendo upload...",

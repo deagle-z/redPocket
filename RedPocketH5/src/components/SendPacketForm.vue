@@ -2,6 +2,7 @@
 import { showToast } from 'vant'
 import { getCurrentTgInviteRuleConfig, sendLuckyPacket } from '@/api/user'
 import language1Icon from '@/assets/svg/language-1.svg'
+import { isMerchantTenant } from '@/utils/auth'
 import { resolveGameMode } from '@/utils/lucky-play'
 import type { LuckyPlayType } from '@/utils/lucky-play'
 
@@ -101,6 +102,9 @@ function selectPlayType(value: LuckyPlayType) {
 }
 
 async function loadSendRangeConfig() {
+  if (!isMerchantTenant())
+    return
+
   try {
     const { data } = await getCurrentTgInviteRuleConfig()
     const minValue = Number(data?.sendMinAmount)

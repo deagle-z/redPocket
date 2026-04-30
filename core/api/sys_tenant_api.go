@@ -104,6 +104,25 @@ func GetSysTenantById(ctx *gin.Context) {
 	utils.SuccessObjBack(ctx, result)
 }
 
+// GetAppTenantServiceLinks godoc
+//
+//	@Summary		App端获取当前商户客服链接
+//	@Tags			租户
+//	@Produce		json
+//	@Success		200	{object}		pojo.SysTenantServiceLinksBack
+//	@Router			/api/v1/app/tenant/serviceLinks [get]
+func GetAppTenantServiceLinks(ctx *gin.Context) {
+	db := ctx.MustGet("db").(*gorm.DB)
+	hostInfo := ctx.MustGet("hostInfo").(pojo.HostInfo)
+	_, tenantID := parseOptionalAppToken(ctx, hostInfo)
+	result, err := repository.GetCurrentTenantServiceLinks(db, tenantID, utils.GetRequestHost(ctx))
+	if err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	utils.SuccessObjBack(ctx, result)
+}
+
 // ResetSysTenantPassword godoc
 //
 //	@Summary		重置租户密码

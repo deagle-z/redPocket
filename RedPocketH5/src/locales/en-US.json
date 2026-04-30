@@ -168,6 +168,7 @@
     "invalidPhone": "Please enter a valid phone number for the selected country",
     "pleaseEnterCode": "Please enter SMS code",
     "pleaseEnterNickname": "Please enter nickname",
+    "nicknameTooLong": "Nickname cannot exceed 128 characters",
     "pleaseEnterPassword": "Please enter password",
     "pleaseEnterConfirmPassword": "Please confirm password",
     "pleaseEnterInviteCode": "Please enter invite code",
@@ -275,7 +276,10 @@
     "entryTitle": "Open the list page and filter packets by play mode",
     "modeThunder": "Thunder Mode",
     "modeParity": "Parity Mode",
-    "prizePoolLabel": "Prize Pool"
+    "prizePoolLabel": "Prize Pool",
+    "ruleAction": "Rules",
+    "ruleTitle": "Game Rules",
+    "rulePlaceholder": "Rule content reserved"
   },
   "walletPage": {
     "title": "My Wallet",
@@ -596,6 +600,18 @@
   },
   "settingPage": {
     "title": "Settings",
+    "name": "Nickname",
+    "currentName": "Current nickname",
+    "changeName": "Tap to edit",
+    "nameUnset": "Not set",
+    "namePopupTitle": "Edit nickname",
+    "nameInputLabel": "Nickname",
+    "namePlaceholder": "Enter nickname",
+    "nameRequired": "Please enter a nickname",
+    "nameTooLong": "Nickname cannot exceed 128 characters",
+    "nameUpdated": "Nickname updated",
+    "saveName": "Save nickname",
+    "savingName": "Saving...",
     "avatar": "Avatar",
     "changeAvatar": "Tap to change avatar",
     "uploading": "Uploading...",

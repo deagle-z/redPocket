@@ -17,6 +17,8 @@ const props = withDefaults(defineProps<FormProps>(), {
     ownerUserId: undefined,
     planCode: "",
     bindDomain: "",
+    tgServiceUrl: "",
+    wsServiceUrl: "",
     timezone: "UTC",
     locale: "en-US",
     remark: ""
@@ -112,6 +114,26 @@ defineExpose({ getRef });
           <el-input
             v-model="newFormInline.planCode"
             placeholder="free/pro/enterprise"
+            clearable
+          />
+        </el-form-item>
+      </re-col>
+
+      <re-col :value="12" :xs="24" :sm="24">
+        <el-form-item label="TG客服链接" prop="tgServiceUrl">
+          <el-input
+            v-model="newFormInline.tgServiceUrl"
+            placeholder="请输入TG客服链接"
+            clearable
+          />
+        </el-form-item>
+      </re-col>
+
+      <re-col :value="12" :xs="24" :sm="24">
+        <el-form-item label="WS客服链接" prop="wsServiceUrl">
+          <el-input
+            v-model="newFormInline.wsServiceUrl"
+            placeholder="请输入WS客服链接"
             clearable
           />
         </el-form-item>

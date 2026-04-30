@@ -103,6 +103,20 @@ export function useTenant(_tableRef: Ref) {
       formatter: ({ planCode }) => planCode || "-"
     },
     {
+      label: "TG客服链接",
+      prop: "tgServiceUrl",
+      minWidth: 180,
+      showOverflowTooltip: true,
+      formatter: ({ tgServiceUrl }) => tgServiceUrl || "-"
+    },
+    {
+      label: "WS客服链接",
+      prop: "wsServiceUrl",
+      minWidth: 180,
+      showOverflowTooltip: true,
+      formatter: ({ wsServiceUrl }) => wsServiceUrl || "-"
+    },
+    {
       label: "二维码",
       prop: "bindDomain",
       minWidth: 110,
@@ -256,6 +270,8 @@ export function useTenant(_tableRef: Ref) {
           ownerUserId: row?.ownerUserId ?? undefined,
           planCode: row?.planCode ?? "",
           bindDomain: title === "新增" ? "" : undefined,
+          tgServiceUrl: row?.tgServiceUrl ?? "",
+          wsServiceUrl: row?.wsServiceUrl ?? "",
           timezone: row?.timezone ?? "UTC",
           locale: row?.locale ?? "en-US",
           remark: row?.remark ?? ""

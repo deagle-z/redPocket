@@ -168,6 +168,7 @@
     "invalidPhone": "Masukkan nomor telepon yang valid untuk negara yang dipilih",
     "pleaseEnterCode": "Silakan masukkan kode SMS",
     "pleaseEnterNickname": "Silakan masukkan nama panggilan",
+    "nicknameTooLong": "Nama panggilan tidak boleh lebih dari 128 karakter",
     "pleaseEnterPassword": "Silakan masukkan kata sandi",
     "pleaseEnterConfirmPassword": "Harap konfirmasi kata sandi",
     "pleaseEnterInviteCode": "Silakan masukkan kode undangan",
@@ -275,7 +276,10 @@
     "entryTitle": "Buka halaman daftar dan filter paket berdasarkan mode putar",
     "modeThunder": "Modus Guntur",
     "modeParity": "Modus Paritas",
-    "prizePoolLabel": "Kumpulan Hadiah"
+    "prizePoolLabel": "Kumpulan Hadiah",
+    "ruleAction": "Aturan",
+    "ruleTitle": "Aturan permainan",
+    "rulePlaceholder": "Konten aturan disiapkan"
   },
   "walletPage": {
     "title": "Dompet saya",
@@ -596,6 +600,18 @@
   },
   "settingPage": {
     "title": "Pengaturan",
+    "name": "Nama panggilan",
+    "currentName": "Nama saat ini",
+    "changeName": "Ketuk untuk edit",
+    "nameUnset": "Belum diatur",
+    "namePopupTitle": "Edit nama panggilan",
+    "nameInputLabel": "Nama",
+    "namePlaceholder": "Masukkan nama panggilan",
+    "nameRequired": "Masukkan nama panggilan",
+    "nameTooLong": "Nama panggilan tidak boleh lebih dari 128 karakter",
+    "nameUpdated": "Nama panggilan diperbarui",
+    "saveName": "Simpan nama",
+    "savingName": "Menyimpan...",
     "avatar": "Avatar",
     "changeAvatar": "Ketuk untuk mengubah avatar",
     "uploading": "Mengunggah...",

@@ -2,12 +2,21 @@ package repository
 
 import (
 	"BaseGoUni/core/pojo"
+	"BaseGoUni/core/utils"
+	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/jinzhu/copier"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
+)
+
+const (
+	tenantServiceLinksCacheByTenant = "bgu_tenant_service_links:tenant:%d"
+	tenantServiceLinksCacheByHost   = "bgu_tenant_service_links:host:%s"
 )
 
 // GetSysTenants 租户列表（分页）
@@ -74,6 +83,9 @@ func SetSysTenant(db *gorm.DB, req pojo.SysTenantSet) (result pojo.SysTenantBack
 			dbTenant.BindDomain = oldBindDomain
 		}
 		err = db.Save(&dbTenant).Error
+		if err == nil {
+			ClearTenantServiceLinksCache(dbTenant.ID)
+		}
 	} else {
 		loginAccount := strings.TrimSpace(req.LoginAccount)
 		if loginAccount == "" {
@@ -169,6 +181,7 @@ func DelSysTenant(db *gorm.DB, id int64) (result string, err error) {
 	if err != nil {
 		return result, err
 	}
+	ClearTenantServiceLinksCache(dbTenant.ID)
 	return "success", nil
 }
 
@@ -181,6 +194,116 @@ func GetSysTenantById(db *gorm.DB, id int64) (result pojo.SysTenantBack, err err
 	}
 	_ = copier.Copy(&result, &dbTenant)
 	return result, nil
+}
+
+func GetCurrentTenantServiceLinks(db *gorm.DB, tenantID int64, host string) (result pojo.SysTenantServiceLinksBack, err error) {
+	cacheKey := tenantServiceLinksCacheKey(tenantID, host)
+	if cacheKey != "" {
+		if cached, ok := getTenantServiceLinksCache(cacheKey); ok {
+			return cached, nil
+		}
+	}
+
+	var dbTenant pojo.SysTenant
+	query := db.Model(&pojo.SysTenant{}).Where("status = ?", 1)
+	if tenantID > 0 {
+		query = query.Where("id = ?", tenantID)
+	} else {
+		candidates := tenantHostCandidates(host)
+		if len(candidates) == 0 {
+			return result, errors.New("tenant_not_found")
+		}
+		query = query.Where("bind_domain IN ?", candidates)
+	}
+	if err = query.First(&dbTenant).Error; err != nil {
+		return result, errors.New("tenant_not_found")
+	}
+	result = pojo.SysTenantServiceLinksBack{
+		TgServiceURL: dbTenant.TgServiceURL,
+		WsServiceURL: dbTenant.WsServiceURL,
+	}
+	if cacheKey != "" {
+		setTenantServiceLinksCache(cacheKey, result)
+	}
+	return result, nil
+}
+
+func ClearTenantServiceLinksCache(tenantID int64) {
+	if utils.RD == nil {
+		return
+	}
+	ctx := context.Background()
+	keys := make([]string, 0, 8)
+	if tenantID > 0 {
+		keys = append(keys, fmt.Sprintf(tenantServiceLinksCacheByTenant, tenantID))
+	}
+
+	iter := utils.RD.Scan(ctx, 0, fmt.Sprintf(tenantServiceLinksCacheByHost, "*"), 100).Iterator()
+	for iter.Next(ctx) {
+		keys = append(keys, iter.Val())
+	}
+	if len(keys) > 0 {
+		_ = utils.RD.Del(ctx, keys...).Err()
+	}
+}
+
+func tenantServiceLinksCacheKey(tenantID int64, host string) string {
+	if tenantID > 0 {
+		return fmt.Sprintf(tenantServiceLinksCacheByTenant, tenantID)
+	}
+	host = normalizeTenantHost(host)
+	if host == "" {
+		return ""
+	}
+	return fmt.Sprintf(tenantServiceLinksCacheByHost, host)
+}
+
+func getTenantServiceLinksCache(key string) (pojo.SysTenantServiceLinksBack, bool) {
+	var result pojo.SysTenantServiceLinksBack
+	if utils.RD == nil {
+		return result, false
+	}
+	data, err := utils.RD.Get(context.Background(), key).Result()
+	if err != nil || data == "" {
+		return result, false
+	}
+	if err = json.Unmarshal([]byte(data), &result); err != nil {
+		return result, false
+	}
+	return result, true
+}
+
+func setTenantServiceLinksCache(key string, value pojo.SysTenantServiceLinksBack) {
+	if utils.RD == nil {
+		return
+	}
+	data, err := json.Marshal(value)
+	if err != nil {
+		return
+	}
+	_ = utils.RD.SetEX(context.Background(), key, data, utils.GetRandomRangeSecond(20*60, 40*60)).Err()
+}
+
+func tenantHostCandidates(host string) []string {
+	host = normalizeTenantHost(host)
+	if host == "" {
+		return nil
+	}
+
+	candidates := []string{host}
+	if strings.HasPrefix(host, "www.") {
+		candidates = append(candidates, strings.TrimPrefix(host, "www."))
+	}
+	parts := strings.Split(host, ".")
+	for i := 1; i < len(parts)-1; i++ {
+		candidates = append(candidates, "*."+strings.Join(parts[i:], "."))
+	}
+	return candidates
+}
+
+func normalizeTenantHost(host string) string {
+	host = strings.ToLower(strings.TrimSpace(host))
+	return strings.TrimSuffix(host, ".")
 }
 
 // ResetSysTenantPassword 重置租户密码（优先重置租户owner账号）

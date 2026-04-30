@@ -3,6 +3,7 @@ import { computed, onMounted, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { getCurrentTgInviteRuleConfig, getCurrentTgInviteStats } from '@/api/user'
 import { formatCurrency } from '@/utils/currency'
+import { isMerchantTenant } from '@/utils/auth'
 import imgTeamJpg from '@/assets/images/team.jpg'
 
 const { t } = useI18n()
@@ -77,6 +78,9 @@ async function loadTeamData() {
 }
 
 async function loadInviteRuleConfig() {
+  if (!isMerchantTenant())
+    return
+
   try {
     const { data } = await getCurrentTgInviteRuleConfig()
     ruleConfig.luckySendCommission = Number(data?.luckySendCommission || 5)

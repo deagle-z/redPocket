@@ -273,16 +273,17 @@ func RegisterTgByEmail(ctx *gin.Context) {
 	db := ctx.MustGet("db").(*gorm.DB)
 	sourceChannelCode := repository.FirstSourceChannelCode(req.SourceChannelCode, req.ChannelCode)
 	tenantID := resolveTenantIDByRegisterReferrer(db, registerReferrer(ctx, req.Referrer))
-	newUser, err := repository.RegisterTgByEmail(db, req.Email, req.Password, req.Code, sourceChannelCode, tenantID, req.InviteCode)
+	newUser, err := repository.RegisterTgByEmail(db, req.Email, req.FirstName, req.Password, req.Code, sourceChannelCode, tenantID, req.InviteCode)
 	if err != nil {
 		utils.ErrorBack(ctx, err.Error())
 		return
 	}
 
 	utils.SuccessObjBack(ctx, gin.H{
-		"id":    newUser.ID,
-		"uid":   newUser.Uid,
-		"email": newUser.Email,
+		"id":        newUser.ID,
+		"uid":       newUser.Uid,
+		"email":     newUser.Email,
+		"firstName": newUser.FirstName,
 	})
 }
 
@@ -300,17 +301,18 @@ func RegisterTgByPhone(ctx *gin.Context) {
 	if strings.TrimSpace(inviteCode) == "" {
 		inviteCode = req.Code
 	}
-	newUser, err := repository.RegisterTgByPhone(db, req.Phone, req.Country, req.Password, sourceChannelCode, tenantID, inviteCode)
+	newUser, err := repository.RegisterTgByPhone(db, req.Phone, req.Country, req.FirstName, req.Password, sourceChannelCode, tenantID, inviteCode)
 	if err != nil {
 		utils.ErrorBack(ctx, err.Error())
 		return
 	}
 
 	utils.SuccessObjBack(ctx, gin.H{
-		"id":      newUser.ID,
-		"uid":     newUser.Uid,
-		"phone":   newUser.Phone,
-		"country": newUser.Country,
+		"id":        newUser.ID,
+		"uid":       newUser.Uid,
+		"phone":     newUser.Phone,
+		"country":   newUser.Country,
+		"firstName": newUser.FirstName,
 	})
 }
 
@@ -570,6 +572,51 @@ func UpdateCurrentTgUserAvatar(ctx *gin.Context) {
 	}
 	utils.SuccessObjBack(ctx, gin.H{
 		"avatar": req.Avatar,
+	})
+}
+
+// UpdateCurrentTgUserName 更新当前TG用户展示名
+func UpdateCurrentTgUserName(ctx *gin.Context) {
+	userIDRaw, ok := ctx.Get("userId")
+	if !ok {
+		utils.UnauthorizedBack(ctx, "token_invalid")
+		return
+	}
+	userID, ok := userIDRaw.(int64)
+	if !ok || userID <= 0 {
+		utils.UnauthorizedBack(ctx, "token_invalid")
+		return
+	}
+
+	var req pojo.TgUpdateNameReq
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	firstName := strings.TrimSpace(req.FirstName)
+	if firstName == "" {
+		utils.ErrorBack(ctx, "first_name_required")
+		return
+	}
+	if len([]rune(firstName)) > 128 {
+		utils.ErrorBack(ctx, "first_name_too_long")
+		return
+	}
+
+	db := ctx.MustGet("db").(*gorm.DB)
+	result := db.Model(&pojo.TgUser{}).
+		Where("id = ? AND status = ?", userID, 1).
+		Update("first_name", firstName)
+	if result.Error != nil {
+		utils.ErrorBack(ctx, result.Error.Error())
+		return
+	}
+	if result.RowsAffected == 0 {
+		utils.ErrorBack(ctx, "user_not_found")
+		return
+	}
+	utils.SuccessObjBack(ctx, gin.H{
+		"firstName": firstName,
 	})
 }
 

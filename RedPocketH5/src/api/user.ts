@@ -46,10 +46,12 @@ export interface TgAuthLoginRes {
 
 export interface TgCurrentUserInfo {
   avatar?: string
+  tenantId?: number
   balance?: number
   country?: string
   uid?: string
   username?: string
+  firstName?: string
   email?: string
   phone?: string
   tg_id?: number
@@ -128,6 +130,7 @@ export interface UserState {
   name?: string
   avatar?: string
   country?: string
+  tenantId?: number
 }
 
 export interface RechargeOrderAppReq {
@@ -415,7 +418,18 @@ export function getUserInfo() {
 export interface RegisterData {
   phone: string
   country: string
+  firstName?: string
   code?: string
+  inviteCode?: string
+  password: string
+  sourceChannelCode?: string
+  channelCode?: string
+}
+
+export interface EmailRegisterData {
+  email: string
+  firstName?: string
+  code: string
   inviteCode?: string
   password: string
   sourceChannelCode?: string
@@ -489,6 +503,10 @@ export function appUpload(file: File) {
 
 export function updateCurrentTgAvatar(avatar: string) {
   return request.post<ApiResult<{ avatar: string }>>('/api/v1/app/tg/avatar', { avatar })
+}
+
+export function updateCurrentTgName(firstName: string) {
+  return request.post<ApiResult<{ firstName: string }>>('/api/v1/app/tg/name', { firstName })
 }
 
 export function tgLogout() {
@@ -589,8 +607,22 @@ export function register(data: RegisterData): Promise<any> {
   return request.post('/api/v1/app/tg/registerByPhone', {
     phone: data.phone,
     country: data.country,
+    firstName: data.firstName,
     ...(data.inviteCode ? { inviteCode: data.inviteCode } : {}),
     ...(data.code ? { code: data.code } : {}),
+    password: data.password,
+    sourceChannelCode,
+    channelCode: sourceChannelCode,
+  })
+}
+
+export function registerByEmail(data: EmailRegisterData): Promise<any> {
+  const sourceChannelCode = getRequestSourceChannelCode(data.sourceChannelCode, data.channelCode)
+  return request.post('/api/v1/app/tg/registerByEmail', {
+    email: data.email,
+    firstName: data.firstName,
+    code: data.code,
+    ...(data.inviteCode ? { inviteCode: data.inviteCode } : {}),
     password: data.password,
     sourceChannelCode,
     channelCode: sourceChannelCode,
@@ -761,6 +793,11 @@ export interface BannersData {
   activity: BannerItem[]
 }
 
+export interface TenantServiceLinks {
+  tgServiceUrl?: string | null
+  wsServiceUrl?: string | null
+}
+
 export function getBanners(data: { position?: string, countryCode?: string } = {}) {
   const lang = i18n.global.locale.value || 'en-US'
   return request.post<ApiResult<BannersData>>('/api/v1/app/banners', {
@@ -768,6 +805,10 @@ export function getBanners(data: { position?: string, countryCode?: string } = {
     lang,
     ...data,
   })
+}
+
+export function getTenantServiceLinks() {
+  return request.get<ApiResult<TenantServiceLinks>>('/api/v1/app/tenant/serviceLinks')
 }
 
 export function setAudioOpen(audioOpen: 0 | 1) {

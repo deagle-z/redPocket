@@ -31,6 +31,7 @@ const packetLoading = ref(false)
 const grabModalVisible = ref(false)
 const parityChoiceVisible = ref(false)
 const sendPacketModalVisible = ref(false)
+const rulePopupVisible = ref(false)
 const pendingGrabTarget = ref<{ packet: any, action: any, choice?: ParityChoice | null } | null>(null)
 const pendingParityTarget = ref<{ packet: any, action: any } | null>(null)
 const prizePoolBalance = ref<number>(0)
@@ -101,6 +102,14 @@ function syncModeFromRoute() {
 
 function goBack() {
   router.back()
+}
+
+function openRulePopup() {
+  rulePopupVisible.value = true
+}
+
+function closeRulePopup() {
+  rulePopupVisible.value = false
 }
 
 function openSendPacketDialog() {
@@ -566,9 +575,9 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="packet-list-page">
-    <AppPageHeader :title="pageTitle" @back="goBack" @right-click="openSendPacketDialog">
+    <AppPageHeader :title="pageTitle" @back="goBack" @right-click="openRulePopup">
       <template #right>
-        <van-icon name="gift-o" />
+        <span class="header-rule-btn">{{ t('packetListPage.ruleAction') }}</span>
       </template>
     </AppPageHeader>
 
@@ -728,6 +737,28 @@ onBeforeUnmount(() => {
         />
       </section>
     </van-popup>
+
+    <van-popup
+      v-model:show="rulePopupVisible"
+      round
+      position="bottom"
+      closeable
+      class="rule-popup"
+      close-icon-position="top-right"
+      @closed="closeRulePopup"
+    >
+      <section class="rule-modal">
+        <p class="rule-modal__eyebrow">
+          {{ pageTitle }}
+        </p>
+        <h3 class="rule-modal__title">
+          {{ t('packetListPage.ruleTitle') }}
+        </h3>
+        <div class="rule-modal__content">
+          {{ t('packetListPage.rulePlaceholder') }}
+        </div>
+      </section>
+    </van-popup>
   </div>
 </template>
 
@@ -746,6 +777,14 @@ onBeforeUnmount(() => {
     ),
     linear-gradient(180deg, #3e0000 0%, #230000 62%, #160000 100%);
   padding: 8px 12px calc(90px + env(safe-area-inset-bottom));
+}
+
+.header-rule-btn {
+  color: #ffd98b;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .jackpot-panel {
@@ -1256,6 +1295,47 @@ onBeforeUnmount(() => {
   color: rgba(255, 229, 186, 0.7);
   font-size: 12px;
   line-height: 1.45;
+}
+
+:deep(.rule-popup.van-popup) {
+  background:
+    radial-gradient(circle at 12% 10%, rgba(212, 175, 55, 0.18), transparent 22%),
+    linear-gradient(180deg, #540000 0%, #280000 100%);
+  border-radius: 24px 24px 0 0;
+  border: 1px solid rgba(212, 175, 55, 0.34);
+}
+
+.rule-modal {
+  min-height: 260px;
+  padding: 22px 18px calc(28px + env(safe-area-inset-bottom));
+}
+
+.rule-modal__eyebrow {
+  margin: 0 0 6px;
+  color: #ffd98b;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.rule-modal__title {
+  margin: 0;
+  color: #fff0c9;
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.rule-modal__content {
+  margin-top: 16px;
+  min-height: 140px;
+  border: 1px dashed rgba(212, 175, 55, 0.32);
+  border-radius: 16px;
+  background: rgba(255, 248, 214, 0.06);
+  padding: 16px;
+  color: rgba(255, 229, 186, 0.78);
+  font-size: 14px;
+  line-height: 1.7;
 }
 </style>
 

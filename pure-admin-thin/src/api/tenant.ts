@@ -12,6 +12,8 @@ export type SysTenant = {
   ownerUserId?: number | null;
   planCode?: string | null;
   bindDomain?: string | null;
+  tgServiceUrl?: string | null;
+  wsServiceUrl?: string | null;
   timezone: string;
   locale: string;
   remark?: string | null;
@@ -39,6 +41,8 @@ export type SysTenantSet = {
   ownerUserId?: number | null;
   planCode?: string | null;
   bindDomain?: string | null;
+  tgServiceUrl?: string | null;
+  wsServiceUrl?: string | null;
   timezone: string;
   locale: string;
   remark?: string | null;

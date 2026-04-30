@@ -12,6 +12,7 @@ import emailIcon from '@/assets/svg/email.svg'
 import lockIcon from '@/assets/svg/lock.svg'
 import languageIcon from '@/assets/svg/language.svg'
 import inviteIcon from '@/assets/svg/invite.svg'
+import avatarIcon from '@/assets/svg/avatar.svg'
 import imgRegisterHeader from '@/assets/images/register-header.jpg'
 import imgTelegram from '@/assets/images/telegram.png'
 
@@ -43,12 +44,14 @@ const registerPhoneRules: Record<RegisterCountryCode, RegExp> = {
 const postData = reactive<{
   country: RegisterCountryCode
   phone: string
+  firstName: string
   password: string
   confirmPassword: string
   inviteCode: string
 }>({
   country: 'BR',
   phone: '',
+  firstName: '',
   password: '',
   confirmPassword: '',
   inviteCode: '',
@@ -113,6 +116,16 @@ async function register() {
     showToast(t('register.invalidPhone'))
     return
   }
+  const firstName = postData.firstName.trim()
+  postData.firstName = firstName
+  if (!firstName) {
+    showToast(t('register.pleaseEnterNickname'))
+    return
+  }
+  if ([...firstName].length > 128) {
+    showToast(t('register.nicknameTooLong'))
+    return
+  }
   if (!postData.password) {
     showToast(t('register.pleaseEnterPassword'))
     return
@@ -137,6 +150,7 @@ async function register() {
     await userStore.register({
       phone,
       country: postData.country,
+      firstName,
       password: postData.password,
       inviteCode: postData.inviteCode.trim(),
       sourceChannelCode: getSourceChannelCode(),
@@ -343,6 +357,24 @@ function selectLanguage(lang: string) {
                 @input="normalizePhoneInput"
               >
             </div>
+          </div>
+
+          <div class="form-row">
+            <label for="register-nickname" class="form-label">
+              <span class="icon-wrap">
+                <img :src="avatarIcon" alt="nickname" class="form-icon">
+              </span>
+              <span>{{ t('register.nickname') }}</span>
+            </label>
+            <input
+              id="register-nickname"
+              v-model="postData.firstName"
+              type="text"
+              autocomplete="nickname"
+              class="form-input"
+              maxlength="128"
+              :placeholder="t('register.pleaseEnterNickname')"
+            >
           </div>
 
           <div class="form-row">

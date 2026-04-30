@@ -119,6 +119,7 @@ type TgSendSMSCodeReq struct {
 
 type TgEmailRegisterReq struct {
 	Email             string `json:"email"`
+	FirstName         string `json:"firstName"`
 	Password          string `json:"password"`
 	Code              string `json:"code"`
 	InviteCode        string `json:"inviteCode"`
@@ -130,6 +131,7 @@ type TgEmailRegisterReq struct {
 type TgPhoneRegisterReq struct {
 	Phone             string `json:"phone"`
 	Country           string `json:"country"`
+	FirstName         string `json:"firstName"`
 	Password          string `json:"password"`
 	Code              string `json:"code"`
 	InviteCode        string `json:"inviteCode"`
@@ -171,15 +173,21 @@ type TgUpdateAvatarReq struct {
 	Avatar string `json:"avatar" binding:"required"`
 }
 
+type TgUpdateNameReq struct {
+	FirstName string `json:"firstName" binding:"required"`
+}
+
 type TgSetAudioOpenReq struct {
 	AudioOpen int8 `json:"audioOpen" binding:"oneof=0 1"`
 }
 
 type TgCurrentUserInfo struct {
 	Avatar       *string `json:"avatar"`
+	TenantId     int64   `json:"tenantId"`
 	Balance      float64 `json:"balance"`
 	Uid          string  `json:"uid"`
 	Username     *string `json:"username"`
+	FirstName    *string `json:"firstName"`
 	TgID         int64   `json:"tg_id"`
 	GiftAmount   float64 `json:"gift_amount"`
 	RebateAmount float64 `json:"rebate_amount"`
