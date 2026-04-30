@@ -52,6 +52,7 @@ func InitScheduler() {
 	addScheduledTask("0 * * * * *", "lucky_expire_sweep", 2*time.Minute, func() {
 		services.SweepExpiredLuckyPacketsAllHosts()
 	}, "扫描过期红包")
+	services.StartBotLotteryTask()
 	c.Start()
 	log.Println("Scheduler started successfully")
 }

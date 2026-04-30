@@ -3,11 +3,10 @@ package api
 import (
 	"BaseGoUni/core/pojo"
 	"BaseGoUni/core/repository"
+	"BaseGoUni/core/services"
 	"BaseGoUni/core/utils"
-	"context"
 	"fmt"
 	"math"
-	"math/rand"
 	"strconv"
 	"time"
 
@@ -137,7 +136,7 @@ func DrawLottery(ctx *gin.Context) {
 	// 4. 从 Redis 批次池弹出本次奖励
 	probMap := config.GetAmountProbMap()
 	poolKey := fmt.Sprintf("lottery_pool:%d:%d", tenantId, config.ID)
-	awardAmount := popOrRefillLotteryPool(poolKey, config, probMap)
+	awardAmount := services.PopOrRefillLotteryPool(poolKey, config, probMap)
 
 	// 5. 事务：写记录 + 发奖
 	var recordID int64
@@ -216,43 +215,4 @@ func DrawLottery(ctx *gin.Context) {
 		"recordId":    recordID,
 		"awardAmount": awardAmount,
 	})
-}
-
-// popOrRefillLotteryPool 从 Redis 批次池弹出一个奖励；池空时按配置重新生成并打乱
-func popOrRefillLotteryPool(poolKey string, config pojo.SysTenantPrizePoolConfig, probMap map[float64]int) float64 {
-	ctx := context.Background()
-
-	val, err := utils.RD.RPop(ctx, poolKey).Result()
-	if err == nil {
-		amount, _ := strconv.ParseFloat(val, 64)
-		return amount
-	}
-
-	// 池已耗尽，生成新一轮
-	var pool []string
-	for amount, prob := range probMap {
-		slotCount := int(math.Round(float64(prob) / float64(config.TotalProbability) * float64(config.Count)))
-		for i := 0; i < slotCount; i++ {
-			pool = append(pool, strconv.FormatFloat(amount, 'f', -1, 64))
-		}
-	}
-
-	// Fisher-Yates 打乱
-	rand.Shuffle(len(pool), func(i, j int) { pool[i], pool[j] = pool[j], pool[i] })
-
-	// 写入 Redis，保留 7 天
-	args := make([]any, len(pool))
-	for i, v := range pool {
-		args[i] = v
-	}
-	utils.RD.RPush(ctx, poolKey, args...)
-	utils.RD.Expire(ctx, poolKey, 7*24*time.Hour)
-
-	// 弹出第一个
-	val, err = utils.RD.RPop(ctx, poolKey).Result()
-	if err != nil {
-		return 0
-	}
-	amount, _ := strconv.ParseFloat(val, 64)
-	return amount
 }

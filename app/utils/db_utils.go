@@ -87,6 +87,10 @@ func InitTables(prefix string) (firstInit bool, err error) {
 			&pojo.WithdrawOrderBr{},
 			&pojo.TgUserRebateRecord{},
 			&pojo.PlatformProfitLedger{},
+			&pojo.SysTenantPrizePool{},
+			&pojo.SysTenantPrizePoolRecord{},
+			&pojo.SysTenantPrizePoolConfig{},
+			&pojo.UserLotteryRecord{},
 		)
 		if err != nil {
 			panic(err)
@@ -129,6 +133,10 @@ func InitTables(prefix string) (firstInit bool, err error) {
 		&pojo.LuckyMoneyItem{},
 		&pojo.TgUserRebateRecord{},
 		&pojo.PlatformProfitLedger{},
+		&pojo.SysTenantPrizePool{},
+		&pojo.SysTenantPrizePoolRecord{},
+		&pojo.SysTenantPrizePoolConfig{},
+		&pojo.UserLotteryRecord{},
 	); err != nil {
 		panic(err)
 	}
