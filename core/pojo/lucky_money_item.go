@@ -6,12 +6,12 @@ import "time"
 type LuckyMoneyItem struct {
 	ID uint64 `json:"id" gorm:"primaryKey;autoIncrement;comment:主键ID"`
 
-	RedPacketID uint64  `json:"redPacketId" gorm:"column:red_packet_id;not null;index:uk_red_packet_seq,unique,priority:1;index:idx_red_packet_grabbed,priority:1;comment:红包ID（主表ID）"`
-	SeqNo       uint    `json:"seqNo" gorm:"column:seq_no;not null;index:uk_red_packet_seq,unique,priority:2;index:idx_red_packet_grabbed,priority:3;comment:序号（从1开始，红包内唯一）"`
-	Amount      float64 `json:"amount" gorm:"type:decimal(18,2);not null;comment:金额"`
+	RedPacketID   uint64  `json:"redPacketId" gorm:"column:red_packet_id;not null;index:uk_red_packet_seq,unique,priority:1;index:idx_red_packet_grabbed,priority:1;comment:红包ID（主表ID）"`
+	SeqNo         uint    `json:"seqNo" gorm:"column:seq_no;not null;index:uk_red_packet_seq,unique,priority:2;index:idx_red_packet_grabbed,priority:3;comment:序号（从1开始，红包内唯一）"`
+	Amount        float64 `json:"amount" gorm:"type:decimal(18,2);not null;comment:金额"`
 	ThunderAmount float64 `json:"thunderAmount" gorm:"column:thunder_amount;type:decimal(18,2);not null;default:0.00;comment:中雷金额"`
-	ThunderFee  float64 `json:"thunderFee" gorm:"column:thunder_fee;type:decimal(18,2);not null;default:0.00;comment:中雷手续费"`
-	WinFee      float64 `json:"winFee" gorm:"column:win_fee;type:decimal(18,2);not null;default:0.00;comment:中奖手续费"`
+	ThunderFee    float64 `json:"thunderFee" gorm:"column:thunder_fee;type:decimal(18,2);not null;default:0.00;comment:中雷手续费"`
+	WinFee        float64 `json:"winFee" gorm:"column:win_fee;type:decimal(18,2);not null;default:0.00;comment:中奖手续费"`
 
 	IsGrabbed  int8       `json:"isGrabbed" gorm:"column:is_grabbed;type:tinyint(1);not null;default:0;index:idx_red_packet_grabbed,priority:2;comment:是否被抢：0否 1是"`
 	Thunder    int8       `json:"thunder" gorm:"column:thunder;type:tinyint(1);not null;default:0;comment:是否中雷"`
@@ -31,33 +31,33 @@ type LuckyMoneyItemSearch struct {
 }
 
 type LuckyMoneyItemSet struct {
-	ID          uint64     `json:"id"`
-	RedPacketID uint64     `json:"redPacketId"`
-	SeqNo       uint       `json:"seqNo"`
-	Amount      float64    `json:"amount"`
-	ThunderAmount float64  `json:"thunderAmount"`
-	ThunderFee  float64    `json:"thunderFee"`
-	WinFee      float64    `json:"winFee"`
-	IsGrabbed   int8       `json:"isGrabbed"`
-	Thunder     int8       `json:"thunder"`
-	GrabbedUid  *uint64    `json:"grabbedUid"`
-	GrabbedAt   *time.Time `json:"grabbedAt"`
+	ID            uint64     `json:"id"`
+	RedPacketID   uint64     `json:"redPacketId"`
+	SeqNo         uint       `json:"seqNo"`
+	Amount        float64    `json:"amount"`
+	ThunderAmount float64    `json:"thunderAmount"`
+	ThunderFee    float64    `json:"thunderFee"`
+	WinFee        float64    `json:"winFee"`
+	IsGrabbed     int8       `json:"isGrabbed"`
+	Thunder       int8       `json:"thunder"`
+	GrabbedUid    *uint64    `json:"grabbedUid"`
+	GrabbedAt     *time.Time `json:"grabbedAt"`
 }
 
 type LuckyMoneyItemBack struct {
-	ID          uint64     `json:"id"`
-	CreatedAt   time.Time  `json:"createdAt"`
-	UpdatedAt   time.Time  `json:"updatedAt"`
-	RedPacketID uint64     `json:"redPacketId"`
-	SeqNo       uint       `json:"seqNo"`
-	Amount      float64    `json:"amount"`
-	ThunderAmount float64  `json:"thunderAmount"`
-	ThunderFee  float64    `json:"thunderFee"`
-	WinFee      float64    `json:"winFee"`
-	IsGrabbed   int8       `json:"isGrabbed"`
-	Thunder     int8       `json:"thunder"`
-	GrabbedUid  *uint64    `json:"grabbedUid"`
-	GrabbedAt   *time.Time `json:"grabbedAt"`
+	ID            uint64     `json:"id"`
+	CreatedAt     time.Time  `json:"createdAt"`
+	UpdatedAt     time.Time  `json:"updatedAt"`
+	RedPacketID   uint64     `json:"redPacketId"`
+	SeqNo         uint       `json:"seqNo"`
+	Amount        float64    `json:"amount"`
+	ThunderAmount float64    `json:"thunderAmount"`
+	ThunderFee    float64    `json:"thunderFee"`
+	WinFee        float64    `json:"winFee"`
+	IsGrabbed     int8       `json:"isGrabbed"`
+	Thunder       int8       `json:"thunder"`
+	GrabbedUid    *uint64    `json:"grabbedUid"`
+	GrabbedAt     *time.Time `json:"grabbedAt"`
 }
 
 type LuckyMoneyItemResp struct {

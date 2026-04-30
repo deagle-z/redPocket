@@ -113,9 +113,13 @@ func GetSysTenantById(ctx *gin.Context) {
 //	@Router			/api/v1/app/tenant/serviceLinks [get]
 func GetAppTenantServiceLinks(ctx *gin.Context) {
 	db := ctx.MustGet("db").(*gorm.DB)
-	hostInfo := ctx.MustGet("hostInfo").(pojo.HostInfo)
-	_, tenantID := parseOptionalAppToken(ctx, hostInfo)
-	result, err := repository.GetCurrentTenantServiceLinks(db, tenantID, utils.GetRequestHost(ctx))
+	tenantIDRaw, ok := ctx.Get("tenantId")
+	tenantID, typeOK := tenantIDRaw.(int64)
+	if !ok || !typeOK || tenantID <= 0 {
+		utils.UnauthorizedBack(ctx, "token_invalid")
+		return
+	}
+	result, err := repository.GetCurrentTenantServiceLinks(db, tenantID, "")
 	if err != nil {
 		utils.ErrorBack(ctx, err.Error())
 		return

@@ -14,7 +14,7 @@ type SysCountry struct {
 	WithdrawFields *string `json:"withdrawFields" gorm:"column:withdraw_fields;type:json;comment:提现字段配置"`
 	RechargeFields *string `json:"rechargeFields" gorm:"column:recharge_fields;type:json;comment:充值字段配置"`
 	Sort           int     `json:"sort" gorm:"column:sort;type:int;default:0;comment:排序"`
-	Rate           float64 `yaml:"rate" json:"rate" gorm:"type:numeric(20,3);"`
+	Rate           float64 `yaml:"rate" json:"rate" gorm:"type:numeric(20,2);"`
 	Status         int8    `json:"status" gorm:"column:status;type:tinyint;default:1;not null;comment:状态 1启用 0禁用"`
 	Remark         *string `json:"remark" gorm:"column:remark;type:varchar(255);comment:备注"`
 }

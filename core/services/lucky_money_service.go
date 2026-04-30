@@ -26,6 +26,7 @@ func SendRedPacket(db *gorm.DB, senderID int64, senderName string, req pojo.Luck
 }
 
 func sendRedPacket(db *gorm.DB, senderID int64, senderName string, req pojo.LuckyMoneySend, tablePrefix string) (*pojo.LuckyMoney, error) {
+	req.Amount = utils.Truncate2(req.Amount)
 	// 验证金额
 	if req.Amount < 5 {
 		return nil, errors.New("lucky_amount_min")
@@ -136,7 +137,7 @@ func sendRedPacket(db *gorm.DB, senderID int64, senderName string, req pojo.Luck
 	if lockedSender.GiftAmount < giftDeduct {
 		giftDeduct = lockedSender.GiftAmount
 	}
-	normalDeduct := req.Amount - giftDeduct
+	normalDeduct := utils.Truncate2(req.Amount - giftDeduct)
 	sourceSplit, err := repository.ConsumeUserBalanceSources(tx, lockedSender, giftDeduct, normalDeduct)
 	if err != nil {
 		tx.Rollback()
@@ -167,7 +168,7 @@ func sendRedPacket(db *gorm.DB, senderID int64, senderName string, req pojo.Luck
 
 	// 记录余额变动
 	awardUniBase := fmt.Sprintf("lucky_%d", luckyMoney.ID)
-	runningBalance := lockedSender.Balance
+	runningBalance := utils.Truncate2(lockedSender.Balance)
 
 	if giftDeduct > 0 {
 		cashHistoryGift := pojo.CashHistory{
@@ -175,9 +176,9 @@ func sendRedPacket(db *gorm.DB, senderID int64, senderName string, req pojo.Luck
 			AwardUni:        awardUniBase + "_gift",
 			Amount:          -giftDeduct,
 			StartAmount:     runningBalance,
-			EndAmount:       runningBalance - giftDeduct,
+			EndAmount:       utils.Truncate2(runningBalance - giftDeduct),
 			CashMark:        "发送红包",
-			CashDesc:        fmt.Sprintf("发送红包 %dU（赠送金额%.2fU），雷号%d", int(req.Amount), giftDeduct, req.Thunder),
+			CashDesc:        fmt.Sprintf("发送红包 %.2fU（赠送金额%.2fU），雷号%d", req.Amount, giftDeduct, req.Thunder),
 			Type:            pojo.CashHistoryTypeSendRedPacket,
 			IsGift:          1,
 			FromUserId:      senderID,
@@ -187,7 +188,7 @@ func sendRedPacket(db *gorm.DB, senderID int64, senderName string, req pojo.Luck
 			tx.Rollback()
 			return nil, fmt.Errorf("记录余额变动失败: %v", err)
 		}
-		runningBalance -= giftDeduct
+		runningBalance = utils.Truncate2(runningBalance - giftDeduct)
 	}
 
 	if normalDeduct > 0 {
@@ -196,9 +197,9 @@ func sendRedPacket(db *gorm.DB, senderID int64, senderName string, req pojo.Luck
 			AwardUni:        awardUniBase + "_cash",
 			Amount:          -normalDeduct,
 			StartAmount:     runningBalance,
-			EndAmount:       runningBalance - normalDeduct,
+			EndAmount:       utils.Truncate2(runningBalance - normalDeduct),
 			CashMark:        "发送红包",
-			CashDesc:        fmt.Sprintf("发送红包 %dU（正常金额%.2fU），雷号%d", int(req.Amount), normalDeduct, req.Thunder),
+			CashDesc:        fmt.Sprintf("发送红包 %.2fU（正常金额%.2fU），雷号%d", req.Amount, normalDeduct, req.Thunder),
 			Type:            pojo.CashHistoryTypeSendRedPacket,
 			IsGift:          0,
 			FromUserId:      senderID,
@@ -355,11 +356,11 @@ func ensureBotBalance(db *gorm.DB, botUser *pojo.TgUser, minBalance float64) err
 	if botUser.Balance >= minBalance {
 		return nil
 	}
-	topUpAmount := minBalance - botUser.Balance
+	topUpAmount := utils.Truncate2(minBalance - botUser.Balance)
 	if err := topUpBotBalance(db, botUser.ID, topUpAmount); err != nil {
 		return err
 	}
-	botUser.Balance = minBalance
+	botUser.Balance = utils.Truncate2(minBalance)
 	return nil
 }
 
@@ -393,6 +394,23 @@ func BroadcastLuckyGrabResult(db *gorm.DB, luckyID int64, result map[string]inte
 		return nil
 	}
 
+	grabbedCount, _ := repository.GetLuckyHistoryCount(db, luckyID)
+	hideSecondLast := shouldHideSecondLastInProgressForBroadcast(luckyMoney, grabbedCount, time.Now())
+
+	grabAmount := toFloat64Value(result["amount"])
+	broadcastReceived := luckyMoney.Received
+	if hideSecondLast {
+		broadcastReceived = utils.Truncate2(broadcastReceived - grabAmount)
+		if broadcastReceived < 0 {
+			broadcastReceived = 0
+		}
+	}
+
+	redList := luckyMoney.RedList
+	if hideSecondLast {
+		redList = ""
+	}
+
 	broadcast := map[string]interface{}{
 		"id":         luckyMoney.ID,
 		"createdAt":  luckyMoney.CreatedAt,
@@ -400,16 +418,22 @@ func BroadcastLuckyGrabResult(db *gorm.DB, luckyID int64, result map[string]inte
 		"senderId":   luckyMoney.SenderID,
 		"senderName": luckyMoney.SenderName,
 		"amount":     luckyMoney.Amount,
-		"received":   luckyMoney.Received,
+		"received":   utils.Truncate2(broadcastReceived),
 		"number":     luckyMoney.Number,
 		"lucky":      luckyMoney.Lucky,
 		"thunder":    luckyMoney.Thunder,
 		"chatId":     luckyMoney.ChatID,
-		"redList":    luckyMoney.RedList,
+		"redList":    redList,
 		"loseRate":   luckyMoney.LoseRate,
 		"status":     luckyMoney.Status,
 		"tenantId":   luckyMoney.TenantId,
 		"expireTime": luckyMoney.ExpireTime,
+		"isAmountHidden": func() int {
+			if hideSecondLast {
+				return 1
+			}
+			return 0
+		}(),
 	}
 	if idx, ok := result["grabIndex"]; ok {
 		broadcast["grabIndex"] = idx
@@ -417,14 +441,10 @@ func BroadcastLuckyGrabResult(db *gorm.DB, luckyID int64, result map[string]inte
 		broadcast["grabIndex"] = idx
 	}
 
-	grabbedCount, _ := repository.GetLuckyHistoryCount(db, luckyID)
-	hideSecondLast := shouldHideSecondLastInProgressForBroadcast(luckyMoney, grabbedCount, time.Now())
-
-	grabAmount := toFloat64Value(result["amount"])
 	if hideSecondLast {
 		grabAmount = 0
 	}
-	broadcast["grabAmount"] = grabAmount
+	broadcast["grabAmount"] = utils.Truncate2(grabAmount)
 
 	grabSeqNo := toIntValue(result["grabIndex"])
 	if grabSeqNo <= 0 {
@@ -444,22 +464,26 @@ func BroadcastLuckyGrabResult(db *gorm.DB, luckyID int64, result map[string]inte
 	if hideSecondLast {
 		thunderAmount = 0
 	}
-	broadcast["thunderAmount"] = thunderAmount
+	broadcast["thunderAmount"] = utils.Truncate2(thunderAmount)
 
 	if isThunder, ok := result["isThunder"]; ok {
 		broadcast["isThunder"] = isThunder
 	}
 	if loseMoney, ok := result["loseMoney"]; ok {
-		broadcast["loseMoney"] = loseMoney
+		broadcastLoseMoney := toFloat64Value(loseMoney)
+		if hideSecondLast {
+			broadcastLoseMoney = 0
+		}
+		broadcast["loseMoney"] = utils.Truncate2(broadcastLoseMoney)
 	}
 	totalThunderAmount := thunderRow.TotalThunderAmount
 	if hideSecondLast {
-		totalThunderAmount -= rawThunderAmount
+		totalThunderAmount = utils.Truncate2(totalThunderAmount - rawThunderAmount)
 		if totalThunderAmount < 0 {
 			totalThunderAmount = 0
 		}
 	}
-	broadcast["totalThunderAmount"] = totalThunderAmount
+	broadcast["totalThunderAmount"] = utils.Truncate2(totalThunderAmount)
 
 	return utils.BroadcastWsWithType("lucky_grabbed", broadcast)
 }
@@ -601,37 +625,70 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 	}
 
 	// 检查余额（需满足 lose_rate 倍数）
-	lowestAmount := luckyMoney.Amount * luckyMoney.LoseRate
+	lowestAmount := utils.Truncate2(luckyMoney.Amount * luckyMoney.LoseRate)
 	if user.Balance < lowestAmount {
 		return nil, errors.New(utils.I18nMessage("lucky_min_balance_required", map[string]interface{}{"amount": fmt.Sprintf("%.2f", lowestAmount)}))
 	}
 
-	// 检查是否已领取
-	//grabbed, err := repository.CheckUserGrabbed(db, luckyID, userID)
-	//if err != nil {
-	//	return nil, fmt.Errorf("检查领取状态失败: %v", err)
-	//}
-	//if grabbed {
-	//	return nil, errors.New("您已领取该红包，无法再领取")
-	//}
+	lockKey := fmt.Sprintf("lucky_grab:%d", luckyID)
+	acquired := false
+	lockDeadline := time.Now().Add(10 * time.Second)
+	for {
+		var lockErr error
+		acquired, lockErr = utils.AcquireLock(lockKey, 30*time.Second)
+		if lockErr != nil {
+			return nil, errors.New("operation_too_frequent")
+		}
+		if acquired {
+			break
+		}
+		if time.Now().After(lockDeadline) {
+			return nil, errors.New("operation_too_frequent")
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+	defer utils.ReleaseLock(lockKey)
 
-	// 获取已领取数量
-	grabbedCount, err := repository.GetLuckyHistoryCount(db, luckyID)
+	tx := db.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	// 与红包过期退款统一锁顺序：先锁 lucky_money，再锁 tg_user，
+	// 避免过期任务（lucky -> user）与抢包事务（user -> lucky）形成死锁。
+	var lockedLucky pojo.LuckyMoney
+	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ?", luckyID).First(&lockedLucky).Error; err != nil {
+		tx.Rollback()
+		return nil, fmt.Errorf("锁定红包失败: %v", err)
+	}
+	if lockedLucky.Status != 1 {
+		tx.Rollback()
+		return nil, errors.New("lucky_finished")
+	}
+	luckyMoney = lockedLucky
+	lowestAmount = utils.Truncate2(luckyMoney.Amount * luckyMoney.LoseRate)
+
+	// 获取已领取数量必须在单红包锁内重新读取，保证默认 grabIndex 串行顺延。
+	grabbedCount, err := repository.GetLuckyHistoryCount(tx, luckyID)
 	if err != nil {
+		tx.Rollback()
 		return nil, fmt.Errorf("获取领取数量失败: %v", err)
 	}
-
 	if int(grabbedCount) >= luckyMoney.Number {
+		tx.Rollback()
 		return nil, errors.New("lucky_all_grabbed")
 	}
 
 	// 获取红包金额列表
-	redList, err := repository.GetLuckyMoneyRedList(db, luckyID)
+	redList, err := repository.GetLuckyMoneyRedList(tx, luckyID)
 	if err != nil {
+		tx.Rollback()
 		return nil, fmt.Errorf("获取红包列表失败: %v", err)
 	}
-
 	if len(redList) == 0 {
+		tx.Rollback()
 		return nil, errors.New("lucky_data_exception")
 	}
 
@@ -640,15 +697,17 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 		grabIndex = int(grabbedCount) + 1
 	}
 	if grabIndex > len(redList) {
+		tx.Rollback()
 		return nil, errors.New("lucky_data_exception")
 	}
-	redAmount := redList[grabIndex-1]
+	redAmount := utils.Truncate2(redList[grabIndex-1])
 	awardTs := time.Now().Unix()
-	redAmountMilli := int64(redAmount * 1000)
+	redAmountMilli := int64(utils.ToMoney(redAmount))
 
 	// 奇偶模式参数校验
 	if luckyMoney.GameMode == 1 {
 		if oddEvenGuess == nil || (*oddEvenGuess != 0 && *oddEvenGuess != 1) {
+			tx.Rollback()
 			return nil, errors.New("lucky_odd_even_guess_required")
 		}
 	}
@@ -656,6 +715,7 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 	// 判断是否中雷/猜错
 	isThunder := int8(0)
 	loseMoney := 0.0
+	actualAmount := 0.0
 	thunderFee := 0.0 // 中雷/猜错手续费（发包者端抽成）
 	winFee := 0.0     // 中奖/猜对手续费（抢包者端抽成）
 	sendCommission := 0
@@ -680,46 +740,20 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 		isThunder = 1
 		if luckyMoney.GameMode == 1 {
 			// 奇偶模式：猜错赔付 = 实际抢到金额 × 倍率
-			loseMoney = redAmount * luckyMoney.LoseRate
+			actualAmount = redAmount
+			loseMoney = utils.Truncate2(redAmount * luckyMoney.LoseRate)
 		} else {
 			// 雷号模式：中雷赔付 = 总包金额 × 倍率
-			loseMoney = luckyMoney.Amount * luckyMoney.LoseRate
+			loseMoney = utils.Truncate2(luckyMoney.Amount * luckyMoney.LoseRate)
 		}
 		sendCommission = GetSendCommission(db)
-		thunderFee = loseMoney * float64(sendCommission) / 100.0
+		thunderFee = utils.Truncate2(loseMoney * float64(sendCommission) / 100.0)
 		sendPoolCommission = GetSendPoolCommission(db)
 	} else {
 		grabbingCommission = GetGrabbingCommission(db)
-		winFee = redAmount * float64(grabbingCommission) / 100.0
+		winFee = utils.Truncate2(redAmount * float64(grabbingCommission) / 100.0)
 		grabbingPoolCommission = GetGrabbingPoolCommission(db)
 	}
-
-	lockKey := fmt.Sprintf("lucky_grab:%d", luckyID)
-	acquired, lockErr := utils.AcquireLock(lockKey, 10*time.Second)
-	if lockErr != nil || !acquired {
-		return nil, errors.New("operation_too_frequent")
-	}
-	defer utils.ReleaseLock(lockKey)
-
-	tx := db.Begin()
-	defer func() {
-		if r := recover(); r != nil {
-			tx.Rollback()
-		}
-	}()
-
-	// 与红包过期退款统一锁顺序：先锁 lucky_money，再锁 tg_user，
-	// 避免过期任务（lucky -> user）与抢包事务（user -> lucky）形成死锁。
-	var lockedLucky pojo.LuckyMoney
-	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ?", luckyID).First(&lockedLucky).Error; err != nil {
-		tx.Rollback()
-		return nil, fmt.Errorf("锁定红包失败: %v", err)
-	}
-	if lockedLucky.Status != 1 {
-		tx.Rollback()
-		return nil, errors.New("lucky_finished")
-	}
-	luckyMoney = lockedLucky
 
 	// 标记子红包被抢（防止同一序号被重复抢），并记录是否中雷
 	if err := repository.MarkLuckyMoneyItemGrabbed(tx, luckyID, grabIndex, userID, isThunder, loseMoney, thunderFee, winFee, time.Now()); err != nil {
@@ -745,7 +779,7 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 		if lockedUser.GiftAmount < giftDeduct {
 			giftDeduct = lockedUser.GiftAmount
 		}
-		normalDeduct := loseMoney - giftDeduct
+		normalDeduct := utils.Truncate2(loseMoney - giftDeduct)
 		if _, err := repository.ConsumeUserBalanceSources(tx, lockedUser, giftDeduct, normalDeduct); err != nil {
 			tx.Rollback()
 			return nil, fmt.Errorf("更新提现限制状态失败: %v", err)
@@ -763,9 +797,9 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 		// 中雷手续费
 		commissionAmount := thunderFee
 		// 奖池注入金额
-		thunderPoolFee := loseMoney * float64(sendPoolCommission) / 100.0
+		thunderPoolFee := utils.Truncate2(loseMoney * float64(sendPoolCommission) / 100.0)
 		// 实际到账金额 = 损失金额 - 平台抽成 - 奖池注入
-		actualLoseMoney := loseMoney - commissionAmount - thunderPoolFee
+		actualLoseMoney := utils.Truncate2(loseMoney - commissionAmount - thunderPoolFee)
 
 		history := &pojo.LuckyHistory{
 			UserID:          luckyMoney.SenderID,
@@ -796,8 +830,8 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 		}
 
 		// 记录余额变动（用户）
-		awardUniBase := fmt.Sprintf("lucky_grab_%d_%d_%d_%d", luckyID, userID, awardTs, int64(loseMoney*1000))
-		runningBalance := lockedUser.Balance
+		awardUniBase := fmt.Sprintf("lucky_grab_%d_%d_%d_%d", luckyID, userID, awardTs, int64(utils.ToMoney(loseMoney)))
+		runningBalance := utils.Truncate2(lockedUser.Balance)
 
 		if giftDeduct > 0 {
 			cashHistoryGift := pojo.CashHistory{
@@ -805,7 +839,7 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 				AwardUni:        awardUniBase + "_gift",
 				Amount:          -giftDeduct,
 				StartAmount:     runningBalance,
-				EndAmount:       runningBalance - giftDeduct,
+				EndAmount:       utils.Truncate2(runningBalance - giftDeduct),
 				CashMark:        "抢红包中雷",
 				CashDesc:        fmt.Sprintf("抢红包中雷，损失%.2f（赠送金额%.2f）", loseMoney, giftDeduct),
 				Type:            pojo.CashHistoryTypeGrabRedPacketThunder,
@@ -817,7 +851,7 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 				tx.Rollback()
 				return nil, fmt.Errorf("记录余额变动失败: %v", err)
 			}
-			runningBalance -= giftDeduct
+			runningBalance = utils.Truncate2(runningBalance - giftDeduct)
 		}
 
 		if normalDeduct > 0 {
@@ -826,7 +860,7 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 				AwardUni:        awardUniBase + "_cash",
 				Amount:          -normalDeduct,
 				StartAmount:     runningBalance,
-				EndAmount:       runningBalance - normalDeduct,
+				EndAmount:       utils.Truncate2(runningBalance - normalDeduct),
 				CashMark:        "抢红包中雷",
 				CashDesc:        fmt.Sprintf("抢红包中雷，损失%.2fU（正常金额%.2fU）", loseMoney, normalDeduct),
 				Type:            pojo.CashHistoryTypeGrabRedPacketThunder,
@@ -844,10 +878,10 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 		// 使用事务内锁定的 lockedSender（UPDATE 前的值，即准确的 StartAmount）
 		cashHistorySender := pojo.CashHistory{
 			UserId:          luckyMoney.SenderID,
-			AwardUni:        fmt.Sprintf("lucky_thunder_%d_%d_%d_%d", luckyID, userID, awardTs, int64(actualLoseMoney*1000)),
+			AwardUni:        fmt.Sprintf("lucky_thunder_%d_%d_%d_%d", luckyID, userID, awardTs, int64(utils.ToMoney(actualLoseMoney))),
 			Amount:          actualLoseMoney,
 			StartAmount:     lockedSender.Balance,
-			EndAmount:       lockedSender.Balance + actualLoseMoney, // 实际到账金额
+			EndAmount:       utils.Truncate2(lockedSender.Balance + actualLoseMoney), // 实际到账金额
 			CashMark:        "红包中雷收益",
 			CashDesc:        fmt.Sprintf("红包中雷收益，获得%.2f", actualLoseMoney),
 			Type:            pojo.CashHistoryTypeRedPacketThunderIncome,
@@ -864,10 +898,10 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 		if commissionAmount > 0 {
 			cashHistoryCommission := pojo.CashHistory{
 				UserId:          luckyMoney.SenderID,
-				AwardUni:        fmt.Sprintf("lucky_thunder_commission_%d_%d_%d_%d", luckyID, userID, awardTs, int64(commissionAmount*1000)),
+				AwardUni:        fmt.Sprintf("lucky_thunder_commission_%d_%d_%d_%d", luckyID, userID, awardTs, int64(utils.ToMoney(commissionAmount))),
 				Amount:          commissionAmount,
-				StartAmount:     lockedSender.Balance + actualLoseMoney, // 抽成后金额
-				EndAmount:       lockedSender.Balance + actualLoseMoney, // 抽成后金额（不变）
+				StartAmount:     utils.Truncate2(lockedSender.Balance + actualLoseMoney), // 抽成后金额
+				EndAmount:       utils.Truncate2(lockedSender.Balance + actualLoseMoney), // 抽成后金额（不变）
 				CashMark:        "红包中雷抽成",
 				CashDesc:        fmt.Sprintf("红包中雷抽成%.2f%%，抽成金额%.2fU", float64(sendCommission), commissionAmount),
 				Type:            pojo.CashHistoryTypeRedPacketCommission,
@@ -912,14 +946,18 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 		// 中奖手续费
 		commissionAmount := winFee
 		// 奖池注入金额
-		winPoolFee := redAmount * float64(grabbingPoolCommission) / 100.0
+		winPoolFee := utils.Truncate2(redAmount * float64(grabbingPoolCommission) / 100.0)
 		// 实际到账金额 = 显示金额 - 平台抽成 - 奖池注入
-		actualAmount := redAmount - commissionAmount - winPoolFee
+		actualAmount = utils.Truncate2(redAmount - commissionAmount - winPoolFee)
 
 		var lockedWinner pojo.TgUser
 		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ?", userID).First(&lockedWinner).Error; err != nil {
 			tx.Rollback()
 			return nil, fmt.Errorf("锁定中奖用户失败: %v", err)
+		}
+		if lockedWinner.Balance < lowestAmount {
+			tx.Rollback()
+			return nil, errors.New(utils.I18nMessage("lucky_min_balance_required", map[string]interface{}{"amount": fmt.Sprintf("%.2f", lowestAmount)}))
 		}
 
 		// 增加用户余额（实际到账金额）
@@ -940,7 +978,7 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 			AwardUni:        fmt.Sprintf("lucky_grab_%d_%d_%d_%s", luckyID, userID, redAmountMilli, utils.RandomString(6)),
 			Amount:          actualAmount,
 			StartAmount:     lockedWinner.Balance,
-			EndAmount:       lockedWinner.Balance + actualAmount, // 实际到账金额
+			EndAmount:       utils.Truncate2(lockedWinner.Balance + actualAmount), // 实际到账金额
 			CashMark:        "抢红包",
 			CashDesc:        fmt.Sprintf("抢红包，获得%.2fU", actualAmount),
 			Type:            pojo.CashHistoryTypeGrabRedPacketWin,
@@ -959,8 +997,8 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 				UserId:          userID,
 				AwardUni:        fmt.Sprintf("l_grab_%d_%d_%d_%s", luckyID, userID, awardTs, utils.RandomString(6)),
 				Amount:          commissionAmount,
-				StartAmount:     lockedWinner.Balance + actualAmount, // 抽成后金额
-				EndAmount:       lockedWinner.Balance + actualAmount, // 抽成后金额（不变）
+				StartAmount:     utils.Truncate2(lockedWinner.Balance + actualAmount), // 抽成后金额
+				EndAmount:       utils.Truncate2(lockedWinner.Balance + actualAmount), // 抽成后金额（不变）
 				CashMark:        "抢红包抽成",
 				CashDesc:        fmt.Sprintf("抢红包抽成%.2f%%，抽成金额%.2fU", float64(grabbingCommission), commissionAmount),
 				Type:            pojo.CashHistoryTypeRedPacketCommission,
@@ -1024,7 +1062,7 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 	}
 
 	// 更新红包已领取金额
-	newReceived := luckyMoney.Received + redAmount
+	newReceived := utils.Truncate2(luckyMoney.Received + redAmount)
 	updates := map[string]interface{}{
 		"received": newReceived,
 	}
@@ -1056,6 +1094,7 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 	// 返回结果
 	result := map[string]interface{}{
 		"amount":         redAmount,
+		"actualAmount":   actualAmount,
 		"isThunder":      isThunder,
 		"loseMoney":      loseMoney,
 		"openNum":        grabIndex,
@@ -1107,7 +1146,7 @@ func CheckGrabBalance(db *gorm.DB, luckyID int64, userID int64, tablePrefix stri
 	}
 
 	loseRate := GetLoseRate(db)
-	lowestAmount := luckyMoney.Amount * loseRate
+	lowestAmount := utils.Truncate2(luckyMoney.Amount * loseRate)
 	if user.Balance < lowestAmount {
 		return errors.New(utils.I18nMessage("lucky_min_balance_required", map[string]interface{}{"amount": fmt.Sprintf("%.2f", lowestAmount)}))
 	}
@@ -1409,9 +1448,9 @@ func getTgUserDisplayName(user *pojo.TgUser) string {
 // GetDefaultBalance 获取默认余额
 func GetDefaultBalance(tablePrefix string, chatID int64) float64 {
 	configKey := fmt.Sprintf("default_balance_%d", chatID)
-	defaultValue := int64(1000) // 默认1000，单位是分*10，所以是1000 = 1.000
+	defaultValue := int64(100) // 默认100，单位是分，所以是100 = 1.00
 	value := utils.GetInt64Cache(tablePrefix, configKey, defaultValue)
-	return float64(value) / 1000.0
+	return float64(value) / 100.0
 }
 
 func getInviteLuckyRebateRate(tablePrefix string) float64 {
@@ -1458,6 +1497,7 @@ func applyLuckyInviteRebate(
 	if platformIncome <= 0 || rate <= 0 || subUserID <= 0 {
 		return nil
 	}
+	platformIncome = utils.Truncate2(platformIncome)
 
 	var subUser pojo.TgUser
 	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ?", subUserID).First(&subUser).Error; err != nil || subUser.ID == 0 {
@@ -1476,7 +1516,7 @@ func applyLuckyInviteRebate(
 		return nil
 	}
 
-	rebateAmount := utils.ToMoney(platformIncome).Multiply(rate / 100).ToDollars()
+	rebateAmount := utils.Truncate2(utils.ToMoney(platformIncome).Multiply(rate / 100).ToDollars())
 	if rebateAmount <= 0 {
 		return nil
 	}

@@ -2,6 +2,7 @@ package repository
 
 import (
 	"BaseGoUni/core/pojo"
+	"BaseGoUni/core/utils"
 	"errors"
 	"fmt"
 	"github.com/jinzhu/copier"
@@ -62,6 +63,12 @@ func GetWithdrawOrderBrs(db *gorm.DB, search pojo.WithdrawOrderBrSearch) (result
 
 // SetWithdrawOrderBr 创建或更新巴西提现订单
 func SetWithdrawOrderBr(db *gorm.DB, req pojo.WithdrawOrderBrSet) (result pojo.WithdrawOrderBrBack, err error) {
+	if req.Amount > 0 {
+		req.Amount = utils.Truncate2(req.Amount)
+	}
+	if req.Fee > 0 {
+		req.Fee = utils.Truncate2(req.Fee)
+	}
 	var dbOrder pojo.WithdrawOrderBr
 	err = db.Transaction(func(tx *gorm.DB) error {
 		if req.ID > 0 {
@@ -173,7 +180,7 @@ func deductWithdrawAmount(tx *gorm.DB, order *pojo.WithdrawOrderBr) error {
 		AwardUni:        fmt.Sprintf("withdraw_apply_%s", order.OrderNo),
 		Amount:          -order.Amount,
 		StartAmount:     user.Balance,
-		EndAmount:       user.Balance - order.Amount,
+		EndAmount:       utils.Truncate2(user.Balance - order.Amount),
 		CashMark:        "提现申请",
 		CashDesc:        fmt.Sprintf("提现申请%s，冻结/扣减%.2f", order.OrderNo, order.Amount),
 		Type:            pojo.CashHistoryTypeWithdrawApply,
@@ -208,7 +215,7 @@ func refundWithdrawAmount(tx *gorm.DB, order pojo.WithdrawOrderBr) error {
 		AwardUni:        fmt.Sprintf("withdraw_refund_%s", order.OrderNo),
 		Amount:          order.Amount,
 		StartAmount:     user.Balance,
-		EndAmount:       user.Balance + order.Amount,
+		EndAmount:       utils.Truncate2(user.Balance + order.Amount),
 		CashMark:        "提现退回",
 		CashDesc:        fmt.Sprintf("提现订单%s失败/取消/退回，返还%.2f", order.OrderNo, order.Amount),
 		Type:            pojo.CashHistoryTypeWithdrawRefund,

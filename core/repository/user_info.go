@@ -15,6 +15,7 @@ import (
 )
 
 func AdminAwardInfo(currentUser pojo.SysUser, reqData pojo.AdminAwardInfo) (result string, err error) {
+	reqData.Amount = utils.Truncate2(reqData.Amount)
 	awardUni := utils.RandomString(6)
 	checkKey := fmt.Sprintf(utils.KeyUserAwardCheck, reqData.UserId, awardUni)
 	checkValue := utils.MD5(checkKey + "nj")
@@ -98,6 +99,7 @@ func AwardUser(db *gorm.DB, reqData pojo.AwardInfo) (result []int64, err error) 
 		}
 	}()
 	for _, awardUni := range reqData.AwardUnis {
+		awardUni.Amount = utils.Truncate2(awardUni.Amount)
 		if awardUni.UserId == 0 || awardUni.Amount == 0 || awardUni.AwardUni == "" {
 			return result, errors.New("award_data_check_failed")
 		}
@@ -122,7 +124,7 @@ func AwardUser(db *gorm.DB, reqData pojo.AwardInfo) (result []int64, err error) 
 		var currentUser pojo.SysUser
 		tx.Where("id = ?", awardUser.ID).First(&currentUser)
 		if awardUni.Amount < 0 && awardUser.Amount+awardUni.Amount < 0 {
-			err = errors.New(utils.I18nMessage("amount_not_enough", map[string]interface{}{"amount": fmt.Sprintf("%.3f", awardUser.Amount), "required": fmt.Sprintf("%.3f", awardUni.Amount)})) // 余额不足
+			err = errors.New(utils.I18nMessage("amount_not_enough", map[string]interface{}{"amount": fmt.Sprintf("%.2f", awardUser.Amount), "required": fmt.Sprintf("%.2f", awardUni.Amount)})) // 余额不足
 			return result, err
 		}
 		cashHistory := pojo.CashHistory{
@@ -130,7 +132,7 @@ func AwardUser(db *gorm.DB, reqData pojo.AwardInfo) (result []int64, err error) 
 			AwardUni:    awardUni.AwardUni,
 			Amount:      awardUni.Amount,
 			StartAmount: currentUser.Amount,
-			EndAmount:   utils.ToMoney(currentUser.Amount).Add(utils.ToMoney(awardUni.Amount)).ToDollars(),
+			EndAmount:   utils.Truncate2(utils.ToMoney(currentUser.Amount).Add(utils.ToMoney(awardUni.Amount)).ToDollars()),
 			CashMark:    awardUni.CashMark,
 			CashDesc:    awardUni.CashDesc,
 			FromUserId:  awardUni.FromUserId,
@@ -145,9 +147,9 @@ func AwardUser(db *gorm.DB, reqData pojo.AwardInfo) (result []int64, err error) 
 			return result, err
 		}
 		update := make(map[string]any)
-		update["amount"] = gorm.Expr(fmt.Sprintf("amount + %.3f", awardUni.Amount))
+		update["amount"] = gorm.Expr(fmt.Sprintf("amount + %.2f", awardUni.Amount))
 		if awardUni.Amount > 0 && !awardUni.RefuseCash {
-			update["top_amount"] = gorm.Expr(fmt.Sprintf("top_amount + %.3f", awardUni.Amount))
+			update["top_amount"] = gorm.Expr(fmt.Sprintf("top_amount + %.2f", awardUni.Amount))
 		}
 		err = tx.Model(&awardUser).Updates(update).Error
 		if err != nil {
@@ -491,6 +493,9 @@ func GetCashHistoryListAdmin(db *gorm.DB, search pojo.CashHistorySearch) (result
 	for _, history := range cashHistoryList {
 		var tempResp pojo.CashHistoryResp
 		_ = copier.Copy(&tempResp, &history)
+		tempResp.Amount = utils.Truncate2(tempResp.Amount)
+		tempResp.StartAmount = utils.Truncate2(tempResp.StartAmount)
+		tempResp.EndAmount = utils.Truncate2(tempResp.EndAmount)
 		result.List = append(result.List, tempResp)
 	}
 
@@ -518,6 +523,9 @@ func GetCashHistoryListApp(db *gorm.DB, userID int64, search pojo.CashHistorySea
 	for _, history := range cashHistoryList {
 		var tempResp pojo.CashHistoryResp
 		_ = copier.Copy(&tempResp, &history)
+		tempResp.Amount = utils.Truncate2(tempResp.Amount)
+		tempResp.StartAmount = utils.Truncate2(tempResp.StartAmount)
+		tempResp.EndAmount = utils.Truncate2(tempResp.EndAmount)
 		result.List = append(result.List, tempResp)
 	}
 

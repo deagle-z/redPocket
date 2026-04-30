@@ -521,7 +521,6 @@ export interface TgRebateTransferResp {
 
 export interface TgBindEmailReq {
   email: string
-  code: string
 }
 
 export function transferRebateToBalance() {

@@ -2,7 +2,7 @@
 import { computed, onMounted, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { getCurrentTgInviteRuleConfig, getCurrentTgInviteStats } from '@/api/user'
-import { formatCurrency } from '@/utils/currency'
+import { formatCurrency, truncate2 } from '@/utils/currency'
 import { isMerchantTenant } from '@/utils/auth'
 import imgTeamJpg from '@/assets/images/team.jpg'
 
@@ -57,7 +57,7 @@ function formatAmount(value: number) {
 }
 
 function formatRuleNumber(value: number) {
-  const normalized = Number(value || 0)
+  const normalized = truncate2(Number(value || 0))
   return Number.isInteger(normalized) ? String(normalized) : normalized.toFixed(2).replace(/\.?0+$/, '')
 }
 

@@ -2,6 +2,7 @@ package repository
 
 import (
 	"BaseGoUni/core/pojo"
+	"BaseGoUni/core/utils"
 	"fmt"
 	"github.com/jinzhu/copier"
 	"gorm.io/gorm"
@@ -22,6 +23,10 @@ type hiddenLuckyGrabRecord struct {
 
 // CreateLuckyHistory 创建领取记录
 func CreateLuckyHistory(db *gorm.DB, history *pojo.LuckyHistory) error {
+	if history != nil {
+		history.Amount = utils.Truncate2(history.Amount)
+		history.LoseMoney = utils.Truncate2(history.LoseMoney)
+	}
 	return db.Create(history).Error
 }
 
@@ -63,6 +68,8 @@ func GetLuckyHistoryList(db *gorm.DB, search pojo.LuckyHistorySearch) (result po
 	for _, history := range historyList {
 		var tempHistory pojo.LuckyHistoryBack
 		_ = copier.Copy(&tempHistory, &history)
+		tempHistory.Amount = utils.Truncate2(tempHistory.Amount)
+		tempHistory.LoseMoney = utils.Truncate2(tempHistory.LoseMoney)
 		result.List = append(result.List, tempHistory)
 	}
 
@@ -80,7 +87,12 @@ func GetLuckyHistoryUserFlowList(db *gorm.DB, search pojo.LuckyHistoryUserFlowSe
 		FlowAmount float64 `gorm:"column:flow_amount"`
 	}
 
-	query := db.Model(&pojo.LuckyHistory{})
+	now := time.Now()
+	todayStart := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	tomorrowStart := todayStart.AddDate(0, 0, 1)
+
+	query := db.Model(&pojo.LuckyHistory{}).
+		Where("created_at >= ? AND created_at < ?", todayStart, tomorrowStart)
 	if search.UserID > 0 {
 		query = query.Where("user_id = ?", search.UserID)
 	}
@@ -101,7 +113,7 @@ func GetLuckyHistoryUserFlowList(db *gorm.DB, search pojo.LuckyHistoryUserFlowSe
 			UserID:     row.UserID,
 			Avatar:     row.Avatar,
 			FirstName:  maskLuckyHistoryUserName(row.FirstName),
-			FlowAmount: row.FlowAmount,
+			FlowAmount: utils.Truncate2(row.FlowAmount),
 		})
 	}
 
@@ -176,7 +188,7 @@ func GetRecentLuckyWinners(db *gorm.DB, search pojo.LuckyRecentWinnerSearch) (re
 
 	now := time.Now()
 	for _, row := range rows {
-		amount := row.Amount
+		amount := utils.Truncate2(row.Amount)
 		if hidden, ok := hiddenMap[row.ID]; ok && hidden.HistoryID == row.ID {
 			amount = 0
 		}
@@ -301,9 +313,9 @@ func GetLuckyAppHistoryUnion(db *gorm.DB, userID int64, search pojo.LuckyAppHist
 		FROM (%s) t %s
 	`, unionSQL, whereSQL)
 	_ = db.Raw(summarySQL, args...).Scan(&summary).Error
-	result.TotalIncome = summary.TotalIncome
-	result.TotalExpense = summary.TotalExpense
-	result.NetProfitLoss = summary.NetProfitLoss
+	result.TotalIncome = utils.Truncate2(summary.TotalIncome)
+	result.TotalExpense = utils.Truncate2(summary.TotalExpense)
+	result.NetProfitLoss = utils.Truncate2(summary.NetProfitLoss)
 
 	hiddenMapAll := getPendingHiddenGrabRecordMap(db, userID, nil)
 	for _, hidden := range hiddenMapAll {
@@ -320,9 +332,9 @@ func GetLuckyAppHistoryUnion(db *gorm.DB, userID int64, search pojo.LuckyAppHist
 			expense = hidden.LoseMoney
 			net = -hidden.LoseMoney
 		}
-		result.TotalIncome -= income
-		result.TotalExpense -= expense
-		result.NetProfitLoss -= net
+		result.TotalIncome = utils.Truncate2(result.TotalIncome - income)
+		result.TotalExpense = utils.Truncate2(result.TotalExpense - expense)
+		result.NetProfitLoss = utils.Truncate2(result.NetProfitLoss - net)
 	}
 
 	listSQL := fmt.Sprintf(`
@@ -353,6 +365,12 @@ func GetLuckyAppHistoryUnion(db *gorm.DB, userID int64, search pojo.LuckyAppHist
 
 	for i := range result.List {
 		row := &result.List[i]
+		row.LuckyAmount = utils.Truncate2(row.LuckyAmount)
+		row.GrabAmount = utils.Truncate2(row.GrabAmount)
+		row.LoseMoney = utils.Truncate2(row.LoseMoney)
+		row.Income = utils.Truncate2(row.Income)
+		row.Expense = utils.Truncate2(row.Expense)
+		row.NetProfit = utils.Truncate2(row.NetProfit)
 		if row.RecordType != "grab" {
 			continue
 		}
@@ -477,8 +495,8 @@ func getPendingHiddenGrabRecordMap(db *gorm.DB, targetUserID int64, luckyIDs []i
 			HistoryID: history.ID,
 			LuckyID:   lucky.ID,
 			UserID:    history.UserID,
-			Amount:    history.Amount,
-			LoseMoney: history.LoseMoney,
+			Amount:    utils.Truncate2(history.Amount),
+			LoseMoney: utils.Truncate2(history.LoseMoney),
 			IsThunder: history.IsThunder,
 			CreatedAt: history.CreatedAt,
 		}

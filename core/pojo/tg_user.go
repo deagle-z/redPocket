@@ -23,12 +23,12 @@ type TgUser struct {
 
 	TgID int64 `gorm:"column:tg_id;index;comment:Telegram 用户ID（唯一且稳定）" json:"tg_id"`
 
-	Balance           float64 `gorm:"type:decimal(20,3);not null;default:0.000;comment:账户可用余额" json:"balance"`
-	GiftAmount        float64 `gorm:"type:decimal(20,3);not null;default:0.000;comment:赠送余额（可用）" json:"gift_amount"`
-	GiftTotal         float64 `gorm:"type:decimal(20,3);not null;default:0.000;comment:累计赠送金额" json:"gift_total"`
-	RechargeAmount    float64 `gorm:"type:decimal(20,3);not null;default:0.000;comment:累计充值金额" json:"recharge_amount"`
-	RebateAmount      float64 `gorm:"type:decimal(20,3);not null;default:0.000;comment:可用返水余额" json:"rebate_amount"`
-	RebateTotalAmount float64 `gorm:"type:decimal(20,3);not null;default:0.000;comment:累计返水金额" json:"rebate_total_amount"`
+	Balance           float64 `gorm:"type:decimal(20,2);not null;default:0.00;comment:账户可用余额" json:"balance"`
+	GiftAmount        float64 `gorm:"type:decimal(20,2);not null;default:0.00;comment:赠送余额（可用）" json:"gift_amount"`
+	GiftTotal         float64 `gorm:"type:decimal(20,2);not null;default:0.00;comment:累计赠送金额" json:"gift_total"`
+	RechargeAmount    float64 `gorm:"type:decimal(20,2);not null;default:0.00;comment:累计充值金额" json:"recharge_amount"`
+	RebateAmount      float64 `gorm:"type:decimal(20,2);not null;default:0.00;comment:可用返水余额" json:"rebate_amount"`
+	RebateTotalAmount float64 `gorm:"type:decimal(20,2);not null;default:0.00;comment:累计返水金额" json:"rebate_total_amount"`
 
 	Status       int8    `gorm:"not null;default:1;index;comment:状态 1=正常 0=禁用 -1=删除" json:"status"`
 	VipLevel     *int    `gorm:"column:vip_level;default:null;comment:当前VIP等级（对应sys_vip_level.level）" json:"vip_level"`
@@ -166,7 +166,6 @@ type TgForgotPasswordByPhoneReq struct {
 
 type TgBindEmailReq struct {
 	Email string `json:"email"`
-	Code  string `json:"code"`
 }
 
 type TgUpdateAvatarReq struct {

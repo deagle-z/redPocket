@@ -56,7 +56,7 @@ func GetUserWithdrawSummary(db *gorm.DB, userID int64) (pojo.TgWithdrawSummaryBa
 		if giftMultiplier > 0 {
 			withdrawableGift = minFloat(giftRestricted, availableFlow/giftMultiplier)
 		}
-		remainingFlow := clampNonNegative(availableFlow - withdrawableGift*giftMultiplier)
+		remainingFlow := clampNonNegative(availableFlow - utils.Truncate2(withdrawableGift*giftMultiplier))
 
 		withdrawableRecharge := rechargeRestricted
 		if rechargeMultiplier > 0 {
@@ -67,7 +67,7 @@ func GetUserWithdrawSummary(db *gorm.DB, userID int64) (pojo.TgWithdrawSummaryBa
 		nonWithdrawable := clampNonNegative(user.Balance - totalWithdrawable)
 
 		result = pojo.TgWithdrawSummaryBack{
-			Balance:                    user.Balance,
+			Balance:                    utils.Truncate2(user.Balance),
 			WithdrawableAmount:         totalWithdrawable,
 			NonWithdrawableAmount:      nonWithdrawable,
 			UnrestrictedAmount:         unrestricted,
@@ -163,19 +163,19 @@ func ReserveWithdrawLimitForOrder(tx *gorm.DB, user pojo.TgUser, order *pojo.Wit
 	rechargeRestrictedAmount := minFloat(remainingAmount, clampNonNegative(state.RechargeRestrictedBalance))
 	unrestrictedAmount := clampNonNegative(order.Amount - giftRestrictedAmount - rechargeRestrictedAmount)
 
-	giftFlowRequired := giftRestrictedAmount * giftMultiplier
-	rechargeFlowRequired := rechargeRestrictedAmount * rechargeMultiplier
+	giftFlowRequired := utils.Truncate2(giftRestrictedAmount * giftMultiplier)
+	rechargeFlowRequired := utils.Truncate2(rechargeRestrictedAmount * rechargeMultiplier)
 
 	totalFlow, err := GetUserTotalFlow(tx, user.ID)
 	if err != nil {
 		return err
 	}
 	availableFlow := clampNonNegative(totalFlow - state.GiftFlowConsumed - state.RechargeFlowConsumed)
-	requiredFlow := giftFlowRequired + rechargeFlowRequired
+	requiredFlow := utils.Truncate2(giftFlowRequired + rechargeFlowRequired)
 	if availableFlow+withdrawLimitEpsilon < requiredFlow {
 		return errors.New(utils.I18nMessage("withdraw_flow_insufficient", map[string]interface{}{
-			"available": fmt.Sprintf("%.3f", availableFlow),
-			"required":  fmt.Sprintf("%.3f", requiredFlow),
+			"available": fmt.Sprintf("%.2f", availableFlow),
+			"required":  fmt.Sprintf("%.2f", requiredFlow),
 		}))
 	}
 
@@ -231,12 +231,12 @@ func RestoreLuckyRefundRestrictedBalance(tx *gorm.DB, user pojo.TgUser, lucky po
 		return nil
 	}
 
-	ratio := refundAmount / lucky.Amount
+	ratio := utils.Truncate2(refundAmount / lucky.Amount)
 	if ratio > 1 {
 		ratio = 1
 	}
-	giftAmount := lucky.GiftRestrictedAmount * ratio
-	rechargeAmount := lucky.RechargeRestrictedAmount * ratio
+	giftAmount := utils.Truncate2(lucky.GiftRestrictedAmount * ratio)
+	rechargeAmount := utils.Truncate2(lucky.RechargeRestrictedAmount * ratio)
 	return RestoreUserWithdrawRestrictedBalance(tx, user, giftAmount, rechargeAmount)
 }
 
@@ -304,12 +304,12 @@ func clampNonNegative(value float64) float64 {
 	if value < withdrawLimitEpsilon {
 		return 0
 	}
-	return value
+	return utils.Truncate2(value)
 }
 
 func minFloat(a float64, b float64) float64 {
 	if a < b {
-		return a
+		return utils.Truncate2(a)
 	}
-	return b
+	return utils.Truncate2(b)
 }

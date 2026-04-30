@@ -2,7 +2,7 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { getAppCashHistoryList, getCurrentTgUserInfo } from '@/api/user'
-import { CURRENCY_CODE, formatCurrency } from '@/utils/currency'
+import { CURRENCY_CODE, formatCurrency, truncate2 } from '@/utils/currency'
 
 const { t } = useI18n()
 
@@ -48,7 +48,7 @@ function goTransform() {
 }
 
 function formatPlain(value: number) {
-  return Number(value || 0).toFixed(2)
+  return truncate2(Number(value || 0)).toFixed(2)
 }
 
 function formatTxAmount(value: number) {

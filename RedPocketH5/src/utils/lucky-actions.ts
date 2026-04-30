@@ -1,3 +1,5 @@
+import { truncate2 } from './currency'
+
 type TranslateFn = (key: string, params?: Record<string, unknown>) => string
 
 export interface LuckyPacketAction {
@@ -10,7 +12,7 @@ export interface LuckyPacketAction {
 }
 
 export function formatLuckyActionAmount(amount: number) {
-  return Number(amount || 0).toFixed(2)
+  return truncate2(amount).toFixed(2)
 }
 
 export function formatLuckyActionLabel(t: TranslateFn, action: LuckyPacketAction, isOngoing: boolean) {

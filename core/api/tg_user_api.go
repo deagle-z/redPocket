@@ -464,38 +464,21 @@ func BindCurrentTgEmail(ctx *gin.Context) {
 		return
 	}
 	email := strings.TrimSpace(strings.ToLower(req.Email))
-	code := strings.TrimSpace(req.Code)
 	if !utils.IsEmail(email) {
 		utils.ErrorBack(ctx, "email_format_error")
-		return
-	}
-	if len(code) != 6 {
-		utils.ErrorBack(ctx, "code_format_error")
-		return
-	}
-
-	codeKey := fmt.Sprintf("bgu_tg_email_code_%s", email)
-	cacheCode, err := utils.RD.Get(context.Background(), codeKey).Result()
-	if err != nil || strings.TrimSpace(cacheCode) == "" {
-		utils.ErrorBack(ctx, "code_expired")
-		return
-	}
-	if strings.TrimSpace(cacheCode) != code {
-		utils.ErrorBack(ctx, "code_incorrect")
 		return
 	}
 
 	db := ctx.MustGet("db").(*gorm.DB)
 	var exists pojo.TgUser
-	if err = db.Where("email = ? AND id <> ? AND status <> ?", email, userID, -1).First(&exists).Error; err == nil && exists.ID > 0 {
+	if err := db.Where("email = ? AND id <> ? AND status <> ?", email, userID, -1).First(&exists).Error; err == nil && exists.ID > 0 {
 		utils.ErrorBack(ctx, "email_already_used")
 		return
 	}
-	if err = db.Model(&pojo.TgUser{}).Where("id = ?", userID).Update("email", email).Error; err != nil {
+	if err := db.Model(&pojo.TgUser{}).Where("id = ?", userID).Update("email", email).Error; err != nil {
 		utils.ErrorBack(ctx, err.Error())
 		return
 	}
-	_ = utils.RD.Del(context.Background(), codeKey).Err()
 	utils.SuccessObjBack(ctx, gin.H{
 		"email": email,
 	})
@@ -683,9 +666,9 @@ func GetCurrentTgInviteStats(ctx *gin.Context) {
 		TodayInviteCount:    todayInviteCount,
 		RechargeUsers:       rechargeUsers,
 		TodayRechargeUsers:  todayRechargeUsers,
-		TotalCommission:     user.RebateTotalAmount,
-		AvailableCommission: user.RebateAmount,
-		TodayCommission:     todayCommission,
+		TotalCommission:     utils.Truncate2(user.RebateTotalAmount),
+		AvailableCommission: utils.Truncate2(user.RebateAmount),
+		TodayCommission:     utils.Truncate2(todayCommission),
 	})
 }
 
@@ -736,7 +719,7 @@ func GetCurrentTgInviteRuleConfig(ctx *gin.Context) {
 		if errMin != nil || errMax != nil || minValue <= 0 || maxValue <= 0 || minValue > maxValue {
 			return 100, 5000
 		}
-		return minValue, maxValue
+		return utils.Truncate2(minValue), utils.Truncate2(maxValue)
 	}
 
 	sendMinAmount, sendMaxAmount := parseSendMinMax("100|5000")
@@ -781,8 +764,8 @@ func TransferRebateToBalance(ctx *gin.Context) {
 			return fmt.Errorf("no_rebate_to_transfer")
 		}
 
-		transferAmount = user.RebateAmount
-		newBalance = user.Balance + transferAmount
+		transferAmount = utils.Truncate2(user.RebateAmount)
+		newBalance = utils.Truncate2(user.Balance + transferAmount)
 
 		if err := repository.EnsureUserWithdrawLimitState(tx, user); err != nil {
 			return err
@@ -803,7 +786,7 @@ func TransferRebateToBalance(ctx *gin.Context) {
 			StartAmount:     user.Balance,
 			EndAmount:       newBalance,
 			CashMark:        "佣金转余额",
-			CashDesc:        fmt.Sprintf("返佣余额转入主余额%.3f", transferAmount),
+			CashDesc:        fmt.Sprintf("返佣余额转入主余额%.2f", transferAmount),
 			Type:            pojo.CashHistoryTypeRebateTransfer,
 			IsGift:          0,
 			FromUserId:      0,

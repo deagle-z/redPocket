@@ -2,21 +2,21 @@ package pojo
 
 type SysVipLevel struct {
 	BaseModel
-	TenantID           int64    `json:"tenantId" gorm:"column:tenant_id;not null;comment:租户ID"`
-	Level              int      `json:"level" gorm:"column:level;not null;comment:等级排序（1=VIP0, 2=VIP1...）"`
-	LevelName          string   `json:"levelName" gorm:"column:level_name;type:varchar(32);not null;comment:等级名称（VIP0/VIP1）"`
-	AgentTag           *string  `json:"agentTag" gorm:"column:agent_tag;type:varchar(64);comment:代理标签（如：平台默认）"`
-	TotalRechargeCount *int     `json:"totalRechargeCount" gorm:"column:total_recharge_count;comment:总充值次数"`
+	TenantID            int64    `json:"tenantId" gorm:"column:tenant_id;not null;comment:租户ID"`
+	Level               int      `json:"level" gorm:"column:level;not null;comment:等级排序（1=VIP0, 2=VIP1...）"`
+	LevelName           string   `json:"levelName" gorm:"column:level_name;type:varchar(32);not null;comment:等级名称（VIP0/VIP1）"`
+	AgentTag            *string  `json:"agentTag" gorm:"column:agent_tag;type:varchar(64);comment:代理标签（如：平台默认）"`
+	TotalRechargeCount  *int     `json:"totalRechargeCount" gorm:"column:total_recharge_count;comment:总充值次数"`
 	TotalRechargeAmount *float64 `json:"totalRechargeAmount" gorm:"column:total_recharge_amount;type:decimal(18,2);comment:总充值金额"`
-	TotalValidBet      *float64 `json:"totalValidBet" gorm:"column:total_valid_bet;type:decimal(18,2);comment:总有效投注"`
+	TotalValidBet       *float64 `json:"totalValidBet" gorm:"column:total_valid_bet;type:decimal(18,2);comment:总有效投注"`
 	MonthRechargeAmount *float64 `json:"monthRechargeAmount" gorm:"column:month_recharge_amount;type:decimal(18,2);comment:当月充值金额"`
-	MonthValidBet      *float64 `json:"monthValidBet" gorm:"column:month_valid_bet;type:decimal(18,2);comment:当月有效投注"`
-	UpgradeBonusAmount float64  `json:"upgradeBonusAmount" gorm:"column:upgrade_bonus_amount;type:decimal(18,2);not null;default:0;comment:升级赠送金额"`
-	UpgradeType        *int8    `json:"upgradeType" gorm:"column:upgrade_type;type:tinyint;default:1;comment:升级方式：1累计 2当月"`
-	KeepLevelCondition *int8    `json:"keepLevelCondition" gorm:"column:keep_level_condition;type:tinyint;default:0;comment:是否需要保级（0否 1是）"`
-	Sort               int      `json:"sort" gorm:"column:sort;not null;default:0;comment:排序"`
-	Status             int8     `json:"status" gorm:"column:status;type:tinyint;not null;default:1;comment:状态：1启用 0禁用"`
-	Remark             *string  `json:"remark" gorm:"column:remark;type:varchar(255);comment:备注"`
+	MonthValidBet       *float64 `json:"monthValidBet" gorm:"column:month_valid_bet;type:decimal(18,2);comment:当月有效投注"`
+	UpgradeBonusAmount  float64  `json:"upgradeBonusAmount" gorm:"column:upgrade_bonus_amount;type:decimal(18,2);not null;default:0;comment:升级赠送金额"`
+	UpgradeType         *int8    `json:"upgradeType" gorm:"column:upgrade_type;type:tinyint;default:1;comment:升级方式：1累计 2当月"`
+	KeepLevelCondition  *int8    `json:"keepLevelCondition" gorm:"column:keep_level_condition;type:tinyint;default:0;comment:是否需要保级（0否 1是）"`
+	Sort                int      `json:"sort" gorm:"column:sort;not null;default:0;comment:排序"`
+	Status              int8     `json:"status" gorm:"column:status;type:tinyint;not null;default:1;comment:状态：1启用 0禁用"`
+	Remark              *string  `json:"remark" gorm:"column:remark;type:varchar(255);comment:备注"`
 }
 
 func (SysVipLevel) TableName() string {
@@ -25,8 +25,8 @@ func (SysVipLevel) TableName() string {
 
 type SysVipLevelSearch struct {
 	PageInfo
-	TenantID int64  `json:"tenantId"`
-	Status   *int8  `json:"status"`
+	TenantID int64 `json:"tenantId"`
+	Status   *int8 `json:"status"`
 }
 
 type SysVipLevelResp struct {
@@ -34,22 +34,22 @@ type SysVipLevelResp struct {
 }
 
 type SysVipLevelSet struct {
-	ID                 int64    `json:"id"`
-	TenantID           int64    `json:"tenantId"`
-	Level              int      `json:"level"`
-	LevelName          string   `json:"levelName"`
-	AgentTag           *string  `json:"agentTag"`
-	TotalRechargeCount *int     `json:"totalRechargeCount"`
+	ID                  int64    `json:"id"`
+	TenantID            int64    `json:"tenantId"`
+	Level               int      `json:"level"`
+	LevelName           string   `json:"levelName"`
+	AgentTag            *string  `json:"agentTag"`
+	TotalRechargeCount  *int     `json:"totalRechargeCount"`
 	TotalRechargeAmount *float64 `json:"totalRechargeAmount"`
-	TotalValidBet      *float64 `json:"totalValidBet"`
+	TotalValidBet       *float64 `json:"totalValidBet"`
 	MonthRechargeAmount *float64 `json:"monthRechargeAmount"`
-	MonthValidBet      *float64 `json:"monthValidBet"`
-	UpgradeBonusAmount float64  `json:"upgradeBonusAmount"`
-	UpgradeType        *int8    `json:"upgradeType"`
-	KeepLevelCondition *int8    `json:"keepLevelCondition"`
-	Sort               int      `json:"sort"`
-	Status             int8     `json:"status"`
-	Remark             *string  `json:"remark"`
+	MonthValidBet       *float64 `json:"monthValidBet"`
+	UpgradeBonusAmount  float64  `json:"upgradeBonusAmount"`
+	UpgradeType         *int8    `json:"upgradeType"`
+	KeepLevelCondition  *int8    `json:"keepLevelCondition"`
+	Sort                int      `json:"sort"`
+	Status              int8     `json:"status"`
+	Remark              *string  `json:"remark"`
 }
 
 // AppVipProgressBack app端VIP进度响应
@@ -70,22 +70,22 @@ type AppVipLevelSimple struct {
 }
 
 type SysVipLevelBack struct {
-	ID                 int64    `json:"id"`
-	TenantID           int64    `json:"tenantId"`
-	Level              int      `json:"level"`
-	LevelName          string   `json:"levelName"`
-	AgentTag           *string  `json:"agentTag"`
-	TotalRechargeCount *int     `json:"totalRechargeCount"`
+	ID                  int64    `json:"id"`
+	TenantID            int64    `json:"tenantId"`
+	Level               int      `json:"level"`
+	LevelName           string   `json:"levelName"`
+	AgentTag            *string  `json:"agentTag"`
+	TotalRechargeCount  *int     `json:"totalRechargeCount"`
 	TotalRechargeAmount *float64 `json:"totalRechargeAmount"`
-	TotalValidBet      *float64 `json:"totalValidBet"`
+	TotalValidBet       *float64 `json:"totalValidBet"`
 	MonthRechargeAmount *float64 `json:"monthRechargeAmount"`
-	MonthValidBet      *float64 `json:"monthValidBet"`
-	UpgradeBonusAmount float64  `json:"upgradeBonusAmount"`
-	UpgradeType        *int8    `json:"upgradeType"`
-	KeepLevelCondition *int8    `json:"keepLevelCondition"`
-	Sort               int      `json:"sort"`
-	Status             int8     `json:"status"`
-	Remark             *string  `json:"remark"`
-	CreatedAt          string   `json:"createdAt"`
-	UpdatedAt          string   `json:"updatedAt"`
+	MonthValidBet       *float64 `json:"monthValidBet"`
+	UpgradeBonusAmount  float64  `json:"upgradeBonusAmount"`
+	UpgradeType         *int8    `json:"upgradeType"`
+	KeepLevelCondition  *int8    `json:"keepLevelCondition"`
+	Sort                int      `json:"sort"`
+	Status              int8     `json:"status"`
+	Remark              *string  `json:"remark"`
+	CreatedAt           string   `json:"createdAt"`
+	UpdatedAt           string   `json:"updatedAt"`
 }

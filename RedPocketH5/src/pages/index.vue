@@ -870,6 +870,18 @@ onBeforeUnmount(() => {
   color: #ffefca;
   font-size: 16px;
   line-height: 1.3;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.winner-amount strong {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.winner-amount :deep(.coin-amount--winner.coin-amount-wrap) {
+  justify-content: flex-end;
 }
 
 .winner-name {

@@ -24,6 +24,7 @@ func CreateLuckyMoneyItems(db *gorm.DB, redPacketID int64, redList []float64) er
 	}
 	items := make([]pojo.LuckyMoneyItem, 0, len(redList))
 	for i, amount := range redList {
+		amount = utils.Truncate2(amount)
 		items = append(items, pojo.LuckyMoneyItem{
 			RedPacketID: uint64(redPacketID),
 			SeqNo:       uint(i + 1),
@@ -234,8 +235,8 @@ func GetLuckyMoneyAppList(db *gorm.DB, search pojo.LuckyMoneyAppListSearch, curr
 		itemBack.ID = lucky.ID
 		itemBack.SenderID = lucky.SenderID
 		itemBack.SenderName = lucky.SenderName
-		itemBack.Amount = lucky.Amount
-		itemBack.Received = lucky.Received
+		itemBack.Amount = utils.Truncate2(lucky.Amount)
+		itemBack.Received = utils.Truncate2(lucky.Received)
 		itemBack.Number = lucky.Number
 		itemBack.Thunder = lucky.Thunder
 		itemBack.GameMode = lucky.GameMode
@@ -266,8 +267,8 @@ func GetLuckyMoneyAppList(db *gorm.DB, search pojo.LuckyMoneyAppListSearch, curr
 			if it.GrabbedUid != nil && uint64(currentUserID) == *it.GrabbedUid {
 				isMine = 1
 			}
-			amount := it.Amount
-			thunderAmount := it.ThunderAmount
+			amount := utils.Truncate2(it.Amount)
+			thunderAmount := utils.Truncate2(it.ThunderAmount)
 			if hideSeq, ok := hideSeqMap[lucky.ID]; ok && hideSeq == it.SeqNo {
 				amount = 0
 				thunderAmount = 0
@@ -343,7 +344,7 @@ func GetLuckyMoneyAppDetail(db *gorm.DB, luckyID int64, currentUserID int64) (po
 		ID:           base.ID,
 		Status:       base.Status,
 		StatusText:   statusText,
-		Amount:       base.Amount,
+		Amount:       utils.Truncate2(base.Amount),
 		Thunder:      base.Thunder,
 		GameMode:     base.GameMode,
 		LoseRate:     base.LoseRate,
@@ -403,8 +404,8 @@ func GetLuckyMoneyAppDetail(db *gorm.DB, luckyID int64, currentUserID int64) (po
 		}
 	}
 	for _, row := range rows {
-		amount := row.Amount
-		thunderAmount := row.ThunderAmount
+		amount := utils.Truncate2(row.Amount)
+		thunderAmount := utils.Truncate2(row.ThunderAmount)
 		if hideSeqNo > 0 && hideSeqNo == row.SeqNo {
 			amount = 0
 			thunderAmount = 0
@@ -438,7 +439,7 @@ func GetLuckyMoneyAppDetail(db *gorm.DB, luckyID int64, currentUserID int64) (po
 			result.Participants = append(result.Participants, pojo.LuckyMoneyAppDetailParticipant{
 				SeqNo:     r.SeqNo,
 				IsGrabbed: 0,
-				Amount:    r.Amount,
+				Amount:    utils.Truncate2(r.Amount),
 			})
 		}
 	}
@@ -455,11 +456,11 @@ func GetLuckyMoneyAppDetail(db *gorm.DB, luckyID int64, currentUserID int64) (po
 		Where("red_packet_id = ? AND is_grabbed = 1", base.ID).
 		Scan(&agg).Error
 	if hideSeqNo > 0 {
-		agg.ReceivedAmount -= hiddenAmount
+		agg.ReceivedAmount = utils.Truncate2(agg.ReceivedAmount - hiddenAmount)
 		if agg.ReceivedAmount < 0 {
 			agg.ReceivedAmount = 0
 		}
-		agg.ThunderIncome -= hiddenThunderAmount
+		agg.ThunderIncome = utils.Truncate2(agg.ThunderIncome - hiddenThunderAmount)
 		if agg.ThunderIncome < 0 {
 			agg.ThunderIncome = 0
 		}
@@ -478,12 +479,12 @@ func GetLuckyMoneyAppDetail(db *gorm.DB, luckyID int64, currentUserID int64) (po
 
 	result.ParticipantCount = agg.GrabbedCount
 	result.Summary.GrabbedCount = agg.GrabbedCount
-	finalProfit := agg.ThunderIncome + refundRow.RefundAmount - base.Amount
+	finalProfit := utils.Truncate2(agg.ThunderIncome + refundRow.RefundAmount - base.Amount)
 	result.Finance = pojo.LuckyMoneyAppDetailFinance{
-		SendAmount:     base.Amount,
-		ReceivedAmount: agg.ReceivedAmount,
-		RefundAmount:   refundRow.RefundAmount,
-		ThunderIncome:  agg.ThunderIncome,
+		SendAmount:     utils.Truncate2(base.Amount),
+		ReceivedAmount: utils.Truncate2(agg.ReceivedAmount),
+		RefundAmount:   utils.Truncate2(refundRow.RefundAmount),
+		ThunderIncome:  utils.Truncate2(agg.ThunderIncome),
 		HitCount:       agg.HitCount,
 		FinalProfit:    finalProfit,
 	}

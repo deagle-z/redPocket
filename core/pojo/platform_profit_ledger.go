@@ -9,9 +9,9 @@ type PlatformProfitLedger struct {
 	SourceChannelID *int64  `json:"sourceChannelId" gorm:"column:source_channel_id;type:bigint;index;comment:来源渠道ID"`
 	SourceType      string  `json:"sourceType" gorm:"column:source_type;type:varchar(64);not null;comment:来源类型"`
 	SourceId        string  `json:"sourceId" gorm:"column:source_id;type:varchar(128);not null;uniqueIndex:uk_source;comment:来源唯一号"`
-	IncomeAmount    float64 `json:"incomeAmount" gorm:"column:income_amount;type:decimal(20,3);not null;default:0.000;comment:盈利金额"`
-	ExpenseAmount   float64 `json:"expenseAmount" gorm:"column:expense_amount;type:decimal(20,3);not null;default:0.000;comment:亏损金额"`
-	NetAmount       float64 `json:"netAmount" gorm:"column:net_amount;type:decimal(20,3);->;comment:净额"`
+	IncomeAmount    float64 `json:"incomeAmount" gorm:"column:income_amount;type:decimal(20,2);not null;default:0.00;comment:盈利金额"`
+	ExpenseAmount   float64 `json:"expenseAmount" gorm:"column:expense_amount;type:decimal(20,2);not null;default:0.00;comment:亏损金额"`
+	NetAmount       float64 `json:"netAmount" gorm:"column:net_amount;type:decimal(20,2);->;comment:净额"`
 	Remark          string  `json:"remark" gorm:"column:remark;type:varchar(255);not null;default:'';comment:备注"`
 }
 

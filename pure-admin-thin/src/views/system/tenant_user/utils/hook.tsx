@@ -5,7 +5,11 @@ import { addDialog } from "@/components/ReDialog";
 import type { PaginationProps } from "@pureadmin/table";
 import { deviceDetection } from "@pureadmin/utils";
 import { roleOptions, statusOptions } from "./enums";
-import { delSysTenantUser, getSysTenantUserList, setSysTenantUser } from "@/api/tenantUser";
+import {
+  delSysTenantUser,
+  getSysTenantUserList,
+  setSysTenantUser
+} from "@/api/tenantUser";
 import { type Ref, reactive, ref, onMounted, h, toRaw } from "vue";
 import type { FormItemProps } from "./types";
 import { ElTag } from "element-plus";
@@ -23,7 +27,7 @@ function getStatusType(status: number) {
   return "info";
 }
 
-export function useTenantUser(tableRef: Ref) {
+export function useTenantUser(_tableRef: Ref) {
   const form = reactive({
     tenantId: undefined as number | undefined,
     username: "",
@@ -47,8 +51,18 @@ export function useTenantUser(tableRef: Ref) {
     { label: "ID", prop: "id", minWidth: 80 },
     { label: "租户ID", prop: "tenantId", minWidth: 90 },
     { label: "账号", prop: "username", minWidth: 140 },
-    { label: "邮箱", prop: "email", minWidth: 160, formatter: ({ email }) => email || "-" },
-    { label: "手机号", prop: "mobile", minWidth: 140, formatter: ({ mobile }) => mobile || "-" },
+    {
+      label: "邮箱",
+      prop: "email",
+      minWidth: 160,
+      formatter: ({ email }) => email || "-"
+    },
+    {
+      label: "手机号",
+      prop: "mobile",
+      minWidth: 140,
+      formatter: ({ mobile }) => mobile || "-"
+    },
     { label: "角色", prop: "roleCode", minWidth: 120 },
     {
       label: "状态",
@@ -179,11 +193,14 @@ export function useTenantUser(tableRef: Ref) {
         function chores() {
           setSysTenantUser(curData)
             .then(() => {
-              message(`您${title}了账号 ${curData.username}`, { type: "success" });
-            })
-            .finally(() => {
+              message(`您${title}了账号 ${curData.username}`, {
+                type: "success"
+              });
               done();
               onSearch();
+            })
+            .catch(error => {
+              console.error(`${title}租户用户失败`, error);
             });
         }
 

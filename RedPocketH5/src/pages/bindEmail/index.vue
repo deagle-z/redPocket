@@ -1,29 +1,22 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, reactive, ref } from 'vue'
+import { onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { showToast } from 'vant'
 import { bindCurrentTgEmail, getCurrentTgUserInfo } from '@/api/user'
-import { useUserStore } from '@/stores'
 import { languageOptions, locale } from '@/utils/i18n'
 import AppPageHeader from '@/components/AppPageHeader.vue'
 import languageIcon from '@/assets/svg/language.svg'
 
 const { t } = useI18n()
 const router = useRouter()
-const userStore = useUserStore()
 
-const sending = ref(false)
 const submitting = ref(false)
-const countdown = ref(0)
 const showLangPopup = ref(false)
 const boundEmail = ref('')
 
 const formData = reactive({
   email: '',
-  code: '',
 })
-
-let timer: ReturnType<typeof setInterval> | null = null
 
 function goBack() {
   router.back()
@@ -50,66 +43,21 @@ function selectLanguage(lang: string) {
   }, 350)
 }
 
-function startCountdown() {
-  countdown.value = 60
-  timer = setInterval(() => {
-    countdown.value--
-    if (countdown.value <= 0) {
-      countdown.value = 0
-      if (timer) {
-        clearInterval(timer)
-        timer = null
-      }
-    }
-  }, 1000)
-}
-
-async function sendCode() {
-  if (boundEmail.value) {
-    showToast(t('bindEmailPage.boundToast'))
-    return
-  }
-  const email = String(formData.email || '').trim()
-  if (!email) {
-    showToast(t('bindEmailPage.toastEnterEmail'))
-    return
-  }
-  if (sending.value || countdown.value > 0)
-    return
-  try {
-    sending.value = true
-    await userStore.sendCode(email)
-    showToast(t('bindEmailPage.toastSendSuccess'))
-    startCountdown()
-  }
-  catch (error: any) {
-    showToast(error?.message || t('bindEmailPage.toastSendFailed'))
-  }
-  finally {
-    sending.value = false
-  }
-}
-
 async function submitBindEmail() {
   if (boundEmail.value) {
     showToast(t('bindEmailPage.boundToast'))
     return
   }
   const email = String(formData.email || '').trim()
-  const code = String(formData.code || '').trim()
   if (!email) {
     showToast(t('bindEmailPage.toastEnterEmail'))
-    return
-  }
-  if (!code) {
-    showToast(t('bindEmailPage.toastEnterCode'))
     return
   }
   if (submitting.value)
     return
   try {
     submitting.value = true
-    await bindCurrentTgEmail({ email, code })
+    await bindCurrentTgEmail({ email })
     showToast(t('bindEmailPage.toastBindSuccess'))
     router.back()
   }
@@ -132,11 +80,6 @@ async function loadCurrentEmail() {
   }
   catch {}
 }
-
-onUnmounted(() => {
-  if (timer)
-    clearInterval(timer)
-})
 
 onMounted(() => {
   void loadCurrentEmail()
@@ -179,34 +122,6 @@ onMounted(() => {
           >
         </div>
 
-        <div class="field-row code-row">
-          <label class="field-label">
-            <span class="field-icon-wrap">
-              <van-icon name="shield-o" />
-            </span>
-            <span>{{ t('bindEmailPage.code') }}</span>
-          </label>
-          <div class="code-group">
-            <input
-              v-model="formData.code"
-              type="text"
-              class="field-input"
-              :class="{ 'field-input--locked': !!boundEmail }"
-              :placeholder="t('bindEmailPage.codePlaceholder')"
-              :readonly="!!boundEmail"
-            >
-            <button
-              type="button"
-              class="send-btn"
-              :disabled="!!boundEmail || sending || countdown > 0"
-              @click="sendCode"
-            >
-              <span v-if="countdown > 0">{{ countdown }}s</span>
-              <span v-else-if="sending">{{ t('bindEmailPage.sending') }}</span>
-              <span v-else>{{ t('bindEmailPage.send') }}</span>
-            </button>
-          </div>
-        </div>
       </section>
 
       <button type="button" class="submit-btn" :disabled="!!boundEmail || submitting" @click="submitBindEmail">
@@ -393,38 +308,6 @@ onMounted(() => {
   background: rgba(255, 248, 214, 0.03);
 }
 
-.code-row {
-  align-items: center;
-}
-
-.code-group {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-}
-
-.code-group .field-input {
-  flex: 1;
-  min-width: 0;
-}
-
-.send-btn {
-  width: 100px;
-  height: 44px;
-  border: 1px solid rgba(255, 248, 214, 0.42);
-  border-radius: 12px;
-  background: linear-gradient(180deg, #ffdf87 0%, #d4af37 100%);
-  color: #5a1b00;
-  font-size: 13px;
-  font-weight: 800;
-  box-shadow: 0 8px 18px rgba(90, 27, 0, 0.22);
-}
-
-.send-btn:disabled {
-  opacity: 0.68;
-}
-
 .submit-btn {
   margin-top: 18px;
   width: 100%;
@@ -503,16 +386,10 @@ onMounted(() => {
   color: rgba(255, 229, 186, 0.48);
   font-size: 11px;
 }
-
 @media (max-width: 390px) {
   .bind-email-page {
     padding-left: 10px;
     padding-right: 10px;
-  }
-
-  .send-btn {
-    width: 92px;
-    font-size: 12px;
   }
 }
 </style>

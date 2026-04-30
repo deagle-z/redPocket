@@ -16,9 +16,10 @@ func GetAdminDashboardStats(db *gorm.DB) pojo.TenantDashboardStatsBack {
 	nextMonthStart := monthStart.AddDate(0, 1, 0)
 
 	return pojo.TenantDashboardStatsBack{
-		Today:       getAdminDashboardPeriodStats(db, todayStart, tomorrowStart),
-		Month:       getAdminDashboardPeriodStats(db, monthStart, nextMonthStart),
-		OnlineUsers: utils.CountOnlineUsers(utils.KeyOnlineTgUsersAll),
+		Today:                   getAdminDashboardPeriodStats(db, todayStart, tomorrowStart),
+		Month:                   getAdminDashboardPeriodStats(db, monthStart, nextMonthStart),
+		TotalPlatformPumpAmount: getAdminDashboardPlatformPumpAmount(db, nil, nil),
+		OnlineUsers:             utils.CountOnlineUsers(utils.KeyOnlineTgUsersAll),
 	}
 }
 
@@ -64,7 +65,7 @@ func GetAdminDashboardOnlineUsers(db *gorm.DB, search pojo.TenantDashboardDetail
 			Username:     user.Username,
 			FirstName:    user.FirstName,
 			Phone:        user.Phone,
-			Balance:      user.Balance,
+			Balance:      utils.Truncate2(user.Balance),
 			Status:       user.Status,
 			LastActiveAt: &activeAt,
 		})
@@ -124,9 +125,9 @@ func GetAdminDashboardRechargeUsers(db *gorm.DB, search pojo.TenantDashboardDeta
 			Username:       row.Username,
 			FirstName:      row.FirstName,
 			Phone:          row.Phone,
-			Balance:        row.Balance,
+			Balance:        utils.Truncate2(row.Balance),
 			Status:         row.Status,
-			RechargeAmount: row.RechargeAmount,
+			RechargeAmount: utils.Truncate2(row.RechargeAmount),
 			RechargeCount:  row.RechargeCount,
 			LastRechargeAt: row.LastRechargeAt,
 		})
@@ -156,9 +157,10 @@ func getAdminDashboardPeriodStats(db *gorm.DB, start time.Time, end time.Time) p
 		Distinct("user_id").
 		Count(&result.RechargeUsers).Error
 
-	result.BetAmount = sumAdminDashboardAmount(db.Model(&pojo.LuckyHistory{}).
-		Where("created_at >= ? AND created_at < ?", start, end),
-		"amount + lose_money")
+	result.BetAmount = sumAdminDashboardAmount(db.Table(pojo.LuckyHistoryTableName+" lh").
+		Joins("JOIN "+pojo.TgUserTableName+" tu ON tu.id = lh.user_id AND tu.is_bot = ?", false).
+		Where("lh.created_at >= ? AND lh.created_at < ?", start, end),
+		"lh.amount + lh.lose_money")
 
 	result.WithdrawAmount = sumAdminDashboardAmount(db.Model(&pojo.WithdrawOrderBr{}).
 		Where("status = ? AND paid_at >= ? AND paid_at < ?", 3, start, end),
@@ -168,6 +170,8 @@ func getAdminDashboardPeriodStats(db *gorm.DB, start time.Time, end time.Time) p
 		Where("status = ? AND created_at >= ? AND created_at < ?", 1, start, end),
 		"rebate_amount")
 
+	result.PlatformPumpAmount = getAdminDashboardPlatformPumpAmount(db, &start, &end)
+
 	return result
 }
 
@@ -176,5 +180,17 @@ func sumAdminDashboardAmount(query *gorm.DB, expr string) float64 {
 		Value float64 `gorm:"column:value"`
 	}
 	_ = query.Select("COALESCE(SUM(" + expr + "), 0) AS value").Scan(&row).Error
-	return row.Value
+	return utils.Truncate2(row.Value)
+}
+
+func getAdminDashboardPlatformPumpAmount(db *gorm.DB, start *time.Time, end *time.Time) float64 {
+	query := db.Model(&pojo.PlatformProfitLedger{}).
+		Where("source_type IN ?", []string{
+			pojo.PlatformProfitSourceLuckyGrabCommission,
+			pojo.PlatformProfitSourceLuckyThunderCommission,
+		})
+	if start != nil && end != nil {
+		query = query.Where("created_at >= ? AND created_at < ?", *start, *end)
+	}
+	return sumAdminDashboardAmount(query, "income_amount")
 }

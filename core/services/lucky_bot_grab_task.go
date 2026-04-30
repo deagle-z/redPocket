@@ -77,7 +77,7 @@ func handleLuckyBotGrabTask(ctx context.Context, task *asynq.Task) error {
 		payload.RemainingCount = pickRandomBotGrabCount(lucky.Number - int(grabbedCount))
 	}
 
-	minBalance := lucky.Amount * lucky.LoseRate
+	minBalance := utils.Truncate2(lucky.Amount * lucky.LoseRate)
 	botUser, err := pickRandomAvailableGrabBotUser(db, payload.LuckyID, minBalance)
 	if err != nil {
 		return err

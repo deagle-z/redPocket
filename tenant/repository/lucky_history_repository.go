@@ -5,6 +5,7 @@ import (
 	"github.com/jinzhu/copier"
 	"gorm.io/gorm"
 	"strings"
+	"time"
 )
 
 func GetLuckyHistoryList(db *gorm.DB, tenantID int64, search pojo.LuckyHistorySearch) (result pojo.LuckyHistoryResp) {
@@ -37,7 +38,12 @@ func GetLuckyHistoryUserFlowList(db *gorm.DB, tenantID int64, search pojo.LuckyH
 		FlowAmount float64 `gorm:"column:flow_amount"`
 	}
 
-	query := db.Model(&pojo.LuckyHistory{}).Where("tenant_id = ?", tenantID)
+	now := time.Now()
+	todayStart := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	tomorrowStart := todayStart.AddDate(0, 0, 1)
+
+	query := db.Model(&pojo.LuckyHistory{}).
+		Where("tenant_id = ? AND created_at >= ? AND created_at < ?", tenantID, todayStart, tomorrowStart)
 	if search.UserID > 0 {
 		query = query.Where("user_id = ?", search.UserID)
 	}

@@ -22,6 +22,7 @@ const stats = ref<AdminDashboardStats>({
     betAmount: 0,
     withdrawAmount: 0,
     rebateAmount: 0,
+    platformPumpAmount: 0,
     rechargeUsers: 0
   },
   month: {
@@ -29,8 +30,10 @@ const stats = ref<AdminDashboardStats>({
     betAmount: 0,
     withdrawAmount: 0,
     rebateAmount: 0,
+    platformPumpAmount: 0,
     rechargeUsers: 0
   },
+  totalPlatformPumpAmount: 0,
   onlineUsers: 0
 });
 
@@ -104,6 +107,24 @@ const metricCards = computed(() => [
     value: formatAmount(stats.value.month.rebateAmount),
     unit: "",
     tone: "cyan"
+  },
+  {
+    title: "今日平台抽水",
+    value: formatAmount(stats.value.today.platformPumpAmount),
+    unit: "",
+    tone: "red"
+  },
+  {
+    title: "当月平台抽水",
+    value: formatAmount(stats.value.month.platformPumpAmount),
+    unit: "",
+    tone: "red"
+  },
+  {
+    title: "平台抽水总额",
+    value: formatAmount(stats.value.totalPlatformPumpAmount),
+    unit: "",
+    tone: "red"
   },
   {
     title: "在线人数",
@@ -412,6 +433,10 @@ onMounted(() => {
 
 .metric-card--cyan {
   border-top: 3px solid #06aed4;
+}
+
+.metric-card--red {
+  border-top: 3px solid #f04438;
 }
 
 .metric-card--purple {

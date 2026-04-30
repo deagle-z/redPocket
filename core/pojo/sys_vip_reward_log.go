@@ -1,12 +1,12 @@
 package pojo
 
 const (
-	VipRewardTypeUpgrade  int8 = 1 // 升级奖励
-	VipRewardTypeKeep     int8 = 2 // 保级奖励
-	VipRewardTypeManual   int8 = 3 // 手动补发
+	VipRewardTypeUpgrade int8 = 1 // 升级奖励
+	VipRewardTypeKeep    int8 = 2 // 保级奖励
+	VipRewardTypeManual  int8 = 3 // 手动补发
 
-	VipRewardStatusPending int8 = 0 // 待发放
-	VipRewardStatusDone    int8 = 1 // 已发放
+	VipRewardStatusPending int8 = 0  // 待发放
+	VipRewardStatusDone    int8 = 1  // 已发放
 	VipRewardStatusFail    int8 = -1 // 失败
 )
 
@@ -28,11 +28,11 @@ func (SysVipRewardLog) TableName() string {
 
 type SysVipRewardLogSearch struct {
 	PageInfo
-	TenantID   int64  `json:"tenantId"`
-	UserID     int64  `json:"userId"`
-	VipLevel   *int   `json:"vipLevel"`
-	RewardType *int8  `json:"rewardType"`
-	Status     *int8  `json:"status"`
+	TenantID   int64 `json:"tenantId"`
+	UserID     int64 `json:"userId"`
+	VipLevel   *int  `json:"vipLevel"`
+	RewardType *int8 `json:"rewardType"`
+	Status     *int8 `json:"status"`
 }
 
 type SysVipRewardLogBack struct {

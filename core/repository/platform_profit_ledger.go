@@ -2,6 +2,7 @@ package repository
 
 import (
 	"BaseGoUni/core/pojo"
+	"BaseGoUni/core/utils"
 	"errors"
 	"github.com/jinzhu/copier"
 	"gorm.io/gorm"
@@ -9,6 +10,8 @@ import (
 
 // CreatePlatformProfitLedgerIfAbsent 幂等写入平台盈利流水
 func CreatePlatformProfitLedgerIfAbsent(tx *gorm.DB, entity pojo.PlatformProfitLedger) error {
+	entity.IncomeAmount = utils.Truncate2(entity.IncomeAmount)
+	entity.ExpenseAmount = utils.Truncate2(entity.ExpenseAmount)
 	var existing pojo.PlatformProfitLedger
 	err := tx.Where("source_type = ? AND source_id = ?", entity.SourceType, entity.SourceId).First(&existing).Error
 	if err == nil && existing.ID > 0 {
@@ -38,10 +41,12 @@ func GetPlatformProfitLedgers(db *gorm.DB, search pojo.PlatformProfitLedgerSearc
 		query = query.Where("source_id LIKE ?", "%"+search.SourceId+"%")
 	}
 	if search.MinNet != nil {
-		query = query.Where("(income_amount - expense_amount) >= ?", *search.MinNet)
+		minNet := utils.Truncate2(*search.MinNet)
+		query = query.Where("(income_amount - expense_amount) >= ?", minNet)
 	}
 	if search.MaxNet != nil {
-		query = query.Where("(income_amount - expense_amount) <= ?", *search.MaxNet)
+		maxNet := utils.Truncate2(*search.MaxNet)
+		query = query.Where("(income_amount - expense_amount) <= ?", maxNet)
 	}
 
 	query.Count(&result.Total)
@@ -51,6 +56,9 @@ func GetPlatformProfitLedgers(db *gorm.DB, search pojo.PlatformProfitLedgerSearc
 	for _, item := range list {
 		var temp pojo.PlatformProfitLedgerBack
 		_ = copier.Copy(&temp, &item)
+		temp.IncomeAmount = utils.Truncate2(temp.IncomeAmount)
+		temp.ExpenseAmount = utils.Truncate2(temp.ExpenseAmount)
+		temp.NetAmount = utils.Truncate2(temp.NetAmount)
 		result.List = append(result.List, temp)
 	}
 
@@ -61,6 +69,8 @@ func GetPlatformProfitLedgers(db *gorm.DB, search pojo.PlatformProfitLedgerSearc
 
 // SetPlatformProfitLedger 创建或更新平台盈利流水
 func SetPlatformProfitLedger(db *gorm.DB, req pojo.PlatformProfitLedgerSet) (result pojo.PlatformProfitLedgerBack, err error) {
+	req.IncomeAmount = utils.Truncate2(req.IncomeAmount)
+	req.ExpenseAmount = utils.Truncate2(req.ExpenseAmount)
 	var entity pojo.PlatformProfitLedger
 	if req.ID > 0 {
 		db.Where("id = ?", req.ID).First(&entity)
@@ -79,6 +89,9 @@ func SetPlatformProfitLedger(db *gorm.DB, req pojo.PlatformProfitLedgerSet) (res
 
 	db.Where("id = ?", entity.ID).First(&entity)
 	_ = copier.Copy(&result, &entity)
+	result.IncomeAmount = utils.Truncate2(result.IncomeAmount)
+	result.ExpenseAmount = utils.Truncate2(result.ExpenseAmount)
+	result.NetAmount = utils.Truncate2(result.NetAmount)
 	return result, nil
 }
 
@@ -104,5 +117,8 @@ func GetPlatformProfitLedgerById(db *gorm.DB, id int64) (result pojo.PlatformPro
 		return result, errors.New("record_not_found")
 	}
 	_ = copier.Copy(&result, &entity)
+	result.IncomeAmount = utils.Truncate2(result.IncomeAmount)
+	result.ExpenseAmount = utils.Truncate2(result.ExpenseAmount)
+	result.NetAmount = utils.Truncate2(result.NetAmount)
 	return result, nil
 }

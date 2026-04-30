@@ -4,16 +4,16 @@ import "time"
 
 // SysTenantPrizePoolRecord 奖池流水表
 type SysTenantPrizePoolRecord struct {
-	ID             int64    `json:"id" gorm:"primaryKey;autoIncrement"`
-	TenantId       int64    `json:"tenantId" gorm:"type:bigint unsigned;not null;index"`  // 租户ID
-	PoolId         int64    `json:"poolId" gorm:"type:bigint unsigned;not null;index"`    // 奖池ID
-	UserId         *int64   `json:"userId" gorm:"type:bigint unsigned;index"`             // 用户ID
-	ChangeType     string   `json:"changeType" gorm:"type:varchar(16);not null"`          // 变动类型：in/out
-	Amount         float64  `json:"amount" gorm:"type:decimal(18,6);not null"`            // 变动金额
-	BeforeBalance  float64  `json:"beforeBalance" gorm:"type:decimal(18,6);not null"`     // 变动前余额
-	AfterBalance   float64  `json:"afterBalance" gorm:"type:decimal(18,6);not null"`      // 变动后余额
-	ConsumedAmount *float64 `json:"consumedAmount" gorm:"type:decimal(10,2)"`             // 本次消耗金额
-	Remark         *string  `json:"remark" gorm:"type:varchar(255)"`                      // 备注
+	ID             int64     `json:"id" gorm:"primaryKey;autoIncrement"`
+	TenantId       int64     `json:"tenantId" gorm:"type:bigint unsigned;not null;index"` // 租户ID
+	PoolId         int64     `json:"poolId" gorm:"type:bigint unsigned;not null;index"`   // 奖池ID
+	UserId         *int64    `json:"userId" gorm:"type:bigint unsigned;index"`            // 用户ID
+	ChangeType     string    `json:"changeType" gorm:"type:varchar(16);not null"`         // 变动类型：in/out
+	Amount         float64   `json:"amount" gorm:"type:decimal(18,2);not null"`           // 变动金额
+	BeforeBalance  float64   `json:"beforeBalance" gorm:"type:decimal(18,2);not null"`    // 变动前余额
+	AfterBalance   float64   `json:"afterBalance" gorm:"type:decimal(18,2);not null"`     // 变动后余额
+	ConsumedAmount *float64  `json:"consumedAmount" gorm:"type:decimal(10,2)"`            // 本次消耗金额
+	Remark         *string   `json:"remark" gorm:"type:varchar(255)"`                     // 备注
 	CreatedAt      time.Time `json:"createdAt" gorm:"column:created_at;autoCreateTime"`
 }
 

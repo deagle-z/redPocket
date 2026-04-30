@@ -22,7 +22,7 @@ func GetPrizePoolBalance(db *gorm.DB, poolCode string) (float64, error) {
 	if err != nil {
 		return 0, err
 	}
-	return pool.Balance, nil
+	return utils.Truncate2(pool.Balance), nil
 }
 
 // GetPrizePoolByCode 查询指定奖池，不存在则自动创建默认记录。
@@ -62,6 +62,7 @@ func SetPrizePoolBalance(db *gorm.DB, req pojo.SysTenantPrizePoolBalanceSet) (po
 	if req.Balance < 0 {
 		return pojo.SysTenantPrizePool{}, errors.New("pool_balance_non_negative")
 	}
+	req.Balance = utils.Truncate2(req.Balance)
 
 	var result pojo.SysTenantPrizePool
 	err := db.Transaction(func(tx *gorm.DB) error {
@@ -72,7 +73,7 @@ func SetPrizePoolBalance(db *gorm.DB, req pojo.SysTenantPrizePoolBalanceSet) (po
 
 		beforeBalance := pool.Balance
 		afterBalance := req.Balance
-		changeAmount := afterBalance - beforeBalance
+		changeAmount := utils.Truncate2(afterBalance - beforeBalance)
 		changeType := pojo.PrizePoolChangeTypeIn
 		if changeAmount < 0 {
 			changeType = pojo.PrizePoolChangeTypeOut
@@ -89,7 +90,7 @@ func SetPrizePoolBalance(db *gorm.DB, req pojo.SysTenantPrizePoolBalanceSet) (po
 			PoolId:        pool.ID,
 			ChangeType:    changeType,
 			Amount:        changeAmount,
-			BeforeBalance: beforeBalance,
+			BeforeBalance: utils.Truncate2(beforeBalance),
 			AfterBalance:  afterBalance,
 			Remark:        req.Remark,
 		}
@@ -120,6 +121,7 @@ func DepositPrizePool(tx *gorm.DB, tenantId int64, poolCode string, userId int64
 	if amount <= 0 {
 		return nil
 	}
+	amount = utils.Truncate2(amount)
 
 	// 锁定奖池行，不存在则创建
 	var pool pojo.SysTenantPrizePool
@@ -147,7 +149,7 @@ func DepositPrizePool(tx *gorm.DB, tenantId int64, poolCode string, userId int64
 	}
 
 	beforeBalance := pool.Balance
-	afterBalance := beforeBalance + amount
+	afterBalance := utils.Truncate2(beforeBalance + amount)
 
 	// 更新奖池余额
 	if err := tx.Model(&pojo.SysTenantPrizePool{}).
@@ -164,7 +166,7 @@ func DepositPrizePool(tx *gorm.DB, tenantId int64, poolCode string, userId int64
 		UserId:        userIdPtr,
 		ChangeType:    pojo.PrizePoolChangeTypeIn,
 		Amount:        amount,
-		BeforeBalance: beforeBalance,
+		BeforeBalance: utils.Truncate2(beforeBalance),
 		AfterBalance:  afterBalance,
 	}
 	if err := tx.Create(&record).Error; err != nil {
@@ -197,7 +199,7 @@ func GetUserTotalFlow(db *gorm.DB, userID int64) (float64, error) {
 		return 0, err
 	}
 
-	return grabFlow + sendFlow, nil
+	return utils.Truncate2(grabFlow + sendFlow), nil
 }
 
 // GetUsedLotteryCount 查询用户已消耗抽奖次数（user_lottery_record 记录数）
@@ -238,6 +240,7 @@ func CreateLotteryDrawRecord(db *gorm.DB, tenantID int64, poolID int64, userID i
 	if consumedAmount <= 0 {
 		return nil
 	}
+	consumedAmount = utils.Truncate2(consumedAmount)
 
 	var pool pojo.SysTenantPrizePool
 	err := gorm.ErrRecordNotFound
@@ -273,8 +276,8 @@ func CreateLotteryDrawRecord(db *gorm.DB, tenantID int64, poolID int64, userID i
 		UserId:         userIdPtr,
 		ChangeType:     pojo.PrizePoolChangeTypeOut,
 		Amount:         0,
-		BeforeBalance:  pool.Balance,
-		AfterBalance:   pool.Balance,
+		BeforeBalance:  utils.Truncate2(pool.Balance),
+		AfterBalance:   utils.Truncate2(pool.Balance),
 		ConsumedAmount: &consumedAmount,
 		Remark:         remark,
 	}
@@ -298,6 +301,6 @@ func broadcastPrizePoolThrottled(tenantId int64, poolCode string, balance float6
 	_ = utils.BroadcastWsWithType("prize_pool_balance", map[string]interface{}{
 		"tenantId": tenantId,
 		"poolCode": poolCode,
-		"balance":  balance,
+		"balance":  utils.Truncate2(balance),
 	})
 }

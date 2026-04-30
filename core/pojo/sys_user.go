@@ -13,8 +13,8 @@ type SysUser struct {
 	Password    string   `yaml:"password" json:"password" gorm:"type:varchar(64);"`             // 密码
 	Enabled     bool     `yaml:"enabled" json:"enabled"`                                        // 是否启用
 	Ip          string   `yaml:"ip" json:"ip" gorm:"type:varchar(64);"`                         // 最近登录ip
-	Amount      float64  `yaml:"amount" json:"amount" gorm:"type:numeric(20,3);"`               // 可提现额度
-	TopAmount   float64  `yaml:"topAmount" json:"topAmount" gorm:"type:numeric(20,3);"`         // 累计可提现额度
+	Amount      float64  `yaml:"amount" json:"amount" gorm:"type:numeric(20,2);"`               // 可提现额度
+	TopAmount   float64  `yaml:"topAmount" json:"topAmount" gorm:"type:numeric(20,2);"`         // 累计可提现额度
 	GoogleCode  string   `yaml:"google_code" json:"google_code" gorm:"type:varchar(64);"`       // 验证器
 	BindCode    bool     `yaml:"bindCode" json:"bindCode"`                                      // 是否绑定验证器
 	Mark        string   `yaml:"mark" json:"mark" gorm:"type:text;"`                            // 备注

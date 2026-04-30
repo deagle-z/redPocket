@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { LuckyWheel } from '@lucky-canvas/vue'
 import { showToast } from 'vant'
 import { drawLottery, getLotteryChances, getPrizePoolBalance, getPrizePoolOutRecords } from '@/api/user'
+import { truncate2 } from '@/utils/currency'
 import imgCoin from '@/assets/svg/coin.svg'
 
 interface PageData {
@@ -263,10 +264,14 @@ async function loadLotteryHistory(limit = 10) {
 }
 
 function formatAwardText(value: number) {
-  const numericValue = Number(value || 0)
+  const numericValue = truncate2(Number(value || 0))
   if (Number.isInteger(numericValue))
     return String(numericValue)
   return numericValue.toFixed(2).replace(/\.?0+$/, '')
+}
+
+function formatPlainAmount(value: number) {
+  return truncate2(Number(value || 0)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
 function buildRewardSlots(amounts: number[]) {
@@ -453,7 +458,7 @@ onBeforeUnmount(() => {
         </p>
         <div class="jp-amount-row">
           <img :src="imgCoin" class="jp-coin" alt="">
-          <span class="jp-amount">{{ Math.floor(jackpotDisplay).toLocaleString('en-US') }}</span>
+          <span class="jp-amount">{{ formatPlainAmount(jackpotDisplay) }}</span>
         </div>
       </div>
 

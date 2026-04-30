@@ -2,7 +2,6 @@ package utils
 
 import (
 	"fmt"
-	"math"
 	"math/rand/v2"
 	"strconv"
 	"strings"
@@ -16,52 +15,52 @@ import (
 // 返回: 红包金额数组
 func RedEnvelope(totalAmount float64, totalCount int, minAmount float64, maxAmount float64) []float64 {
 	result := make([]float64, 0, totalCount)
-	leftCents := int64(math.Round(totalAmount * 100)) // 剩余金额(分)
-	leftCount := totalCount                           // 剩余个数
-	minCents := int64(math.Round(minAmount * 100))
-	maxCents := int64(math.Round(maxAmount * 100))
-	if minCents < 1 {
-		minCents = 1
+	leftUnits := int64(ToMoney(totalAmount)) // 剩余金额，按 0.01 计
+	leftCount := totalCount                  // 剩余个数
+	minUnits := int64(ToMoney(minAmount))
+	maxUnits := int64(ToMoney(maxAmount))
+	if minUnits < 1 {
+		minUnits = 1
 	}
 
 	for i := 1; i <= totalCount; i++ {
 		if leftCount == 1 {
 			// 最后一个红包，剩余金额全部放入红包
-			lastCents := leftCents
+			lastUnits := leftUnits
 			// 确保不是整数（末两位不为00）
-			if lastCents%100 == 0 && len(result) > 0 {
+			if lastUnits%100 == 0 && len(result) > 0 {
 				for idx := 0; idx < len(result); idx++ {
-					prevCents := int64(math.Round(result[idx] * 100))
-					// 尝试从前一个红包挪1分给最后一个
-					if prevCents-1 >= minCents && (prevCents-1)%100 != 0 && lastCents+1 <= maxCents && (lastCents+1)%100 != 0 {
-						prevCents -= 1
-						lastCents += 1
-						result[idx] = float64(prevCents) / 100
+					prevUnits := int64(ToMoney(result[idx]))
+					// 尝试从前一个红包挪0.01给最后一个
+					if prevUnits-1 >= minUnits && (prevUnits-1)%100 != 0 && lastUnits+1 <= maxUnits && (lastUnits+1)%100 != 0 {
+						prevUnits -= 1
+						lastUnits += 1
+						result[idx] = float64(prevUnits) / 100
 						break
 					}
-					// 或者从最后一个挪1分给前一个
-					if prevCents+1 <= maxCents && (prevCents+1)%100 != 0 && lastCents-1 >= minCents && (lastCents-1)%100 != 0 {
-						prevCents += 1
-						lastCents -= 1
-						result[idx] = float64(prevCents) / 100
+					// 或者从最后一个挪0.01给前一个
+					if prevUnits+1 <= maxUnits && (prevUnits+1)%100 != 0 && lastUnits-1 >= minUnits && (lastUnits-1)%100 != 0 {
+						prevUnits += 1
+						lastUnits -= 1
+						result[idx] = float64(prevUnits) / 100
 						break
 					}
 				}
 			}
-			result = append(result, float64(lastCents)/100)
+			result = append(result, float64(lastUnits)/100)
 		} else {
-			// 计算随机金额（分）
-			max := minInt64(maxCents, leftCents-int64(leftCount-1)*minCents) // 红包最大金额不能超过剩余金额和最大金额的较小值
-			min := maxInt64(minCents, leftCents-int64(leftCount-1)*maxCents) // 红包最小金额不能低于剩余金额和最小金额的较大值
-			amountCents := randomCentsNotInteger(min, max)
+			// 计算随机金额（0.01）
+			max := minInt64(maxUnits, leftUnits-int64(leftCount-1)*minUnits) // 红包最大金额不能超过剩余金额和最大金额的较小值
+			min := maxInt64(minUnits, leftUnits-int64(leftCount-1)*maxUnits) // 红包最小金额不能低于剩余金额和最小金额的较大值
+			amountUnits := randomUnitsNotInteger(min, max)
 			// 如果只剩最后一个红包且会是整数，重试
 			if leftCount == 2 {
-				for tries := 0; tries < 20 && (leftCents-amountCents)%100 == 0; tries++ {
-					amountCents = randomCentsNotInteger(min, max)
+				for tries := 0; tries < 20 && (leftUnits-amountUnits)%100 == 0; tries++ {
+					amountUnits = randomUnitsNotInteger(min, max)
 				}
 			}
-			result = append(result, float64(amountCents)/100)
-			leftCents -= amountCents
+			result = append(result, float64(amountUnits)/100)
+			leftUnits -= amountUnits
 			leftCount--
 		}
 	}
@@ -74,22 +73,22 @@ func RandomFloat() float64 {
 	return rand.Float64()
 }
 
-func randomCentsNotInteger(minCents int64, maxCents int64) int64 {
-	if minCents > maxCents {
-		return minCents
+func randomUnitsNotInteger(minUnits int64, maxUnits int64) int64 {
+	if minUnits > maxUnits {
+		return minUnits
 	}
 	for i := 0; i < 20; i++ {
-		amount := minCents + rand.Int64N(maxCents-minCents+1)
+		amount := minUnits + rand.Int64N(maxUnits-minUnits+1)
 		if amount%100 != 0 {
 			return amount
 		}
 	}
-	// fallback: 调整1分避免整数
-	amount := minCents
+	// fallback: 调整0.01避免整数
+	amount := minUnits
 	if amount%100 == 0 {
-		if amount+1 <= maxCents {
+		if amount+1 <= maxUnits {
 			amount++
-		} else if amount-1 >= minCents {
+		} else if amount-1 >= minUnits {
 			amount--
 		}
 	}

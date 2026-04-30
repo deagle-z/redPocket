@@ -197,6 +197,9 @@ func GetSysTenantById(db *gorm.DB, id int64) (result pojo.SysTenantBack, err err
 }
 
 func GetCurrentTenantServiceLinks(db *gorm.DB, tenantID int64, host string) (result pojo.SysTenantServiceLinksBack, err error) {
+	if tenantID <= 0 {
+		return result, errors.New("tenant_not_found")
+	}
 	cacheKey := tenantServiceLinksCacheKey(tenantID, host)
 	if cacheKey != "" {
 		if cached, ok := getTenantServiceLinksCache(cacheKey); ok {
@@ -206,15 +209,7 @@ func GetCurrentTenantServiceLinks(db *gorm.DB, tenantID int64, host string) (res
 
 	var dbTenant pojo.SysTenant
 	query := db.Model(&pojo.SysTenant{}).Where("status = ?", 1)
-	if tenantID > 0 {
-		query = query.Where("id = ?", tenantID)
-	} else {
-		candidates := tenantHostCandidates(host)
-		if len(candidates) == 0 {
-			return result, errors.New("tenant_not_found")
-		}
-		query = query.Where("bind_domain IN ?", candidates)
-	}
+	query = query.Where("id = ?", tenantID)
 	if err = query.First(&dbTenant).Error; err != nil {
 		return result, errors.New("tenant_not_found")
 	}

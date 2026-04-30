@@ -14,7 +14,7 @@ import NProgress from "../progress";
 import { getToken, formatToken, removeToken } from "@/utils/auth";
 import { useUserStoreHook } from "@/store/modules/user";
 import router from "@/router";
-import { log } from "console";
+import { message } from "@/utils/message";
 
 // 相关配置请参考：www.axios-js.com/zh-cn/docs/#axios-request-config-1
 const defaultConfig: AxiosRequestConfig = {
@@ -29,6 +29,25 @@ const defaultConfig: AxiosRequestConfig = {
   paramsSerializer: {
     serialize: stringify as unknown as CustomParamsSerializer
   }
+};
+
+type ApiResponse = {
+  code?: number;
+  message?: string;
+  success?: boolean;
+};
+
+const isApiResponse = (data: unknown): data is ApiResponse =>
+  Object.prototype.toString.call(data) === "[object Object]";
+
+const isBusinessError = (data: ApiResponse): boolean => {
+  const hasSuccess = typeof data.success === "boolean";
+  const hasCode = typeof data.code === "number";
+
+  return (
+    (hasSuccess && data.success === false) ||
+    (hasCode && ![0, 200].includes(data.code))
+  );
 };
 
 class PureHttp {
@@ -131,6 +150,11 @@ class PureHttp {
         if (PureHttp.initConfig.beforeResponseCallback) {
           PureHttp.initConfig.beforeResponseCallback(response);
           return response.data;
+        }
+        if (isApiResponse(response.data) && isBusinessError(response.data)) {
+          const errorMessage = response.data.message || "请求失败";
+          message(errorMessage, { type: "error" });
+          return Promise.reject(response.data);
         }
         return response.data;
       },

@@ -3,7 +3,7 @@ import { onBeforeUnmount, watch } from 'vue'
 import { showToast } from 'vant'
 import { grabLuckyPacket } from '@/api/user'
 import { resolveOddEvenGuess } from '@/utils/lucky-play'
-import { formatCurrency } from '@/utils/currency'
+import { formatCurrency, formatCurrencyPlain } from '@/utils/currency'
 import imgCoin from '@/assets/svg/coin.svg'
 
 interface Props {
@@ -40,11 +40,13 @@ const loading = ref(false)
 const resultReady = ref(false)
 const resultAmountText = ref('')
 const resultAmountValue = ref(0)
+const actualAmountText = ref('')
 const isAmountHidden = ref(false)
 const isThunderHit = ref(false)
 const currentGameMode = ref<0 | 1 | null>(null)
 const loseMoneyText = ref(formatCurrency(0))
 const resultMessageText = ref('')
+const resultToastText = ref('')
 const resolvedOddEvenGuess = computed(() => resolveOddEvenGuess(props.choice))
 const displayAmountText = computed(() => {
   if (!resultReady.value)
@@ -68,11 +70,13 @@ function resetState() {
   resultReady.value = false
   resultAmountText.value = ''
   resultAmountValue.value = 0
+  actualAmountText.value = ''
   isAmountHidden.value = false
   isThunderHit.value = false
   currentGameMode.value = null
   loseMoneyText.value = formatCurrency(0)
   resultMessageText.value = ''
+  resultToastText.value = ''
 }
 
 function closeModal() {
@@ -115,7 +119,11 @@ function formatAmount(value: number) {
   return formatCurrency(Number(value || 0))
 }
 
-function resolveResultMessage(data: any) {
+function formatPlainAmount(value: number) {
+  return formatCurrencyPlain(Number(value || 0))
+}
+
+function resolveResultMessage(data: any, amountText = actualAmountText.value, loseText = loseMoneyText.value) {
   const gameMode = Number(data?.gameMode)
   const guess = Number(data?.guess ?? data?.oddEvenGuess ?? resolvedOddEvenGuess.value ?? -1)
   const guessLabel = guess === 1 ? t('grabModal.guessOdd') : t('grabModal.guessEven')
@@ -124,20 +132,20 @@ function resolveResultMessage(data: any) {
     if (isThunderHit.value) {
       return t('grabModal.parityLose', {
         guess: guessLabel,
-        amount: resultAmountText.value,
-        loseMoney: loseMoneyText.value,
+        amount: amountText,
+        loseMoney: loseText,
       })
     }
     return t('grabModal.parityWin', {
       guess: guessLabel,
-      amount: resultAmountText.value,
+      amount: amountText,
     })
   }
 
   if (isThunderHit.value)
-    return t('grabModal.thunder', { amount: resultAmountText.value, loseMoney: loseMoneyText.value })
+    return t('grabModal.thunder', { amount: amountText, loseMoney: loseText })
 
-  return t('grabModal.winAmount', { amount: resultAmountText.value })
+  return t('grabModal.winAmount', { amount: amountText })
 }
 
 async function submitGrab(): Promise<boolean> {
@@ -159,14 +167,17 @@ async function submitGrab(): Promise<boolean> {
     isThunderHit.value = data?.isThunder === 1 || data?.isThunder === '1'
     isAmountHidden.value = data?.isAmountHidden === 1 || data?.isAmountHidden === '1'
     const rawAmount = Number(data?.amount ?? data?.grabAmount ?? 0)
+    const rawActualAmount = Number(data?.actualAmount ?? rawAmount)
     const rawLoseMoney = Number(data?.loseMoney ?? 0)
     resultAmountValue.value = rawAmount
     resultAmountText.value = formatAmount(rawAmount)
+    actualAmountText.value = formatAmount(rawActualAmount)
     loseMoneyText.value = formatAmount(rawLoseMoney)
     resultMessageText.value = resolveResultMessage(data)
+    resultToastText.value = resolveResultMessage(data, formatPlainAmount(rawActualAmount), formatPlainAmount(rawLoseMoney))
     resultReady.value = true
     if (props.showResultToast)
-      showToast(resultMessageText.value || data?.message || t('grabModal.grabSuccess'))
+      showToast(resultToastText.value || data?.message || t('grabModal.grabSuccess'))
     const emitData = isAmountHidden.value
       ? {
           ...data,

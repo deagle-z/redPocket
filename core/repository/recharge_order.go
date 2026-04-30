@@ -93,6 +93,19 @@ func GetRechargeOrders(db *gorm.DB, search pojo.RechargeOrderSearch) (result poj
 
 // SetRechargeOrder 创建或更新充值订单
 func SetRechargeOrder(db *gorm.DB, req pojo.RechargeOrderSet) (result pojo.RechargeOrderBack, err error) {
+	if req.Amount > 0 {
+		req.Amount = utils.Truncate2(req.Amount)
+	}
+	if req.Fee > 0 {
+		req.Fee = utils.Truncate2(req.Fee)
+	}
+	if req.CreditAmount != nil {
+		creditAmount := utils.Truncate2(*req.CreditAmount)
+		req.CreditAmount = &creditAmount
+	}
+	if req.BonusAmount > 0 {
+		req.BonusAmount = utils.Truncate2(req.BonusAmount)
+	}
 	var dbOrder pojo.RechargeOrder
 	if req.ID > 0 {
 		db.Where("id = ?", req.ID).First(&dbOrder)
@@ -146,6 +159,7 @@ func AppCreateRechargeOrder(db *gorm.DB, userID int64, req pojo.RechargeOrderApp
 	if req.Amount <= 0 {
 		return result, errors.New("recharge_amount_positive")
 	}
+	req.Amount = utils.Truncate2(req.Amount)
 	if req.Channel == "" {
 		return result, errors.New("recharge_channel_required")
 	}
@@ -221,7 +235,7 @@ func AppCreateRechargeOrder(db *gorm.DB, userID int64, req pojo.RechargeOrderApp
 		ExtraFields: req.ExtraFields,
 	})
 	if err != nil {
-		log.Printf("[AppCreateRechargeOrder] 三方创建订单失败 userID=%d orderNo=%s channel=%s amount=%.3f err=%v", userID, orderNo, req.Channel, req.Amount, err)
+		log.Printf("[AppCreateRechargeOrder] 三方创建订单失败 userID=%d orderNo=%s channel=%s amount=%.2f err=%v", userID, orderNo, req.Channel, req.Amount, err)
 		return result, err
 	}
 
@@ -269,7 +283,7 @@ func AppCreateRechargeOrder(db *gorm.DB, userID int64, req pojo.RechargeOrderApp
 			return result, err
 		}
 	}
-	log.Printf("[AppCreateRechargeOrder] 订单创建成功 userID=%d orderNo=%s channel=%s amount=%.3f activityType=%d", userID, orderNo, req.Channel, req.Amount, req.ActivityType)
+	log.Printf("[AppCreateRechargeOrder] 订单创建成功 userID=%d orderNo=%s channel=%s amount=%.2f activityType=%d", userID, orderNo, req.Channel, req.Amount, req.ActivityType)
 
 	result = pojo.RechargeOrderAppBack{
 		OrderNo:         order.OrderNo,
@@ -315,11 +329,11 @@ func ProcessRechargeOrderSuccess(db *gorm.DB, orderNo string, providerTradeNo st
 		isFirstRecharge := user.RechargeAmount <= 0
 		bonusAmount := 0.0
 		if isFirstRecharge {
-			bonusAmount = getRechargeGiftAmount(tablePrefix)
+			bonusAmount = utils.Truncate2(getRechargeGiftAmount(tablePrefix))
 		}
 
 		now := time.Now()
-		creditAmount := order.Amount - order.Fee + bonusAmount
+		creditAmount := utils.Truncate2(order.Amount - order.Fee + bonusAmount)
 		if creditAmount < 0 {
 			creditAmount = 0
 		}
@@ -356,7 +370,7 @@ func ProcessRechargeOrderSuccess(db *gorm.DB, orderNo string, providerTradeNo st
 			AwardUni:        fmt.Sprintf("recharge_%s", order.OrderNo),
 			Amount:          creditAmount,
 			StartAmount:     user.Balance,
-			EndAmount:       user.Balance + creditAmount,
+			EndAmount:       utils.Truncate2(user.Balance + creditAmount),
 			CashMark:        "充值到账",
 			CashDesc:        fmt.Sprintf("充值订单%s到账", order.OrderNo),
 			Type:            pojo.CashHistoryTypeRechargeCredit,
@@ -373,10 +387,10 @@ func ProcessRechargeOrderSuccess(db *gorm.DB, orderNo string, providerTradeNo st
 				UserId:          user.ID,
 				AwardUni:        fmt.Sprintf("recharge_gift_%s", order.OrderNo),
 				Amount:          bonusAmount,
-				StartAmount:     user.Balance + order.Amount - order.Fee,
-				EndAmount:       user.Balance + creditAmount,
+				StartAmount:     utils.Truncate2(user.Balance + order.Amount - order.Fee),
+				EndAmount:       utils.Truncate2(user.Balance + creditAmount),
 				CashMark:        "首充赠送",
-				CashDesc:        fmt.Sprintf("首充赠送彩金%s，赠送%.3f", order.OrderNo, bonusAmount),
+				CashDesc:        fmt.Sprintf("首充赠送彩金%s，赠送%.2f", order.OrderNo, bonusAmount),
 				Type:            pojo.CashHistoryTypeRechargeCredit,
 				IsGift:          1,
 				FromUserId:      0,
@@ -482,11 +496,11 @@ func rechargeOrderDevCallback(db *gorm.DB, orderNo string, tablePrefix string) e
 		isFirstRecharge := user.RechargeAmount <= 0
 		bonusAmount := 0.0
 		if isFirstRecharge {
-			bonusAmount = getRechargeGiftAmount(tablePrefix)
+			bonusAmount = utils.Truncate2(getRechargeGiftAmount(tablePrefix))
 		}
 
 		now := time.Now()
-		creditAmount := order.Amount - order.Fee + bonusAmount
+		creditAmount := utils.Truncate2(order.Amount - order.Fee + bonusAmount)
 		if creditAmount < 0 {
 			creditAmount = 0
 		}
@@ -525,7 +539,7 @@ func rechargeOrderDevCallback(db *gorm.DB, orderNo string, tablePrefix string) e
 			AwardUni:        fmt.Sprintf("recharge_%s", order.OrderNo),
 			Amount:          creditAmount,
 			StartAmount:     user.Balance,
-			EndAmount:       user.Balance + creditAmount,
+			EndAmount:       utils.Truncate2(user.Balance + creditAmount),
 			CashMark:        "充值到账",
 			CashDesc:        fmt.Sprintf("充值订单%s到账", order.OrderNo),
 			Type:            pojo.CashHistoryTypeRechargeCredit,
@@ -542,10 +556,10 @@ func rechargeOrderDevCallback(db *gorm.DB, orderNo string, tablePrefix string) e
 				UserId:          user.ID,
 				AwardUni:        fmt.Sprintf("recharge_gift_%s", order.OrderNo),
 				Amount:          bonusAmount,
-				StartAmount:     user.Balance + order.Amount - order.Fee,
-				EndAmount:       user.Balance + creditAmount,
+				StartAmount:     utils.Truncate2(user.Balance + order.Amount - order.Fee),
+				EndAmount:       utils.Truncate2(user.Balance + creditAmount),
 				CashMark:        "首充赠送",
-				CashDesc:        fmt.Sprintf("首充赠送彩金%s，赠送%.3f", order.OrderNo, bonusAmount),
+				CashDesc:        fmt.Sprintf("首充赠送彩金%s，赠送%.2f", order.OrderNo, bonusAmount),
 				Type:            pojo.CashHistoryTypeRechargeCredit,
 				IsGift:          1,
 				FromUserId:      0,
@@ -654,7 +668,7 @@ func applyTodayFirstRechargeGift(tx *gorm.DB, order pojo.RechargeOrder, user poj
 		return nil
 	}
 
-	giftAmount := utils.ToMoney(order.Amount).Multiply(rate / 100).ToDollars()
+	giftAmount := utils.Truncate2(utils.ToMoney(order.Amount).Multiply(rate / 100).ToDollars())
 	if giftAmount <= 0 {
 		return nil
 	}
@@ -671,13 +685,13 @@ func applyTodayFirstRechargeGift(tx *gorm.DB, order pojo.RechargeOrder, user poj
 	}
 
 	awardUni := fmt.Sprintf("%s_%s", awardUniPrefix, order.OrderNo)
-	desc := fmt.Sprintf("%s%.3f，订单%s，充值金额%.3f，赠送比例%.2f%%", cashMark, giftAmount, order.OrderNo, order.Amount, rate)
+	desc := fmt.Sprintf("%s%.2f，订单%s，充值金额%.2f，赠送比例%.2f%%", cashMark, giftAmount, order.OrderNo, order.Amount, rate)
 	history := pojo.CashHistory{
 		UserId:          user.ID,
 		AwardUni:        awardUni,
 		Amount:          giftAmount,
 		StartAmount:     user.Balance,
-		EndAmount:       user.Balance + giftAmount,
+		EndAmount:       utils.Truncate2(user.Balance + giftAmount),
 		CashMark:        cashMark,
 		CashDesc:        desc,
 		Type:            pojo.CashHistoryTypeRechargeCredit,
@@ -762,7 +776,7 @@ func buildFirstRechargeGiftInstallments(orderAmount float64, baseTime time.Time,
 		result = append(result, firstRechargeGiftInstallment{
 			Index:      i + 1,
 			Ratio:      ratio,
-			GiftAmount: amountMoney.ToDollars(),
+			GiftAmount: utils.Truncate2(amountMoney.ToDollars()),
 			ExecuteAt:  baseTime.Add(time.Duration(i) * 24 * time.Hour),
 		})
 	}
@@ -797,7 +811,7 @@ func applyFirstRechargeGiftInstallment(tx *gorm.DB, order pojo.RechargeOrder, us
 	}
 
 	desc := fmt.Sprintf(
-		"首充活动赠送第%d天，订单%s，充值金额%.3f，赠送比例%.2f%%，分段比例%d/%d，赠送%.3f",
+		"首充活动赠送第%d天，订单%s，充值金额%.2f，赠送比例%.2f%%，分段比例%d/%d，赠送%.2f",
 		installment.Index,
 		order.OrderNo,
 		order.Amount,
@@ -811,7 +825,7 @@ func applyFirstRechargeGiftInstallment(tx *gorm.DB, order pojo.RechargeOrder, us
 		AwardUni:        awardUni,
 		Amount:          installment.GiftAmount,
 		StartAmount:     user.Balance,
-		EndAmount:       user.Balance + installment.GiftAmount,
+		EndAmount:       utils.Truncate2(user.Balance + installment.GiftAmount),
 		CashMark:        "首充活动赠送",
 		CashDesc:        desc,
 		Type:            pojo.CashHistoryTypeRechargeCredit,
@@ -873,6 +887,7 @@ func ApplyFirstRechargeGiftInstallmentByOrderNo(db *gorm.DB, orderNo string, ins
 	if strings.TrimSpace(orderNo) == "" || installmentIndex <= 0 || giftAmount <= 0 {
 		return nil
 	}
+	giftAmount = utils.Truncate2(giftAmount)
 
 	return db.Transaction(func(tx *gorm.DB) error {
 		var order pojo.RechargeOrder
@@ -900,7 +915,7 @@ func applyInviteFirstRechargeReward(tx *gorm.DB, order pojo.RechargeOrder, subUs
 		return nil
 	}
 
-	rebateAmount := utils.ToMoney(order.Amount).Multiply(rate / 100).ToDollars()
+	rebateAmount := utils.Truncate2(utils.ToMoney(order.Amount).Multiply(rate / 100).ToDollars())
 	if rebateAmount <= 0 {
 		return nil
 	}
@@ -994,12 +1009,12 @@ func getRechargeGiftAmount(tablePrefix string) float64 {
 	if err != nil || amount < 0 {
 		return 0
 	}
-	return amount
+	return utils.Truncate2(amount)
 }
 
 func clampRechargeRestrictedCredit(amount float64) float64 {
 	if amount <= 0 {
 		return 0
 	}
-	return amount
+	return utils.Truncate2(amount)
 }

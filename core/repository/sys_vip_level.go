@@ -2,6 +2,7 @@ package repository
 
 import (
 	"BaseGoUni/core/pojo"
+	"BaseGoUni/core/utils"
 	"errors"
 	"fmt"
 	"github.com/jinzhu/copier"
@@ -104,6 +105,7 @@ func GetAppVipProgress(db *gorm.DB, userID int64) (pojo.AppVipProgressBack, erro
 		Select("COALESCE(SUM(amount), 0)").
 		Where("user_id = ? AND status = 1 AND pay_time >= ?", userID, monthStart).
 		Scan(&monthRechargeAmount)
+	monthRechargeAmount = utils.Truncate2(monthRechargeAmount)
 
 	// 累计下注流水（lucky_history 中 amount + lose_money 之和）
 	var totalBetAmount float64
@@ -111,6 +113,7 @@ func GetAppVipProgress(db *gorm.DB, userID int64) (pojo.AppVipProgressBack, erro
 		Select("COALESCE(SUM(amount + lose_money), 0)").
 		Where("user_id = ?", userID).
 		Scan(&totalBetAmount)
+	totalBetAmount = utils.Truncate2(totalBetAmount)
 
 	currentLevel := 0
 	if user.VipLevel != nil {
@@ -141,7 +144,7 @@ func GetAppVipProgress(db *gorm.DB, userID int64) (pojo.AppVipProgressBack, erro
 		return &pojo.AppVipLevelSimple{
 			Level:              lv.Level,
 			LevelName:          lv.LevelName,
-			UpgradeBonusAmount: lv.UpgradeBonusAmount,
+			UpgradeBonusAmount: utils.Truncate2(lv.UpgradeBonusAmount),
 		}
 	}
 	result.CurrentLevel = toSimple(curRow)
@@ -151,13 +154,13 @@ func GetAppVipProgress(db *gorm.DB, userID int64) (pojo.AppVipProgressBack, erro
 	// 计算进度
 	if nextRow == nil {
 		result.Progress = 100
-		result.CurrentValue = user.RechargeAmount
+		result.CurrentValue = utils.Truncate2(user.RechargeAmount)
 		result.TargetValue = 0
 		result.NextBonusAmount = 0
 		return result, nil
 	}
 
-	result.NextBonusAmount = nextRow.UpgradeBonusAmount
+	result.NextBonusAmount = utils.Truncate2(nextRow.UpgradeBonusAmount)
 
 	upgradeType := 1
 	if nextRow.UpgradeType != nil {
@@ -166,16 +169,16 @@ func GetAppVipProgress(db *gorm.DB, userID int64) (pojo.AppVipProgressBack, erro
 
 	if upgradeType == 2 {
 		// 当月模式：仅看充值金额
-		result.CurrentValue = monthRechargeAmount
+		result.CurrentValue = utils.Truncate2(monthRechargeAmount)
 		if nextRow.MonthRechargeAmount != nil {
-			result.TargetValue = *nextRow.MonthRechargeAmount
+			result.TargetValue = utils.Truncate2(*nextRow.MonthRechargeAmount)
 		}
 		if result.TargetValue > 0 {
 			p := result.CurrentValue / result.TargetValue * 100
 			if p > 100 {
 				p = 100
 			}
-			result.Progress = p
+			result.Progress = utils.Truncate2(p)
 		}
 	} else {
 		// 累计模式：充值金额和下注流水各占50%，两项进度的均值
@@ -205,10 +208,10 @@ func GetAppVipProgress(db *gorm.DB, userID int64) (pojo.AppVipProgressBack, erro
 			betProgress = 100
 		}
 
-		result.Progress = (rechargeProgress + betProgress) / 2
+		result.Progress = utils.Truncate2((rechargeProgress + betProgress) / 2)
 		// CurrentValue / TargetValue 展示充值维度（主要指标）
-		result.CurrentValue = user.RechargeAmount
-		result.TargetValue = rechargeTarget
+		result.CurrentValue = utils.Truncate2(user.RechargeAmount)
+		result.TargetValue = utils.Truncate2(rechargeTarget)
 	}
 
 	return result, nil
@@ -242,6 +245,7 @@ func CheckAndUpgradeVipLevel(db *gorm.DB, userID int64) {
 		Select("COALESCE(SUM(amount), 0)").
 		Where("user_id = ? AND status = 1 AND pay_time >= ?", userID, monthStart).
 		Scan(&monthRechargeAmount)
+	monthRechargeAmount = utils.Truncate2(monthRechargeAmount)
 
 	// 5. 统计累计下注流水（lucky_history 中 amount + lose_money 之和）
 	var totalBetAmount float64
@@ -249,6 +253,7 @@ func CheckAndUpgradeVipLevel(db *gorm.DB, userID int64) {
 		Select("COALESCE(SUM(amount + lose_money), 0)").
 		Where("user_id = ?", userID).
 		Scan(&totalBetAmount)
+	totalBetAmount = utils.Truncate2(totalBetAmount)
 
 	// 6. 找出用户能达到的最高等级
 	currentLevel := 0
@@ -353,7 +358,7 @@ func ClaimVipReward(db *gorm.DB, userID int64, rewardLogID int64, tablePrefix st
 
 		totalBonus := 0.0
 		for _, item := range logs {
-			totalBonus += item.BonusAmount
+			totalBonus = utils.Truncate2(totalBonus + item.BonusAmount)
 		}
 
 		// 更新用户余额
@@ -382,7 +387,7 @@ func ClaimVipReward(db *gorm.DB, userID int64, rewardLogID int64, tablePrefix st
 				AwardUni:    fmt.Sprintf("vip_reward_%d", item.ID),
 				Amount:      item.BonusAmount,
 				StartAmount: runningBalance,
-				EndAmount:   runningBalance + item.BonusAmount,
+				EndAmount:   utils.Truncate2(runningBalance + item.BonusAmount),
 				CashMark:    "VIP升级奖励",
 				CashDesc:    fmt.Sprintf("领取%s升级奖励 %.2f", item.LevelName, item.BonusAmount),
 				Type:        pojo.CashHistoryTypeAdminManualAward,
@@ -392,7 +397,7 @@ func ClaimVipReward(db *gorm.DB, userID int64, rewardLogID int64, tablePrefix st
 			if err := tx.Create(&history).Error; err != nil {
 				return err
 			}
-			runningBalance += item.BonusAmount
+			runningBalance = utils.Truncate2(runningBalance + item.BonusAmount)
 		}
 		return nil
 	})

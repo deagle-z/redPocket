@@ -5,12 +5,14 @@ export type AdminDashboardPeriodStats = {
   betAmount: number;
   withdrawAmount: number;
   rebateAmount: number;
+  platformPumpAmount: number;
   rechargeUsers: number;
 };
 
 export type AdminDashboardStats = {
   today: AdminDashboardPeriodStats;
   month: AdminDashboardPeriodStats;
+  totalPlatformPumpAmount: number;
   onlineUsers: number;
 };
 

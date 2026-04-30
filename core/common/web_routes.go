@@ -301,7 +301,6 @@ func InitGin() {
 		appRouter.GET("/prizePool/balance", api.GetPrizePoolBalanceApp) // 不校验token
 		appRouter.POST("/banners", api.GetAppBanners)                   // 轮播图按position分组
 		appRouter.GET("/config/:key", api.GetAppSysConfig)              // 根据key获取系统配置
-		appRouter.GET("/tenant/serviceLinks", api.GetAppTenantServiceLinks)
 	}
 
 	appAuthRouter := router.Group("/api/v1/app")
@@ -319,6 +318,7 @@ func InitGin() {
 		appAuthRouter.POST("/tg/name", api.UpdateCurrentTgUserName)
 		appAuthRouter.POST("/tg/bindEmail", api.BindCurrentTgEmail)
 		appAuthRouter.POST("/tg/audioOpen", api.SetAudioOpen)
+		appAuthRouter.GET("/tenant/serviceLinks", api.GetAppTenantServiceLinks)
 		appAuthRouter.GET("/tg/inviteStats", api.GetCurrentTgInviteStats)
 		appAuthRouter.GET("/tg/inviteRuleConfig", api.GetCurrentTgInviteRuleConfig)
 		appAuthRouter.POST("/tg/rebate/transfer", api.TransferRebateToBalance)

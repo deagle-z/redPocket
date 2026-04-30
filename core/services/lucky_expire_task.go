@@ -100,7 +100,7 @@ func refundExpiredLuckyMoney(db *gorm.DB, tablePrefix string, luckyID int64) err
 			return nil
 		}
 
-		refundAmount := lucky.Amount - lucky.Received
+		refundAmount := utils.Truncate2(lucky.Amount - lucky.Received)
 		if refundAmount < 0 {
 			refundAmount = 0
 		}
@@ -138,9 +138,9 @@ func refundExpiredLuckyMoney(db *gorm.DB, tablePrefix string, luckyID int64) err
 			AwardUni:        fmt.Sprintf("lucky_expire_refund_%d", lucky.ID),
 			Amount:          refundAmount,
 			StartAmount:     sender.Balance,
-			EndAmount:       sender.Balance + refundAmount,
+			EndAmount:       utils.Truncate2(sender.Balance + refundAmount),
 			CashMark:        "红包过期退回",
-			CashDesc:        fmt.Sprintf("红包#%d过期，退回未抢金额%.3f", lucky.ID, refundAmount),
+			CashDesc:        fmt.Sprintf("红包#%d过期，退回未抢金额%.2f", lucky.ID, refundAmount),
 			Type:            pojo.CashHistoryTypeLuckyExpireRefund,
 			IsGift:          0,
 			FromUserId:      0,

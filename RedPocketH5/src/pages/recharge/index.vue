@@ -14,7 +14,7 @@ import {
 } from '@/api/user'
 import AppPageHeader from '@/components/AppPageHeader.vue'
 import { useUserStore } from '@/stores'
-import { formatCurrency } from '@/utils/currency'
+import { formatCurrency, truncate2 } from '@/utils/currency'
 
 const { t } = useI18n()
 const router = useRouter()
@@ -66,17 +66,18 @@ function parseFirstRechargeGiftConfig(raw: string) {
 function formatPercent(value: number) {
   if (!Number.isFinite(value))
     return '0'
-  return Number(value.toFixed(2)).toString()
+  return Number(truncate2(value).toFixed(2)).toString()
 }
 
 const firstRechargeGiftView = computed(() => {
   const parsed = parseFirstRechargeGiftConfig(firstRechargeGiftConfig.value)
-  if (!parsed)
+  if (!parsed) {
     return {
       badge: '',
       desc: t('rechargePage.firstRechargeDesc'),
       detail: '',
     }
+  }
 
   const firstDayRate = (parsed.rate * parsed.ratios[0]) / parsed.ratioBase
   return {
@@ -192,8 +193,7 @@ const canSubmit = computed(() =>
 
 const localAmount = computed(() => {
   const coins = Number(displayAmount.value) || 0
-  const rate = selectedCountry.value?.rate || 1
-  return (coins * rate).toFixed(2)
+  return formatLocalAmount(coins)
 })
 
 const localCurrencySymbol = computed(() => selectedCountry.value?.currencySymbol || '')
@@ -219,6 +219,11 @@ function showCenterToast(message: string) {
 
 function showHelpTip() {
   showCenterToast(t('rechargePage.helpTip'))
+}
+
+function formatLocalAmount(coins: number) {
+  const rate = selectedCountry.value?.rate || 1
+  return truncate2((Number(coins) || 0) * rate).toFixed(2)
 }
 
 async function loadBalance() {
@@ -300,7 +305,7 @@ async function initPage() {
 async function handleSubmitRecharge() {
   if (!canSubmit.value)
     return
-  const amount = Number(displayAmount.value)
+  const amount = truncate2(Number(displayAmount.value))
   if (!amount || amount <= 0) {
     showCenterToast(t('rechargePage.invalidAmount'))
     return
@@ -426,10 +431,10 @@ onMounted(() => {
           <span v-if="item !== 'custom'">{{ item }}</span>
           <span v-else>{{ t('rechargePage.custom') }}</span>
           <span v-if="item !== 'custom' && selectedCountry?.rate" class="amount-local">
-            {{ localCurrencySymbol }} {{ (Number(item) * selectedCountry.rate).toFixed(2) }}
+            {{ localCurrencySymbol }} {{ formatLocalAmount(Number(item)) }}
           </span>
           <span v-if="item === 'custom' && selectedCountry?.rate && Number(customAmount) > 0" class="amount-local">
-            {{ localCurrencySymbol }} {{ (Number(customAmount) * selectedCountry.rate).toFixed(2) }}
+            {{ localCurrencySymbol }} {{ formatLocalAmount(Number(customAmount)) }}
           </span>
         </button>
       </div>
@@ -523,8 +528,12 @@ onMounted(() => {
               <span class="promo-name">{{ t('rechargePage.firstRechargeTitle') }}</span>
               <span v-if="firstRechargeGiftView.badge" class="promo-badge">{{ firstRechargeGiftView.badge }}</span>
             </div>
-            <p class="promo-desc">{{ firstRechargeGiftView.desc }}</p>
-            <p v-if="firstRechargeGiftView.detail" class="promo-desc promo-desc--sub">{{ firstRechargeGiftView.detail }}</p>
+            <p class="promo-desc">
+              {{ firstRechargeGiftView.desc }}
+            </p>
+            <p v-if="firstRechargeGiftView.detail" class="promo-desc promo-desc--sub">
+              {{ firstRechargeGiftView.detail }}
+            </p>
           </div>
         </button>
 
@@ -544,7 +553,9 @@ onMounted(() => {
               <span class="promo-name">{{ t('rechargePage.todayFirstTitle') }}</span>
               <span v-if="todayFirstRechargeGift" class="promo-badge">+{{ todayFirstRechargeGift }}%</span>
             </div>
-            <p class="promo-desc">{{ t('rechargePage.todayFirstDesc') }}</p>
+            <p class="promo-desc">
+              {{ t('rechargePage.todayFirstDesc') }}
+            </p>
           </div>
         </button>
 

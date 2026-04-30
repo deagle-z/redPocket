@@ -3,6 +3,7 @@ import { appUpload, claimVipReward, getClaimableVipRewards, getCurrentTgUserInfo
 import type { VipProgressInfo, VipRewardLog } from '@/api/user'
 import { showToast } from 'vant'
 import { clearToken, isLogin } from '@/utils/auth'
+import { truncate2 } from '@/utils/currency'
 import { languageOptions, locale } from '@/utils/i18n'
 import avatarPlaceholderIcon from '@/assets/my/question-circle.svg'
 import bankCardIcon from '@/assets/my/bank card.svg?raw'
@@ -48,7 +49,8 @@ const vipRewards = ref<VipRewardLog[]>([])
 
 async function openVipPopup() {
   showVipPopup.value = true
-  if (vipLoading.value) return
+  if (vipLoading.value)
+    return
   vipLoading.value = true
   try {
     const [progressRes, rewardsRes] = await Promise.all([
@@ -67,7 +69,8 @@ async function openVipPopup() {
 }
 
 async function handleClaimReward(id: number) {
-  if (claimingId.value !== null) return
+  if (claimingId.value !== null)
+    return
   claimingId.value = id
   try {
     await claimVipReward(id)
@@ -85,7 +88,8 @@ async function handleClaimReward(id: number) {
 }
 
 async function handleClaimAll() {
-  if (claimingId.value !== null) return
+  if (claimingId.value !== null)
+    return
   claimingId.value = 0
   try {
     await claimVipReward(0)
@@ -149,8 +153,12 @@ const otherMenus = computed<MenuItem[]>(() => [
 
 const displayName = computed(() => profile.username || '--')
 const displayUid = computed(() => profile.uid || '--')
-const displayBalance = computed(() => Number(profile.balance || 0).toFixed(2))
-const displayRebateAmount = computed(() => Number(profile.rebateAmount || 0).toFixed(2))
+const displayBalance = computed(() => formatAmount3(profile.balance))
+const displayRebateAmount = computed(() => formatAmount3(profile.rebateAmount))
+
+function formatAmount3(value: number) {
+  return truncate2(Number(value || 0)).toFixed(2)
+}
 
 function formatMaskedNumber(value: number) {
   const text = String(value || '').trim()
@@ -505,7 +513,9 @@ async function handleConfirmLogout() {
     <van-popup v-model:show="showVipPopup" round position="bottom" class="vip-popup">
       <div class="vip-popup-header">
         <span class="vip-popup-title">{{ t('profilePage.vipTitle') }}</span>
-        <button class="vip-popup-close" @click="showVipPopup = false">×</button>
+        <button class="vip-popup-close" @click="showVipPopup = false">
+          ×
+        </button>
       </div>
 
       <div v-if="vipLoading" class="vip-loading">
@@ -532,9 +542,9 @@ async function handleConfirmLogout() {
         <!-- Progress bar -->
         <div class="vip-progress-wrap">
           <div class="vip-progress-labels">
-            <span class="vip-progress-cur">{{ vipProgress.currentValue.toFixed(2) }}</span>
+            <span class="vip-progress-cur">{{ formatAmount3(vipProgress.currentValue) }}</span>
             <span class="vip-progress-pct">{{ vipProgress.progress.toFixed(0) }}%</span>
-            <span class="vip-progress-target">{{ vipProgress.targetValue > 0 ? vipProgress.targetValue.toFixed(2) : '—' }}</span>
+            <span class="vip-progress-target">{{ vipProgress.targetValue > 0 ? formatAmount3(vipProgress.targetValue) : '—' }}</span>
           </div>
           <div class="vip-progress-bar">
             <div class="vip-progress-fill" :style="{ width: `${vipProgress.progress}%` }" />
@@ -542,7 +552,7 @@ async function handleConfirmLogout() {
           <p v-if="vipProgress.nextLevel" class="vip-progress-hint">
             {{ t('profilePage.vipProgressHint', {
               level: vipProgress.nextLevel.levelName,
-              amount: Math.max(0, vipProgress.targetValue - vipProgress.currentValue).toFixed(2),
+              amount: formatAmount3(Math.max(0, vipProgress.targetValue - vipProgress.currentValue)),
             }) }}
           </p>
           <p v-else class="vip-progress-hint">
@@ -553,7 +563,7 @@ async function handleConfirmLogout() {
         <!-- Next level bonus -->
         <div v-if="vipProgress.nextLevel && vipProgress.nextBonusAmount > 0" class="vip-next-bonus">
           <span class="vip-next-bonus-label">{{ t('profilePage.vipUpgradeReward') }}</span>
-          <span class="vip-next-bonus-amount">+{{ vipProgress.nextBonusAmount.toFixed(2) }}</span>
+          <span class="vip-next-bonus-amount">+{{ formatAmount3(vipProgress.nextBonusAmount) }}</span>
         </div>
 
         <!-- Claimable rewards -->
@@ -571,7 +581,7 @@ async function handleConfirmLogout() {
           <div v-for="reward in vipRewards" :key="reward.id" class="vip-reward-item">
             <div class="vip-reward-info">
               <span class="vip-reward-name">{{ t('profilePage.vipRewardName', { level: reward.levelName }) }}</span>
-              <span class="vip-reward-amount">+{{ reward.bonusAmount.toFixed(2) }}</span>
+              <span class="vip-reward-amount">+{{ formatAmount3(reward.bonusAmount) }}</span>
             </div>
             <button
               class="vip-claim-btn"

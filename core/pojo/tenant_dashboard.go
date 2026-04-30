@@ -3,17 +3,19 @@ package pojo
 import "time"
 
 type TenantDashboardPeriodStats struct {
-	RechargeAmount float64 `json:"rechargeAmount"`
-	BetAmount      float64 `json:"betAmount"`
-	WithdrawAmount float64 `json:"withdrawAmount"`
-	RebateAmount   float64 `json:"rebateAmount"`
-	RechargeUsers  int64   `json:"rechargeUsers"`
+	RechargeAmount     float64 `json:"rechargeAmount"`
+	BetAmount          float64 `json:"betAmount"`
+	WithdrawAmount     float64 `json:"withdrawAmount"`
+	RebateAmount       float64 `json:"rebateAmount"`
+	PlatformPumpAmount float64 `json:"platformPumpAmount"`
+	RechargeUsers      int64   `json:"rechargeUsers"`
 }
 
 type TenantDashboardStatsBack struct {
-	Today       TenantDashboardPeriodStats `json:"today"`
-	Month       TenantDashboardPeriodStats `json:"month"`
-	OnlineUsers int64                      `json:"onlineUsers"`
+	Today                   TenantDashboardPeriodStats `json:"today"`
+	Month                   TenantDashboardPeriodStats `json:"month"`
+	TotalPlatformPumpAmount float64                    `json:"totalPlatformPumpAmount"`
+	OnlineUsers             int64                      `json:"onlineUsers"`
 }
 
 type TenantDashboardDetailSearch struct {

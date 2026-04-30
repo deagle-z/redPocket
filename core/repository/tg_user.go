@@ -62,6 +62,9 @@ func GetTgUsers(db *gorm.DB, search pojo.TgUserSearch) (result pojo.TgUserAdminR
 
 // SetTgUser 创建或更新Telegram用户
 func SetTgUser(db *gorm.DB, req pojo.TgUserSet) (result pojo.TgUserAdminBack, err error) {
+	req.Balance = utils.Truncate2(req.Balance)
+	req.GiftAmount = utils.Truncate2(req.GiftAmount)
+	req.GiftTotal = utils.Truncate2(req.GiftTotal)
 	var dbUser pojo.TgUser
 	if req.ID > 0 {
 		db.Where("id = ?", req.ID).First(&dbUser)

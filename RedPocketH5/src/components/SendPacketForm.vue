@@ -3,6 +3,7 @@ import { showToast } from 'vant'
 import { getCurrentTgInviteRuleConfig, sendLuckyPacket } from '@/api/user'
 import language1Icon from '@/assets/svg/language-1.svg'
 import { isMerchantTenant } from '@/utils/auth'
+import { truncate2 } from '@/utils/currency'
 import { resolveGameMode } from '@/utils/lucky-play'
 import type { LuckyPlayType } from '@/utils/lucky-play'
 
@@ -91,6 +92,10 @@ function selectMine(value: number) {
   selectedMine.value = value
 }
 
+function formatPresetAmount(value: number) {
+  return truncate2(value).toFixed(2)
+}
+
 function selectPlayType(value: LuckyPlayType) {
   if (props.lockPlayType)
     return
@@ -128,7 +133,7 @@ async function submitPacket() {
     return
   lastSubmitAt.value = now
 
-  const amount = Number(amountInput.value)
+  const amount = truncate2(Number(amountInput.value))
   const thunder = Number(selectedMine.value)
   if (!Number.isFinite(amount) || amount < amountMin.value || amount > amountMax.value) {
     showToast(amountRangeText.value)
@@ -259,7 +264,7 @@ watch(() => props.defaultPlayType, (value) => {
             :class="{ active: selectedAmountPreset === value }"
             @click="selectAmountPreset(value)"
           >
-            <CoinAmount :text="`${value}`" />
+            <CoinAmount :text="formatPresetAmount(value)" />
           </button>
         </div>
       </div>

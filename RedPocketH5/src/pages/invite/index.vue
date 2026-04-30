@@ -5,6 +5,7 @@ import { showToast } from 'vant'
 import { getCurrentTgInviteRuleConfig, getCurrentTgInviteStats } from '@/api/user'
 import AppPageHeader from '@/components/AppPageHeader.vue'
 import { isMerchantTenant } from '@/utils/auth'
+import { truncate2 } from '@/utils/currency'
 
 const router = useRouter()
 const { t } = useI18n()
@@ -44,7 +45,7 @@ function goBack() {
 }
 
 function formatAmount(value: number) {
-  return Number(value || 0).toFixed(2)
+  return truncate2(Number(value || 0)).toFixed(2)
 }
 
 async function loadInviteData() {

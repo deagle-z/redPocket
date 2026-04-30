@@ -5,7 +5,7 @@ import { useRouter } from 'vue-router'
 import { getAppCashHistoryList, getCurrentTgUserInfo, transferRebateToBalance } from '@/api/user'
 import AppPageHeader from '@/components/AppPageHeader.vue'
 import gameIcon from '@/assets/my/game.svg'
-import { formatCurrency } from '@/utils/currency'
+import { formatCurrency, formatCurrencyPlain, truncate2 } from '@/utils/currency'
 import imgCoin from '@/assets/svg/coin.svg'
 
 const { t } = useI18n()
@@ -63,7 +63,7 @@ function formatAmount(value: number) {
 function fillAll() {
   if (!canTransferAll.value)
     return
-  amountInput.value = wallet.commission.toFixed(2)
+  amountInput.value = truncate2(wallet.commission).toFixed(2)
 }
 
 async function loadWalletInfo() {
@@ -127,7 +127,7 @@ async function handleConfirm() {
     wallet.commission = Number(data?.rebateAmount || 0)
     wallet.game = Number(data?.balance || 0)
     amountInput.value = ''
-    showToast(t('transformPage.toastSuccess', { amount: formatCurrency(transferAmount) }))
+    showToast(t('transformPage.toastSuccess', { amount: formatCurrencyPlain(transferAmount) }))
     void loadRecentList()
   }
   finally {

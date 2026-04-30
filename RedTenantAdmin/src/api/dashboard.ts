@@ -5,12 +5,14 @@ export type TenantDashboardPeriodStats = {
   betAmount: number;
   withdrawAmount: number;
   rebateAmount: number;
+  platformPumpAmount: number;
   rechargeUsers: number;
 };
 
 export type TenantDashboardStats = {
   today: TenantDashboardPeriodStats;
   month: TenantDashboardPeriodStats;
+  totalPlatformPumpAmount: number;
   onlineUsers: number;
 };
 

@@ -8,7 +8,7 @@ import LuckyGrabModal from '@/components/LuckyGrabModal.vue'
 import ParityChoiceDialog from '@/components/ParityChoiceDialog.vue'
 import SendPacketForm from '@/components/SendPacketForm.vue'
 import { isLogin } from '@/utils/auth'
-import { formatCurrency } from '@/utils/currency'
+import { formatCurrency, truncate2 } from '@/utils/currency'
 import { formatLuckyActionLabel } from '@/utils/lucky-actions'
 import { isParityPlayType, resolveLuckyPlayType } from '@/utils/lucky-play'
 import wsClient from '@/plugins/websocket'
@@ -157,6 +157,10 @@ function goPrizePage() {
 
 function formatAmount(value: number) {
   return formatCurrency(Number(value || 0))
+}
+
+function formatPlainAmount(value: number) {
+  return truncate2(Number(value || 0)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
 function getPlayTypeText(playType: LuckyPlayType) {
@@ -587,7 +591,7 @@ onBeforeUnmount(() => {
       </div>
       <div class="jp-amount-box">
         <img :src="imgCoin" class="jp-coin-icon" alt="">
-        <span class="jp-amount-num">{{ Math.floor(displayBalance).toLocaleString('en-US') }}</span>
+        <span class="jp-amount-num">{{ formatPlainAmount(displayBalance) }}</span>
       </div>
     </button>
 

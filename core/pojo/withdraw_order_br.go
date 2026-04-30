@@ -12,9 +12,9 @@ type WithdrawOrderBr struct { // 巴西地区提现订单（Pix/TED/DOC）
 	OrderNo                  string     `json:"orderNo" gorm:"column:order_no;type:varchar(64);uniqueIndex"`                                    // 平台提现订单号（唯一）
 	MerchantOrderNo          *string    `json:"merchantOrderNo" gorm:"column:merchant_order_no;type:varchar(64)"`                               // 商户侧订单号/前端单号（可选）
 	Currency                 string     `json:"currency" gorm:"column:currency;type:varchar(8);default:BRL"`                                    // 币种
-	Amount                   float64    `json:"amount" gorm:"column:amount;type:numeric(18,6)"`                                                 // 提现金额
-	Fee                      float64    `json:"fee" gorm:"column:fee;type:numeric(18,6);default:0"`                                             // 手续费
-	NetAmount                float64    `json:"netAmount" gorm:"column:net_amount;type:numeric(18,6);->"`                                       // 实际打款金额（只读）
+	Amount                   float64    `json:"amount" gorm:"column:amount;type:numeric(18,2)"`                                                 // 提现金额
+	Fee                      float64    `json:"fee" gorm:"column:fee;type:numeric(18,2);default:0"`                                             // 手续费
+	NetAmount                float64    `json:"netAmount" gorm:"column:net_amount;type:numeric(18,2);->"`                                       // 实际打款金额（只读）
 	Channel                  string     `json:"channel" gorm:"column:channel;type:varchar(32);default:pix"`                                     // 渠道
 	PayMethod                *string    `json:"payMethod" gorm:"column:pay_method;type:varchar(32)"`                                            // 方式/子渠道
 	Status                   int        `json:"status" gorm:"column:status;type:tinyint;default:0"`                                             // 状态：0待审核 1待打款 2打款中 3成功 4失败 5取消 6退回
@@ -36,11 +36,11 @@ type WithdrawOrderBr struct { // 巴西地区提现订单（Pix/TED/DOC）
 	Provider                 *string    `json:"provider" gorm:"column:provider;type:varchar(32)"`                                               // 代付服务商（可选）
 	ProviderPayoutNo         *string    `json:"providerPayoutNo" gorm:"column:provider_payout_no;type:varchar(128)"`                            // 三方代付单号/流水号（可选）
 	ProviderStatus           *string    `json:"providerStatus" gorm:"column:provider_status;type:varchar(64)"`                                  // 三方状态原文（可选）
-	GiftRestrictedAmount     float64    `json:"giftRestrictedAmount" gorm:"column:gift_restricted_amount;type:numeric(18,6);default:0"`         // 本次提现占用的赠送受限金额
-	RechargeRestrictedAmount float64    `json:"rechargeRestrictedAmount" gorm:"column:recharge_restricted_amount;type:numeric(18,6);default:0"` // 本次提现占用的充值受限金额
-	UnrestrictedAmount       float64    `json:"unrestrictedAmount" gorm:"column:unrestricted_amount;type:numeric(18,6);default:0"`              // 本次提现占用的不受限金额
-	GiftFlowRequired         float64    `json:"giftFlowRequired" gorm:"column:gift_flow_required;type:numeric(18,6);default:0"`                 // 本次提现占用的赠送流水
-	RechargeFlowRequired     float64    `json:"rechargeFlowRequired" gorm:"column:recharge_flow_required;type:numeric(18,6);default:0"`         // 本次提现占用的充值流水
+	GiftRestrictedAmount     float64    `json:"giftRestrictedAmount" gorm:"column:gift_restricted_amount;type:numeric(18,2);default:0"`         // 本次提现占用的赠送受限金额
+	RechargeRestrictedAmount float64    `json:"rechargeRestrictedAmount" gorm:"column:recharge_restricted_amount;type:numeric(18,2);default:0"` // 本次提现占用的充值受限金额
+	UnrestrictedAmount       float64    `json:"unrestrictedAmount" gorm:"column:unrestricted_amount;type:numeric(18,2);default:0"`              // 本次提现占用的不受限金额
+	GiftFlowRequired         float64    `json:"giftFlowRequired" gorm:"column:gift_flow_required;type:numeric(18,2);default:0"`                 // 本次提现占用的赠送流水
+	RechargeFlowRequired     float64    `json:"rechargeFlowRequired" gorm:"column:recharge_flow_required;type:numeric(18,2);default:0"`         // 本次提现占用的充值流水
 	NotifyTime               *time.Time `json:"notifyTime" gorm:"column:notify_time;type:datetime(3)"`                                          // 回调/通知时间（可选）
 	NotifyCount              int        `json:"notifyCount" gorm:"column:notify_count;type:int;default:0"`                                      // 通知次数
 	IdempotencyKey           *string    `json:"idempotencyKey" gorm:"column:idempotency_key;type:varchar(128)"`                                 // 幂等键（可选）

@@ -113,7 +113,7 @@ func RunOneBotLottery(db *gorm.DB, tablePrefix string, intervalSecond int) error
 		tenantID = config.TenantId
 	}
 	poolKey := fmt.Sprintf("lottery_pool:%d:%d", tenantID, config.ID)
-	awardAmount := PopOrRefillLotteryPool(poolKey, config, config.GetAmountProbMap())
+	awardAmount := utils.Truncate2(PopOrRefillLotteryPool(poolKey, config, config.GetAmountProbMap()))
 
 	return db.Transaction(func(tx *gorm.DB) error {
 		var lockedBot pojo.TgUser
@@ -135,8 +135,8 @@ func RunOneBotLottery(db *gorm.DB, tablePrefix string, intervalSecond int) error
 			ConfigId:      config.ID,
 			PeerAmount:    0,
 			AwardAmount:   awardAmount,
-			BeforeBalance: lockedBot.Balance,
-			AfterBalance:  lockedBot.Balance,
+			BeforeBalance: utils.Truncate2(lockedBot.Balance),
+			AfterBalance:  utils.Truncate2(lockedBot.Balance),
 			Status:        status,
 			Remark:        &remark,
 		}

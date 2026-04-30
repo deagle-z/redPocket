@@ -96,7 +96,7 @@ func DrawLottery(ctx *gin.Context) {
 		utils.ErrorBack(ctx, "抽奖配置未找到")
 		return
 	}
-	peerAmount := config.PeerAmount
+	peerAmount := utils.Truncate2(config.PeerAmount)
 	if peerAmount <= 0 {
 		peerAmount = 1000
 	}
@@ -136,7 +136,7 @@ func DrawLottery(ctx *gin.Context) {
 	// 4. 从 Redis 批次池弹出本次奖励
 	probMap := config.GetAmountProbMap()
 	poolKey := fmt.Sprintf("lottery_pool:%d:%d", tenantId, config.ID)
-	awardAmount := services.PopOrRefillLotteryPool(poolKey, config, probMap)
+	awardAmount := utils.Truncate2(services.PopOrRefillLotteryPool(poolKey, config, probMap))
 
 	// 5. 事务：写记录 + 发奖
 	var recordID int64
@@ -165,7 +165,7 @@ func DrawLottery(ctx *gin.Context) {
 				return err
 			}
 			record.BeforeBalance = user.Balance
-			record.AfterBalance = user.Balance + awardAmount
+			record.AfterBalance = utils.Truncate2(user.Balance + awardAmount)
 
 			// 更新余额 + gift 字段
 			if err := tx.Model(&pojo.TgUser{}).Where("id = ?", userID).Updates(map[string]any{

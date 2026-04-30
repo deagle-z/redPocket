@@ -6,14 +6,14 @@ import type { AppCountryItem, CreateWithdrawOrderReq, RechargeField, RechargeFie
 import {
   createWithdrawOrder,
   getAppCountries,
-  getCurrentTgWithdrawSummary,
   getCountryWithdrawFields,
   getCurrentTgUserInfo,
+  getCurrentTgWithdrawSummary,
   getWithdrawAccounts,
 } from '@/api/user'
 import AppPageHeader from '@/components/AppPageHeader.vue'
 import { useUserStore } from '@/stores'
-import { formatCurrency } from '@/utils/currency'
+import { formatCurrency, truncate2 } from '@/utils/currency'
 
 const { t } = useI18n()
 const router = useRouter()
@@ -54,8 +54,7 @@ const displayAmount = computed(() => {
 
 const localAmount = computed(() => {
   const coins = Number(displayAmount.value) || 0
-  const rate = selectedCountry.value?.rate || 1
-  return (coins * rate).toFixed(2)
+  return formatLocalAmount(coins)
 })
 
 const localCurrencySymbol = computed(() => selectedCountry.value?.currencySymbol || '')
@@ -115,6 +114,15 @@ function goBack() {
 
 function showHelpTip() {
   showToast(t('withdrawPage.helpTip'))
+}
+
+function formatAmountText(value: number) {
+  return truncate2(Number(value || 0)).toFixed(2)
+}
+
+function formatLocalAmount(coins: number) {
+  const rate = selectedCountry.value?.rate || 1
+  return truncate2((Number(coins) || 0) * rate).toFixed(2)
 }
 
 function showCenterToast(message: string) {
@@ -247,7 +255,7 @@ async function initPage() {
 async function handleSubmitWithdraw() {
   if (!canSubmit.value)
     return
-  const amount = Number(displayAmount.value)
+  const amount = truncate2(Number(displayAmount.value))
   if (!amount || amount <= 0) {
     showCenterToast(t('withdrawPage.invalidAmount'))
     return
@@ -348,10 +356,10 @@ onMounted(() => {
           v-for="item in amountOptions" :key="item" type="button" class="amount-item"
           :class="{ active: selectedAmount === item }" @click="chooseAmount(item as number | 'custom')"
         >
-          <span v-if="item !== 'custom'"><CoinAmount :text="`${item}`" /></span>
+          <span v-if="item !== 'custom'"><CoinAmount :text="formatAmountText(Number(item))" /></span>
           <span v-else>{{ t('withdrawPage.custom') }}</span>
           <span v-if="item !== 'custom' && selectedCountry?.rate" class="amount-local">
-            {{ localCurrencySymbol }} {{ (Number(item) * (selectedCountry?.rate ?? 1)).toFixed(2) }}
+            {{ localCurrencySymbol }} {{ formatLocalAmount(Number(item)) }}
           </span>
         </button>
       </div>
@@ -413,7 +421,7 @@ onMounted(() => {
         </div>
         <div class="fee-row total">
           <span>{{ t('withdrawPage.actualDeduct') }}</span>
-          <CoinAmount :text="`${displayAmount || 0}`" />
+          <CoinAmount :text="formatAmountText(Number(displayAmount || 0))" />
         </div>
       </div>
     </section>

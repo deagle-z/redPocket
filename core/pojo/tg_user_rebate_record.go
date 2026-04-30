@@ -11,9 +11,9 @@ type TgUserRebateRecord struct {
 	SourceChannelID *int64     `json:"sourceChannelId" gorm:"column:source_channel_id;type:bigint;index"`
 	SourceType      int        `json:"sourceType" gorm:"column:source_type;type:tinyint;not null"` // 来源类型：1=下注流水 2=充值 3=游戏输赢 4=手动补单 5=其他
 	SourceOrderId   string     `json:"sourceOrderId" gorm:"column:source_order_id;type:varchar(64);not null"`
-	SourceAmount    float64    `json:"sourceAmount" gorm:"column:source_amount;type:decimal(20,3);not null;default:0.000"`
+	SourceAmount    float64    `json:"sourceAmount" gorm:"column:source_amount;type:decimal(20,2);not null;default:0.00"`
 	RebateRate      float64    `json:"rebateRate" gorm:"column:rebate_rate;type:decimal(10,6);not null;default:0.000000"`
-	RebateAmount    float64    `json:"rebateAmount" gorm:"column:rebate_amount;type:decimal(20,3);not null;default:0.000"`
+	RebateAmount    float64    `json:"rebateAmount" gorm:"column:rebate_amount;type:decimal(20,2);not null;default:0.00"`
 	Currency        string     `json:"currency" gorm:"column:currency;type:varchar(16);not null;default:USDT"`
 	Status          int        `json:"status" gorm:"column:status;type:tinyint;not null;default:0"` // 状态：0=待结算 1=已结算 2=作废/冲正
 	SettledAt       *time.Time `json:"settledAt" gorm:"column:settled_at;type:datetime(3)"`
