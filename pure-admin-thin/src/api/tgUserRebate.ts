@@ -6,7 +6,9 @@ export type TgUserRebateRecord = {
   updatedAt: string;
   tenantId?: number | null;
   subUserId: number;
+  subUid: string;
   parentUserId: number;
+  parentUid: string;
   sourceType: number;
   sourceOrderId: string;
   sourceAmount: number;
@@ -24,7 +26,9 @@ export type TgUserRebateSearch = {
   pageSize: number;
   tenantId?: number;
   subUserId?: number;
+  subUid?: string;
   parentUserId?: number;
+  parentUid?: string;
   sourceType?: number;
   sourceOrderId?: string;
   status?: number;

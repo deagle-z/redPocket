@@ -25,7 +25,9 @@ type TgUserRebateRecordSearch struct {
 	PageInfo
 	TenantId       *int64 `json:"tenantId"`
 	SubUserId      int64  `json:"subUserId"`
+	SubUid         string `json:"subUid"`
 	ParentUserId   int64  `json:"parentUserId"`
+	ParentUid      string `json:"parentUid"`
 	SourceType     *int   `json:"sourceType"`
 	SourceOrderId  string `json:"sourceOrderId"`
 	Status         *int   `json:"status"`
@@ -56,7 +58,9 @@ type TgUserRebateRecordBack struct {
 	UpdatedAt       time.Time  `json:"updatedAt"`
 	TenantId        *int64     `json:"tenantId"`
 	SubUserId       int64      `json:"subUserId"`
+	SubUid          string     `json:"subUid"`
 	ParentUserId    int64      `json:"parentUserId"`
+	ParentUid       string     `json:"parentUid"`
 	SourceChannelID *int64     `json:"sourceChannelId"`
 	SourceType      int        `json:"sourceType"`
 	SourceOrderId   string     `json:"sourceOrderId"`

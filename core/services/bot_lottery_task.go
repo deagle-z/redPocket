@@ -145,6 +145,6 @@ func RunOneBotLottery(db *gorm.DB, tablePrefix string, intervalSecond int) error
 		}
 
 		poolRecordRemark := fmt.Sprintf("bot_lottery_draw_%d", record.ID)
-		return repository.CreateLotteryBotDrawRecord(tx, tenantID, config.PoolId, lockedBot.ID, &poolRecordRemark)
+		return repository.CreateLotteryBotDrawRecord(tx, tenantID, config.PoolId, lockedBot.ID, awardAmount, &poolRecordRemark)
 	})
 }

@@ -221,17 +221,12 @@ func GetPrizePoolOutRecordsApp(db *gorm.DB, page pojo.PageInfo) (result pojo.Sys
 	}
 
 	query := db.Table("sys_tenant_prize_pool_record AS r").
-		Joins(`JOIN (
-			SELECT user_id, MAX(id) AS latest_id
-			FROM sys_tenant_prize_pool_record
-			WHERE change_type = ? AND user_id IS NOT NULL
-			GROUP BY user_id
-		) latest ON latest.latest_id = r.id`, pojo.PrizePoolChangeTypeOut)
+		Where("r.change_type = ?", pojo.PrizePoolChangeTypeOut)
 
 	query.Count(&result.Total)
 	query.Select(`r.id, r.tenant_id, r.pool_id, r.user_id,
-			COALESCE(NULLIF(tg_user.first_name, ''), NULLIF(tg_user.username, ''), '') AS user_name,
-			r.change_type, r.amount, r.before_balance, r.after_balance, r.consumed_amount, r.created_at`).
+				COALESCE(NULLIF(tg_user.first_name, ''), NULLIF(tg_user.username, ''), '') AS user_name,
+				r.change_type, r.amount, r.before_balance, r.after_balance, r.consumed_amount, r.created_at`).
 		Joins("LEFT JOIN " + pojo.TgUserTableName + " ON " + pojo.TgUserTableName + ".id = r.user_id").
 		Order("r.id desc").
 		Limit(page.PageSize).
@@ -293,11 +288,23 @@ func CreateLotteryDrawRecord(db *gorm.DB, tenantID int64, poolID int64, userID i
 	return db.Create(&record).Error
 }
 
-// CreateLotteryBotDrawRecord writes one bot lottery display record without counted consumption.
-func CreateLotteryBotDrawRecord(db *gorm.DB, tenantID int64, poolID int64, userID int64, remark *string) error {
+// CreateLotteryBotDrawRecord writes one bot lottery pool out record without counted consumption.
+func CreateLotteryBotDrawRecord(db *gorm.DB, tenantID int64, poolID int64, userID int64, awardAmount float64, remark *string) error {
 	pool, err := lockLotteryPrizePool(db, tenantID, poolID)
 	if err != nil {
 		return err
+	}
+	awardAmount = utils.Truncate2(awardAmount)
+	if awardAmount < 0 {
+		awardAmount = 0
+	}
+	afterBalance := utils.Truncate2(pool.Balance - awardAmount)
+	if awardAmount > 0 {
+		if err := db.Model(&pojo.SysTenantPrizePool{}).
+			Where("id = ?", pool.ID).
+			Update("balance", gorm.Expr("balance - ?", awardAmount)).Error; err != nil {
+			return fmt.Errorf("更新奖池余额失败: %v", err)
+		}
 	}
 
 	userIdPtr := &userID
@@ -306,9 +313,9 @@ func CreateLotteryBotDrawRecord(db *gorm.DB, tenantID int64, poolID int64, userI
 		PoolId:        pool.ID,
 		UserId:        userIdPtr,
 		ChangeType:    pojo.PrizePoolChangeTypeOut,
-		Amount:        0,
+		Amount:        awardAmount,
 		BeforeBalance: utils.Truncate2(pool.Balance),
-		AfterBalance:  utils.Truncate2(pool.Balance),
+		AfterBalance:  afterBalance,
 		Remark:        remark,
 	}
 	return db.Create(&record).Error

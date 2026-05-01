@@ -45,8 +45,8 @@ function formatMoney(val?: number | null) {
 
 export function useRebateRecord(tableRef: Ref) {
   const form = reactive({
-    subUserId: undefined as number | undefined,
-    parentUserId: undefined as number | undefined,
+    subUid: "",
+    parentUid: "",
     sourceType: undefined as number | undefined,
     sourceOrderId: "",
     status: undefined as number | undefined,
@@ -68,14 +68,16 @@ export function useRebateRecord(tableRef: Ref) {
       minWidth: 90
     },
     {
-      label: "下级ID",
-      prop: "subUserId",
-      minWidth: 100
+      label: "下级UID",
+      prop: "subUid",
+      minWidth: 120,
+      formatter: ({ subUid }) => subUid || "-"
     },
     {
-      label: "上级ID",
-      prop: "parentUserId",
-      minWidth: 100
+      label: "上级UID",
+      prop: "parentUid",
+      minWidth: 120,
+      formatter: ({ parentUid }) => parentUid || "-"
     },
     {
       label: "来源类型",
@@ -147,24 +149,31 @@ export function useRebateRecord(tableRef: Ref) {
 
   function handleSizeChange(val: number) {
     pagination.pageSize = val;
-    onSearch();
+    pagination.currentPage = 0;
+    fetchList();
   }
 
   function handleCurrentChange(val: number) {
     pagination.currentPage = val - 1;
-    onSearch();
+    fetchList();
   }
 
   function handleSelectionChange(val) {
     console.log("handleSelectionChange", val);
   }
 
-  async function onSearch() {
+  function onSearch() {
+    pagination.currentPage = 0;
+    fetchList();
+  }
+
+  async function fetchList() {
     loading.value = true;
     try {
       const { data } = await getTgUserRebateList({
         ...toRaw(form),
-        ...toRaw(pagination)
+        currentPage: pagination.currentPage,
+        pageSize: pagination.pageSize
       });
       dataList.value = data.list || [];
       pagination.total = data.total;
@@ -187,7 +196,7 @@ export function useRebateRecord(tableRef: Ref) {
   };
 
   onMounted(() => {
-    onSearch();
+    fetchList();
   });
 
   return {

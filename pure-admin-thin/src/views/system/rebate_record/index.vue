@@ -39,18 +39,18 @@ const {
         :model="form"
         class="search-form bg-bg_color w-[99/100] pl-8 pt-[12px] overflow-auto"
       >
-        <el-form-item label="下级ID：" prop="subUserId">
+        <el-form-item label="下级UID：" prop="subUid">
           <el-input
-            v-model.number="form.subUserId"
-            placeholder="下级用户ID"
+            v-model="form.subUid"
+            placeholder="下级用户UID"
             clearable
             class="!w-[180px]"
           />
         </el-form-item>
-        <el-form-item label="上级ID：" prop="parentUserId">
+        <el-form-item label="上级UID：" prop="parentUid">
           <el-input
-            v-model.number="form.parentUserId"
-            placeholder="上级用户ID"
+            v-model="form.parentUid"
+            placeholder="上级用户UID"
             clearable
             class="!w-[180px]"
           />
@@ -128,7 +128,11 @@ const {
             :size="size"
             :data="dataList"
             :columns="dynamicColumns"
-            :pagination="pagination"
+            :pagination="{
+              ...pagination,
+              size,
+              currentPage: pagination.currentPage + 1
+            }"
             :paginationSmall="size === 'small'"
             :header-cell-style="{
               background: 'var(--el-table-row-hover-bg-color)',

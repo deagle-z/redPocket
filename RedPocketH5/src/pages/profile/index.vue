@@ -156,6 +156,30 @@ const displayUid = computed(() => profile.uid || '--')
 const displayBalance = computed(() => formatAmount3(profile.balance))
 const displayRebateAmount = computed(() => formatAmount3(profile.rebateAmount))
 
+async function copyProfileUid() {
+  const uid = String(profile.uid || '').trim()
+  if (!uid)
+    return
+
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(uid)
+    }
+    else {
+      const input = document.createElement('input')
+      input.value = uid
+      document.body.appendChild(input)
+      input.select()
+      document.execCommand('copy')
+      document.body.removeChild(input)
+    }
+    showToast(t('profilePage.toastCopyUidSuccess'))
+  }
+  catch {
+    showToast(t('profilePage.toastCopyUidFailed'))
+  }
+}
+
 function formatAmount3(value: number) {
   return truncate2(Number(value || 0)).toFixed(2)
 }
@@ -420,9 +444,10 @@ async function handleConfirmLogout() {
               {{ profile.vipLevelName || t('profilePage.vipDefaultLevel') }}
             </button>
           </div>
-          <p class="user-id">
-            ID: {{ displayUid }}
-          </p>
+          <button type="button" class="user-id" :disabled="!profile.uid" :aria-label="t('profilePage.copyUid')" @click="copyProfileUid">
+            <span>ID: {{ displayUid }}</span>
+            <van-icon name="description" class="user-id__icon" />
+          </button>
         </div>
       </div>
 
@@ -1005,10 +1030,27 @@ async function handleConfirmLogout() {
 }
 
 .user-id {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   margin: 4px 0 0;
+  padding: 0;
+  border: none;
+  background: transparent;
   color: rgba(255, 229, 186, 0.68);
   font-size: 13px;
   line-height: 1;
+  cursor: pointer;
+}
+
+.user-id:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+
+.user-id__icon {
+  color: rgba(255, 229, 186, 0.82);
+  font-size: 13px;
 }
 
 .balance-row {
