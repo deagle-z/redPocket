@@ -221,7 +221,12 @@ func GetPrizePoolOutRecordsApp(db *gorm.DB, page pojo.PageInfo) (result pojo.Sys
 	}
 
 	query := db.Table("sys_tenant_prize_pool_record AS r").
-		Where("r.change_type = ?", pojo.PrizePoolChangeTypeOut)
+		Joins(`JOIN (
+			SELECT user_id, MAX(id) AS latest_id
+			FROM sys_tenant_prize_pool_record
+			WHERE change_type = ? AND user_id IS NOT NULL
+			GROUP BY user_id
+		) latest ON latest.latest_id = r.id`, pojo.PrizePoolChangeTypeOut)
 
 	query.Count(&result.Total)
 	query.Select(`r.id, r.tenant_id, r.pool_id, r.user_id,
