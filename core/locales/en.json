@@ -37,6 +37,8 @@
   "email_already_used": "email is already in use",
   "avatar_required": "avatar is required",
   "no_rebate_to_transfer": "no commission available to transfer",
+  "invalid_amount": "invalid amount",
+  "rebate_amount_insufficient": "commission balance is insufficient",
   "file_required": "file is required",
   "file_too_large_5mb": "file size cannot exceed 5 MB",
   "image_only": "only image files are supported (image/*)",

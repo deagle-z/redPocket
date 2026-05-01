@@ -122,7 +122,7 @@ async function handleConfirm() {
   }
   confirming.value = true
   try {
-    const { data } = await transferRebateToBalance()
+    const { data } = await transferRebateToBalance({ amount: truncate2(amount) })
     const transferAmount = Number(data?.transferAmount || 0)
     wallet.commission = Number(data?.rebateAmount || 0)
     wallet.game = Number(data?.balance || 0)

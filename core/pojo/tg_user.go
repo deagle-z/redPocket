@@ -180,6 +180,10 @@ type TgSetAudioOpenReq struct {
 	AudioOpen int8 `json:"audioOpen" binding:"oneof=0 1"`
 }
 
+type TgRebateTransferReq struct {
+	Amount float64 `json:"amount" binding:"required"`
+}
+
 type TgCurrentUserInfo struct {
 	Avatar       *string `json:"avatar"`
 	TenantId     int64   `json:"tenantId"`

@@ -37,6 +37,8 @@
   "email_already_used": "el correo ya está en uso",
   "avatar_required": "avatar es obligatorio",
   "no_rebate_to_transfer": "no hay comisión disponible para transferir",
+  "invalid_amount": "monto inválido",
+  "rebate_amount_insufficient": "saldo de comisión insuficiente",
   "file_required": "el archivo es obligatorio",
   "file_too_large_5mb": "el tamaño del archivo no puede superar 5 MB",
   "image_only": "solo se admiten archivos de imagen (image/*)",

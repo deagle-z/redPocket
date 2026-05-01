@@ -54,7 +54,6 @@ type SysTenantPrizePoolOutRecordBack struct {
 	BeforeBalance  float64   `json:"beforeBalance"`
 	AfterBalance   float64   `json:"afterBalance"`
 	ConsumedAmount *float64  `json:"consumedAmount"`
-	Remark         *string   `json:"remark"`
 	CreatedAt      time.Time `json:"createdAt"`
 }
 

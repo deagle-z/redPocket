@@ -523,8 +523,12 @@ export interface TgBindEmailReq {
   email: string
 }
 
-export function transferRebateToBalance() {
-  return request.post<ApiResult<TgRebateTransferResp>>('/api/v1/app/tg/rebate/transfer')
+export interface TgRebateTransferReq {
+  amount: number
+}
+
+export function transferRebateToBalance(data: TgRebateTransferReq) {
+  return request.post<ApiResult<TgRebateTransferResp>>('/api/v1/app/tg/rebate/transfer', data)
 }
 
 export function bindCurrentTgEmail(data: TgBindEmailReq) {
@@ -573,12 +577,14 @@ export interface PrizePoolOutRecordItem {
   poolId: number
   userId?: number
   userName?: string
+  user_name?: string
+  firstName?: string
+  username?: string
   changeType: 'out'
   amount: number
   beforeBalance: number
   afterBalance: number
   consumedAmount?: number
-  remark?: string
   createdAt: string
 }
 

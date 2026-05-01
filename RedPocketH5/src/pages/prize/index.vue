@@ -2,6 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { LuckyWheel } from '@lucky-canvas/vue'
 import { showToast } from 'vant'
+import type { PrizePoolOutRecordItem } from '@/api/user'
 import { drawLottery, getLotteryChances, getPrizePoolBalance, getPrizePoolOutRecords } from '@/api/user'
 import { truncate2 } from '@/utils/currency'
 import imgCoin from '@/assets/svg/coin.svg'
@@ -111,20 +112,14 @@ const superPrizeImg = {
 const SUPER_PRIZE_TOKEN = '__SUPER_PRIZE__'
 
 const rewardCatalog = ['8', '18', '28', '38', '58', '88', '128', '188', '588', 'Random']
+const mockUserNames = ['Alex', 'Maria', 'Diego', 'Nina', 'Leo', 'Maya', 'Ravi', 'Lina', 'Omar', 'Sara']
 
 const state = reactive({
   winningShow: false,
   reward: '',
   pageData: {
     rewardList: rewardCatalog,
-    recordList: [
-      { uid: 'UID*321', userName: 'UID*321', reward: '18' },
-      { uid: 'UID*873', userName: 'UID*873', reward: '88' },
-      { uid: 'UID*552', userName: 'UID*552', reward: '188' },
-      { uid: 'UID*119', userName: 'UID*119', reward: '8' },
-      { uid: 'UID*694', userName: 'UID*694', reward: '58' },
-      { uid: 'UID*205', userName: 'UID*205', reward: '588' },
-    ],
+    recordList: [],
   } as PageData,
 })
 
@@ -224,10 +219,10 @@ function randomDelay(minSeconds: number, maxSeconds: number) {
 
 function createMockPageData(): PageData {
   const recordList = Array.from({ length: 10 }, () => {
-    const uid = `UID*${randomInt(100, 999)}`
+    const tail = randomInt(100, 999)
     return {
-      uid,
-      userName: uid,
+      uid: `UID*${tail}`,
+      userName: `${mockUserNames[randomInt(0, mockUserNames.length - 1)]}*${tail}`,
       reward: rewardCatalog[randomInt(0, rewardCatalog.length - 2)],
     }
   })
@@ -244,6 +239,25 @@ function formatRecordUid(userId?: number) {
   return `UID*${raw.slice(-3).padStart(3, '0')}`
 }
 
+function formatFallbackUserName(userId?: number) {
+  const raw = String(userId || 0)
+  if (!raw || raw === '0')
+    return 'User*---'
+  return `User*${raw.slice(-3).padStart(3, '0')}`
+}
+
+function resolveRecordUserName(item: PrizePoolOutRecordItem) {
+  const record = item as PrizePoolOutRecordItem & { name?: string }
+  return (
+    record.userName
+    || record.user_name
+    || record.firstName
+    || record.username
+    || record.name
+    || ''
+  ).trim()
+}
+
 async function loadLotteryHistory(limit = 10) {
   try {
     const { data } = await getPrizePoolOutRecords(0, limit)
@@ -251,7 +265,7 @@ async function loadLotteryHistory(limit = 10) {
     const nextRecords = list
       .map(item => ({
         uid: formatRecordUid(item?.userId),
-        userName: item?.userName || formatRecordUid(item?.userId),
+        userName: resolveRecordUserName(item) || formatFallbackUserName(item?.userId),
         reward: formatAwardText(Number(item?.consumedAmount || 0)),
       }))
       .filter(item => Number(item.reward) > 0)
@@ -265,8 +279,7 @@ async function loadLotteryHistory(limit = 10) {
     // Fall back to local mock records when history loading fails.
   }
 
-  if (!state.pageData.recordList.length)
-    state.pageData.recordList = createMockPageData().recordList
+  state.pageData.recordList = createMockPageData().recordList
 }
 
 function formatAwardText(value: number) {

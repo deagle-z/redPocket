@@ -37,6 +37,8 @@
   "email_already_used": "email sudah digunakan",
   "avatar_required": "avatar wajib diisi",
   "no_rebate_to_transfer": "tidak ada komisi yang dapat dipindahkan",
+  "invalid_amount": "jumlah tidak valid",
+  "rebate_amount_insufficient": "saldo komisi tidak mencukupi",
   "file_required": "file wajib diisi",
   "file_too_large_5mb": "ukuran file tidak boleh melebihi 5 MB",
   "image_only": "hanya file gambar yang didukung (image/*)",

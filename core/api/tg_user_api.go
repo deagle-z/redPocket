@@ -748,9 +748,21 @@ func TransferRebateToBalance(ctx *gin.Context) {
 		return
 	}
 
+	var req pojo.TgRebateTransferReq
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	req.Amount = utils.Truncate2(req.Amount)
+	if req.Amount <= 0 {
+		utils.ErrorBack(ctx, "invalid_amount")
+		return
+	}
+
 	db := ctx.MustGet("db").(*gorm.DB)
 	var transferAmount float64
 	var newBalance float64
+	var newRebateAmount float64
 
 	err := db.Transaction(func(tx *gorm.DB) error {
 		var user pojo.TgUser
@@ -763,9 +775,13 @@ func TransferRebateToBalance(ctx *gin.Context) {
 		if user.RebateAmount <= 0 {
 			return fmt.Errorf("no_rebate_to_transfer")
 		}
+		if req.Amount > utils.Truncate2(user.RebateAmount) {
+			return fmt.Errorf("rebate_amount_insufficient")
+		}
 
-		transferAmount = utils.Truncate2(user.RebateAmount)
+		transferAmount = req.Amount
 		newBalance = utils.Truncate2(user.Balance + transferAmount)
+		newRebateAmount = utils.Truncate2(user.RebateAmount - transferAmount)
 
 		if err := repository.EnsureUserWithdrawLimitState(tx, user); err != nil {
 			return err
@@ -774,7 +790,7 @@ func TransferRebateToBalance(ctx *gin.Context) {
 			Where("id = ?", user.ID).
 			Updates(map[string]any{
 				"balance":       gorm.Expr("balance + ?", transferAmount),
-				"rebate_amount": 0,
+				"rebate_amount": gorm.Expr("rebate_amount - ?", transferAmount),
 			}).Error; err != nil {
 			return err
 		}
@@ -802,7 +818,7 @@ func TransferRebateToBalance(ctx *gin.Context) {
 	utils.SuccessObjBack(ctx, gin.H{
 		"transferAmount": transferAmount,
 		"balance":        newBalance,
-		"rebateAmount":   0,
+		"rebateAmount":   newRebateAmount,
 	})
 }
 

@@ -231,7 +231,7 @@ func GetPrizePoolOutRecordsApp(db *gorm.DB, page pojo.PageInfo) (result pojo.Sys
 	query.Count(&result.Total)
 	query.Select(`r.id, r.tenant_id, r.pool_id, r.user_id,
 			COALESCE(NULLIF(tg_user.first_name, ''), NULLIF(tg_user.username, ''), '') AS user_name,
-			r.change_type, r.amount, r.before_balance, r.after_balance, r.consumed_amount, r.remark, r.created_at`).
+			r.change_type, r.amount, r.before_balance, r.after_balance, r.consumed_amount, r.created_at`).
 		Joins("LEFT JOIN " + pojo.TgUserTableName + " ON " + pojo.TgUserTableName + ".id = r.user_id").
 		Order("r.id desc").
 		Limit(page.PageSize).
@@ -291,6 +291,59 @@ func CreateLotteryDrawRecord(db *gorm.DB, tenantID int64, poolID int64, userID i
 		Remark:         remark,
 	}
 	return db.Create(&record).Error
+}
+
+// CreateLotteryBotDrawRecord writes one bot lottery display record without counted consumption.
+func CreateLotteryBotDrawRecord(db *gorm.DB, tenantID int64, poolID int64, userID int64, remark *string) error {
+	pool, err := lockLotteryPrizePool(db, tenantID, poolID)
+	if err != nil {
+		return err
+	}
+
+	userIdPtr := &userID
+	record := pojo.SysTenantPrizePoolRecord{
+		TenantId:      tenantID,
+		PoolId:        pool.ID,
+		UserId:        userIdPtr,
+		ChangeType:    pojo.PrizePoolChangeTypeOut,
+		Amount:        0,
+		BeforeBalance: utils.Truncate2(pool.Balance),
+		AfterBalance:  utils.Truncate2(pool.Balance),
+		Remark:        remark,
+	}
+	return db.Create(&record).Error
+}
+
+func lockLotteryPrizePool(db *gorm.DB, tenantID int64, poolID int64) (pojo.SysTenantPrizePool, error) {
+	var pool pojo.SysTenantPrizePool
+	err := gorm.ErrRecordNotFound
+	if poolID > 0 {
+		err = db.Clauses(clause.Locking{Strength: "UPDATE"}).
+			Where("id = ? AND tenant_id = ?", poolID, tenantID).
+			First(&pool).Error
+	}
+	if err == gorm.ErrRecordNotFound {
+		err = db.Clauses(clause.Locking{Strength: "UPDATE"}).
+			Where("tenant_id = ? AND pool_code = ?", tenantID, "lucky").
+			First(&pool).Error
+	}
+	if err == gorm.ErrRecordNotFound {
+		pool = pojo.SysTenantPrizePool{
+			TenantId: tenantID,
+			PoolCode: "lucky",
+			PoolName: "lucky",
+			Currency: "USD",
+			Status:   1,
+		}
+		if err = db.Create(&pool).Error; err != nil {
+			return pojo.SysTenantPrizePool{}, fmt.Errorf("创建奖池失败: %v", err)
+		}
+		return pool, nil
+	}
+	if err != nil {
+		return pojo.SysTenantPrizePool{}, fmt.Errorf("查询奖池失败: %v", err)
+	}
+	return pool, nil
 }
 
 // broadcastPrizePoolThrottled 节流推送奖池余额，同一奖池 1s 内最多推送 1 次
