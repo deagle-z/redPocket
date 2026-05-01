@@ -123,28 +123,7 @@ func RunOneBotLottery(db *gorm.DB, tablePrefix string, intervalSecond int) error
 			return err
 		}
 
-		status := pojo.LotteryStatusNoAward
-		if awardAmount > 0 {
-			status = pojo.LotteryStatusAwarded
-		}
-		remark := "bot_lottery"
-		record := pojo.UserLotteryRecord{
-			TenantId:      tenantID,
-			UserId:        lockedBot.ID,
-			PoolId:        config.PoolId,
-			ConfigId:      config.ID,
-			PeerAmount:    0,
-			AwardAmount:   awardAmount,
-			BeforeBalance: utils.Truncate2(lockedBot.Balance),
-			AfterBalance:  utils.Truncate2(lockedBot.Balance),
-			Status:        status,
-			Remark:        &remark,
-		}
-		if err := tx.Create(&record).Error; err != nil {
-			return err
-		}
-
-		poolRecordRemark := fmt.Sprintf("bot_lottery_draw_%d", record.ID)
+		poolRecordRemark := fmt.Sprintf("bot_lottery_draw_%d_%d", lockedBot.ID, time.Now().UnixMilli())
 		return repository.CreateLotteryBotDrawRecord(tx, tenantID, config.PoolId, lockedBot.ID, awardAmount, &poolRecordRemark)
 	})
 }
