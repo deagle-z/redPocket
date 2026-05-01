@@ -505,8 +505,8 @@ export function updateCurrentTgAvatar(avatar: string) {
   return request.post<ApiResult<{ avatar: string }>>('/api/v1/app/tg/avatar', { avatar })
 }
 
-export function updateCurrentTgName(firstName: string) {
-  return request.post<ApiResult<{ firstName: string }>>('/api/v1/app/tg/name', { firstName })
+export function updateCurrentTgName(username: string) {
+  return request.post<ApiResult<{ username: string }>>('/api/v1/app/tg/name', { username })
 }
 
 export function tgLogout() {

@@ -558,7 +558,7 @@ func UpdateCurrentTgUserAvatar(ctx *gin.Context) {
 	})
 }
 
-// UpdateCurrentTgUserName 更新当前TG用户展示名
+// UpdateCurrentTgUserName 更新当前TG用户用户名
 func UpdateCurrentTgUserName(ctx *gin.Context) {
 	userIDRaw, ok := ctx.Get("userId")
 	if !ok {
@@ -576,20 +576,20 @@ func UpdateCurrentTgUserName(ctx *gin.Context) {
 		utils.ErrorBack(ctx, err.Error())
 		return
 	}
-	firstName := strings.TrimSpace(req.FirstName)
-	if firstName == "" {
-		utils.ErrorBack(ctx, "first_name_required")
+	username := strings.TrimSpace(req.Username)
+	if username == "" {
+		utils.ErrorBack(ctx, "username_required")
 		return
 	}
-	if len([]rune(firstName)) > 128 {
-		utils.ErrorBack(ctx, "first_name_too_long")
+	if len([]rune(username)) > 64 {
+		utils.ErrorBack(ctx, "username_too_long")
 		return
 	}
 
 	db := ctx.MustGet("db").(*gorm.DB)
 	result := db.Model(&pojo.TgUser{}).
 		Where("id = ? AND status = ?", userID, 1).
-		Update("first_name", firstName)
+		Update("username", username)
 	if result.Error != nil {
 		utils.ErrorBack(ctx, result.Error.Error())
 		return
@@ -599,7 +599,7 @@ func UpdateCurrentTgUserName(ctx *gin.Context) {
 		return
 	}
 	utils.SuccessObjBack(ctx, gin.H{
-		"firstName": firstName,
+		"username": username,
 	})
 }
 

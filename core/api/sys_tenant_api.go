@@ -6,7 +6,9 @@ import (
 	"BaseGoUni/core/utils"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
+	"net/url"
 	"strconv"
+	"strings"
 )
 
 // GetSysTenants godoc
@@ -119,12 +121,27 @@ func GetAppTenantServiceLinks(ctx *gin.Context) {
 		utils.UnauthorizedBack(ctx, "token_invalid")
 		return
 	}
-	result, err := repository.GetCurrentTenantServiceLinks(db, tenantID, "")
+	result, err := repository.GetCurrentTenantServiceLinks(db, tenantID, getRefererHost(ctx))
 	if err != nil {
 		utils.ErrorBack(ctx, err.Error())
 		return
 	}
 	utils.SuccessObjBack(ctx, result)
+}
+
+func getRefererHost(ctx *gin.Context) string {
+	referer := strings.TrimSpace(ctx.GetHeader("Referer"))
+	if referer == "" {
+		return ""
+	}
+	parsed, err := url.Parse(referer)
+	if err != nil || parsed.Host == "" {
+		parsed, err = url.Parse("//" + referer)
+	}
+	if err != nil {
+		return ""
+	}
+	return parsed.Hostname()
 }
 
 // ResetSysTenantPassword godoc

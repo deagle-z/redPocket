@@ -123,6 +123,8 @@
   "user_error": "user error",
   "operator_data_not_found": "the operated data does not exist",
   "password_length_6_18": "password length must be between 6 and 18 characters",
+  "username_required": "username is required",
+  "username_too_long": "username cannot exceed 64 characters",
   "username_duplicate": "username already exists",
   "username_cannot_modify": "username cannot be modified",
   "admin_user_cannot_delete": "admin user cannot be deleted",

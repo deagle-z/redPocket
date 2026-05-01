@@ -35,14 +35,14 @@ async function saveName() {
     showToast(t('settingPage.nameRequired'))
     return
   }
-  if ([...nextName].length > 128) {
+  if ([...nextName].length > 64) {
     showToast(t('settingPage.nameTooLong'))
     return
   }
   savingName.value = true
   try {
     const { data } = await updateCurrentTgName(nextName)
-    currentName.value = data?.firstName || nextName
+    currentName.value = data?.username || nextName
     showToast(t('settingPage.nameUpdated'))
     closeNamePopup()
   }
@@ -132,7 +132,7 @@ const savingAudio = ref(false)
 async function loadSettingData() {
   try {
     const { data } = await getCurrentTgUserInfo()
-    currentName.value = data?.firstName || data?.username || ''
+    currentName.value = data?.username || ''
     if (data?.avatar) {
       currentAvatar.value = data.avatar
       localStorage.setItem(PROFILE_AVATAR_KEY, data.avatar)
@@ -172,7 +172,7 @@ onMounted(() => {
     <AppPageHeader :title="t('settingPage.title')" @back="router.back()" />
 
     <div class="setting-body">
-      <!-- 昵称 -->
+      <!-- 用户名 -->
       <p class="section-label">
         {{ t('settingPage.name') }}
       </p>
@@ -256,7 +256,7 @@ onMounted(() => {
       </div>
     </van-popup>
 
-    <!-- 昵称修改弹窗 -->
+    <!-- 用户名修改弹窗 -->
     <van-popup v-model:show="showNamePopup" round position="bottom" class="name-popup">
       <div class="avatar-popup-header">
         <span class="avatar-popup-title">{{ t('settingPage.namePopupTitle') }}</span>
@@ -271,7 +271,7 @@ onMounted(() => {
           class="name-field"
           :label="t('settingPage.nameInputLabel')"
           :placeholder="t('settingPage.namePlaceholder')"
-          maxlength="128"
+          maxlength="64"
           show-word-limit
           clearable
         />

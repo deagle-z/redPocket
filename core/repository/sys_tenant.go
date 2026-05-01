@@ -197,29 +197,49 @@ func GetSysTenantById(db *gorm.DB, id int64) (result pojo.SysTenantBack, err err
 }
 
 func GetCurrentTenantServiceLinks(db *gorm.DB, tenantID int64, host string) (result pojo.SysTenantServiceLinksBack, err error) {
-	if tenantID <= 0 {
-		return result, errors.New("tenant_not_found")
-	}
-	cacheKey := tenantServiceLinksCacheKey(tenantID, host)
-	if cacheKey != "" {
-		if cached, ok := getTenantServiceLinksCache(cacheKey); ok {
+	host = normalizeTenantHost(host)
+	if host != "" {
+		hostCacheKey := tenantServiceLinksCacheKey(0, host)
+		if cached, ok := getTenantServiceLinksCache(hostCacheKey); ok {
 			return cached, nil
+		}
+
+		candidates := tenantHostCandidates(host)
+		if len(candidates) > 0 {
+			var hostTenant pojo.SysTenant
+			hostErr := db.Model(&pojo.SysTenant{}).
+				Where("status = ? AND bind_domain IN ?", 1, candidates).
+				First(&hostTenant).Error
+			if hostErr == nil && hostTenant.ID > 0 {
+				result = pojo.SysTenantServiceLinksBack{
+					TgServiceURL: hostTenant.TgServiceURL,
+					WsServiceURL: hostTenant.WsServiceURL,
+				}
+				setTenantServiceLinksCache(hostCacheKey, result)
+				return result, nil
+			}
 		}
 	}
 
+	if tenantID <= 0 {
+		return result, errors.New("tenant_not_found")
+	}
+	tenantCacheKey := tenantServiceLinksCacheKey(tenantID, "")
+	if cached, ok := getTenantServiceLinksCache(tenantCacheKey); ok {
+		return cached, nil
+	}
+
 	var dbTenant pojo.SysTenant
-	query := db.Model(&pojo.SysTenant{}).Where("status = ?", 1)
-	query = query.Where("id = ?", tenantID)
-	if err = query.First(&dbTenant).Error; err != nil {
+	if err = db.Model(&pojo.SysTenant{}).
+		Where("status = ? AND id = ?", 1, tenantID).
+		First(&dbTenant).Error; err != nil {
 		return result, errors.New("tenant_not_found")
 	}
 	result = pojo.SysTenantServiceLinksBack{
 		TgServiceURL: dbTenant.TgServiceURL,
 		WsServiceURL: dbTenant.WsServiceURL,
 	}
-	if cacheKey != "" {
-		setTenantServiceLinksCache(cacheKey, result)
-	}
+	setTenantServiceLinksCache(tenantCacheKey, result)
 	return result, nil
 }
 

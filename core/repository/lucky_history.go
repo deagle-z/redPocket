@@ -87,12 +87,10 @@ func GetLuckyHistoryUserFlowList(db *gorm.DB, search pojo.LuckyHistoryUserFlowSe
 		FlowAmount float64 `gorm:"column:flow_amount"`
 	}
 
-	now := time.Now()
-	todayStart := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
-	tomorrowStart := todayStart.AddDate(0, 0, 1)
+	startAt, endAt := brazilHistoryUserFlowWindow(time.Now())
 
 	query := db.Model(&pojo.LuckyHistory{}).
-		Where("created_at >= ? AND created_at < ?", todayStart, tomorrowStart)
+		Where("created_at >= ? AND created_at < ?", startAt, endAt)
 	if search.UserID > 0 {
 		query = query.Where("user_id = ?", search.UserID)
 	}
@@ -120,6 +118,23 @@ func GetLuckyHistoryUserFlowList(db *gorm.DB, search pojo.LuckyHistoryUserFlowSe
 	result.PageSize = 20
 	result.CurrentPage = 0
 	return result
+}
+
+func brazilHistoryUserFlowWindow(now time.Time) (time.Time, time.Time) {
+	loc, err := time.LoadLocation("America/Sao_Paulo")
+	if err != nil {
+		loc = time.FixedZone("BRT", -3*60*60)
+	}
+
+	brNow := now.In(loc)
+	targetDay := brNow
+	if brNow.Hour() < 8 {
+		targetDay = brNow.AddDate(0, 0, -1)
+	}
+
+	start := time.Date(targetDay.Year(), targetDay.Month(), targetDay.Day(), 0, 0, 0, 0, loc)
+	end := start.AddDate(0, 0, 1)
+	return start.In(time.Local), end.In(time.Local)
 }
 
 func maskLuckyHistoryUserName(name string) string {

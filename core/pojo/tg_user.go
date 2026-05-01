@@ -173,7 +173,7 @@ type TgUpdateAvatarReq struct {
 }
 
 type TgUpdateNameReq struct {
-	FirstName string `json:"firstName" binding:"required"`
+	Username string `json:"username" binding:"required"`
 }
 
 type TgSetAudioOpenReq struct {

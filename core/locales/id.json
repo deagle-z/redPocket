@@ -123,6 +123,8 @@
   "user_error": "kesalahan pengguna",
   "operator_data_not_found": "data yang dioperasikan tidak ditemukan",
   "password_length_6_18": "panjang kata sandi harus antara 6 hingga 18 karakter",
+  "username_required": "nama pengguna wajib diisi",
+  "username_too_long": "nama pengguna tidak boleh lebih dari 64 karakter",
   "username_duplicate": "nama pengguna sudah ada",
   "username_cannot_modify": "nama pengguna tidak dapat diubah",
   "admin_user_cannot_delete": "pengguna admin tidak dapat dihapus",
