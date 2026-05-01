@@ -13,6 +13,7 @@ interface PageData {
 
 interface RecordItem {
   uid: string
+  userName: string
   reward: string
 }
 
@@ -117,12 +118,12 @@ const state = reactive({
   pageData: {
     rewardList: rewardCatalog,
     recordList: [
-      { uid: 'UID*321', reward: '18' },
-      { uid: 'UID*873', reward: '88' },
-      { uid: 'UID*552', reward: '188' },
-      { uid: 'UID*119', reward: '8' },
-      { uid: 'UID*694', reward: '58' },
-      { uid: 'UID*205', reward: '588' },
+      { uid: 'UID*321', userName: 'UID*321', reward: '18' },
+      { uid: 'UID*873', userName: 'UID*873', reward: '88' },
+      { uid: 'UID*552', userName: 'UID*552', reward: '188' },
+      { uid: 'UID*119', userName: 'UID*119', reward: '8' },
+      { uid: 'UID*694', userName: 'UID*694', reward: '58' },
+      { uid: 'UID*205', userName: 'UID*205', reward: '588' },
     ],
   } as PageData,
 })
@@ -222,10 +223,14 @@ function randomDelay(minSeconds: number, maxSeconds: number) {
 }
 
 function createMockPageData(): PageData {
-  const recordList = Array.from({ length: 10 }, () => ({
-    uid: `UID*${randomInt(100, 999)}`,
-    reward: rewardCatalog[randomInt(0, rewardCatalog.length - 2)],
-  }))
+  const recordList = Array.from({ length: 10 }, () => {
+    const uid = `UID*${randomInt(100, 999)}`
+    return {
+      uid,
+      userName: uid,
+      reward: rewardCatalog[randomInt(0, rewardCatalog.length - 2)],
+    }
+  })
   return {
     rewardList: [...rewardCatalog],
     recordList,
@@ -246,6 +251,7 @@ async function loadLotteryHistory(limit = 10) {
     const nextRecords = list
       .map(item => ({
         uid: formatRecordUid(item?.userId),
+        userName: item?.userName || formatRecordUid(item?.userId),
         reward: formatAwardText(Number(item?.consumedAmount || 0)),
       }))
       .filter(item => Number(item.reward) > 0)
@@ -347,7 +353,7 @@ async function refreshPageState() {
 }
 
 function addLatestRecord(reward: string) {
-  state.pageData.recordList.unshift({ uid: 'ME***', reward })
+  state.pageData.recordList.unshift({ uid: 'ME***', userName: 'ME***', reward })
   state.pageData.recordList = state.pageData.recordList.slice(0, 12)
 }
 
@@ -530,10 +536,10 @@ onBeforeUnmount(() => {
           <div ref="listWrapper" class="scroll-up">
             <div
               v-for="(item, index) in scrollingRecordList"
-              :key="`${item.uid}-${item.reward}-${index}`"
+              :key="`${item.uid}-${item.userName}-${item.reward}-${index}`"
               class="winning-item"
             >
-              <span class="winning-item__cell">{{ item.uid }}</span>
+              <span class="winning-item__cell winning-item__name">{{ item.userName || item.uid }}</span>
               <span class="winning-item__cell winning-item__reward">
                 <CoinAmount :text="item.reward" />
               </span>
@@ -843,6 +849,7 @@ onBeforeUnmount(() => {
 
 .winning-report span,
 .winning-item__cell {
+  min-width: 0;
   flex: 1;
   text-align: center;
 }
@@ -861,6 +868,12 @@ onBeforeUnmount(() => {
   padding: 9px 12px;
   color: #fff;
   font-size: 12px;
+}
+
+.winning-item__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .winning-item__reward {

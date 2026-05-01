@@ -572,6 +572,7 @@ export interface PrizePoolOutRecordItem {
   tenantId: number
   poolId: number
   userId?: number
+  userName?: string
   changeType: 'out'
   amount: number
   beforeBalance: number

@@ -212,7 +212,7 @@ func GetUsedLotteryCount(db *gorm.DB, userID int64) (int64, error) {
 }
 
 // GetPrizePoolOutRecordsApp returns latest lottery consumption records for app display.
-func GetPrizePoolOutRecordsApp(db *gorm.DB, page pojo.PageInfo) (result pojo.SysTenantPrizePoolRecordResp) {
+func GetPrizePoolOutRecordsApp(db *gorm.DB, page pojo.PageInfo) (result pojo.SysTenantPrizePoolOutRecordResp) {
 	if page.PageSize <= 0 || page.PageSize > 10 {
 		page.PageSize = 10
 	}
@@ -220,14 +220,18 @@ func GetPrizePoolOutRecordsApp(db *gorm.DB, page pojo.PageInfo) (result pojo.Sys
 		page.CurrentPage = 0
 	}
 
-	query := db.Model(&pojo.SysTenantPrizePoolRecord{}).
-		Where("change_type = ?", pojo.PrizePoolChangeTypeOut)
+	query := db.Table("sys_tenant_prize_pool_record AS r").
+		Where("r.change_type = ?", pojo.PrizePoolChangeTypeOut)
 
 	query.Count(&result.Total)
-	query.Order("id desc").
+	query.Select(`r.id, r.tenant_id, r.pool_id, r.user_id,
+			COALESCE(NULLIF(tg_user.first_name, ''), NULLIF(tg_user.username, ''), '') AS user_name,
+			r.change_type, r.amount, r.before_balance, r.after_balance, r.consumed_amount, r.remark, r.created_at`).
+		Joins("LEFT JOIN " + pojo.TgUserTableName + " ON " + pojo.TgUserTableName + ".id = r.user_id").
+		Order("r.id desc").
 		Limit(page.PageSize).
 		Offset(page.PageSize * page.CurrentPage).
-		Find(&result.List)
+		Scan(&result.List)
 
 	result.PageSize = page.PageSize
 	result.CurrentPage = page.CurrentPage

@@ -43,6 +43,25 @@ type SysTenantPrizePoolRecordResp struct {
 	BasePageResponse[SysTenantPrizePoolRecord]
 }
 
+type SysTenantPrizePoolOutRecordBack struct {
+	ID             int64     `json:"id"`
+	TenantId       int64     `json:"tenantId"`
+	PoolId         int64     `json:"poolId"`
+	UserId         *int64    `json:"userId"`
+	UserName       string    `json:"userName"`
+	ChangeType     string    `json:"changeType"`
+	Amount         float64   `json:"amount"`
+	BeforeBalance  float64   `json:"beforeBalance"`
+	AfterBalance   float64   `json:"afterBalance"`
+	ConsumedAmount *float64  `json:"consumedAmount"`
+	Remark         *string   `json:"remark"`
+	CreatedAt      time.Time `json:"createdAt"`
+}
+
+type SysTenantPrizePoolOutRecordResp struct {
+	BasePageResponse[SysTenantPrizePoolOutRecordBack]
+}
+
 // LotteryChancesResp 抽奖次数查询响应
 type LotteryChancesResp struct {
 	TotalFlow      float64   `json:"totalFlow"`      // 累计总流水
