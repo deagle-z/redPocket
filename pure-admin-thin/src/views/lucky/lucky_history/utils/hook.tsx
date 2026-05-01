@@ -47,6 +47,13 @@ export function useLuckyHistory(tableRef: Ref) {
       formatter: ({ amount }) => `${amount.toFixed(3)} `
     },
     {
+      label: "实际到账",
+      prop: "actualAmount",
+      minWidth: 100,
+      formatter: ({ actualAmount, amount, isThunder }) =>
+        `${Number(actualAmount || (isThunder === 1 ? 0 : amount) || 0).toFixed(3)} `
+    },
+    {
       label: "是否中雷",
       prop: "isThunder",
       minWidth: 100,

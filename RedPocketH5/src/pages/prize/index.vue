@@ -258,6 +258,10 @@ function resolveRecordUserName(item: PrizePoolOutRecordItem) {
   ).trim()
 }
 
+function resolveRecordRewardAmount(item: PrizePoolOutRecordItem) {
+  return Number(item?.consumedAmount ?? item?.amount ?? 0)
+}
+
 async function loadLotteryHistory(limit = 10) {
   try {
     const { data } = await getPrizePoolOutRecords(0, limit)
@@ -266,7 +270,7 @@ async function loadLotteryHistory(limit = 10) {
       .map(item => ({
         uid: formatRecordUid(item?.userId),
         userName: resolveRecordUserName(item) || formatFallbackUserName(item?.userId),
-        reward: formatAwardText(Number(item?.consumedAmount || 0)),
+        reward: formatAwardText(resolveRecordRewardAmount(item)),
       }))
       .filter(item => Number(item.reward) > 0)
 

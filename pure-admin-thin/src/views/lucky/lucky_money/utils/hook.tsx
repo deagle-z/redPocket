@@ -253,6 +253,12 @@ const DetailDialog = defineComponent({
                 default: ({ row }) => `${row.amount.toFixed(3)} U`
               }}
             </ElTableColumn>
+            <ElTableColumn label="实际到账" prop="actualAmount" minWidth="100">
+              {{
+                default: ({ row }) =>
+                  `${Number(row.actualAmount || (row.isThunder === 1 ? 0 : row.amount) || 0).toFixed(3)} U`
+              }}
+            </ElTableColumn>
             <ElTableColumn label="是否中雷" prop="isThunder" width="100">
               {{
                 default: ({ row }) =>

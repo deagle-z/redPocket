@@ -342,6 +342,7 @@ export interface LuckyAppHistoryItem {
   luckyId: number
   luckyAmount: number
   grabAmount: number
+  actualAmount: number
   loseMoney: number
   isThunder: number
   thunder: number

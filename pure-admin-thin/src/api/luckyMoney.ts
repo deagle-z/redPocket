@@ -28,6 +28,7 @@ export type LuckyHistory = {
   luckyId: number;
   isThunder: number;
   amount: number;
+  actualAmount: number;
   loseMoney: number;
 };
 

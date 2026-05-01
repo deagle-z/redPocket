@@ -716,6 +716,7 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 	isThunder := int8(0)
 	loseMoney := 0.0
 	actualAmount := 0.0
+	actualReceivedAmount := 0.0
 	thunderFee := 0.0 // 中雷/猜错手续费（发包者端抽成）
 	winFee := 0.0     // 中奖/猜对手续费（抢包者端抽成）
 	sendCommission := 0
@@ -813,6 +814,7 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 			LuckyID:         luckyID,
 			IsThunder:       0,
 			Amount:          actualLoseMoney,
+			ActualAmount:    actualLoseMoney,
 			GrabType:        2,
 			SourceChannelID: luckyMoney.SourceChannelID,
 			TenantId:        lockedSender.TenantId,
@@ -955,6 +957,7 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 		winPoolFee := utils.Truncate2(redAmount * float64(grabbingPoolCommission) / 100.0)
 		// 实际到账金额 = 显示金额 - 平台抽成 - 奖池注入
 		actualAmount = utils.Truncate2(redAmount - commissionAmount - winPoolFee)
+		actualReceivedAmount = actualAmount
 
 		var lockedWinner pojo.TgUser
 		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ?", userID).First(&lockedWinner).Error; err != nil {
@@ -1058,6 +1061,7 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 		IsThunder:       int(isThunder),
 		Guess:           guess,
 		Amount:          redAmount,
+		ActualAmount:    actualReceivedAmount,
 		LoseMoney:       loseMoney,
 		SourceChannelID: user.SourceChannelID,
 		TenantId:        user.TenantId,

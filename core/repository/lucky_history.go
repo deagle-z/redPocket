@@ -12,19 +12,21 @@ import (
 )
 
 type hiddenLuckyGrabRecord struct {
-	HistoryID int64
-	LuckyID   int64
-	UserID    int64
-	Amount    float64
-	LoseMoney float64
-	IsThunder int
-	CreatedAt time.Time
+	HistoryID    int64
+	LuckyID      int64
+	UserID       int64
+	Amount       float64
+	ActualAmount float64
+	LoseMoney    float64
+	IsThunder    int
+	CreatedAt    time.Time
 }
 
 // CreateLuckyHistory 创建领取记录
 func CreateLuckyHistory(db *gorm.DB, history *pojo.LuckyHistory) error {
 	if history != nil {
 		history.Amount = utils.Truncate2(history.Amount)
+		history.ActualAmount = utils.Truncate2(history.ActualAmount)
 		history.LoseMoney = utils.Truncate2(history.LoseMoney)
 	}
 	return db.Create(history).Error
@@ -69,6 +71,7 @@ func GetLuckyHistoryList(db *gorm.DB, search pojo.LuckyHistorySearch) (result po
 		var tempHistory pojo.LuckyHistoryBack
 		_ = copier.Copy(&tempHistory, &history)
 		tempHistory.Amount = utils.Truncate2(tempHistory.Amount)
+		tempHistory.ActualAmount = utils.Truncate2(tempHistory.ActualAmount)
 		tempHistory.LoseMoney = utils.Truncate2(tempHistory.LoseMoney)
 		result.List = append(result.List, tempHistory)
 	}
@@ -240,6 +243,7 @@ func GetLuckyAppHistoryUnion(db *gorm.DB, userID int64, search pojo.LuckyAppHist
 			m.id AS lucky_id,
 			m.amount AS lucky_amount,
 			0 AS grab_amount,
+			0 AS actual_amount,
 			0 AS lose_money,
 			0 AS is_thunder,
 			m.thunder AS thunder,
@@ -265,6 +269,7 @@ func GetLuckyAppHistoryUnion(db *gorm.DB, userID int64, search pojo.LuckyAppHist
 			h.lucky_id AS lucky_id,
 			m.amount AS lucky_amount,
 			h.amount AS grab_amount,
+			COALESCE(NULLIF(h.actual_amount, 0), CASE WHEN h.is_thunder = 0 THEN h.amount ELSE 0 END) AS actual_amount,
 			h.lose_money AS lose_money,
 			h.is_thunder AS is_thunder,
 			m.thunder AS thunder,
@@ -273,9 +278,9 @@ func GetLuckyAppHistoryUnion(db *gorm.DB, userID int64, search pojo.LuckyAppHist
 			h.grab_type AS grab_type,
 			h.guess AS guess,
 			u.avatar AS avatar,
-			CASE WHEN h.is_thunder = 0 THEN h.amount ELSE 0 END AS income,
+			CASE WHEN h.is_thunder = 0 THEN COALESCE(NULLIF(h.actual_amount, 0), h.amount) ELSE 0 END AS income,
 			CASE WHEN h.is_thunder = 1 THEN h.lose_money ELSE 0 END AS expense,
-			CASE WHEN h.is_thunder = 0 THEN h.amount ELSE -h.lose_money END AS net_amount,
+			CASE WHEN h.is_thunder = 0 THEN COALESCE(NULLIF(h.actual_amount, 0), h.amount) ELSE -h.lose_money END AS net_amount,
 			h.created_at AS created_at
 		FROM lucky_history h
 		LEFT JOIN lucky_money m ON m.id = h.lucky_id
@@ -337,8 +342,11 @@ func GetLuckyAppHistoryUnion(db *gorm.DB, userID int64, search pojo.LuckyAppHist
 		expense := 0.0
 		net := 0.0
 		if hidden.IsThunder == 0 {
-			income = hidden.Amount
-			net = hidden.Amount
+			income = hidden.ActualAmount
+			if income == 0 {
+				income = hidden.Amount
+			}
+			net = income
 		} else {
 			expense = hidden.LoseMoney
 			net = -hidden.LoseMoney
@@ -356,6 +364,7 @@ func GetLuckyAppHistoryUnion(db *gorm.DB, userID int64, search pojo.LuckyAppHist
 			t.lucky_id,
 			t.lucky_amount,
 			t.grab_amount,
+			t.actual_amount,
 			t.lose_money,
 			t.is_thunder,
 			t.thunder,
@@ -378,6 +387,7 @@ func GetLuckyAppHistoryUnion(db *gorm.DB, userID int64, search pojo.LuckyAppHist
 		row := &result.List[i]
 		row.LuckyAmount = utils.Truncate2(row.LuckyAmount)
 		row.GrabAmount = utils.Truncate2(row.GrabAmount)
+		row.ActualAmount = utils.Truncate2(row.ActualAmount)
 		row.LoseMoney = utils.Truncate2(row.LoseMoney)
 		row.Income = utils.Truncate2(row.Income)
 		row.Expense = utils.Truncate2(row.Expense)
@@ -390,6 +400,7 @@ func GetLuckyAppHistoryUnion(db *gorm.DB, userID int64, search pojo.LuckyAppHist
 			continue
 		}
 		row.GrabAmount = 0
+		row.ActualAmount = 0
 		row.LoseMoney = 0
 		row.Income = 0
 		row.Expense = 0
@@ -503,13 +514,14 @@ func getPendingHiddenGrabRecordMap(db *gorm.DB, targetUserID int64, luckyIDs []i
 		}
 
 		result[history.ID] = hiddenLuckyGrabRecord{
-			HistoryID: history.ID,
-			LuckyID:   lucky.ID,
-			UserID:    history.UserID,
-			Amount:    utils.Truncate2(history.Amount),
-			LoseMoney: utils.Truncate2(history.LoseMoney),
-			IsThunder: history.IsThunder,
-			CreatedAt: history.CreatedAt,
+			HistoryID:    history.ID,
+			LuckyID:      lucky.ID,
+			UserID:       history.UserID,
+			Amount:       utils.Truncate2(history.Amount),
+			ActualAmount: utils.Truncate2(history.ActualAmount),
+			LoseMoney:    utils.Truncate2(history.LoseMoney),
+			IsThunder:    history.IsThunder,
+			CreatedAt:    history.CreatedAt,
 		}
 	}
 

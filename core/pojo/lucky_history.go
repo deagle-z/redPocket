@@ -6,15 +6,16 @@ import (
 
 type LuckyHistory struct {
 	BaseModel
-	UserID          int64   `json:"userId" gorm:"type:bigint;index"`                                   // 用户ID
-	FirstName       string  `json:"firstName" gorm:"type:varchar(64)"`                                 // 用户名称
-	LuckyID         int64   `json:"luckyId" gorm:"type:bigint;index"`                                  // 红包ID
-	IsThunder       int     `json:"isThunder" gorm:"type:int;default:0"`                               // 是否中雷 0未中雷 1中雷
-	GrabType        int     `json:"grabType" gorm:"type:int;default:1"`                                // 是否中雷 1抢包 2中雷返还
-	Amount          float64 `json:"amount" gorm:"type:numeric(20,2)"`                                  // 领取金额
-	LoseMoney       float64 `json:"loseMoney" gorm:"type:numeric(20,2);default:0"`                     // 损失金额(中雷时)
-	Guess           int     `json:"guess" gorm:"type:tinyint;default:-1"`                              // 奇偶猜测 -1=不适用 0=偶 1=奇
-	SourceChannelID *int64  `json:"sourceChannelId" gorm:"column:source_channel_id;type:bigint;index"` // 来源渠道ID
+	UserID          int64   `json:"userId" gorm:"type:bigint;index"`                                       // 用户ID
+	FirstName       string  `json:"firstName" gorm:"type:varchar(64)"`                                     // 用户名称
+	LuckyID         int64   `json:"luckyId" gorm:"type:bigint;index"`                                      // 红包ID
+	IsThunder       int     `json:"isThunder" gorm:"type:int;default:0"`                                   // 是否中雷 0未中雷 1中雷
+	GrabType        int     `json:"grabType" gorm:"type:int;default:1"`                                    // 是否中雷 1抢包 2中雷返还
+	Amount          float64 `json:"amount" gorm:"type:numeric(20,2)"`                                      // 领取金额
+	ActualAmount    float64 `json:"actualAmount" gorm:"column:actual_amount;type:numeric(20,2);default:0"` // 抽水后实际到账金额
+	LoseMoney       float64 `json:"loseMoney" gorm:"type:numeric(20,2);default:0"`                         // 损失金额(中雷时)
+	Guess           int     `json:"guess" gorm:"type:tinyint;default:-1"`                                  // 奇偶猜测 -1=不适用 0=偶 1=奇
+	SourceChannelID *int64  `json:"sourceChannelId" gorm:"column:source_channel_id;type:bigint;index"`     // 来源渠道ID
 	TenantId        int64   `json:"tenantId" gorm:"type:bigint;"`
 }
 
@@ -28,6 +29,7 @@ type LuckyHistoryBack struct {
 	IsThunder       int       `json:"isThunder"`
 	Guess           int       `json:"guess"`
 	Amount          float64   `json:"amount"`
+	ActualAmount    float64   `json:"actualAmount"`
 	LoseMoney       float64   `json:"loseMoney"`
 	SourceChannelID *int64    `json:"sourceChannelId"`
 	TenantId        int64     `json:"tenantId"`
@@ -85,24 +87,25 @@ type LuckyAppHistorySearch struct {
 }
 
 type LuckyAppHistoryBack struct {
-	RecordType  string    `json:"recordType" gorm:"column:record_type"` // send/grab
-	ActionType  int       `json:"actionType" gorm:"column:action_type"` // 1发包 2抢包
-	RecordID    int64     `json:"recordId" gorm:"column:record_id"`
-	LuckyID     int64     `json:"luckyId" gorm:"column:lucky_id"`
-	LuckyAmount float64   `json:"luckyAmount" gorm:"column:lucky_amount"` // 发包总额
-	GrabAmount  float64   `json:"grabAmount" gorm:"column:grab_amount"`   // 抢到金额
-	LoseMoney   float64   `json:"loseMoney" gorm:"column:lose_money"`
-	IsThunder   int       `json:"isThunder" gorm:"column:is_thunder"`
-	Guess       int       `json:"guess" gorm:"column:guess"`
-	Thunder     int       `json:"thunder" gorm:"column:thunder"`
-	GrabType    int       `json:"grabType" gorm:"column:grab_type"`
-	SenderID    int64     `json:"senderId" gorm:"column:sender_id"`
-	SenderName  string    `json:"senderName" gorm:"column:sender_name"`
-	Avatar      *string   `json:"avatar" gorm:"column:avatar"`
-	Income      float64   `json:"income" gorm:"column:income"`
-	Expense     float64   `json:"expense" gorm:"column:expense"`
-	NetProfit   float64   `json:"netProfit" gorm:"column:net_amount"`
-	CreatedAt   time.Time `json:"createdAt" gorm:"column:created_at"`
+	RecordType   string    `json:"recordType" gorm:"column:record_type"` // send/grab
+	ActionType   int       `json:"actionType" gorm:"column:action_type"` // 1发包 2抢包
+	RecordID     int64     `json:"recordId" gorm:"column:record_id"`
+	LuckyID      int64     `json:"luckyId" gorm:"column:lucky_id"`
+	LuckyAmount  float64   `json:"luckyAmount" gorm:"column:lucky_amount"`   // 发包总额
+	GrabAmount   float64   `json:"grabAmount" gorm:"column:grab_amount"`     // 抢到金额
+	ActualAmount float64   `json:"actualAmount" gorm:"column:actual_amount"` // 抽水后实际到账金额
+	LoseMoney    float64   `json:"loseMoney" gorm:"column:lose_money"`
+	IsThunder    int       `json:"isThunder" gorm:"column:is_thunder"`
+	Guess        int       `json:"guess" gorm:"column:guess"`
+	Thunder      int       `json:"thunder" gorm:"column:thunder"`
+	GrabType     int       `json:"grabType" gorm:"column:grab_type"`
+	SenderID     int64     `json:"senderId" gorm:"column:sender_id"`
+	SenderName   string    `json:"senderName" gorm:"column:sender_name"`
+	Avatar       *string   `json:"avatar" gorm:"column:avatar"`
+	Income       float64   `json:"income" gorm:"column:income"`
+	Expense      float64   `json:"expense" gorm:"column:expense"`
+	NetProfit    float64   `json:"netProfit" gorm:"column:net_amount"`
+	CreatedAt    time.Time `json:"createdAt" gorm:"column:created_at"`
 }
 
 type LuckyAppHistoryResp struct {
