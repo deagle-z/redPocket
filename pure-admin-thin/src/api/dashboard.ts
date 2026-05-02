@@ -7,12 +7,15 @@ export type AdminDashboardPeriodStats = {
   rebateAmount: number;
   platformPumpAmount: number;
   rechargeUsers: number;
+  registerUsers: number;
 };
 
 export type AdminDashboardStats = {
   today: AdminDashboardPeriodStats;
+  yesterday: AdminDashboardPeriodStats;
   month: AdminDashboardPeriodStats;
   totalPlatformPumpAmount: number;
+  totalRegisterUsers: number;
   onlineUsers: number;
 };
 
@@ -26,7 +29,7 @@ export type AdminDashboardStatsResult = {
 export type AdminDashboardDetailSearch = {
   currentPage: number;
   pageSize: number;
-  period?: "today" | "month";
+  period?: "today" | "yesterday" | "month" | "total";
 };
 
 export type AdminDashboardUserDetail = {
@@ -43,6 +46,7 @@ export type AdminDashboardUserDetail = {
   rechargeCount: number;
   lastRechargeAt?: string | null;
   lastActiveAt?: string | null;
+  registeredAt?: string | null;
 };
 
 export type AdminDashboardUserDetailResult = {
@@ -80,6 +84,16 @@ export const getAdminDashboardRechargeUsers = (
   return http.request<AdminDashboardUserDetailResult>(
     "post",
     "/api/v1/admin/dashboard/rechargeUsers",
+    { data }
+  );
+};
+
+export const getAdminDashboardRegisterUsers = (
+  data: AdminDashboardDetailSearch
+) => {
+  return http.request<AdminDashboardUserDetailResult>(
+    "post",
+    "/api/v1/admin/dashboard/registerUsers",
     { data }
   );
 };

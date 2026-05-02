@@ -5,6 +5,7 @@ import Refresh from "@iconify-icons/ep/refresh";
 import { useRenderIcon } from "@/components/ReIcon/src/hooks";
 import {
   getTenantDashboardOnlineUsers,
+  getTenantDashboardRegisterUsers,
   getTenantDashboardRechargeUsers,
   getTenantDashboardStats,
   type TenantDashboardStats,
@@ -16,28 +17,33 @@ defineOptions({
 });
 
 const loading = ref(false);
+const emptyPeriodStats = () => ({
+  rechargeAmount: 0,
+  betAmount: 0,
+  withdrawAmount: 0,
+  rebateAmount: 0,
+  platformPumpAmount: 0,
+  rechargeUsers: 0,
+  registerUsers: 0
+});
+
 const stats = ref<TenantDashboardStats>({
-  today: {
-    rechargeAmount: 0,
-    betAmount: 0,
-    withdrawAmount: 0,
-    rebateAmount: 0,
-    platformPumpAmount: 0,
-    rechargeUsers: 0
-  },
-  month: {
-    rechargeAmount: 0,
-    betAmount: 0,
-    withdrawAmount: 0,
-    rebateAmount: 0,
-    platformPumpAmount: 0,
-    rechargeUsers: 0
-  },
+  today: emptyPeriodStats(),
+  yesterday: emptyPeriodStats(),
+  month: emptyPeriodStats(),
   totalPlatformPumpAmount: 0,
+  totalRegisterUsers: 0,
   onlineUsers: 0
 });
 
-type DetailType = "online" | "todayRechargeUsers" | "monthRechargeUsers";
+type DetailType =
+  | "online"
+  | "todayRechargeUsers"
+  | "monthRechargeUsers"
+  | "todayRegisterUsers"
+  | "yesterdayRegisterUsers"
+  | "monthRegisterUsers"
+  | "totalRegisterUsers";
 
 const detailDialogVisible = ref(false);
 const detailLoading = ref(false);
@@ -134,6 +140,34 @@ const metricCards = computed(() => [
     detailType: "online" as DetailType
   },
   {
+    title: "当日注册人数",
+    value: String(stats.value.today.registerUsers || 0),
+    unit: "人",
+    tone: "purple",
+    detailType: "todayRegisterUsers" as DetailType
+  },
+  {
+    title: "昨日注册人数",
+    value: String(stats.value.yesterday.registerUsers || 0),
+    unit: "人",
+    tone: "purple",
+    detailType: "yesterdayRegisterUsers" as DetailType
+  },
+  {
+    title: "当月注册人数",
+    value: String(stats.value.month.registerUsers || 0),
+    unit: "人",
+    tone: "purple",
+    detailType: "monthRegisterUsers" as DetailType
+  },
+  {
+    title: "注册总人数",
+    value: String(stats.value.totalRegisterUsers || 0),
+    unit: "人",
+    tone: "purple",
+    detailType: "totalRegisterUsers" as DetailType
+  },
+  {
     title: "当日充值客户数",
     value: String(stats.value.today.rechargeUsers || 0),
     unit: "人",
@@ -148,6 +182,23 @@ const metricCards = computed(() => [
     detailType: "monthRechargeUsers" as DetailType
   }
 ]);
+
+const detailPeriod = computed(() => {
+  if (detailType.value.startsWith("yesterday")) return "yesterday";
+  if (detailType.value.startsWith("month")) return "month";
+  if (detailType.value.startsWith("total")) return "total";
+  return "today";
+});
+
+const isRechargeDetail = computed(() =>
+  detailType.value.includes("RechargeUsers")
+);
+
+const isRegisterDetail = computed(() =>
+  detailType.value.includes("RegisterUsers")
+);
+
+const isOnlineDetail = computed(() => detailType.value === "online");
 
 async function loadStats() {
   loading.value = true;
@@ -168,14 +219,20 @@ async function loadDetail() {
       currentPage: detailPagination.currentPage - 1,
       pageSize: detailPagination.pageSize
     };
-    const res =
-      detailType.value === "online"
-        ? await getTenantDashboardOnlineUsers(payload)
-        : await getTenantDashboardRechargeUsers({
-            ...payload,
-            period:
-              detailType.value === "monthRechargeUsers" ? "month" : "today"
-          });
+    let res;
+    if (isOnlineDetail.value) {
+      res = await getTenantDashboardOnlineUsers(payload);
+    } else if (isRegisterDetail.value) {
+      res = await getTenantDashboardRegisterUsers({
+        ...payload,
+        period: detailPeriod.value
+      });
+    } else {
+      res = await getTenantDashboardRechargeUsers({
+        ...payload,
+        period: detailPeriod.value
+      });
+    }
     detailList.value = res.data?.list || [];
     detailPagination.total = res.data?.total || 0;
     detailPagination.pageSize = res.data?.pageSize || detailPagination.pageSize;
@@ -275,7 +332,7 @@ onMounted(() => {
           </template>
         </el-table-column>
         <el-table-column
-          v-if="detailType !== 'online'"
+          v-if="isRechargeDetail"
           prop="rechargeAmount"
           label="充值金额"
           min-width="120"
@@ -285,13 +342,13 @@ onMounted(() => {
           </template>
         </el-table-column>
         <el-table-column
-          v-if="detailType !== 'online'"
+          v-if="isRechargeDetail"
           prop="rechargeCount"
           label="充值笔数"
           min-width="100"
         />
         <el-table-column
-          v-if="detailType !== 'online'"
+          v-if="isRechargeDetail"
           prop="lastRechargeAt"
           label="最后充值时间"
           min-width="170"
@@ -301,13 +358,23 @@ onMounted(() => {
           </template>
         </el-table-column>
         <el-table-column
-          v-if="detailType === 'online'"
+          v-if="isOnlineDetail"
           prop="lastActiveAt"
           label="最后在线时间"
           min-width="170"
         >
           <template #default="{ row }">
             {{ formatDateTime(row.lastActiveAt) }}
+          </template>
+        </el-table-column>
+        <el-table-column
+          v-if="isRegisterDetail"
+          prop="registeredAt"
+          label="注册时间"
+          min-width="170"
+        >
+          <template #default="{ row }">
+            {{ formatDateTime(row.registeredAt) }}
           </template>
         </el-table-column>
       </el-table>

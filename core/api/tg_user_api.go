@@ -144,6 +144,34 @@ func SetTgUserStatus(ctx *gin.Context) {
 	utils.SuccessObjBack(ctx, result)
 }
 
+// SetTgUserRebateRate godoc
+//
+//	@Summary		修改Telegram用户返佣比例
+//	@Tags			Telegram用户
+//	@Accept			json
+//	@Produce		json
+//	@Param			data body		pojo.TgUserRebateRateSet	true	"返佣比例信息"
+//	@Success		200	{object}		pojo.TgUserAdminBack
+//	@Router			/api/v1/admin/tgUser/rebateRate [post]
+func SetTgUserRebateRate(ctx *gin.Context) {
+	var req pojo.TgUserRebateRateSet
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	if req.ID <= 0 || req.RebateRate < 0 || req.RebateRate > 100 {
+		utils.ErrorBack(ctx, "invalid_params")
+		return
+	}
+	db := ctx.MustGet("db").(*gorm.DB)
+	result, err := repository.SetTgUserRebateRate(db, req.ID, req.RebateRate)
+	if err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	utils.SuccessObjBack(ctx, result)
+}
+
 // BatchCreateBotTgUsers godoc
 //
 //	@Summary		批量创建机器人 Telegram 用户
@@ -687,6 +715,7 @@ func GetCurrentTgInviteRuleConfig(ctx *gin.Context) {
 
 	hostInfo := ctx.MustGet("hostInfo").(pojo.HostInfo)
 	tablePrefix := hostInfo.TablePrefix
+	db := ctx.MustGet("db").(*gorm.DB)
 
 	parseConfigFloat := func(key string, defaultValue string) float64 {
 		val := utils.GetStringCache(tablePrefix, key, &defaultValue)
@@ -723,12 +752,17 @@ func GetCurrentTgInviteRuleConfig(ctx *gin.Context) {
 	}
 
 	sendMinAmount, sendMaxAmount := parseSendMinMax("100|5000")
+	inviteLuckyRebateRate := parseConfigFloat("invite_lucky_rebate_rate", "40")
+	var user pojo.TgUser
+	if err := db.Select("id", "rebate_rate").Where("id = ?", userID).First(&user).Error; err == nil && user.RebateRate > 0 {
+		inviteLuckyRebateRate = user.RebateRate
+	}
 
 	utils.SuccessObjBack(ctx, pojo.TgInviteRuleConfigBack{
 		LuckySendCommission:       parseConfigFloat("lucky_send_commission", "5"),
 		LuckyGrabbingCommission:   parseConfigFloat("lucky_grabbing_commission", "5"),
 		InviteFirstRechargeReward: parseConfigFloat("invite_first_recharge_reward", "10"),
-		InviteLuckyRebateRate:     parseConfigFloat("invite_lucky_rebate_rate", "40"),
+		InviteLuckyRebateRate:     inviteLuckyRebateRate,
 		InviteThunderRebateRate:   parseConfigFloat("invite_thunder_rebate_rate", "40"),
 		SendMinAmount:             sendMinAmount,
 		SendMaxAmount:             sendMaxAmount,

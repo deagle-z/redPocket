@@ -17,6 +17,7 @@ export type TgUser = {
   subWithdrawAmount?: number;
   rebateAmount: number;
   rebateTotalAmount: number;
+  rebateRate: number;
   status: number;
   parentId?: number | null;
   inviteCode?: string | null;
@@ -37,6 +38,11 @@ export type TgUserSearch = {
 export type TgUserStatusSet = {
   id: number;
   status: number;
+};
+
+export type TgUserRebateRateSet = {
+  id: number;
+  rebateRate: number;
 };
 
 export type TgUserSubStatsSummarySearch = {
@@ -110,6 +116,12 @@ export const getTgUserSubStatsSummary = (data: TgUserSubStatsSummarySearch) => {
 
 export const setTgUserStatus = (data: TgUserStatusSet) => {
   return http.request<TgUserResult>("post", "/api/v1/tenant/tgUser/status", {
+    data
+  });
+};
+
+export const setTgUserRebateRate = (data: TgUserRebateRateSet) => {
+  return http.request<TgUserResult>("post", "/api/v1/tenant/tgUser/rebateRate", {
     data
   });
 };

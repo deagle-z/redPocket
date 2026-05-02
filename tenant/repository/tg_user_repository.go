@@ -2,6 +2,7 @@ package repository
 
 import (
 	"BaseGoUni/core/pojo"
+	"BaseGoUni/core/utils"
 	"errors"
 	"github.com/jinzhu/copier"
 	"gorm.io/gorm"
@@ -87,6 +88,22 @@ func SetTgUserStatus(db *gorm.DB, tenantID int64, id int64, status int8) (result
 	}
 	_ = copier.Copy(&result, &dbUser)
 	result.Status = status
+	return result, nil
+}
+
+func SetTgUserRebateRate(db *gorm.DB, tenantID int64, id int64, rebateRate float64) (result pojo.TgUserBack, err error) {
+	var dbUser pojo.TgUser
+	db.Where("id = ? and tenant_id = ?", id, tenantID).First(&dbUser)
+	if dbUser.ID == 0 {
+		return result, errors.New("数据不存在")
+	}
+	rebateRate = utils.Truncate2(rebateRate)
+	err = db.Model(&dbUser).Update("rebate_rate", rebateRate).Error
+	if err != nil {
+		return result, err
+	}
+	_ = copier.Copy(&result, &dbUser)
+	result.RebateRate = rebateRate
 	return result, nil
 }
 

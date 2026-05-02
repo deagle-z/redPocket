@@ -72,9 +72,17 @@ func SetTgUser(db *gorm.DB, req pojo.TgUserSet) (result pojo.TgUserAdminBack, er
 			return result, errors.New("record_not_found_update")
 		}
 		_ = copier.Copy(&dbUser, &req)
+		if req.RebateRate != nil {
+			dbUser.RebateRate = utils.Truncate2(*req.RebateRate)
+		}
 		err = db.Save(&dbUser).Error
 	} else {
 		_ = copier.Copy(&dbUser, &req)
+		if req.RebateRate != nil {
+			dbUser.RebateRate = utils.Truncate2(*req.RebateRate)
+		} else {
+			dbUser.RebateRate = getDefaultInviteLuckyRebateRate(db)
+		}
 		err = db.Create(&dbUser).Error
 	}
 	if err != nil {
@@ -125,6 +133,22 @@ func SetTgUserStatus(db *gorm.DB, id int64, status int8) (result pojo.TgUserAdmi
 	return result, nil
 }
 
+func SetTgUserRebateRate(db *gorm.DB, id int64, rebateRate float64) (result pojo.TgUserAdminBack, err error) {
+	var dbUser pojo.TgUser
+	db.Where("id = ?", id).First(&dbUser)
+	if dbUser.ID == 0 {
+		return result, errors.New("record_not_found")
+	}
+	rebateRate = utils.Truncate2(rebateRate)
+	err = db.Model(&dbUser).Update("rebate_rate", rebateRate).Error
+	if err != nil {
+		return result, err
+	}
+	_ = copier.Copy(&result, &dbUser)
+	result.RebateRate = rebateRate
+	return result, nil
+}
+
 func BatchCreateBotTgUsers(db *gorm.DB, req pojo.TgUserBatchCreateBotReq) (result pojo.TgUserBatchCreateBotResp, err error) {
 	names := parseBotNames(req.NameFile)
 	if !req.RandomName && len(names) == 0 {
@@ -166,6 +190,7 @@ func BatchCreateBotTgUsers(db *gorm.DB, req pojo.TgUserBatchCreateBotReq) (resul
 				Balance:    999999,
 				GiftAmount: 0,
 				GiftTotal:  0,
+				RebateRate: getDefaultInviteLuckyRebateRate(tx),
 				Status:     1,
 				InviteCode: &inviteCode,
 				TenantId:   0,

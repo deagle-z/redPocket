@@ -7,12 +7,15 @@ export type TenantDashboardPeriodStats = {
   rebateAmount: number;
   platformPumpAmount: number;
   rechargeUsers: number;
+  registerUsers: number;
 };
 
 export type TenantDashboardStats = {
   today: TenantDashboardPeriodStats;
+  yesterday: TenantDashboardPeriodStats;
   month: TenantDashboardPeriodStats;
   totalPlatformPumpAmount: number;
+  totalRegisterUsers: number;
   onlineUsers: number;
 };
 
@@ -26,7 +29,7 @@ export type TenantDashboardStatsResult = {
 export type TenantDashboardDetailSearch = {
   currentPage: number;
   pageSize: number;
-  period?: "today" | "month";
+  period?: "today" | "yesterday" | "month" | "total";
 };
 
 export type TenantDashboardUserDetail = {
@@ -42,6 +45,7 @@ export type TenantDashboardUserDetail = {
   rechargeCount: number;
   lastRechargeAt?: string | null;
   lastActiveAt?: string | null;
+  registeredAt?: string | null;
 };
 
 export type TenantDashboardUserDetailResult = {
@@ -79,6 +83,16 @@ export const getTenantDashboardRechargeUsers = (
   return http.request<TenantDashboardUserDetailResult>(
     "post",
     "/api/v1/tenant/dashboard/rechargeUsers",
+    { data }
+  );
+};
+
+export const getTenantDashboardRegisterUsers = (
+  data: TenantDashboardDetailSearch
+) => {
+  return http.request<TenantDashboardUserDetailResult>(
+    "post",
+    "/api/v1/tenant/dashboard/registerUsers",
     { data }
   );
 };

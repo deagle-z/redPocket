@@ -32,6 +32,11 @@ function formatMoney(val?: number | null) {
   return val.toFixed(3);
 }
 
+function formatPercent(val?: number | null) {
+  if (typeof val !== "number" || Number.isNaN(val)) return "0.00%";
+  return `${val.toFixed(2)}%`;
+}
+
 export function useTgUser(tableRef: Ref) {
   const form = reactive({
     tgId: undefined as number | undefined,
@@ -104,6 +109,12 @@ export function useTgUser(tableRef: Ref) {
       formatter: ({ rebateTotalAmount }) => formatMoney(rebateTotalAmount)
     },
     {
+      label: "返佣比例",
+      prop: "rebateRate",
+      minWidth: 110,
+      formatter: ({ rebateRate }) => formatPercent(rebateRate)
+    },
+    {
       label: "上级ID",
       prop: "parentId",
       minWidth: 100,
@@ -135,7 +146,7 @@ export function useTgUser(tableRef: Ref) {
     {
       label: "操作",
       fixed: "right",
-      width: 200,
+      width: 280,
       slot: "operation"
     }
   ];

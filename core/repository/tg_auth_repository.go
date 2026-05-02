@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"golang.org/x/crypto/bcrypt"
 	"math/rand/v2"
+	"strconv"
 	"strings"
 	"time"
 
@@ -214,6 +215,7 @@ func createTgUserFromAuth(tx *gorm.DB, req pojo.TgAuthLoginReq) (pojo.TgUser, er
 	if err != nil {
 		return pojo.TgUser{}, err
 	}
+	defaultRebateRate := getDefaultInviteLuckyRebateRate(tx)
 
 	for i := 0; i < 5; i++ {
 		inviteCode, err := generateInviteCode(tx)
@@ -235,6 +237,7 @@ func createTgUserFromAuth(tx *gorm.DB, req pojo.TgAuthLoginReq) (pojo.TgUser, er
 			SourceChannelID:   nil,
 			SourceChannelCode: nil,
 			TenantId:          0,
+			RebateRate:        defaultRebateRate,
 		}
 		if sourceChannel != nil {
 			newUser.SourceChannelID = &sourceChannel.ID
@@ -267,6 +270,19 @@ func generateInviteCode(db *gorm.DB) (string, error) {
 		}
 	}
 	return fmt.Sprintf("%06d", rand.IntN(1000000)), nil
+}
+
+func getDefaultInviteLuckyRebateRate(db *gorm.DB) float64 {
+	const defaultRate = 40.0
+	var config pojo.SysConfig
+	if err := db.Where("config_key = ?", "invite_lucky_rebate_rate").First(&config).Error; err != nil || strings.TrimSpace(config.ConfigValue) == "" {
+		return defaultRate
+	}
+	rate, err := strconv.ParseFloat(strings.TrimSpace(config.ConfigValue), 64)
+	if err != nil || rate < 0 {
+		return defaultRate
+	}
+	return rate
 }
 
 func nullableString(v string) *string {
@@ -435,6 +451,7 @@ func RegisterTgByEmail(db *gorm.DB, email string, firstName string, password str
 		if err != nil {
 			return err
 		}
+		defaultRebateRate := getDefaultInviteLuckyRebateRate(tx)
 		for i := 0; i < 5; i++ {
 			//tgID := time.Now().UnixNano()/1e3 + int64(rand.IntN(1000))
 			ownInviteCode := fmt.Sprintf("%06d", rand.IntN(1000000))
@@ -456,6 +473,7 @@ func RegisterTgByEmail(db *gorm.DB, email string, firstName string, password str
 				SourceChannelID:   nil,
 				SourceChannelCode: nil,
 				TenantId:          tenantID,
+				RebateRate:        defaultRebateRate,
 			}
 			if sourceChannel != nil {
 				user.SourceChannelID = &sourceChannel.ID
@@ -533,6 +551,7 @@ func RegisterTgByPhone(db *gorm.DB, phone string, country string, firstName stri
 		if err != nil {
 			return err
 		}
+		defaultRebateRate := getDefaultInviteLuckyRebateRate(tx)
 		for i := 0; i < 5; i++ {
 			ownInviteCode := fmt.Sprintf("%06d", rand.IntN(1000000))
 			uid, uidErr := generateUniqueUID(tx)
@@ -552,6 +571,7 @@ func RegisterTgByPhone(db *gorm.DB, phone string, country string, firstName stri
 				SourceChannelID:   nil,
 				SourceChannelCode: nil,
 				TenantId:          tenantID,
+				RebateRate:        defaultRebateRate,
 			}
 			if sourceChannel != nil {
 				newUser.SourceChannelID = &sourceChannel.ID
@@ -767,6 +787,7 @@ func GetCurrentTgUserInfo(db *gorm.DB, accessSecret string, token string) (pojo.
 		TgID:         user.TgID,
 		GiftAmount:   utils.Truncate2(user.GiftAmount),
 		RebateAmount: utils.Truncate2(user.RebateAmount),
+		RebateRate:   utils.Truncate2(user.RebateRate),
 		Email:        user.Email,
 		Phone:        user.Phone,
 		Country:      user.Country,

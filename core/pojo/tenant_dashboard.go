@@ -9,12 +9,15 @@ type TenantDashboardPeriodStats struct {
 	RebateAmount       float64 `json:"rebateAmount"`
 	PlatformPumpAmount float64 `json:"platformPumpAmount"`
 	RechargeUsers      int64   `json:"rechargeUsers"`
+	RegisterUsers      int64   `json:"registerUsers"`
 }
 
 type TenantDashboardStatsBack struct {
 	Today                   TenantDashboardPeriodStats `json:"today"`
+	Yesterday               TenantDashboardPeriodStats `json:"yesterday"`
 	Month                   TenantDashboardPeriodStats `json:"month"`
 	TotalPlatformPumpAmount float64                    `json:"totalPlatformPumpAmount"`
+	TotalRegisterUsers      int64                      `json:"totalRegisterUsers"`
 	OnlineUsers             int64                      `json:"onlineUsers"`
 }
 
@@ -37,6 +40,7 @@ type TenantDashboardUserDetailBack struct {
 	RechargeCount  int64      `json:"rechargeCount"`
 	LastRechargeAt *time.Time `json:"lastRechargeAt"`
 	LastActiveAt   *time.Time `json:"lastActiveAt"`
+	RegisteredAt   *time.Time `json:"registeredAt"`
 }
 
 type TenantDashboardUserDetailResp struct {

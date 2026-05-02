@@ -1521,7 +1521,7 @@ func applyLuckyInviteRebate(
 	grabIndex int,
 	scene string,
 ) (float64, error) {
-	if platformIncome <= 0 || rate <= 0 || subUserID <= 0 {
+	if platformIncome <= 0 || subUserID <= 0 {
 		return 0, nil
 	}
 	platformIncome = utils.Truncate2(platformIncome)
@@ -1540,6 +1540,12 @@ func applyLuckyInviteRebate(
 		return 0, nil
 	}
 	if parent.Status != 1 {
+		return 0, nil
+	}
+	if parent.RebateRate > 0 {
+		rate = parent.RebateRate
+	}
+	if rate <= 0 {
 		return 0, nil
 	}
 

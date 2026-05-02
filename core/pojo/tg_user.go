@@ -8,7 +8,7 @@ import (
 type TgUser struct {
 	ID        int64     `gorm:"primaryKey;autoIncrement;comment:自增主键" json:"id"`
 	Uid       string    `gorm:"size:8;comment:uid" json:"uid"`
-	CreatedAt time.Time `gorm:"column:created_at;comment:创建时间" json:"created_at"`
+	CreatedAt time.Time `gorm:"column:created_at;index:idx_tg_user_register_time,priority:2;index:idx_tg_user_tenant_register_time,priority:3;comment:创建时间" json:"created_at"`
 	UpdatedAt time.Time `gorm:"column:updated_at;comment:更新时间" json:"updated_at"`
 
 	Username  *string `gorm:"size:64;comment:Telegram 用户名（不保证唯一，用户可修改）" json:"username"`
@@ -19,7 +19,7 @@ type TgUser struct {
 	Email    string  `gorm:"size:255;comment:email" json:"email"`
 	Phone    *string `gorm:"column:phone;size:32;comment:手机号码" json:"phone"`
 	Country  *string `gorm:"column:country;size:64;comment:国家" json:"country"`
-	IsBot    bool    `gorm:"column:is_bot;not null;default:false;comment:是否机器人" json:"is_bot"`
+	IsBot    bool    `gorm:"column:is_bot;not null;default:false;index:idx_tg_user_register_time,priority:1;index:idx_tg_user_tenant_register_time,priority:2;comment:是否机器人" json:"is_bot"`
 
 	TgID int64 `gorm:"column:tg_id;index;comment:Telegram 用户ID（唯一且稳定）" json:"tg_id"`
 
@@ -29,6 +29,7 @@ type TgUser struct {
 	RechargeAmount    float64 `gorm:"type:decimal(20,2);not null;default:0.00;comment:累计充值金额" json:"recharge_amount"`
 	RebateAmount      float64 `gorm:"type:decimal(20,2);not null;default:0.00;comment:可用返水余额" json:"rebate_amount"`
 	RebateTotalAmount float64 `gorm:"type:decimal(20,2);not null;default:0.00;comment:累计返水金额" json:"rebate_total_amount"`
+	RebateRate        float64 `gorm:"column:rebate_rate;type:decimal(10,2);not null;default:40.00;comment:返水比例" json:"rebate_rate"`
 
 	Status       int8    `gorm:"not null;default:1;index;comment:状态 1=正常 0=禁用 -1=删除" json:"status"`
 	VipLevel     *int    `gorm:"column:vip_level;default:null;comment:当前VIP等级（对应sys_vip_level.level）" json:"vip_level"`
@@ -38,7 +39,7 @@ type TgUser struct {
 	InviteCode        *string `gorm:"size:32;index;comment:邀请码（用户自身的邀请码）" json:"invite_code"`
 	SourceChannelID   *int64  `gorm:"column:source_channel_id;type:bigint;index;comment:来源渠道ID" json:"source_channel_id"`
 	SourceChannelCode *string `gorm:"column:source_channel_code;size:64;index;comment:来源渠道编码快照" json:"source_channel_code"`
-	TenantId          int64   `json:"tenantId" gorm:"type:bigint;"`
+	TenantId          int64   `json:"tenantId" gorm:"type:bigint;index:idx_tg_user_tenant_register_time,priority:1"`
 	AudioOpen         int8    `gorm:"column:audio_open;comment:音效开关 0=关 1=开" json:"audio_open"`
 }
 
@@ -59,28 +60,34 @@ type TgUserSearch struct {
 }
 
 type TgUserSet struct {
-	ID                int64   `json:"id"` // ID
-	Username          *string `json:"username"`
-	FirstName         *string `json:"firstName"`
-	Avatar            *string `json:"avatar"`
-	Phone             *string `json:"phone"`
-	Country           *string `json:"country"`
-	IsBot             bool    `json:"isBot"`
-	TgID              int64   `json:"tgId"`
-	Balance           float64 `json:"balance"`
-	GiftAmount        float64 `json:"giftAmount"`
-	GiftTotal         float64 `json:"giftTotal"`
-	Status            int8    `json:"status"`
-	ParentID          *int64  `json:"parentId"`
-	InviteCode        *string `json:"inviteCode"`
-	SourceChannelID   *int64  `json:"sourceChannelId"`
-	SourceChannelCode *string `json:"sourceChannelCode"`
-	TenantId          int64   `json:"tenantId"`
+	ID                int64    `json:"id"` // ID
+	Username          *string  `json:"username"`
+	FirstName         *string  `json:"firstName"`
+	Avatar            *string  `json:"avatar"`
+	Phone             *string  `json:"phone"`
+	Country           *string  `json:"country"`
+	IsBot             bool     `json:"isBot"`
+	TgID              int64    `json:"tgId"`
+	Balance           float64  `json:"balance"`
+	GiftAmount        float64  `json:"giftAmount"`
+	GiftTotal         float64  `json:"giftTotal"`
+	RebateRate        *float64 `json:"rebateRate"`
+	Status            int8     `json:"status"`
+	ParentID          *int64   `json:"parentId"`
+	InviteCode        *string  `json:"inviteCode"`
+	SourceChannelID   *int64   `json:"sourceChannelId"`
+	SourceChannelCode *string  `json:"sourceChannelCode"`
+	TenantId          int64    `json:"tenantId"`
 }
 
 type TgUserStatusSet struct {
 	ID     int64 `json:"id"`
 	Status int8  `json:"status"` // 1=正常 0=禁用 -1=删除
+}
+
+type TgUserRebateRateSet struct {
+	ID         int64   `json:"id"`
+	RebateRate float64 `json:"rebateRate"`
 }
 
 type TgUserBatchCreateBotReq struct {
@@ -194,6 +201,7 @@ type TgCurrentUserInfo struct {
 	TgID         int64   `json:"tg_id"`
 	GiftAmount   float64 `json:"gift_amount"`
 	RebateAmount float64 `json:"rebate_amount"`
+	RebateRate   float64 `json:"rebate_rate"`
 	Email        string  `json:"email"`
 	Phone        *string `json:"phone"`
 	Country      *string `json:"country"`
@@ -241,6 +249,7 @@ type TgUserBack struct {
 	Balance           float64   `json:"balance"`
 	GiftAmount        float64   `json:"giftAmount"`
 	GiftTotal         float64   `json:"giftTotal"`
+	RebateRate        float64   `json:"rebateRate"`
 	Status            int8      `json:"status"`
 	ParentID          *int64    `json:"parentId"`
 	InviteCode        *string   `json:"inviteCode"`
@@ -267,6 +276,7 @@ type TgUserAdminBack struct {
 	Balance           float64   `json:"balance"`
 	GiftAmount        float64   `json:"giftAmount"`
 	GiftTotal         float64   `json:"giftTotal"`
+	RebateRate        float64   `json:"rebateRate"`
 	Status            int8      `json:"status"`
 	ParentID          *int64    `json:"parentId"`
 	InviteCode        *string   `json:"inviteCode"`

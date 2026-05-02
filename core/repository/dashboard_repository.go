@@ -11,14 +11,17 @@ import (
 func GetAdminDashboardStats(db *gorm.DB) pojo.TenantDashboardStatsBack {
 	now := time.Now()
 	todayStart := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	yesterdayStart := todayStart.AddDate(0, 0, -1)
 	tomorrowStart := todayStart.AddDate(0, 0, 1)
 	monthStart := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location())
 	nextMonthStart := monthStart.AddDate(0, 1, 0)
 
 	return pojo.TenantDashboardStatsBack{
 		Today:                   getAdminDashboardPeriodStats(db, todayStart, tomorrowStart),
+		Yesterday:               pojo.TenantDashboardPeriodStats{RegisterUsers: countAdminDashboardRegisterUsers(db, &yesterdayStart, &todayStart)},
 		Month:                   getAdminDashboardPeriodStats(db, monthStart, nextMonthStart),
 		TotalPlatformPumpAmount: getAdminDashboardPlatformPumpAmount(db, nil, nil),
+		TotalRegisterUsers:      countAdminDashboardRegisterUsers(db, nil, nil),
 		OnlineUsers:             utils.CountOnlineUsers(utils.KeyOnlineTgUsersAll),
 	}
 }
@@ -135,14 +138,67 @@ func GetAdminDashboardRechargeUsers(db *gorm.DB, search pojo.TenantDashboardDeta
 	return result
 }
 
+func GetAdminDashboardRegisterUsers(db *gorm.DB, search pojo.TenantDashboardDetailSearch) pojo.TenantDashboardUserDetailResp {
+	start, end, hasRange := adminDashboardDetailPeriodRange(search.Period)
+	var result pojo.TenantDashboardUserDetailResp
+
+	query := db.Model(&pojo.TgUser{}).Where("is_bot = ?", false)
+	if hasRange {
+		query = query.Where("created_at >= ? AND created_at < ?", start, end)
+	}
+	_ = query.Count(&result.Total).Error
+
+	var users []pojo.TgUser
+	listQuery := db.Model(&pojo.TgUser{}).Where("is_bot = ?", false)
+	if hasRange {
+		listQuery = listQuery.Where("created_at >= ? AND created_at < ?", start, end)
+	}
+	_ = listQuery.Order("created_at desc, id desc").
+		Limit(search.PageSize).
+		Offset(search.PageSize * search.CurrentPage).
+		Find(&users).Error
+
+	result.PageSize = search.PageSize
+	result.CurrentPage = search.CurrentPage
+	result.List = make([]pojo.TenantDashboardUserDetailBack, 0, len(users))
+	for _, user := range users {
+		registeredAt := user.CreatedAt
+		result.List = append(result.List, pojo.TenantDashboardUserDetailBack{
+			ID:           user.ID,
+			TenantId:     user.TenantId,
+			Uid:          user.Uid,
+			TgID:         user.TgID,
+			Username:     user.Username,
+			FirstName:    user.FirstName,
+			Phone:        user.Phone,
+			Balance:      utils.Truncate2(user.Balance),
+			Status:       user.Status,
+			RegisteredAt: &registeredAt,
+		})
+	}
+	return result
+}
+
 func adminDashboardPeriodRange(period string) (time.Time, time.Time) {
 	now := time.Now()
 	todayStart := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	if period == "yesterday" {
+		yesterdayStart := todayStart.AddDate(0, 0, -1)
+		return yesterdayStart, todayStart
+	}
 	if period == "month" {
 		monthStart := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location())
 		return monthStart, monthStart.AddDate(0, 1, 0)
 	}
 	return todayStart, todayStart.AddDate(0, 0, 1)
+}
+
+func adminDashboardDetailPeriodRange(period string) (time.Time, time.Time, bool) {
+	if period == "total" {
+		return time.Time{}, time.Time{}, false
+	}
+	start, end := adminDashboardPeriodRange(period)
+	return start, end, true
 }
 
 func getAdminDashboardPeriodStats(db *gorm.DB, start time.Time, end time.Time) pojo.TenantDashboardPeriodStats {
@@ -171,8 +227,19 @@ func getAdminDashboardPeriodStats(db *gorm.DB, start time.Time, end time.Time) p
 		"rebate_amount")
 
 	result.PlatformPumpAmount = getAdminDashboardPlatformPumpAmount(db, &start, &end)
+	result.RegisterUsers = countAdminDashboardRegisterUsers(db, &start, &end)
 
 	return result
+}
+
+func countAdminDashboardRegisterUsers(db *gorm.DB, start *time.Time, end *time.Time) int64 {
+	var total int64
+	query := db.Model(&pojo.TgUser{}).Where("is_bot = ?", false)
+	if start != nil && end != nil {
+		query = query.Where("created_at >= ? AND created_at < ?", *start, *end)
+	}
+	_ = query.Count(&total).Error
+	return total
 }
 
 func sumAdminDashboardAmount(query *gorm.DB, expr string) float64 {

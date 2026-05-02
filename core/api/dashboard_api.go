@@ -38,3 +38,15 @@ func GetAdminDashboardRechargeUsers(ctx *gin.Context) {
 	result := repository.GetAdminDashboardRechargeUsers(db, search)
 	utils.SuccessObjBack(ctx, result)
 }
+
+func GetAdminDashboardRegisterUsers(ctx *gin.Context) {
+	var search pojo.TenantDashboardDetailSearch
+	search.SetPageDefaults()
+	if err := ctx.ShouldBindJSON(&search); err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	db := ctx.MustGet("db").(*gorm.DB)
+	result := repository.GetAdminDashboardRegisterUsers(db, search)
+	utils.SuccessObjBack(ctx, result)
+}

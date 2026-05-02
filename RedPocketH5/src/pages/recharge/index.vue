@@ -22,7 +22,7 @@ const router = useRouter()
 const userStore = useUserStore()
 
 const balance = ref(0)
-const currentUserCountry = ref('')
+const currentUserCountry = ref(String(userStore.userInfo?.country || '').trim())
 const hideCountrySelector = ref(false)
 const pageLoading = ref(true)
 
@@ -232,11 +232,9 @@ async function loadBalance() {
   try {
     const { data } = await getCurrentTgUserInfo()
     balance.value = Number(data?.balance ?? 0)
-    currentUserCountry.value = String(data?.country || '').trim()
   }
   catch {
     balance.value = 0
-    currentUserCountry.value = String(userStore.userInfo?.country || '').trim()
   }
 }
 
@@ -289,7 +287,7 @@ async function loadCountries() {
         : null
       selectedCountry.value = matchedCountry ?? countries.value[0]
       hideCountrySelector.value = !!matchedCountry
-      await loadRechargeInfo(selectedCountry.value.countryCode)
+      void loadRechargeInfo(selectedCountry.value.countryCode)
     }
   }
   catch {
@@ -301,11 +299,11 @@ async function loadCountries() {
 async function initPage() {
   pageLoading.value = true
   try {
-    await loadBalance()
     await loadCountries()
   }
   finally {
     pageLoading.value = false
+    void loadBalance()
     void loadFirstRechargeStatus()
   }
 }

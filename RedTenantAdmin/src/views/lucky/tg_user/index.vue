@@ -8,6 +8,7 @@ import { message } from "@/utils/message";
 import {
   getTgUserList,
   getTgUserSubStatsSummary,
+  setTgUserRebateRate,
   type TgUser
 } from "@/api/tgUser";
 
@@ -45,6 +46,15 @@ const subStatsSummary = reactive({
   subFlowAmount: 0,
   subWithdrawAmount: 0
 });
+const rebateRateDialogVisible = ref(false);
+const rebateRateSaving = ref(false);
+const rebateRateForm = reactive({
+  id: 0,
+  tgId: 0,
+  username: "",
+  firstName: "",
+  rebateRate: 0
+});
 const subStatsPagination = reactive({
   currentPage: 1,
   pageSize: 10,
@@ -54,6 +64,43 @@ const subStatsPagination = reactive({
 function formatMoney(val?: number | null) {
   if (typeof val !== "number" || Number.isNaN(val)) return "0.000";
   return val.toFixed(3);
+}
+
+function formatName(row: { id?: number; username?: string | null; firstName?: string | null }) {
+  return row.firstName || row.username || `ID:${row.id || "-"}`;
+}
+
+function openRebateRateDialog(row: TgUser) {
+  rebateRateForm.id = row.id;
+  rebateRateForm.tgId = row.tgId;
+  rebateRateForm.username = row.username || "";
+  rebateRateForm.firstName = row.firstName || "";
+  rebateRateForm.rebateRate = Number(row.rebateRate ?? 0);
+  rebateRateDialogVisible.value = true;
+}
+
+async function submitRebateRate() {
+  if (!rebateRateForm.id) return;
+  const rebateRate = Number(rebateRateForm.rebateRate);
+  if (Number.isNaN(rebateRate) || rebateRate < 0 || rebateRate > 100) {
+    message("返佣比例必须在 0 到 100 之间", { type: "warning" });
+    return;
+  }
+  rebateRateSaving.value = true;
+  try {
+    await setTgUserRebateRate({
+      id: rebateRateForm.id,
+      rebateRate
+    });
+    message("返佣比例修改成功", { type: "success" });
+    rebateRateDialogVisible.value = false;
+    onSearch();
+  } catch (error) {
+    console.error("修改返佣比例失败", error);
+    message("修改返佣比例失败", { type: "error" });
+  } finally {
+    rebateRateSaving.value = false;
+  }
 }
 
 function buildQueryPayload() {
@@ -234,6 +281,15 @@ function handleSubStatsCurrentChange(page: number) {
                 link
                 type="primary"
                 :size="size"
+                @click="openRebateRateDialog(row)"
+              >
+                修改返佣
+              </el-button>
+              <el-button
+                class="reset-margin"
+                link
+                type="primary"
+                :size="size"
                 @click="openSubStatsDialog(row)"
               >
                 下级统计
@@ -335,6 +391,44 @@ function handleSubStatsCurrentChange(page: number) {
         />
       </div>
     </el-dialog>
+
+    <el-dialog
+      v-model="rebateRateDialogVisible"
+      title="修改返佣比例"
+      width="420px"
+      destroy-on-close
+    >
+      <el-form :model="rebateRateForm" label-width="96px">
+        <el-form-item label="用户">
+          <span>{{ formatName(rebateRateForm) }}</span>
+        </el-form-item>
+        <el-form-item label="用户ID">
+          <span>{{ rebateRateForm.tgId || "-" }}</span>
+        </el-form-item>
+        <el-form-item label="返佣比例">
+          <el-input-number
+            v-model="rebateRateForm.rebateRate"
+            :min="0"
+            :max="100"
+            :precision="2"
+            :step="1"
+            controls-position="right"
+            class="!w-full"
+          />
+          <div class="form-tip">单位：%，范围 0 - 100</div>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="rebateRateDialogVisible = false">取消</el-button>
+        <el-button
+          type="primary"
+          :loading="rebateRateSaving"
+          @click="submitRebateRate"
+        >
+          保存
+        </el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -360,5 +454,12 @@ function handleSubStatsCurrentChange(page: number) {
   display: flex;
   justify-content: flex-end;
   margin-top: 14px;
+}
+
+.form-tip {
+  margin-top: 6px;
+  color: var(--el-text-color-secondary);
+  font-size: 12px;
+  line-height: 1.3;
 }
 </style>

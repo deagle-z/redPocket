@@ -118,6 +118,7 @@ func InitGin() {
 		adminGroup.GET("/dashboard/stats", api.GetAdminDashboardStats)
 		adminGroup.POST("/dashboard/onlineUsers", api.GetAdminDashboardOnlineUsers)
 		adminGroup.POST("/dashboard/rechargeUsers", api.GetAdminDashboardRechargeUsers)
+		adminGroup.POST("/dashboard/registerUsers", api.GetAdminDashboardRegisterUsers)
 		adminGroup.POST("/withdrawalTask", api.SendWithdrawalTask)
 		adminGroup.POST("/verifyCodeTask", api.SendVerifyCodeTask)
 		adminGroup.POST("/tgUser/list", api.GetTgUsers)                    // 获取Telegram用户列表
@@ -186,6 +187,7 @@ func InitGin() {
 		adminGroupLog.POST("/tgUser/batchCreateBot", api.BatchCreateBotTgUsers)
 		adminGroupLog.POST("/tgUser/batchUpdateBot", api.BatchUpdateBotTgUsers)
 		adminGroupLog.POST("/tgUser/status", api.SetTgUserStatus)            // 封禁/解封Telegram用户
+		adminGroupLog.POST("/tgUser/rebateRate", api.SetTgUserRebateRate)    // 修改Telegram用户返佣比例
 		adminGroupLog.DELETE("/tgUser/:id", api.DelTgUser)                   // 删除Telegram用户
 		adminGroupLog.POST("/tgUserRebate", api.SetTgUserRebateRecord)       // 创建或更新Telegram反水记录
 		adminGroupLog.DELETE("/tgUserRebate/:id", api.DelTgUserRebateRecord) // 删除Telegram反水记录
@@ -238,6 +240,7 @@ func InitGin() {
 		tenantGroup.GET("/dashboard/stats", tenantApi.GetDashboardStats)
 		tenantGroup.POST("/dashboard/onlineUsers", tenantApi.GetDashboardOnlineUsers)
 		tenantGroup.POST("/dashboard/rechargeUsers", tenantApi.GetDashboardRechargeUsers)
+		tenantGroup.POST("/dashboard/registerUsers", tenantApi.GetDashboardRegisterUsers)
 
 		tenantGroup.POST("/authGroup/list", tenantApi.GetAuthGroups)
 		tenantGroup.POST("/authGroup", tenantApi.SetAuthGroup)
@@ -259,6 +262,7 @@ func InitGin() {
 		tenantGroup.GET("/tgUser/:id", tenantApi.GetTgUserById)
 		tenantGroup.POST("/tgUser", tenantApi.SetTgUser)
 		tenantGroup.POST("/tgUser/status", tenantApi.SetTgUserStatus)
+		tenantGroup.POST("/tgUser/rebateRate", tenantApi.SetTgUserRebateRate)
 		tenantGroup.DELETE("/tgUser/:id", tenantApi.DelTgUser)
 
 		tenantGroup.POST("/tgUserRebate/list", tenantApi.GetTgUserRebateRecords)
