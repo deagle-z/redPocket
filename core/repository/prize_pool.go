@@ -183,23 +183,18 @@ func DepositPrizePool(tx *gorm.DB, tenantId int64, poolCode string, userId int64
 // 抢包流水：SUM(amount + lose_money) WHERE user_id=? AND grab_type=1
 // 发包流水：SUM(amount) WHERE sender_id=?
 func GetUserTotalFlow(db *gorm.DB, userID int64) (float64, error) {
-	var grabFlow float64
-	if err := db.Model(&pojo.LuckyHistory{}).
-		Select("COALESCE(SUM(amount + lose_money), 0)").
-		Where("user_id = ? AND grab_type = 1", userID).
-		Scan(&grabFlow).Error; err != nil {
+	var row struct {
+		Flow float64 `gorm:"column:flow"`
+	}
+	if err := db.Raw(`
+		SELECT
+			COALESCE((SELECT SUM(amount + lose_money) FROM lucky_history WHERE user_id = ? AND grab_type = 1), 0) +
+			COALESCE((SELECT SUM(amount) FROM lucky_money WHERE sender_id = ?), 0) AS flow
+	`, userID, userID).Scan(&row).Error; err != nil {
 		return 0, err
 	}
 
-	var sendFlow float64
-	if err := db.Model(&pojo.LuckyMoney{}).
-		Select("COALESCE(SUM(amount), 0)").
-		Where("sender_id = ?", userID).
-		Scan(&sendFlow).Error; err != nil {
-		return 0, err
-	}
-
-	return utils.Truncate2(grabFlow + sendFlow), nil
+	return utils.Truncate2(row.Flow), nil
 }
 
 // GetUsedLotteryCount 查询用户已消耗抽奖次数（user_lottery_record 记录数）

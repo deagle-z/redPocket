@@ -26,65 +26,58 @@ func GetUserWithdrawSummary(db *gorm.DB, userID int64) (pojo.TgWithdrawSummaryBa
 		return result, errors.New("user_not_found")
 	}
 
-	err := db.Transaction(func(tx *gorm.DB) error {
-		var user pojo.TgUser
-		if err := tx.Where("id = ?", userID).First(&user).Error; err != nil {
-			return err
-		}
-		if user.ID == 0 {
-			return errors.New("user_not_found")
-		}
+	var user pojo.TgUser
+	if err := db.Select("id, balance, gift_amount").Where("id = ?", userID).First(&user).Error; err != nil {
+		return result, err
+	}
+	if user.ID == 0 {
+		return result, errors.New("user_not_found")
+	}
 
-		state, err := getOrInitUserWithdrawLimitState(tx, user)
-		if err != nil {
-			return err
-		}
+	state, err := getOrInitUserWithdrawLimitStateSnapshot(db, user)
+	if err != nil {
+		return result, err
+	}
 
-		totalFlow, err := GetUserTotalFlow(tx, user.ID)
-		if err != nil {
-			return err
-		}
+	giftRestricted := clampNonNegative(state.GiftRestrictedBalance)
+	rechargeRestricted := clampNonNegative(state.RechargeRestrictedBalance)
+	unrestricted := clampNonNegative(user.Balance - giftRestricted - rechargeRestricted)
+	if giftRestricted <= 0 && rechargeRestricted <= 0 {
+		return pojo.TgWithdrawSummaryBack{
+			Balance:               utils.Truncate2(user.Balance),
+			NonWithdrawableAmount: 0,
+		}, nil
+	}
 
-		giftMultiplier := loadWithdrawLimitMultiplier(tx, "withdraw_gift_limit")
-		rechargeMultiplier := loadWithdrawLimitMultiplier(tx, "withdraw_limit")
-		availableFlow := clampNonNegative(totalFlow - state.GiftFlowConsumed - state.RechargeFlowConsumed)
-		giftRestricted := clampNonNegative(state.GiftRestrictedBalance)
-		rechargeRestricted := clampNonNegative(state.RechargeRestrictedBalance)
-		unrestricted := clampNonNegative(user.Balance - giftRestricted - rechargeRestricted)
+	totalFlow, err := GetUserTotalFlow(db, user.ID)
+	if err != nil {
+		return result, err
+	}
 
-		withdrawableGift := giftRestricted
-		if giftMultiplier > 0 {
-			withdrawableGift = minFloat(giftRestricted, availableFlow/giftMultiplier)
-		}
-		remainingFlow := clampNonNegative(availableFlow - utils.Truncate2(withdrawableGift*giftMultiplier))
+	multipliers := loadWithdrawLimitMultipliers(db, "withdraw_gift_limit", "withdraw_limit")
+	giftMultiplier := multipliers["withdraw_gift_limit"]
+	rechargeMultiplier := multipliers["withdraw_limit"]
+	availableFlow := clampNonNegative(totalFlow - state.GiftFlowConsumed - state.RechargeFlowConsumed)
 
-		withdrawableRecharge := rechargeRestricted
-		if rechargeMultiplier > 0 {
-			withdrawableRecharge = minFloat(rechargeRestricted, remainingFlow/rechargeMultiplier)
-		}
+	withdrawableGift := giftRestricted
+	if giftMultiplier > 0 {
+		withdrawableGift = minFloat(giftRestricted, availableFlow/giftMultiplier)
+	}
+	remainingFlow := clampNonNegative(availableFlow - utils.Truncate2(withdrawableGift*giftMultiplier))
 
-		totalWithdrawable := clampNonNegative(unrestricted + withdrawableGift + withdrawableRecharge)
-		nonWithdrawable := clampNonNegative(user.Balance - totalWithdrawable)
+	withdrawableRecharge := rechargeRestricted
+	if rechargeMultiplier > 0 {
+		withdrawableRecharge = minFloat(rechargeRestricted, remainingFlow/rechargeMultiplier)
+	}
 
-		result = pojo.TgWithdrawSummaryBack{
-			Balance:                    utils.Truncate2(user.Balance),
-			WithdrawableAmount:         totalWithdrawable,
-			NonWithdrawableAmount:      nonWithdrawable,
-			UnrestrictedAmount:         unrestricted,
-			GiftRestrictedAmount:       giftRestricted,
-			RechargeRestrictedAmount:   rechargeRestricted,
-			WithdrawableGiftAmount:     withdrawableGift,
-			WithdrawableRechargeAmount: withdrawableRecharge,
-			AvailableFlow:              availableFlow,
-			GiftFlowConsumed:           state.GiftFlowConsumed,
-			RechargeFlowConsumed:       state.RechargeFlowConsumed,
-			GiftLimitMultiplier:        giftMultiplier,
-			RechargeLimitMultiplier:    rechargeMultiplier,
-		}
-		return nil
-	})
+	totalWithdrawable := clampNonNegative(unrestricted + withdrawableGift + withdrawableRecharge)
+	nonWithdrawable := clampNonNegative(user.Balance - totalWithdrawable)
 
-	return result, err
+	result = pojo.TgWithdrawSummaryBack{
+		Balance:               utils.Truncate2(user.Balance),
+		NonWithdrawableAmount: nonWithdrawable,
+	}
+	return result, nil
 }
 
 func EnsureUserWithdrawLimitState(tx *gorm.DB, user pojo.TgUser) error {
@@ -272,6 +265,38 @@ func getOrInitUserWithdrawLimitState(tx *gorm.DB, user pojo.TgUser) (pojo.TgUser
 	return state, err
 }
 
+func getOrInitUserWithdrawLimitStateSnapshot(db *gorm.DB, user pojo.TgUser) (pojo.TgUserWithdrawLimitState, error) {
+	var state pojo.TgUserWithdrawLimitState
+	err := db.Where("user_id = ?", user.ID).First(&state).Error
+	if err == nil && state.ID > 0 {
+		return state, nil
+	}
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		return state, err
+	}
+
+	now := time.Now()
+	giftRestricted := clampNonNegative(user.GiftAmount)
+	if giftRestricted > user.Balance {
+		giftRestricted = clampNonNegative(user.Balance)
+	}
+	rechargeRestricted := clampNonNegative(user.Balance - giftRestricted)
+	newState := pojo.TgUserWithdrawLimitState{
+		UserID:                    user.ID,
+		GiftRestrictedBalance:     giftRestricted,
+		RechargeRestrictedBalance: rechargeRestricted,
+		GiftFlowConsumed:          0,
+		RechargeFlowConsumed:      0,
+		InitializedAt:             &now,
+	}
+	if createErr := db.Clauses(clause.OnConflict{DoNothing: true}).Create(&newState).Error; createErr != nil {
+		return state, createErr
+	}
+
+	err = db.Where("user_id = ?", user.ID).First(&state).Error
+	return state, err
+}
+
 func saveUserWithdrawLimitState(tx *gorm.DB, state *pojo.TgUserWithdrawLimitState) error {
 	if tx == nil || state == nil || state.ID <= 0 {
 		return nil
@@ -285,12 +310,17 @@ func saveUserWithdrawLimitState(tx *gorm.DB, state *pojo.TgUserWithdrawLimitStat
 }
 
 func loadWithdrawLimitMultiplier(tx *gorm.DB, key string) float64 {
-	defaultValue := 1.0
+	defaultValue := defaultWithdrawLimitMultiplier(key)
 	if tx == nil || strings.TrimSpace(key) == "" {
 		return defaultValue
 	}
 	var cfg pojo.SysConfig
 	if err := tx.Where("config_key = ?", key).First(&cfg).Error; err != nil || cfg.ID == 0 {
+		_ = tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&pojo.SysConfig{
+			ConfigKey:   key,
+			ConfigValue: strconv.FormatFloat(defaultValue, 'f', -1, 64),
+			ConfigDesc:  defaultWithdrawLimitDesc(key),
+		}).Error
 		return defaultValue
 	}
 	value, err := strconv.ParseFloat(strings.TrimSpace(cfg.ConfigValue), 64)
@@ -298,6 +328,79 @@ func loadWithdrawLimitMultiplier(tx *gorm.DB, key string) float64 {
 		return defaultValue
 	}
 	return value
+}
+
+func loadWithdrawLimitMultipliers(tx *gorm.DB, keys ...string) map[string]float64 {
+	result := make(map[string]float64, len(keys))
+	normalizedKeys := make([]string, 0, len(keys))
+	seen := make(map[string]struct{}, len(keys))
+	for _, key := range keys {
+		normalizedKey := strings.TrimSpace(key)
+		if normalizedKey == "" {
+			continue
+		}
+		if _, ok := seen[normalizedKey]; ok {
+			continue
+		}
+		seen[normalizedKey] = struct{}{}
+		normalizedKeys = append(normalizedKeys, normalizedKey)
+		result[normalizedKey] = defaultWithdrawLimitMultiplier(normalizedKey)
+	}
+	if tx == nil || len(normalizedKeys) == 0 {
+		return result
+	}
+
+	var configs []pojo.SysConfig
+	if err := tx.Where("config_key IN ?", normalizedKeys).Find(&configs).Error; err != nil {
+		return result
+	}
+
+	found := make(map[string]struct{}, len(configs))
+	for _, cfg := range configs {
+		key := strings.TrimSpace(cfg.ConfigKey)
+		found[key] = struct{}{}
+		value, err := strconv.ParseFloat(strings.TrimSpace(cfg.ConfigValue), 64)
+		if err != nil || value <= 0 {
+			continue
+		}
+		result[key] = value
+	}
+
+	for _, key := range normalizedKeys {
+		if _, ok := found[key]; ok {
+			continue
+		}
+		defaultValue := defaultWithdrawLimitMultiplier(key)
+		_ = tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&pojo.SysConfig{
+			ConfigKey:   key,
+			ConfigValue: strconv.FormatFloat(defaultValue, 'f', -1, 64),
+			ConfigDesc:  defaultWithdrawLimitDesc(key),
+		}).Error
+	}
+
+	return result
+}
+
+func defaultWithdrawLimitMultiplier(key string) float64 {
+	switch strings.TrimSpace(key) {
+	case "withdraw_gift_limit":
+		return 10
+	case "withdraw_limit":
+		return 2
+	default:
+		return 1
+	}
+}
+
+func defaultWithdrawLimitDesc(key string) string {
+	switch strings.TrimSpace(key) {
+	case "withdraw_gift_limit":
+		return "赠送金额提现所需流水倍数"
+	case "withdraw_limit":
+		return "充值金额提现所需流水倍数"
+	default:
+		return "提现所需流水倍数"
+	}
 }
 
 func clampNonNegative(value float64) float64 {

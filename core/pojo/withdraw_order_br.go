@@ -159,6 +159,17 @@ type WithdrawOrderBrResp struct {
 	BasePageResponse[WithdrawOrderBrBack]
 }
 
+type AppCreateWithdrawOrderReq struct {
+	Amount      float64           `json:"amount"`
+	CountryCode string            `json:"countryCode"`
+	AccountID   *int64            `json:"accountId"`
+	FieldValues map[string]string `json:"fieldValues"`
+}
+
+type AppCreateWithdrawOrderResp struct {
+	OrderNo string `json:"orderNo"`
+}
+
 var WithdrawOrderBrTableName = "withdraw_order_br"
 
 func (WithdrawOrderBr) TableName() string {

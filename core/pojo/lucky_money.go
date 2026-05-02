@@ -6,9 +6,9 @@ import (
 
 type LuckyMoney struct {
 	BaseModel
-	SenderID                 int64     `json:"senderId" gorm:"type:bigint;index"`                                                // 发送者ID
+	SenderID                 int64     `json:"senderId" gorm:"type:bigint;index;index:idx_lucky_money_sender_amount,priority:1"` // 发送者ID
 	SenderName               string    `json:"senderName" gorm:"type:varchar(64)"`                                               // 发送者名称
-	Amount                   float64   `json:"amount" gorm:"type:numeric(20,2)"`                                                 // 红包总金额
+	Amount                   float64   `json:"amount" gorm:"type:numeric(20,2);index:idx_lucky_money_sender_amount,priority:2"`  // 红包总金额
 	Received                 float64   `json:"received" gorm:"type:numeric(20,2);default:0"`                                     // 已领取金额
 	Number                   int       `json:"number" gorm:"type:int"`                                                           // 红包总个数
 	Lucky                    int       `json:"lucky" gorm:"type:int;default:1"`                                                  // 是否有效 1有效

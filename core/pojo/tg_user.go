@@ -203,19 +203,8 @@ type TgCurrentUserInfo struct {
 }
 
 type TgWithdrawSummaryBack struct {
-	Balance                    float64 `json:"balance"`
-	WithdrawableAmount         float64 `json:"withdrawableAmount"`
-	NonWithdrawableAmount      float64 `json:"nonWithdrawableAmount"`
-	UnrestrictedAmount         float64 `json:"unrestrictedAmount"`
-	GiftRestrictedAmount       float64 `json:"giftRestrictedAmount"`
-	RechargeRestrictedAmount   float64 `json:"rechargeRestrictedAmount"`
-	WithdrawableGiftAmount     float64 `json:"withdrawableGiftAmount"`
-	WithdrawableRechargeAmount float64 `json:"withdrawableRechargeAmount"`
-	AvailableFlow              float64 `json:"availableFlow"`
-	GiftFlowConsumed           float64 `json:"giftFlowConsumed"`
-	RechargeFlowConsumed       float64 `json:"rechargeFlowConsumed"`
-	GiftLimitMultiplier        float64 `json:"giftLimitMultiplier"`
-	RechargeLimitMultiplier    float64 `json:"rechargeLimitMultiplier"`
+	Balance               float64 `json:"balance"`
+	NonWithdrawableAmount float64 `json:"nonWithdrawableAmount"`
 }
 
 type TgInviteStatsBack struct {

@@ -64,18 +64,7 @@ export interface TgCurrentUserInfo {
 
 export interface TgWithdrawSummary {
   balance: number
-  withdrawableAmount: number
   nonWithdrawableAmount: number
-  unrestrictedAmount: number
-  giftRestrictedAmount: number
-  rechargeRestrictedAmount: number
-  withdrawableGiftAmount: number
-  withdrawableRechargeAmount: number
-  availableFlow: number
-  giftFlowConsumed: number
-  rechargeFlowConsumed: number
-  giftLimitMultiplier: number
-  rechargeLimitMultiplier: number
 }
 
 export interface VipLevelSimple {

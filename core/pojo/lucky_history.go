@@ -6,16 +6,16 @@ import (
 
 type LuckyHistory struct {
 	BaseModel
-	UserID          int64   `json:"userId" gorm:"type:bigint;index"`                                       // 用户ID
-	FirstName       string  `json:"firstName" gorm:"type:varchar(64)"`                                     // 用户名称
-	LuckyID         int64   `json:"luckyId" gorm:"type:bigint;index"`                                      // 红包ID
-	IsThunder       int     `json:"isThunder" gorm:"type:int;default:0"`                                   // 是否中雷 0未中雷 1中雷
-	GrabType        int     `json:"grabType" gorm:"type:int;default:1"`                                    // 是否中雷 1抢包 2中雷返还
-	Amount          float64 `json:"amount" gorm:"type:numeric(20,2)"`                                      // 领取金额
-	ActualAmount    float64 `json:"actualAmount" gorm:"column:actual_amount;type:numeric(20,2);default:0"` // 抽水后实际到账金额
-	LoseMoney       float64 `json:"loseMoney" gorm:"type:numeric(20,2);default:0"`                         // 损失金额(中雷时)
-	Guess           int     `json:"guess" gorm:"type:tinyint;default:-1"`                                  // 奇偶猜测 -1=不适用 0=偶 1=奇
-	SourceChannelID *int64  `json:"sourceChannelId" gorm:"column:source_channel_id;type:bigint;index"`     // 来源渠道ID
+	UserID          int64   `json:"userId" gorm:"type:bigint;index;index:idx_lucky_history_user_grab_type,priority:1;index:idx_lucky_history_user_grab_flow,priority:1"`    // 用户ID
+	FirstName       string  `json:"firstName" gorm:"type:varchar(64)"`                                                                                                      // 用户名称
+	LuckyID         int64   `json:"luckyId" gorm:"type:bigint;index"`                                                                                                       // 红包ID
+	IsThunder       int     `json:"isThunder" gorm:"type:int;default:0"`                                                                                                    // 是否中雷 0未中雷 1中雷
+	GrabType        int     `json:"grabType" gorm:"type:int;default:1;index:idx_lucky_history_user_grab_type,priority:2;index:idx_lucky_history_user_grab_flow,priority:2"` // 是否中雷 1抢包 2中雷返还
+	Amount          float64 `json:"amount" gorm:"type:numeric(20,2);index:idx_lucky_history_user_grab_flow,priority:3"`                                                     // 领取金额
+	ActualAmount    float64 `json:"actualAmount" gorm:"column:actual_amount;type:numeric(20,2);default:0"`                                                                  // 抽水后实际到账金额
+	LoseMoney       float64 `json:"loseMoney" gorm:"type:numeric(20,2);default:0;index:idx_lucky_history_user_grab_flow,priority:4"`                                        // 损失金额(中雷时)
+	Guess           int     `json:"guess" gorm:"type:tinyint;default:-1"`                                                                                                   // 奇偶猜测 -1=不适用 0=偶 1=奇
+	SourceChannelID *int64  `json:"sourceChannelId" gorm:"column:source_channel_id;type:bigint;index"`                                                                      // 来源渠道ID
 	TenantId        int64   `json:"tenantId" gorm:"type:bigint;"`
 }
 

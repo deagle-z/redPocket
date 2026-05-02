@@ -22,10 +22,10 @@ const userStore = useUserStore()
 
 const balance = ref(0)
 const frozen = ref(0)
-const withdrawableAmount = ref(0)
 const nonWithdrawableAmount = ref(0)
 const currentUserCountry = ref('')
 const hideCountrySelector = ref(false)
+const pageLoading = ref(true)
 
 // 国家列表
 const countries = ref<AppCountryItem[]>([])
@@ -139,79 +139,79 @@ function parseAccountData(raw: string): Record<string, string> {
   }
 }
 
-async function loadBalance() {
-  const [userInfoRes, withdrawSummaryRes] = await Promise.allSettled([
-    getCurrentTgUserInfo(),
-    getCurrentTgWithdrawSummary(),
-  ])
-
-  if (userInfoRes.status === 'fulfilled') {
-    const { data } = userInfoRes.value
+async function loadUserInfo() {
+  try {
+    const { data } = await getCurrentTgUserInfo()
     balance.value = Number(data?.balance ?? 0)
-    frozen.value = Number((data as any)?.frozen ?? 0)
     currentUserCountry.value = String(data?.country || '').trim()
   }
-  else {
+  catch {
     balance.value = 0
     currentUserCountry.value = String(userStore.userInfo?.country || '').trim()
   }
+}
 
-  if (withdrawSummaryRes.status === 'fulfilled') {
-    const { data } = withdrawSummaryRes.value
+async function loadWithdrawSummary() {
+  try {
+    const { data } = await getCurrentTgWithdrawSummary()
     balance.value = Number(data?.balance ?? balance.value)
-    withdrawableAmount.value = Number(data?.withdrawableAmount ?? 0)
     nonWithdrawableAmount.value = Number(data?.nonWithdrawableAmount ?? 0)
+    frozen.value = nonWithdrawableAmount.value
   }
-  else {
-    withdrawableAmount.value = 0
+  catch {
+    frozen.value = 0
     nonWithdrawableAmount.value = 0
   }
 }
 
-async function loadWithdrawFields(code: string) {
-  fieldsLoading.value = true
-  withdrawFields.value = []
-  fieldValues.value = {}
-  try {
-    const { data } = await getCountryWithdrawFields(code)
-    withdrawFields.value = data ?? []
-    // 初始化字段默认值
-    const init: Record<string, string> = {}
-    for (const f of withdrawFields.value)
-      init[f.fieldKey] = f.defaultValue ?? ''
-    fieldValues.value = init
+function applyWithdrawFields(fields: RechargeField[]) {
+  withdrawFields.value = fields
+  const init: Record<string, string> = {}
+  for (const f of withdrawFields.value)
+    init[f.fieldKey] = f.defaultValue ?? ''
+  fieldValues.value = init
+}
+
+function applyBoundAccounts(accounts: WithdrawAccountItem[], code: string) {
+  boundAccounts.value = accounts.filter(a => a.countryCode === code)
+  const account = boundAccounts.value.find(a => a.isDefault === 1) ?? boundAccounts.value[0]
+  if (account) {
+    selectedAccountId.value = account.id
+    const parsed = parseAccountData(account.accountData)
+    for (const key of Object.keys(parsed)) {
+      if (key in fieldValues.value)
+        fieldValues.value[key] = parsed[key]
+    }
   }
-  catch {
-    withdrawFields.value = []
-  }
-  finally {
-    fieldsLoading.value = false
+  else {
+    selectedAccountId.value = undefined
   }
 }
 
-async function loadBoundAccount(code: string) {
+async function loadWithdrawDetails(code: string) {
+  fieldsLoading.value = true
+  withdrawFields.value = []
+  fieldValues.value = {}
+  boundAccounts.value = []
+  selectedAccountId.value = undefined
+
+  const [fieldsRes, accountsRes] = await Promise.allSettled([
+    getCountryWithdrawFields(code),
+    getWithdrawAccounts(),
+  ])
+
   try {
-    const { data } = await getWithdrawAccounts()
-    const all = data ?? []
-    boundAccounts.value = all.filter(a => a.countryCode === code)
-    // 优先默认账户，否则取第一个
-    const account = boundAccounts.value.find(a => a.isDefault === 1) ?? boundAccounts.value[0]
-    if (account) {
-      selectedAccountId.value = account.id
-      const parsed = parseAccountData(account.accountData)
-      // 用账户数据覆盖字段值
-      for (const key of Object.keys(parsed)) {
-        if (key in fieldValues.value)
-          fieldValues.value[key] = parsed[key]
-      }
-    }
-    else {
-      selectedAccountId.value = undefined
+    if (selectedCountry.value?.countryCode !== code)
+      return
+
+    const fields = fieldsRes.status === 'fulfilled' ? fieldsRes.value.data ?? [] : []
+    applyWithdrawFields(fields)
+    if (accountsRes.status === 'fulfilled') {
+      applyBoundAccounts(accountsRes.value.data ?? [], code)
     }
   }
-  catch {
-    boundAccounts.value = []
-    selectedAccountId.value = undefined
+  finally {
+    fieldsLoading.value = false
   }
 }
 
@@ -219,8 +219,7 @@ async function handleSelectCountry(country: AppCountryItem) {
   if (selectedCountry.value?.countryCode === country.countryCode)
     return
   selectedCountry.value = country
-  await loadWithdrawFields(country.countryCode)
-  await loadBoundAccount(country.countryCode)
+  await loadWithdrawDetails(country.countryCode)
 }
 
 async function loadCountries() {
@@ -236,8 +235,7 @@ async function loadCountries() {
         : null
       selectedCountry.value = matchedCountry ?? countries.value[0]
       hideCountrySelector.value = !!matchedCountry
-      await loadWithdrawFields(selectedCountry.value.countryCode)
-      await loadBoundAccount(selectedCountry.value.countryCode)
+      void loadWithdrawDetails(selectedCountry.value.countryCode)
     }
   }
   catch {
@@ -249,8 +247,18 @@ async function loadCountries() {
 }
 
 async function initPage() {
-  await loadBalance()
-  await loadCountries()
+  pageLoading.value = true
+  currentUserCountry.value = String(userStore.userInfo?.country || '').trim()
+  const userInfoPromise = loadUserInfo()
+  const withdrawSummaryPromise = loadWithdrawSummary()
+  try {
+    await userInfoPromise
+    await loadCountries()
+  }
+  finally {
+    pageLoading.value = false
+  }
+  await withdrawSummaryPromise
 }
 
 async function handleSubmitWithdraw() {
@@ -288,7 +296,7 @@ async function handleSubmitWithdraw() {
     }
     const { data } = await createWithdrawOrder(req)
     showCenterToast(t('withdrawPage.orderSuccess', { orderNo: data?.orderNo || '--' }))
-    await loadBalance()
+    await loadWithdrawSummary()
   }
   catch {
     showCenterToast(t('withdrawPage.orderFailed'))
@@ -311,6 +319,57 @@ onMounted(() => {
       </template>
     </AppPageHeader>
 
+    <template v-if="pageLoading">
+      <section class="card balance-card skeleton-card">
+        <div class="skeleton-balance-copy">
+          <div class="skeleton-line skeleton-line-sm" />
+          <div class="skeleton-line skeleton-line-xl" />
+          <div class="skeleton-line skeleton-line-md" />
+        </div>
+        <div class="skeleton-coin" />
+      </section>
+
+      <div class="country-bar skeleton-country-bar">
+        <div class="country-scroll">
+          <div v-for="idx in 4" :key="`country-skeleton-${idx}`" class="skeleton-pill" />
+        </div>
+      </div>
+
+      <section class="card skeleton-card skeleton-amount-card">
+        <div class="skeleton-line skeleton-line-title" />
+        <div class="skeleton-input" />
+        <div class="amount-grid skeleton-amount-grid">
+          <div v-for="idx in 9" :key="`amount-skeleton-${idx}`" class="skeleton-amount-item" />
+        </div>
+        <div class="skeleton-line skeleton-line-center" />
+        <div class="skeleton-submit" />
+        <div class="skeleton-fee-card">
+          <div class="skeleton-fee-row">
+            <div class="skeleton-line skeleton-line-sm" />
+            <div class="skeleton-line skeleton-line-xs" />
+          </div>
+          <div class="skeleton-fee-row">
+            <div class="skeleton-line skeleton-line-md" />
+            <div class="skeleton-line skeleton-line-xs" />
+          </div>
+        </div>
+      </section>
+
+      <section class="card skeleton-card">
+        <div class="section-head">
+          <div class="skeleton-line skeleton-line-title" />
+          <div class="skeleton-bind-btn" />
+        </div>
+        <div v-for="idx in 4" :key="`field-skeleton-${idx}`" class="skeleton-field" />
+      </section>
+
+      <section class="card tips skeleton-card">
+        <div class="skeleton-line skeleton-line-title" />
+        <div v-for="idx in 5" :key="`tip-skeleton-${idx}`" class="skeleton-tip-line" />
+      </section>
+    </template>
+
+    <template v-else>
     <section class="card balance-card">
       <div>
         <p class="card-label">
@@ -367,48 +426,6 @@ onMounted(() => {
 
       <div v-if="displayAmount && selectedCountry?.rate" class="local-amount-hint">
         ≈ {{ localCurrencySymbol }}{{ localAmount }} {{ selectedCountry?.currencyCode }}
-      </div>
-
-      <div class="balance-breakdown">
-        <div class="balance-header">
-          <div class="balance-title">
-            <span class="balance-icon">◎</span>
-            {{ t('withdrawPage.availableBalance') }}
-          </div>
-          <div class="balance-amount">
-            <CoinAmount :text="formatCurrency(balance)" />
-          </div>
-        </div>
-        <div class="balance-row">
-          <div>
-            <p class="row-title">
-              {{ t('withdrawPage.withdrawableAmount') }}
-            </p>
-          </div>
-          <div class="row-right">
-            <CoinAmount :text="formatCurrency(withdrawableAmount)" />
-          </div>
-        </div>
-        <div class="balance-row">
-          <div>
-            <p class="row-title">
-              {{ t('withdrawPage.nonWithdrawableAmount') }}
-            </p>
-          </div>
-          <div class="row-right">
-            <CoinAmount :text="formatCurrency(nonWithdrawableAmount)" />
-          </div>
-        </div>
-        <div class="balance-row">
-          <div>
-            <p class="row-title">
-              {{ t('withdrawPage.freezing') }}
-            </p>
-          </div>
-          <div class="row-right">
-            <CoinAmount :text="formatCurrency(frozen)" />
-          </div>
-        </div>
       </div>
 
       <van-button type="primary" round block class="submit-btn" :loading="submitLoading" :disabled="!canSubmit" @click="handleSubmitWithdraw">
@@ -488,9 +505,10 @@ onMounted(() => {
         <li>{{ t('withdrawPage.tips5') }}</li>
       </ol>
     </section>
+    </template>
 
     <!-- select 选择器弹窗 -->
-    <van-popup v-model:show="pickerVisible" position="bottom" teleport="#app">
+    <van-popup v-if="!pageLoading" v-model:show="pickerVisible" position="bottom" teleport="#app">
       <van-picker
         :columns="pickerColumns"
         @confirm="onPickerConfirm"
@@ -543,6 +561,186 @@ onMounted(() => {
   inset: 0 0 auto;
   height: 3px;
   background: linear-gradient(90deg, transparent 0%, #b8860b 18%, #ffd700 50%, #b8860b 82%, transparent 100%);
+}
+
+.skeleton-card {
+  pointer-events: none;
+}
+
+.skeleton-line,
+.skeleton-coin,
+.skeleton-pill,
+.skeleton-input,
+.skeleton-amount-item,
+.skeleton-submit,
+.skeleton-bind-btn,
+.skeleton-field,
+.skeleton-tip-line {
+  position: relative;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 248, 214, 0.1);
+}
+
+.skeleton-line::after,
+.skeleton-coin::after,
+.skeleton-pill::after,
+.skeleton-input::after,
+.skeleton-amount-item::after,
+.skeleton-submit::after,
+.skeleton-bind-btn::after,
+.skeleton-field::after,
+.skeleton-tip-line::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255, 231, 166, 0.2), transparent);
+  animation: skeleton-shimmer 1.25s ease-in-out infinite;
+}
+
+@keyframes skeleton-shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.skeleton-balance-copy {
+  width: min(68%, 240px);
+}
+
+.skeleton-line {
+  height: 12px;
+}
+
+.skeleton-line-xs {
+  width: 54px;
+}
+
+.skeleton-line-sm {
+  width: 84px;
+}
+
+.skeleton-line-md {
+  width: 138px;
+}
+
+.skeleton-line-xl {
+  width: 188px;
+  height: 28px;
+  margin: 12px 0 10px;
+}
+
+.skeleton-line-title {
+  width: 132px;
+  height: 16px;
+  margin-bottom: 14px;
+}
+
+.skeleton-line-center {
+  width: 178px;
+  height: 14px;
+  margin: 14px auto 0;
+}
+
+.skeleton-coin {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: rgba(255, 223, 135, 0.16);
+}
+
+.skeleton-country-bar {
+  min-height: 42px;
+}
+
+.skeleton-pill {
+  flex: 0 0 auto;
+  width: 96px;
+  height: 34px;
+  border-radius: 20px;
+}
+
+.skeleton-input {
+  width: 100%;
+  height: 46px;
+  border-radius: 14px;
+}
+
+.skeleton-amount-grid {
+  pointer-events: none;
+}
+
+.skeleton-amount-item {
+  height: 64px;
+  border-radius: 14px;
+}
+
+.skeleton-submit {
+  height: 44px;
+  margin-top: 14px;
+  border-radius: 999px;
+  background: rgba(255, 223, 135, 0.18);
+}
+
+.skeleton-fee-card {
+  margin-top: 14px;
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(212, 175, 55, 0.14);
+  background: rgba(255, 248, 214, 0.04);
+}
+
+.skeleton-fee-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.skeleton-fee-row + .skeleton-fee-row {
+  border-top: 1px solid rgba(212, 175, 55, 0.1);
+  margin-top: 10px;
+  padding-top: 10px;
+}
+
+.skeleton-bind-btn {
+  width: 76px;
+  height: 28px;
+  border-radius: 14px;
+}
+
+.skeleton-field {
+  height: 54px;
+  border-radius: 14px;
+}
+
+.skeleton-field + .skeleton-field {
+  margin-top: 10px;
+}
+
+.skeleton-tip-line {
+  height: 12px;
+  border-radius: 8px;
+}
+
+.skeleton-tip-line + .skeleton-tip-line {
+  margin-top: 10px;
+}
+
+.skeleton-tip-line:nth-child(3) {
+  width: 86%;
+}
+
+.skeleton-tip-line:nth-child(4) {
+  width: 92%;
+}
+
+.skeleton-tip-line:nth-child(5) {
+  width: 78%;
+}
+
+.skeleton-tip-line:nth-child(6) {
+  width: 84%;
 }
 
 .balance-card {
@@ -756,7 +954,6 @@ onMounted(() => {
   letter-spacing: 0.04em;
 }
 
-.balance-breakdown,
 .fee-card {
   margin-top: 14px;
   padding: 12px;
@@ -765,53 +962,21 @@ onMounted(() => {
   background: rgba(255, 248, 214, 0.06);
 }
 
-.balance-header,
-.balance-row,
 .fee-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
 }
 
-.balance-header {
-  margin-bottom: 10px;
-}
-
-.balance-title {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  color: #ffd98b;
-  font-weight: 700;
-}
-
-.balance-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 22px;
-  height: 22px;
-  border-radius: 999px;
-  background: rgba(212, 175, 55, 0.16);
-}
-
-.balance-row + .balance-row,
 .fee-row + .fee-row {
   border-top: 1px solid rgba(212, 175, 55, 0.12);
   margin-top: 10px;
   padding-top: 10px;
 }
 
-.row-right,
 .fee-row {
   color: #fff0c9;
   gap: 8px;
-}
-
-.row-title {
-  margin: 0;
-  color: #fff0c9;
-  font-weight: 700;
 }
 
 :deep(.custom-input),

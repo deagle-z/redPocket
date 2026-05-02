@@ -331,6 +331,7 @@ func InitGin() {
 
 		appAuthRouter.GET("/country/:code/withdrawFields", api.GetCountryWithdrawFields)        // App端获取国家提现字段配置
 		appAuthRouter.GET("/country/:code/rechargeFields", api.GetCountryRechargeFields)        // App端获取国家充值字段配置
+		appAuthRouter.POST("/withdraw", api.AppCreateWithdrawOrder)                             // App端创建提现订单
 		appAuthRouter.GET("/withdrawAccount/list", api.GetAppWithdrawAccounts)                  // App端获取当前用户提现账户列表
 		appAuthRouter.POST("/withdrawAccount", api.AppAddWithdrawAccount)                       // App端新增提现账户
 		appAuthRouter.POST("/withdrawAccount/:id/update", api.AppUpdateWithdrawAccount)         // App端修改提现账户
