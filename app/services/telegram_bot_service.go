@@ -944,8 +944,8 @@ func (s *TelegramBotService) applyInviteFirstRechargeReward(tx *gorm.DB, order p
 		return nil
 	}
 
-	rebateAmount := utils.ToMoney(order.Amount).Multiply(rate / 100).ToDollars()
-	if rebateAmount <= 0 {
+	rebateAmount := utils.Truncate2(utils.ToMoney(order.Amount).Multiply(rate / 100).ToDollars())
+	if rebateAmount < 0.01 {
 		return nil
 	}
 
@@ -2215,8 +2215,8 @@ func (s *TelegramBotService) createRebateRecord(tx *gorm.DB, level int, order po
 		return nil
 	}
 
-	rebateAmount := utils.ToMoney(order.Amount).Multiply(rate / 100).ToDollars()
-	if rebateAmount <= 0 {
+	rebateAmount := utils.Truncate2(utils.ToMoney(order.Amount).Multiply(rate / 100).ToDollars())
+	if rebateAmount < 0.01 {
 		return nil
 	}
 

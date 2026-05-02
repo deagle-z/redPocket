@@ -921,6 +921,12 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 				tx.Rollback()
 				return nil, fmt.Errorf("记录余额变动失败: %v", err)
 			}
+			// 中雷时：给发包用户的上级按平台收益返佣
+			rebateAmount, err := applyLuckyInviteRebate(tx, tablePrefix, luckyMoney.SenderID, luckyMoney.TenantId, commissionAmount, getInviteThunderRebateRate(tablePrefix), luckyID, grabIndex, "thunder")
+			if err != nil {
+				tx.Rollback()
+				return nil, fmt.Errorf("发包上级返佣失败: %v", err)
+			}
 			if err := repository.CreatePlatformProfitLedgerIfAbsent(tx, pojo.PlatformProfitLedger{
 				TenantId:        luckyMoney.TenantId,
 				UserId:          luckyMoney.SenderID,
@@ -929,16 +935,11 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 				SourceId:        cashHistoryCommission.AwardUni,
 				IncomeAmount:    commissionAmount,
 				ExpenseAmount:   0,
+				RebateAmount:    rebateAmount,
 				Remark:          cashHistoryCommission.CashDesc,
 			}); err != nil {
 				tx.Rollback()
 				return nil, fmt.Errorf("记录平台盈利流水失败: %v", err)
-			}
-
-			// 中雷时：给发包用户的上级按平台收益返佣
-			if err := applyLuckyInviteRebate(tx, tablePrefix, luckyMoney.SenderID, luckyMoney.TenantId, commissionAmount, getInviteThunderRebateRate(tablePrefix), luckyID, grabIndex, "thunder"); err != nil {
-				tx.Rollback()
-				return nil, fmt.Errorf("发包上级返佣失败: %v", err)
 			}
 		}
 
@@ -1019,6 +1020,12 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 				tx.Rollback()
 				return nil, fmt.Errorf("记录余额变动失败: %v", err)
 			}
+			// 中奖时：给中奖用户的上级按平台收益返佣
+			rebateAmount, err := applyLuckyInviteRebate(tx, tablePrefix, userID, luckyMoney.TenantId, commissionAmount, getInviteLuckyRebateRate(tablePrefix), luckyID, grabIndex, "lucky")
+			if err != nil {
+				tx.Rollback()
+				return nil, fmt.Errorf("中奖上级返佣失败: %v", err)
+			}
 			if err := repository.CreatePlatformProfitLedgerIfAbsent(tx, pojo.PlatformProfitLedger{
 				TenantId:        luckyMoney.TenantId,
 				UserId:          userID,
@@ -1027,16 +1034,11 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 				SourceId:        cashHistoryCommission.AwardUni,
 				IncomeAmount:    commissionAmount,
 				ExpenseAmount:   0,
+				RebateAmount:    rebateAmount,
 				Remark:          cashHistoryCommission.CashDesc,
 			}); err != nil {
 				tx.Rollback()
 				return nil, fmt.Errorf("记录平台盈利流水失败: %v", err)
-			}
-
-			// 中奖时：给中奖用户的上级按平台收益返佣
-			if err := applyLuckyInviteRebate(tx, tablePrefix, userID, luckyMoney.TenantId, commissionAmount, getInviteLuckyRebateRate(tablePrefix), luckyID, grabIndex, "lucky"); err != nil {
-				tx.Rollback()
-				return nil, fmt.Errorf("中奖上级返佣失败: %v", err)
 			}
 		}
 
@@ -1518,32 +1520,32 @@ func applyLuckyInviteRebate(
 	luckyID int64,
 	grabIndex int,
 	scene string,
-) error {
+) (float64, error) {
 	if platformIncome <= 0 || rate <= 0 || subUserID <= 0 {
-		return nil
+		return 0, nil
 	}
 	platformIncome = utils.Truncate2(platformIncome)
 
 	var subUser pojo.TgUser
 	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ?", subUserID).First(&subUser).Error; err != nil || subUser.ID == 0 {
-		return nil
+		return 0, nil
 	}
 	if subUser.ParentID == nil || *subUser.ParentID <= 0 {
-		return nil
+		return 0, nil
 	}
 
 	parentID := *subUser.ParentID
 	var parent pojo.TgUser
 	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ?", parentID).First(&parent).Error; err != nil || parent.ID == 0 {
-		return nil
+		return 0, nil
 	}
 	if parent.Status != 1 {
-		return nil
+		return 0, nil
 	}
 
 	rebateAmount := utils.Truncate2(utils.ToMoney(platformIncome).Multiply(rate / 100).ToDollars())
-	if rebateAmount <= 0 {
-		return nil
+	if rebateAmount < 0.01 {
+		return 0, nil
 	}
 
 	idempotencyKey := fmt.Sprintf("invite_rebate:%s:%d:%d:%d", scene, luckyID, grabIndex, parentID)
@@ -1569,19 +1571,22 @@ func applyLuckyInviteRebate(
 	// OnConflict DoNothing：若 idempotency_key 唯一索引冲突（并发重入），静默跳过而非报错回滚
 	result := tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&record)
 	if result.Error != nil {
-		return result.Error
+		return 0, result.Error
 	}
 	if result.RowsAffected == 0 {
 		// 已存在，幂等跳过
-		return nil
+		return 0, nil
 	}
 
-	return tx.Model(&pojo.TgUser{}).
+	if err := tx.Model(&pojo.TgUser{}).
 		Where("id = ?", parentID).
 		Updates(map[string]any{
 			"rebate_amount":       gorm.Expr("rebate_amount + ?", rebateAmount),
 			"rebate_total_amount": gorm.Expr("rebate_total_amount + ?", rebateAmount),
-		}).Error
+		}).Error; err != nil {
+		return 0, err
+	}
+	return rebateAmount, nil
 }
 
 func ptrTime(t time.Time) *time.Time {

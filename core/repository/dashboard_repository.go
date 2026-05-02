@@ -192,5 +192,5 @@ func getAdminDashboardPlatformPumpAmount(db *gorm.DB, start *time.Time, end *tim
 	if start != nil && end != nil {
 		query = query.Where("created_at >= ? AND created_at < ?", *start, *end)
 	}
-	return sumAdminDashboardAmount(query, "income_amount")
+	return sumAdminDashboardAmount(query, "COALESCE(actual_income_amount, income_amount - COALESCE(rebate_amount, 0))")
 }

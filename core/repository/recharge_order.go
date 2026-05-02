@@ -910,7 +910,7 @@ func applyInviteFirstRechargeReward(tx *gorm.DB, order pojo.RechargeOrder, subUs
 	}
 
 	rebateAmount := utils.Truncate2(utils.ToMoney(order.Amount).Multiply(rate / 100).ToDollars())
-	if rebateAmount <= 0 {
+	if rebateAmount < 0.01 {
 		return nil
 	}
 
