@@ -760,7 +760,7 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 		tx.Rollback()
 		return nil, fmt.Errorf("查询发包用户失败: %v", err)
 	}
-	botPumpRelated := user.IsBot || senderIsBot
+	botVsBotPump := user.IsBot && senderIsBot
 
 	// 标记子红包被抢（防止同一序号被重复抢），并记录是否中雷
 	if err := repository.MarkLuckyMoneyItemGrabbed(tx, luckyID, grabIndex, userID, isThunder, loseMoney, thunderFee, winFee, time.Now()); err != nil {
@@ -903,7 +903,7 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 		}
 
 		// 记录余额变动（发送者）- 抽成金额
-		if commissionAmount > 0 && !botPumpRelated {
+		if commissionAmount > 0 && !botVsBotPump {
 			cashHistoryCommission := pojo.CashHistory{
 				UserId:          luckyMoney.SenderID,
 				AwardUni:        fmt.Sprintf("lucky_thunder_commission_%d_%d_%d_%d", luckyID, userID, awardTs, int64(utils.ToMoney(commissionAmount))),
@@ -944,7 +944,7 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 		}
 
 		// 中雷奖池注入
-		if thunderPoolFee > 0 && !botPumpRelated {
+		if thunderPoolFee > 0 && !botVsBotPump {
 			if err := repository.DepositPrizePool(tx, luckyMoney.TenantId, "lucky", userID, thunderPoolFee); err != nil {
 				tx.Rollback()
 				return nil, fmt.Errorf("中雷奖池注入失败: %v", err)
@@ -1002,7 +1002,7 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 		}
 
 		// 记录余额变动 - 抽成金额
-		if commissionAmount > 0 && !botPumpRelated {
+		if commissionAmount > 0 && !botVsBotPump {
 			cashHistoryCommission := pojo.CashHistory{
 				UserId:          userID,
 				AwardUni:        fmt.Sprintf("l_grab_%d_%d_%d_%s", luckyID, userID, awardTs, utils.RandomString(6)),
@@ -1043,7 +1043,7 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 		}
 
 		// 中奖奖池注入
-		if winPoolFee > 0 && !botPumpRelated {
+		if winPoolFee > 0 && !botVsBotPump {
 			if err := repository.DepositPrizePool(tx, luckyMoney.TenantId, "lucky", userID, winPoolFee); err != nil {
 				tx.Rollback()
 				return nil, fmt.Errorf("中奖奖池注入失败: %v", err)
