@@ -11,6 +11,7 @@ import { isLogin } from '@/utils/auth'
 import { formatCurrency, truncate2 } from '@/utils/currency'
 import { formatLuckyActionLabel } from '@/utils/lucky-actions'
 import { isParityPlayType, resolveLuckyPlayType } from '@/utils/lucky-play'
+import { safeBack } from '@/utils/navigation'
 import wsClient from '@/plugins/websocket'
 import imgAvatarPlaceholder from '@/assets/images/avatar-placeholder.png'
 import imgRedpacketGif from '@/assets/images/redpacket.gif'
@@ -101,7 +102,7 @@ function syncModeFromRoute() {
 }
 
 function goBack() {
-  router.back()
+  safeBack(router)
 }
 
 function openRulePopup() {

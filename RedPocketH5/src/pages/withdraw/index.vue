@@ -14,6 +14,7 @@ import {
 import AppPageHeader from '@/components/AppPageHeader.vue'
 import { useUserStore } from '@/stores'
 import { formatCurrency, truncate2 } from '@/utils/currency'
+import { safeBack } from '@/utils/navigation'
 
 const { t } = useI18n()
 const router = useRouter()
@@ -109,7 +110,7 @@ function chooseAmount(value: number | 'custom') {
 }
 
 function goBack() {
-  router.back()
+  safeBack(router)
 }
 
 function showHelpTip() {
@@ -821,24 +822,47 @@ onMounted(() => {
   background: rgba(255, 248, 214, 0.05);
 }
 
-:deep(.withdraw-field) {
+.withdraw-field {
+  display: block;
   margin-top: 10px;
 }
 
-:deep(.withdraw-field:first-of-type) {
+.withdraw-field:first-of-type {
   margin-top: 0;
 }
 
 :deep(.custom-input .van-field__label),
-:deep(.custom-input .van-field__control),
-:deep(.withdraw-field .van-field__label),
-:deep(.withdraw-field .van-field__control) {
+:deep(.custom-input .van-field__control) {
   color: #fff0c9;
 }
 
-:deep(.custom-input .van-field__control::placeholder),
-:deep(.withdraw-field .van-field__control::placeholder) {
+:deep(.custom-input .van-field__control::placeholder) {
   color: rgba(255, 229, 186, 0.4);
+}
+
+:deep(.withdraw-field .van-field__label) {
+  width: 100%;
+  margin: 0 0 6px;
+  color: #fff0c9;
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+:deep(.withdraw-field .van-field__label span) {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+:deep(.withdraw-field .van-field__value) {
+  width: 100%;
+  min-width: 0;
+}
+
+:deep(.withdraw-field .van-field__body),
+:deep(.withdraw-field .van-field__control) {
+  width: 100%;
 }
 
 .submit-btn {

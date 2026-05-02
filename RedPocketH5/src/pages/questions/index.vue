@@ -2,6 +2,7 @@
 import { useRouter } from 'vue-router'
 import type { ComponentPublicInstance } from 'vue'
 import AppPageHeader from '@/components/AppPageHeader.vue'
+import { safeBack } from '@/utils/navigation'
 
 type CategoryKey = 'hot' | 'finance' | 'game' | 'security'
 
@@ -82,7 +83,7 @@ function goCs() {
 }
 
 function goBack() {
-  router.back()
+  safeBack(router)
 }
 </script>
 

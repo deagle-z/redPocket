@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { getCurrentTgInviteRuleConfig, getCurrentTgInviteStats } from '@/api/user'
 import { formatCurrency, truncate2 } from '@/utils/currency'
 import { isMerchantTenant } from '@/utils/auth'
+import { safeBack } from '@/utils/navigation'
 import imgTeamJpg from '@/assets/images/team.jpg'
 
 const { t } = useI18n()
@@ -102,11 +103,15 @@ onMounted(() => {
   loadTeamData()
   loadInviteRuleConfig()
 })
+
+function goBack() {
+  safeBack(router)
+}
 </script>
 
 <template>
   <div class="team-page">
-    <AppPageHeader :title="t('teamPage.title')" @back="router.back()" />
+    <AppPageHeader :title="t('teamPage.title')" @back="goBack" />
     <section class="section-card">
       <div class="section-title">
         <span class="dot green" />

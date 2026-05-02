@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { showToast } from 'vant'
 import { bindCurrentTgEmail, getCurrentTgUserInfo } from '@/api/user'
 import { languageOptions, locale } from '@/utils/i18n'
+import { safeBack } from '@/utils/navigation'
 import AppPageHeader from '@/components/AppPageHeader.vue'
 import languageIcon from '@/assets/svg/language.svg'
 
@@ -19,7 +20,7 @@ const formData = reactive({
 })
 
 function goBack() {
-  router.back()
+  safeBack(router)
 }
 
 function openLanguagePopup() {
@@ -59,7 +60,7 @@ async function submitBindEmail() {
     submitting.value = true
     await bindCurrentTgEmail({ email })
     showToast(t('bindEmailPage.toastBindSuccess'))
-    router.back()
+    safeBack(router)
   }
   catch (error: any) {
     showToast(error?.message || t('bindEmailPage.toastBindFailed'))
@@ -121,7 +122,6 @@ onMounted(() => {
             :readonly="!!boundEmail"
           >
         </div>
-
       </section>
 
       <button type="button" class="submit-btn" :disabled="!!boundEmail || submitting" @click="submitBindEmail">
@@ -185,7 +185,8 @@ onMounted(() => {
   width: 18px;
   height: 18px;
   object-fit: contain;
-  filter: brightness(0) saturate(100%) invert(85%) sepia(39%) saturate(649%) hue-rotate(335deg) brightness(105%) contrast(97%);
+  filter: brightness(0) saturate(100%) invert(85%) sepia(39%) saturate(649%) hue-rotate(335deg) brightness(105%)
+    contrast(97%);
 }
 
 .hero-card,

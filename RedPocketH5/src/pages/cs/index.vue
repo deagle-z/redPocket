@@ -5,6 +5,7 @@ import { getTenantServiceLinks } from '@/api/user'
 import type { TenantServiceLinks } from '@/api/user'
 import { useUserStore } from '@/stores'
 import { getTokenTenantId } from '@/utils/auth'
+import { safeBack } from '@/utils/navigation'
 
 const router = useRouter()
 const { t } = useI18n()
@@ -86,7 +87,7 @@ async function loadServiceLinks() {
 }
 
 function goBack() {
-  router.back()
+  safeBack(router)
 }
 
 onMounted(() => {

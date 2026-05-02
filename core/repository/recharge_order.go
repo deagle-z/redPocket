@@ -328,9 +328,6 @@ func ProcessRechargeOrderSuccess(db *gorm.DB, orderNo string, providerTradeNo st
 		}
 		isFirstRecharge := user.RechargeAmount <= 0
 		bonusAmount := 0.0
-		if isFirstRecharge {
-			bonusAmount = utils.Truncate2(getRechargeGiftAmount(tablePrefix))
-		}
 
 		now := time.Now()
 		creditAmount := utils.Truncate2(order.Amount - order.Fee + bonusAmount)
@@ -495,9 +492,6 @@ func rechargeOrderDevCallback(db *gorm.DB, orderNo string, tablePrefix string) e
 		}
 		isFirstRecharge := user.RechargeAmount <= 0
 		bonusAmount := 0.0
-		if isFirstRecharge {
-			bonusAmount = utils.Truncate2(getRechargeGiftAmount(tablePrefix))
-		}
 
 		now := time.Now()
 		creditAmount := utils.Truncate2(order.Amount - order.Fee + bonusAmount)

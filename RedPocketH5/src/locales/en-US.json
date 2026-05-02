@@ -397,6 +397,7 @@
     "confirmBind": "Confirm Binding",
     "noFields": "This country has no withdraw fields configured yet",
     "requiredField": "{field} cannot be empty",
+    "invalidField": "{field} format is invalid",
     "deleteTitle": "Delete Account",
     "deleteConfirm": "Are you sure you want to delete this withdraw account?",
     "toastUpdateSuccess": "Account updated",

@@ -397,6 +397,7 @@
     "confirmBind": "Konfirmasi Tautkan",
     "noFields": "Negara ini belum memiliki field penarikan",
     "requiredField": "{field} tidak boleh kosong",
+    "invalidField": "Format {field} tidak valid",
     "deleteTitle": "Hapus Akun",
     "deleteConfirm": "Yakin ingin menghapus akun penarikan ini?",
     "toastUpdateSuccess": "Akun berhasil diperbarui",

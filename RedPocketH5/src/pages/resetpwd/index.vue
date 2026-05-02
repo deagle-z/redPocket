@@ -4,6 +4,7 @@ import type { RouteMap } from 'vue-router'
 import { showToast } from 'vant'
 import { useUserStore } from '@/stores'
 import AppPageHeader from '@/components/AppPageHeader.vue'
+import { safeBack } from '@/utils/navigation'
 import emailIcon from '@/assets/svg/email.svg'
 import lockIcon from '@/assets/svg/lock.svg'
 import verifyIcon from '@/assets/svg/verify.svg'
@@ -110,7 +111,7 @@ async function submitReset() {
 }
 
 function goBack() {
-  router.back()
+  safeBack(router)
 }
 </script>
 
@@ -310,7 +311,8 @@ function goBack() {
 .reset-icon {
   width: 16px;
   height: 16px;
-  filter: brightness(0) saturate(100%) invert(85%) sepia(39%) saturate(649%) hue-rotate(335deg) brightness(105%) contrast(97%);
+  filter: brightness(0) saturate(100%) invert(85%) sepia(39%) saturate(649%) hue-rotate(335deg) brightness(105%)
+    contrast(97%);
 }
 
 .reset-input {

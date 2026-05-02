@@ -451,17 +451,26 @@ onBeforeUnmount(() => {
 .home-carousel-card {
   border-radius: 14px;
   background: #5a0000;
+  aspect-ratio: 16 / 6;
+  min-height: 132px;
 }
 
 .home-swipe {
   width: 100%;
+  height: 100%;
+  background:
+    linear-gradient(90deg, rgba(255, 248, 214, 0.04), rgba(255, 248, 214, 0.1), rgba(255, 248, 214, 0.04)), #5a0000;
+}
+
+:deep(.home-swipe .van-swipe__track),
+:deep(.home-swipe .van-swipe-item) {
+  height: 100%;
 }
 
 .banner-image {
   display: block;
   width: 100%;
-  height: auto;
-  aspect-ratio: 16 / 6;
+  height: 100%;
   object-fit: cover;
 }
 

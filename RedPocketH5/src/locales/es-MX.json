@@ -397,6 +397,7 @@
     "confirmBind": "Confirmar vinculación",
     "noFields": "Este país aún no tiene campos de retiro configurados",
     "requiredField": "{field} no puede estar vacío",
+    "invalidField": "El formato de {field} no es válido",
     "deleteTitle": "Eliminar cuenta",
     "deleteConfirm": "¿Seguro que deseas eliminar esta cuenta de retiro?",
     "toastUpdateSuccess": "Cuenta actualizada",

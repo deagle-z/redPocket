@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { showToast } from 'vant'
 import { appUpload, getCurrentTgUserInfo, setAudioOpen, updateCurrentTgAvatar, updateCurrentTgName } from '@/api/user'
+import { safeBack } from '@/utils/navigation'
 import avatarPlaceholderIcon from '@/assets/my/question-circle.svg'
 
 const { t } = useI18n()
@@ -165,11 +166,15 @@ async function toggleAudio() {
 onMounted(() => {
   loadSettingData()
 })
+
+function goBack() {
+  safeBack(router)
+}
 </script>
 
 <template>
   <div class="setting-page">
-    <AppPageHeader :title="t('settingPage.title')" @back="router.back()" />
+    <AppPageHeader :title="t('settingPage.title')" @back="goBack" />
 
     <div class="setting-body">
       <!-- 用户名 -->

@@ -1,11 +1,10 @@
 <script setup lang="ts">
+import { safeBack } from '@/utils/navigation'
+
 const router = useRouter()
 
 function onBack() {
-  if (window.history.state.back)
-    history.back()
-  else
-    router.replace('/')
+  safeBack(router)
 }
 </script>
 

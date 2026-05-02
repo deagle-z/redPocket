@@ -6,6 +6,7 @@ import { getAppCashHistoryList, getCurrentTgUserInfo, transferRebateToBalance } 
 import AppPageHeader from '@/components/AppPageHeader.vue'
 import gameIcon from '@/assets/my/game.svg'
 import { formatCurrency, formatCurrencyPlain, truncate2 } from '@/utils/currency'
+import { safeBack } from '@/utils/navigation'
 import imgCoin from '@/assets/svg/coin.svg'
 
 const { t } = useI18n()
@@ -33,7 +34,7 @@ const commissionText = computed(() => formatCurrency(wallet.commission))
 const gameText = computed(() => formatCurrency(wallet.game))
 
 function goBack() {
-  router.back()
+  safeBack(router)
 }
 
 function isCommissionTx(item: any) {

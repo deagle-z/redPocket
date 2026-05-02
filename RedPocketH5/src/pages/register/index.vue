@@ -7,6 +7,7 @@ import { trackAttributionEvent } from '@/utils/attribution'
 import { getSourceChannelCode } from '@/utils/source-channel'
 import { showToast } from 'vant'
 import { languageOptions, locale } from '@/utils/i18n'
+import { safeBack } from '@/utils/navigation'
 import AppPageHeader from '@/components/AppPageHeader.vue'
 import emailIcon from '@/assets/svg/email.svg'
 import lockIcon from '@/assets/svg/lock.svg'
@@ -235,7 +236,7 @@ async function handleTelegramLogin() {
 }
 
 function goBack() {
-  router.back()
+  safeBack(router)
 }
 
 function goLogin() {

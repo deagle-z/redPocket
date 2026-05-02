@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
 import AppPageHeader from '@/components/AppPageHeader.vue'
+import { safeBack } from '@/utils/navigation'
 
 const { t } = useI18n()
 const router = useRouter()
 
 function goBack() {
-  router.back()
+  safeBack(router)
 }
 </script>
 

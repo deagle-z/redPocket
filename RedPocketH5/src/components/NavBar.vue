@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { rootRouteList } from '@/config/routes'
+import { safeBack } from '@/utils/navigation'
 
 const route = useRoute()
 const router = useRouter()
@@ -30,12 +31,7 @@ const showLeftArrow = computed(() => {
 })
 
 function onBack() {
-  if (window.history.state.back) {
-    history.back()
-  }
-  else {
-    router.replace('/')
-  }
+  safeBack(router)
 }
 </script>
 

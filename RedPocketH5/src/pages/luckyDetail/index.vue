@@ -13,6 +13,7 @@ import { formatCurrency } from '@/utils/currency'
 import type { LuckyPacketAction } from '@/utils/lucky-actions'
 import { isLogin } from '@/utils/auth'
 import { isParityPlayType, resolveLuckyPlayType } from '@/utils/lucky-play'
+import { safeBack } from '@/utils/navigation'
 import imgAvatarPlaceholder from '@/assets/images/avatar-placeholder.png'
 import imgRedpacketGif from '@/assets/images/redpacket.gif'
 import imgRedpacketJpg from '@/assets/images/redpacket.jpg'
@@ -242,7 +243,7 @@ function handleLuckyWsMessage(message: any) {
 }
 
 function goBack() {
-  router.back()
+  safeBack(router)
 }
 
 function goInvite() {

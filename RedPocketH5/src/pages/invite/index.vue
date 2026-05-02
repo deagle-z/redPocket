@@ -6,6 +6,7 @@ import { getCurrentTgInviteRuleConfig, getCurrentTgInviteStats } from '@/api/use
 import AppPageHeader from '@/components/AppPageHeader.vue'
 import { isMerchantTenant } from '@/utils/auth'
 import { truncate2 } from '@/utils/currency'
+import { safeBack } from '@/utils/navigation'
 
 const router = useRouter()
 const { t } = useI18n()
@@ -41,7 +42,7 @@ const qrCodeUrl = computed(() => {
 })
 
 function goBack() {
-  router.back()
+  safeBack(router)
 }
 
 function formatAmount(value: number) {

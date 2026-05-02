@@ -13,6 +13,7 @@ import {
   updateWithdrawAccount,
 } from '@/api/user'
 import AppPageHeader from '@/components/AppPageHeader.vue'
+import { safeBack } from '@/utils/navigation'
 
 const { t } = useI18n()
 const router = useRouter()
@@ -84,7 +85,7 @@ function showCenterToast(message: string) {
 }
 
 function goBack() {
-  router.back()
+  safeBack(router)
 }
 
 // 解析 accountData JSON
@@ -197,11 +198,19 @@ async function handleSubmit() {
   if (!selectedCountry.value)
     return
 
-  // 必填校验
+  // 必填 + 正则校验
   for (const f of withdrawFields.value) {
-    if (f.isRequired === 1 && !fieldValues.value[f.fieldKey]?.trim()) {
+    const val = fieldValues.value[f.fieldKey]?.trim() ?? ''
+    if (f.isRequired === 1 && !val) {
       showCenterToast(f.errorTips || t('withdrawAccountPage.requiredField', { field: f.fieldLabel }))
       return
+    }
+    if (val && f.regexRule) {
+      const regex = new RegExp(f.regexRule)
+      if (!regex.test(val)) {
+        showCenterToast(f.errorTips || t('withdrawAccountPage.invalidField', { field: f.fieldLabel }))
+        return
+      }
     }
   }
 
@@ -696,6 +705,7 @@ onMounted(() => {
 }
 
 .wa-field {
+  display: block;
   margin-bottom: 10px;
   border-radius: 14px;
   overflow: hidden;
@@ -703,13 +713,37 @@ onMounted(() => {
   background: rgba(255, 248, 214, 0.05);
 }
 
-:deep(.wa-field .van-field__label),
 :deep(.wa-field .van-field__control) {
   color: #fff0c9;
 }
 
 :deep(.wa-field .van-field__control::placeholder) {
   color: rgba(255, 229, 186, 0.4);
+}
+
+:deep(.wa-field .van-field__label) {
+  width: 100%;
+  margin: 0 0 6px;
+  color: #fff0c9;
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+:deep(.wa-field .van-field__label span) {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+:deep(.wa-field .van-field__value) {
+  width: 100%;
+  min-width: 0;
+}
+
+:deep(.wa-field .van-field__body),
+:deep(.wa-field .van-field__control) {
+  width: 100%;
 }
 
 .custom-input {

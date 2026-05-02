@@ -397,6 +397,7 @@
     "confirmBind": "确认绑定",
     "noFields": "该国家暂未配置提现字段",
     "requiredField": "{field} 不能为空",
+    "invalidField": "{field} 格式不正确",
     "deleteTitle": "删除账户",
     "deleteConfirm": "确认删除该提现账户？",
     "toastUpdateSuccess": "修改成功",

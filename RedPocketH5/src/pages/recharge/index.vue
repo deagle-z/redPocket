@@ -15,6 +15,7 @@ import {
 import AppPageHeader from '@/components/AppPageHeader.vue'
 import { useUserStore } from '@/stores'
 import { formatCurrency, truncate2 } from '@/utils/currency'
+import { safeBack } from '@/utils/navigation'
 
 const { t } = useI18n()
 const router = useRouter()
@@ -210,7 +211,7 @@ function selectChannel(ch: AppRechargeChannelItem) {
 }
 
 function goBack() {
-  router.back()
+  safeBack(router)
 }
 
 function showCenterToast(message: string) {
@@ -493,8 +494,12 @@ onMounted(() => {
           v-else
           v-model="fieldValues[field.fieldKey]"
           :type="field.fieldType === 'number' ? 'number' : field.fieldType === 'textarea' ? 'textarea' : 'text'"
-          :label="field.fieldLabel" :placeholder="field.fieldPlaceholder || ''" :required="field.isRequired === 1"
-          :maxlength="field.maxLength ?? undefined" class="custom-input recharge-field" rows="3"
+          :label="field.fieldLabel"
+          :placeholder="field.fieldPlaceholder || ''"
+          :required="field.isRequired === 1"
+          :maxlength="field.maxLength ?? undefined"
+          class="custom-input recharge-field"
+          rows="3"
         />
       </template>
     </section>
@@ -920,11 +925,36 @@ onMounted(() => {
 }
 
 .recharge-field {
+  display: block;
   margin-top: 10px;
 }
 
 .recharge-field:first-of-type {
   margin-top: 0;
+}
+
+:deep(.recharge-field .van-field__label) {
+  width: 100%;
+  margin: 0 0 6px;
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+:deep(.recharge-field .van-field__label span) {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+:deep(.recharge-field .van-field__value) {
+  width: 100%;
+  min-width: 0;
+}
+
+:deep(.recharge-field .van-field__body),
+:deep(.recharge-field .van-field__control) {
+  width: 100%;
 }
 
 .promo-list {
