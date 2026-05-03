@@ -14,7 +14,6 @@ import languageIcon from '@/assets/svg/language.svg'
 import inviteIcon from '@/assets/svg/invite.svg'
 import avatarIcon from '@/assets/svg/avatar.svg'
 import imgRegisterHeader from '@/assets/images/register-header.jpg'
-import imgTelegram from '@/assets/images/telegram.png'
 
 const { t } = useI18n()
 const router = useRouter()
@@ -22,7 +21,6 @@ const userStore = useUserStore()
 const loading = ref(false)
 const showLangPopup = ref(false)
 const showCountryPopup = ref(false)
-const tgBotId = Number(import.meta.env.VITE_TG_BOT_ID || 0)
 const registerHeaderImage = imgRegisterHeader
 const registerCountries = [
   { code: 'MX', nameKey: 'register.countryMexico', dialCode: '+52' },
@@ -171,70 +169,6 @@ async function register() {
   }
 }
 
-interface TgAuthPayload {
-  id: number
-  first_name?: string
-  last_name?: string
-  username?: string
-  photo_url?: string
-  auth_date: number
-  hash: string
-}
-
-async function handleTelegramLogin() {
-  const tgLogin = (window as any)?.Telegram?.Login
-  if (!tgLogin?.auth) {
-    showToast(t('login.tgUnavailable'))
-    return
-  }
-  if (!tgBotId) {
-    showToast(t('login.missingBotConfig'))
-    return
-  }
-  try {
-    loading.value = true
-    await new Promise<void>((resolve, reject) => {
-      tgLogin.auth({ bot_id: tgBotId }, async (data: TgAuthPayload | false) => {
-        if (!data) {
-          reject(new Error(t('login.tgAuthCancelled')))
-          return
-        }
-        try {
-          trackAttributionEvent({
-            eventName: 'telegram_auth_submit',
-            metadata: {
-              source: 'register',
-            },
-          })
-          await userStore.loginByTelegram(data)
-          trackAttributionEvent({
-            eventName: 'telegram_auth_success',
-            metadata: {
-              source: 'register',
-            },
-          })
-          resolve()
-        }
-        catch (error) {
-          reject(error)
-        }
-      })
-    })
-    const { redirect, ...othersQuery } = router.currentRoute.value.query
-    const redirectPath = Array.isArray(redirect) ? redirect[0] : redirect
-    router.push({
-      path: redirectPath || '/',
-      query: { ...othersQuery },
-    })
-  }
-  catch (error: any) {
-    showToast(error?.message || t('login.tgLoginFailed'))
-  }
-  finally {
-    loading.value = false
-  }
-}
-
 function goBack() {
   safeBack(router)
 }
@@ -306,23 +240,12 @@ function selectLanguage(lang: string) {
             {{ t('register.pageTitle') }}
           </h2>
           <p class="hero-desc">
-            {{ t('register.telegramLogin') }}
+            {{ t('login.phoneTab') }}
           </p>
         </div>
       </section>
 
       <section class="auth-card">
-        <button type="button" class="tg-entry" @click="handleTelegramLogin">
-          <span class="tg-entry__media">
-            <img :src="imgTelegram" alt="telegram" class="tg-entry__icon">
-          </span>
-          <span class="tg-entry__content">
-            <strong>{{ t('register.telegramLogin') }}</strong>
-            <span>{{ t('login.telegramAuth') }}</span>
-          </span>
-          <span class="tg-entry__arrow">→</span>
-        </button>
-
         <div class="form-card">
           <div class="form-row">
             <label class="form-label">

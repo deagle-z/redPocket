@@ -514,6 +514,12 @@ export interface TgBindEmailReq {
   email: string
 }
 
+export interface TgBindPhoneReq {
+  phone: string
+  country: string
+  code: string
+}
+
 export interface TgRebateTransferReq {
   amount: number
 }
@@ -524,6 +530,10 @@ export function transferRebateToBalance(data: TgRebateTransferReq) {
 
 export function bindCurrentTgEmail(data: TgBindEmailReq) {
   return request.post<ApiResult<{ email: string }>>('/api/v1/app/tg/bindEmail', data)
+}
+
+export function bindCurrentTgPhone(data: TgBindPhoneReq) {
+  return request.post<ApiResult<{ phone: string, country: string }>>('/api/v1/app/tg/bindPhone', data)
 }
 
 export function createRechargeOrder(data: RechargeOrderAppReq) {

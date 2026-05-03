@@ -175,6 +175,12 @@ type TgBindEmailReq struct {
 	Email string `json:"email"`
 }
 
+type TgBindPhoneReq struct {
+	Phone   string `json:"phone"`
+	Country string `json:"country"`
+	Code    string `json:"code"`
+}
+
 type TgUpdateAvatarReq struct {
 	Avatar string `json:"avatar" binding:"required"`
 }

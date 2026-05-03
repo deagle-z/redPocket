@@ -44,6 +44,13 @@ declare module 'vue-router/auto-routes' {
       Record<never, never>,
       | never
     >,
+    '/bindPhone/': RouteRecordInfo<
+      '/bindPhone/',
+      '/bindPhone',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
     '/bindTg/': RouteRecordInfo<
       '/bindTg/',
       '/bindTg',
@@ -233,6 +240,12 @@ declare module 'vue-router/auto-routes' {
     'src/pages/bindEmail/index.vue': {
       routes:
         | '/bindEmail/'
+      views:
+        | never
+    }
+    'src/pages/bindPhone/index.vue': {
+      routes:
+        | '/bindPhone/'
       views:
         | never
     }

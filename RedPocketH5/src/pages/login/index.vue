@@ -12,14 +12,11 @@ import lockIcon from '@/assets/svg/lock.svg'
 import inviteIcon from '@/assets/svg/invite.svg'
 import languageIcon from '@/assets/svg/language.svg'
 import imgRegisterHeader from '@/assets/images/register-header.jpg'
-import imgTelegram from '@/assets/images/telegram.png'
 
 const { t } = useI18n()
 const router = useRouter()
 const userStore = useUserStore()
 const loading = ref(false)
-const activeTab = ref<'telegram' | 'phone'>('phone')
-const tgBotUsername = import.meta.env.VITE_TG_BOT_USERNAME || 'luckRedBoomPacket66Bot'
 const showLangPopup = ref(false)
 const showCountryPopup = ref(false)
 const loginCountries = [
@@ -118,49 +115,6 @@ async function login() {
   }
 }
 
-interface TgAuthPayload {
-  id: number
-  first_name?: string
-  last_name?: string
-  username?: string
-  photo_url?: string
-  auth_date: number
-  hash: string
-}
-
-async function handleTelegramAuth(user: TgAuthPayload) {
-  try {
-    loading.value = true
-    trackAttributionEvent({
-      eventName: 'telegram_auth_submit',
-      metadata: {
-        source: 'login',
-      },
-    })
-    await userStore.loginByTelegram(user)
-    trackAttributionEvent({
-      eventName: 'telegram_auth_success',
-      metadata: {
-        source: 'login',
-      },
-    })
-    const { redirect, ...othersQuery } = router.currentRoute.value.query
-    const redirectPath = typeof redirect === 'string' && redirect ? redirect : '/'
-    router.push({
-      path: redirectPath,
-      query: {
-        ...othersQuery,
-      },
-    })
-  }
-  catch (error: any) {
-    showToast(error?.message || t('login.tgLoginFailed'))
-  }
-  finally {
-    loading.value = false
-  }
-}
-
 function goBack() {
   safeBack(router)
 }
@@ -236,59 +190,13 @@ function goRegister() {
             {{ t('appTopHeader.brandTitle') }}
           </h2>
           <p class="hero-desc">
-            {{ t('login.loginWithTelegram') }}
+            {{ t('login.phoneTab') }}
           </p>
         </div>
       </section>
 
       <section class="auth-card">
-        <div class="tabs">
-          <button
-            class="tab"
-            :class="{ active: activeTab === 'phone' }"
-            type="button"
-            @click="activeTab = 'phone'"
-          >
-            {{ t('login.phoneTab') }}
-          </button>
-          <button
-            class="tab"
-            :class="{ active: activeTab === 'telegram' }"
-            type="button"
-            @click="activeTab = 'telegram'"
-          >
-            Telegram
-          </button>
-        </div>
-
-        <section v-if="activeTab === 'telegram'" class="telegram-panel">
-          <div class="telegram-badge">
-            <img
-              class="tg-logo-image"
-              :src="imgTelegram"
-              alt="telegram"
-            >
-          </div>
-          <p class="panel-title">
-            {{ t('login.telegramAuth') }}
-          </p>
-          <p class="panel-subtitle">
-            @{{ tgBotUsername }}
-          </p>
-          <div class="telegram-widget-wrap">
-            <TelegramLogin
-              mode="callback"
-              :telegram-login="tgBotUsername"
-              size="large"
-              radius="18"
-              request-access="write"
-              @callback="handleTelegramAuth"
-            />
-          </div>
-          <van-loading v-if="loading" class="tg-loading" size="20px" />
-        </section>
-
-        <section v-else class="email-panel">
+        <section class="email-panel">
           <div class="email-form-card">
             <div class="email-form-row">
               <label for="login-phone" class="email-form-label">

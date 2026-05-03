@@ -142,7 +142,9 @@ func postJSON(url string, payload map[string]string) ([]byte, error) {
 		return nil, err
 	}
 	defer resp.Body.Close()
-	return io.ReadAll(resp.Body)
+	respBody, readErr := io.ReadAll(resp.Body)
+	log.Printf("[GCTPKBRL] third-party response status=%d body=%s", resp.StatusCode, string(respBody))
+	return respBody, readErr
 }
 
 // CreatePayoutOrder 调用 GCTPK 代付下单接口

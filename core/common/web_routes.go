@@ -321,6 +321,7 @@ func InitGin() {
 		appAuthRouter.POST("/tg/avatar", api.UpdateCurrentTgUserAvatar)
 		appAuthRouter.POST("/tg/name", api.UpdateCurrentTgUserName)
 		appAuthRouter.POST("/tg/bindEmail", api.BindCurrentTgEmail)
+		appAuthRouter.POST("/tg/bindPhone", api.BindCurrentTgPhone)
 		appAuthRouter.POST("/tg/audioOpen", api.SetAudioOpen)
 		appAuthRouter.GET("/tenant/serviceLinks", api.GetAppTenantServiceLinks)
 		appAuthRouter.GET("/tg/inviteStats", api.GetCurrentTgInviteStats)

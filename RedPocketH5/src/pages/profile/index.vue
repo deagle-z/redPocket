@@ -117,6 +117,7 @@ const profile = reactive({
   uid: '',
   tgId: 0,
   email: '',
+  phone: '',
   balance: 0,
   rebateAmount: 0,
   vipLevelName: '',
@@ -146,6 +147,7 @@ const otherMenus = computed<MenuItem[]>(() => [
   { key: 'language', label: t('profilePage.serviceLanguage'), icon: normalizeInlineSvg(shareIcon) },
   { key: 'rules', label: t('profilePage.serviceRules'), icon: normalizeInlineSvg(gamesIcon) },
   { key: 'bind-tg', label: t('profilePage.serviceBindTg'), icon: normalizeInlineSvg(telegramIcon), extra: formatMaskedNumber(profile.tgId), tone: 'muted' },
+  { key: 'bind-phone', label: t('profilePage.serviceBindPhone'), icon: normalizeInlineSvg(emailIcon), extra: formatMaskedPhone(profile.phone), tone: 'muted' },
   { key: 'bind-email', label: t('profilePage.serviceBindEmail'), icon: normalizeInlineSvg(emailIcon), extra: formatMaskedEmail(profile.email), tone: 'muted' },
   { key: 'change-password', label: t('profilePage.serviceChangePassword'), icon: normalizeInlineSvg(passwordIcon) },
   { key: 'questions', label: t('profilePage.serviceQuestions'), icon: normalizeInlineSvg(questionCircleIcon) },
@@ -205,6 +207,15 @@ function formatMaskedEmail(email: string) {
   return `${prefix.slice(0, 1)}***${prefix.slice(-1)}${text.slice(atIndex)}`
 }
 
+function formatMaskedPhone(phone: string) {
+  const text = String(phone || '').trim()
+  if (!text)
+    return t('profilePage.notBound')
+  if (text.length <= 4)
+    return `${text.slice(0, 1)}***${text.slice(-1)}`
+  return `${text.slice(0, 2)}***${text.slice(-3)}`
+}
+
 async function loadCurrentTgUserInfo() {
   if (!isLogin()) {
     return
@@ -219,6 +230,7 @@ async function loadCurrentTgUserInfo() {
     profile.uid = data?.uid || ''
     profile.tgId = Number(data?.tg_id || 0)
     profile.email = data?.email || ''
+    profile.phone = data?.phone || ''
     profile.balance = Number(data?.balance || 0)
     profile.rebateAmount = Number(data?.rebate_amount || 0)
     profile.vipLevelName = data?.vip_level_name || ''
@@ -392,6 +404,9 @@ function onMenuClick(item: MenuItem) {
       break
     case 'bind-tg':
       goByPath('/bindTg')
+      break
+    case 'bind-phone':
+      goByPath('/bindPhone')
       break
     case 'bind-email':
       goByPath('/bindEmail')

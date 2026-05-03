@@ -749,6 +749,59 @@ func ResetTgPasswordByPhone(db *gorm.DB, phone string, country string, code stri
 	return nil
 }
 
+// BindCurrentTgPhone 绑定或换绑当前用户手机号。
+func BindCurrentTgPhone(db *gorm.DB, userID int64, phone string, country string, code string) error {
+	phone = strings.TrimSpace(phone)
+	country = strings.TrimSpace(strings.ToUpper(country))
+	country = utils.InferCountryByPhone(phone, country)
+	code = strings.TrimSpace(code)
+	if userID <= 0 {
+		return errors.New("token_invalid")
+	}
+	if !utils.IsPhone(phone) {
+		return errors.New("phone_format_error")
+	}
+	if len(code) != 6 {
+		return errors.New("code_format_error")
+	}
+
+	codeKey := fmt.Sprintf("bgu_tg_sms_code_%s", buildTgPhoneCacheKey(country, phone))
+	cacheCode, err := utils.RD.Get(context.Background(), codeKey).Result()
+	if err != nil {
+		return errors.New("code_expired")
+	}
+	if cacheCode != code {
+		return errors.New("code_incorrect")
+	}
+
+	query := db.Where("phone = ? AND id <> ? AND status <> ?", phone, userID, -1)
+	if country != "" {
+		query = query.Where("country = ?", country)
+	}
+	var exists pojo.TgUser
+	if err = query.First(&exists).Error; err == nil && exists.ID > 0 {
+		return errors.New("phone_registered")
+	}
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		return errors.New("service_busy_retry")
+	}
+
+	result := db.Model(&pojo.TgUser{}).
+		Where("id = ? AND status = ?", userID, 1).
+		Updates(map[string]any{
+			"phone":   phone,
+			"country": nullableString(country),
+		})
+	if result.Error != nil {
+		return errors.New("service_busy_retry")
+	}
+	if result.RowsAffected == 0 {
+		return errors.New("user_not_found")
+	}
+	_ = utils.RD.Del(context.Background(), codeKey).Err()
+	return nil
+}
+
 // GetCurrentTgUserInfo 获取当前TG用户信息。
 func GetCurrentTgUserInfo(db *gorm.DB, accessSecret string, token string) (pojo.TgCurrentUserInfo, error) {
 	token = strings.TrimSpace(token)

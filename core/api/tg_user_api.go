@@ -512,6 +512,38 @@ func BindCurrentTgEmail(ctx *gin.Context) {
 	})
 }
 
+// BindCurrentTgPhone 绑定或换绑当前TG用户手机号
+func BindCurrentTgPhone(ctx *gin.Context) {
+	userIDRaw, ok := ctx.Get("userId")
+	if !ok {
+		utils.UnauthorizedBack(ctx, "token_invalid")
+		return
+	}
+	userID, ok := userIDRaw.(int64)
+	if !ok || userID <= 0 {
+		utils.UnauthorizedBack(ctx, "token_invalid")
+		return
+	}
+
+	var req pojo.TgBindPhoneReq
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		utils.ErrorBack(ctx, "invalid_params")
+		return
+	}
+
+	db := ctx.MustGet("db").(*gorm.DB)
+	if err := repository.BindCurrentTgPhone(db, userID, req.Phone, req.Country, req.Code); err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	phone := strings.TrimSpace(req.Phone)
+	country := utils.InferCountryByPhone(phone, strings.TrimSpace(strings.ToUpper(req.Country)))
+	utils.SuccessObjBack(ctx, gin.H{
+		"phone":   phone,
+		"country": country,
+	})
+}
+
 // GetCurrentTgUserInfo 获取当前TG用户信息
 func GetCurrentTgUserInfo(ctx *gin.Context) {
 	authHeader := strings.TrimSpace(ctx.GetHeader("Authorization"))

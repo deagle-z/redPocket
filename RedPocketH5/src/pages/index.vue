@@ -245,7 +245,15 @@ async function loadBanners() {
 }
 
 function onBannerClick(banner: BannerItem) {
-  if (banner.jumpType === 'url' && banner.jumpValue)
+  if (!banner.jumpValue)
+    return
+
+  if (banner.jumpType === 'internal') {
+    router.push(banner.jumpValue)
+    return
+  }
+
+  if (banner.jumpType === 'url')
     window.open(banner.jumpValue, '_blank')
 }
 
@@ -292,7 +300,7 @@ onBeforeUnmount(() => {
             :src="item.imageUrl"
             class="banner-image"
             :alt="item.bannerName"
-            :style="item.jumpType === 'url' ? 'cursor:pointer' : ''"
+            :style="item.jumpValue ? 'cursor:pointer' : ''"
             @click="onBannerClick(item)"
           >
         </van-swipe-item>
