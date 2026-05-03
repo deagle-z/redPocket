@@ -3,6 +3,7 @@ import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores'
 import { getAuthCountry, setAuthCountry } from '@/utils/auth'
 import { trackAttributionEvent } from '@/utils/attribution'
+import { trackFacebookPixelEvent } from '@/utils/facebook-pixel'
 import { getSourceChannelCode } from '@/utils/source-channel'
 import { showToast } from 'vant'
 import { languageOptions, locale } from '@/utils/i18n'
@@ -87,6 +88,29 @@ function isValidRegisterPhone(country: RegisterCountryCode, phone: string) {
   return registerPhoneRules[country].test(phone)
 }
 
+function getRegisterDialCode(country: RegisterCountryCode) {
+  return (registerCountryDialCodeMap[country] || '').replace(/\D+/g, '')
+}
+
+function buildRegisterPhone(country: RegisterCountryCode, rawPhone: string) {
+  const digits = rawPhone.replace(/\D+/g, '')
+  const dialCode = getRegisterDialCode(country)
+  const phoneWithoutDialCode = dialCode && digits.startsWith(dialCode)
+    ? digits.slice(dialCode.length)
+    : ''
+  const nationalPhone = phoneWithoutDialCode && isValidRegisterPhone(country, phoneWithoutDialCode)
+    ? phoneWithoutDialCode
+    : digits
+  const finalNationalPhone = country === 'ID'
+    ? nationalPhone.replace(/^0+/, '')
+    : nationalPhone
+
+  return {
+    nationalPhone,
+    phoneWithDialCode: `${dialCode}${finalNationalPhone}`,
+  }
+}
+
 onMounted(() => {
   postData.country = (getAuthCountry() as RegisterCountryCode) || detectRegisterCountry()
   const queryCode = String(router.currentRoute.value.query.c || '').trim()
@@ -99,18 +123,18 @@ onMounted(() => {
 })
 
 async function register() {
-  const phone = postData.phone.replace(/\D+/g, '')
-  postData.phone = phone
+  const { nationalPhone, phoneWithDialCode } = buildRegisterPhone(postData.country, postData.phone)
+  postData.phone = nationalPhone
 
   if (!postData.country) {
     showToast(t('register.pleaseSelectCountry'))
     return
   }
-  if (!phone) {
+  if (!nationalPhone) {
     showToast(t('register.pleaseEnterPhone'))
     return
   }
-  if (!isValidRegisterPhone(postData.country, phone)) {
+  if (!isValidRegisterPhone(postData.country, nationalPhone)) {
     showToast(t('register.invalidPhone'))
     return
   }
@@ -146,7 +170,7 @@ async function register() {
       },
     })
     await userStore.register({
-      phone,
+      phone: phoneWithDialCode,
       country: postData.country,
       firstName,
       password: postData.password,
@@ -159,6 +183,10 @@ async function register() {
         country: postData.country,
         method: 'phone',
       },
+    })
+    trackFacebookPixelEvent('CompleteRegistration', {
+      content_name: 'phone_register',
+      status: true,
     })
     setAuthCountry(postData.country)
     showToast(t('register.registerSuccess'))

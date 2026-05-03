@@ -3,6 +3,7 @@
   "device_unique": "um dispositivo só pode registrar uma conta",
   "password_format_error": "formato de senha inválido",
   "phone_format_error": "formato de telefone inválido",
+  "phone_country_code_required": "o telefone deve começar com o código do país 55, 62 ou 52",
   "invalid_code_error": "código inválido",
   "verify_code_error": "erro na verificação do código",
   "update_app": "Por favor, atualize a versão do app e tente novamente",

@@ -4,17 +4,20 @@ import { useRouter } from 'vue-router'
 import { showToast } from 'vant'
 import type { AppCountryItem, AppPayMethodItem, AppRechargeChannelItem, RechargeField, RechargeFieldOption } from '@/api/user'
 import {
+  ackRechargeNotification,
   createRechargeOrder,
   getAppConfig,
   getAppCountries,
   getCountryRechargeFields,
   getCountryRechargeInfo,
   getCurrentTgUserInfo,
+  getPendingRechargeNotifications,
   getRechargeIsFirst,
 } from '@/api/user'
 import AppPageHeader from '@/components/AppPageHeader.vue'
 import { useUserStore } from '@/stores'
 import { formatCurrency, truncate2 } from '@/utils/currency'
+import { trackFirstRechargePurchase } from '@/utils/facebook-pixel'
 import { safeBack } from '@/utils/navigation'
 
 const { t } = useI18n()
@@ -354,6 +357,7 @@ async function handleSubmitRecharge() {
 
     if (data?.devCallback) {
       showCenterToast(t('rechargePage.orderRechargeSuccess', { orderNo: data.orderNo }))
+      await syncPendingRechargeNotificationsForPixel()
       await loadBalance()
       return
     }
@@ -365,6 +369,25 @@ async function handleSubmitRecharge() {
   }
   finally {
     submitLoading.value = false
+  }
+}
+
+async function syncPendingRechargeNotificationsForPixel() {
+  try {
+    const { data } = await getPendingRechargeNotifications()
+    for (const item of data || []) {
+      if (item.isFirstRecharge) {
+        trackFirstRechargePurchase({
+          orderNo: item.orderNo,
+          amount: Number(item.amount || 0),
+          currency: item.currency || 'BRL',
+        })
+      }
+      await ackRechargeNotification(item.orderNo)
+    }
+  }
+  catch (error) {
+    console.warn('[recharge pixel] sync pending failed:', error)
   }
 }
 

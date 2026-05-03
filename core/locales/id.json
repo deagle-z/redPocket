@@ -3,6 +3,7 @@
   "device_unique": "satu perangkat hanya dapat mendaftar satu akun",
   "password_format_error": "format kata sandi salah",
   "phone_format_error": "format nomor telepon salah",
+  "phone_country_code_required": "nomor telepon harus diawali kode negara 55, 62, atau 52",
   "invalid_code_error": "kode tidak valid",
   "verify_code_error": "kesalahan verifikasi kode",
   "update_app": "Silakan perbarui versi aplikasi dan coba lagi",

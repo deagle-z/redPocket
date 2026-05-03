@@ -30,6 +30,11 @@ const loginCountryDialCodeMap = Object.fromEntries(loginCountries.map(item => [i
   LoginCountryCode,
   string
 >
+const loginPhoneRules: Record<LoginCountryCode, RegExp> = {
+  MX: /^[2-9]\d{9}$/,
+  ID: /^0?8\d{8,11}$/,
+  BR: /^[1-9]{2}9\d{8}$/,
+}
 
 const postData = reactive<{
   country: LoginCountryCode
@@ -68,16 +73,43 @@ function normalizePhoneInput(event: Event) {
   postData.phone = input.value.replace(/\D+/g, '')
 }
 
+function isValidLoginPhone(country: LoginCountryCode, phone: string) {
+  return loginPhoneRules[country].test(phone)
+}
+
+function getLoginDialCode(country: LoginCountryCode) {
+  return (loginCountryDialCodeMap[country] || '').replace(/\D+/g, '')
+}
+
+function buildLoginPhone(country: LoginCountryCode, rawPhone: string) {
+  const digits = rawPhone.replace(/\D+/g, '')
+  const dialCode = getLoginDialCode(country)
+  const phoneWithoutDialCode = dialCode && digits.startsWith(dialCode)
+    ? digits.slice(dialCode.length)
+    : ''
+  const nationalPhone = phoneWithoutDialCode && isValidLoginPhone(country, phoneWithoutDialCode)
+    ? phoneWithoutDialCode
+    : digits
+  const finalNationalPhone = country === 'ID'
+    ? nationalPhone.replace(/^0+/, '')
+    : nationalPhone
+
+  return {
+    nationalPhone,
+    phoneWithDialCode: `${dialCode}${finalNationalPhone}`,
+  }
+}
+
 onMounted(() => {
   const storedCountry = getAuthCountry() as LoginCountryCode
   postData.country = loginCountryMap[storedCountry] ? storedCountry : detectLoginCountry()
 })
 
 async function login() {
-  const phone = postData.phone.replace(/\D+/g, '')
-  postData.phone = phone
+  const { nationalPhone, phoneWithDialCode } = buildLoginPhone(postData.country, postData.phone)
+  postData.phone = nationalPhone
 
-  if (!phone) {
+  if (!nationalPhone) {
     showToast(t('login.pleaseEnterPhone'))
     return
   }
@@ -93,7 +125,7 @@ async function login() {
         method: 'phone',
       },
     })
-    await userStore.login({ ...postData, phone })
+    await userStore.login({ ...postData, phone: phoneWithDialCode })
     trackAttributionEvent({
       eventName: 'login_success',
       metadata: {

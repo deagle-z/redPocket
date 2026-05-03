@@ -76,6 +76,14 @@ type wsBindInfo struct {
 	deviceID string
 }
 
+type wsUserNotify struct {
+	userType int
+	tenantID int64
+	userID   int64
+	msgType  string
+	data     interface{}
+}
+
 type wsHub struct {
 	clients    map[*wsClient]struct{}
 	register   chan *wsClient
@@ -84,6 +92,8 @@ type wsHub struct {
 	bindDevice chan wsBindInfo
 	devices    map[string]*wsClient
 	devicesMu  sync.RWMutex
+	users      map[string]map[*wsClient]struct{}
+	usersMu    sync.RWMutex
 }
 
 var (
@@ -114,9 +124,11 @@ func startWsHub() {
 			broadcast:  make(chan []byte),
 			bindDevice: make(chan wsBindInfo),
 			devices:    make(map[string]*wsClient),
+			users:      make(map[string]map[*wsClient]struct{}),
 		}
 		utils.RegisterWsNotify(NotifyDevicesWithType)
 		utils.RegisterWsBroadcast(BroadcastAllWithType)
+		utils.RegisterWsNotifyUser(NotifyUserWithType)
 		go hub.run()
 	})
 }
@@ -126,11 +138,13 @@ func (h *wsHub) run() {
 		select {
 		case client := <-h.register:
 			h.clients[client] = struct{}{}
+			h.addUserClient(client)
 		case client := <-h.unregister:
 			if _, ok := h.clients[client]; ok {
 				delete(h.clients, client)
 				close(client.send)
 			}
+			h.removeUserClient(client)
 			if client.deviceID != "" {
 				utils.RemoveOnlineDevice(client.deviceID)
 				h.devicesMu.Lock()
@@ -154,6 +168,40 @@ func (h *wsHub) run() {
 			h.devices[bind.deviceID] = bind.client
 			h.devicesMu.Unlock()
 		}
+	}
+}
+
+func wsUserKey(userType int, tenantID int64, userID int64) string {
+	return fmt.Sprintf("%d:%d:%d", userType, tenantID, userID)
+}
+
+func (h *wsHub) addUserClient(client *wsClient) {
+	if client == nil || client.userId <= 0 {
+		return
+	}
+	key := wsUserKey(client.userType, client.tenantId, client.userId)
+	h.usersMu.Lock()
+	defer h.usersMu.Unlock()
+	if h.users[key] == nil {
+		h.users[key] = make(map[*wsClient]struct{})
+	}
+	h.users[key][client] = struct{}{}
+}
+
+func (h *wsHub) removeUserClient(client *wsClient) {
+	if client == nil || client.userId <= 0 {
+		return
+	}
+	key := wsUserKey(client.userType, client.tenantId, client.userId)
+	h.usersMu.Lock()
+	defer h.usersMu.Unlock()
+	clients := h.users[key]
+	if clients == nil {
+		return
+	}
+	delete(clients, client)
+	if len(clients) == 0 {
+		delete(h.users, key)
 	}
 }
 
@@ -243,6 +291,45 @@ func NotifyDevicesWithType(msgType string, deviceIDs []string, data interface{})
 			hub.devicesMu.Unlock()
 		}
 	}
+}
+
+func NotifyUserWithType(userType int, tenantID int64, userID int64, msgType string, data interface{}) (bool, error) {
+	startWsHub()
+	msg := wsMessage{
+		Type: msgType,
+		Data: data,
+		Ts:   time.Now().Unix(),
+	}
+	payload, err := json.Marshal(msg)
+	if err != nil {
+		log.Printf("ws user notify marshal error: %v", err)
+		return false, err
+	}
+	key := wsUserKey(userType, tenantID, userID)
+	hub.usersMu.RLock()
+	clients := make([]*wsClient, 0, len(hub.users[key]))
+	for client := range hub.users[key] {
+		clients = append(clients, client)
+	}
+	hub.usersMu.RUnlock()
+	if len(clients) == 0 {
+		return false, nil
+	}
+	delivered := false
+	for _, client := range clients {
+		select {
+		case client.send <- payload:
+			delivered = true
+		default:
+			hub.usersMu.Lock()
+			delete(hub.users[key], client)
+			if len(hub.users[key]) == 0 {
+				delete(hub.users, key)
+			}
+			hub.usersMu.Unlock()
+		}
+	}
+	return delivered, nil
 }
 
 func bindDevice(client *wsClient, deviceID string) {

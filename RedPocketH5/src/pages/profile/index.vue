@@ -16,7 +16,6 @@ import passwordIcon from '@/assets/my/Password.svg?raw'
 import questionCircleIcon from '@/assets/my/question-circle.svg?raw'
 import shareIcon from '@/assets/my/share.svg?raw'
 import teamIcon from '@/assets/my/team.svg?raw'
-import telegramIcon from '@/assets/my/telegram.svg?raw'
 import upIcon from '@/assets/my/up2.svg?raw'
 import walletIcon from '@/assets/my/wallet.svg?raw'
 
@@ -138,7 +137,6 @@ const promoMenus = computed<MenuItem[]>(() => [
 
 const activityMenus = computed<MenuItem[]>(() => [
   { key: 'first-deposit', label: t('rechargePage.firstRechargeTitle'), icon: normalizeInlineSvg(downIcon) },
-  { key: 'ranking', label: t('profilePage.activityRanking'), icon: normalizeInlineSvg(chartBarAltIcon) },
   { key: 'spin', label: t('profilePage.activitySpin'), icon: normalizeInlineSvg(gamesIcon) },
 ])
 
@@ -146,7 +144,6 @@ const otherMenus = computed<MenuItem[]>(() => [
   { key: 'setting', label: t('profilePage.serviceSetting'), icon: normalizeInlineSvg(passwordIcon) },
   { key: 'language', label: t('profilePage.serviceLanguage'), icon: normalizeInlineSvg(shareIcon) },
   { key: 'rules', label: t('profilePage.serviceRules'), icon: normalizeInlineSvg(gamesIcon) },
-  { key: 'bind-tg', label: t('profilePage.serviceBindTg'), icon: normalizeInlineSvg(telegramIcon), extra: formatMaskedNumber(profile.tgId), tone: 'muted' },
   { key: 'bind-phone', label: t('profilePage.serviceBindPhone'), icon: normalizeInlineSvg(emailIcon), extra: formatMaskedPhone(profile.phone), tone: 'muted' },
   { key: 'bind-email', label: t('profilePage.serviceBindEmail'), icon: normalizeInlineSvg(emailIcon), extra: formatMaskedEmail(profile.email), tone: 'muted' },
   { key: 'change-password', label: t('profilePage.serviceChangePassword'), icon: normalizeInlineSvg(passwordIcon) },
@@ -185,15 +182,6 @@ async function copyProfileUid() {
 
 function formatAmount3(value: number) {
   return truncate2(Number(value || 0)).toFixed(2)
-}
-
-function formatMaskedNumber(value: number) {
-  const text = String(value || '').trim()
-  if (!text)
-    return t('profilePage.notBound')
-  if (text.length <= 4)
-    return `${text.slice(0, 1)}***${text.slice(-1)}`
-  return `${text.slice(0, 1)}***${text.slice(-3)}`
 }
 
 function formatMaskedEmail(email: string) {
@@ -387,9 +375,6 @@ function onMenuClick(item: MenuItem) {
     case 'first-deposit':
       goByPath('/firstDeposit')
       break
-    case 'ranking':
-      goByPath('/ranking')
-      break
     case 'spin':
       goByPath('/prize')
       break
@@ -401,9 +386,6 @@ function onMenuClick(item: MenuItem) {
       break
     case 'rules':
       goByPath('/questions')
-      break
-    case 'bind-tg':
-      goByPath('/bindTg')
       break
     case 'bind-phone':
       goByPath('/bindPhone')

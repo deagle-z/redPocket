@@ -104,6 +104,18 @@ func GetRechargeOrderById(ctx *gin.Context) {
 	utils.SuccessObjBack(ctx, result)
 }
 
+func GetFrontendUnackedRechargeOrders(ctx *gin.Context) {
+	var search pojo.RechargeOrderSearch
+	search.SetPageDefaults()
+	if err := ctx.ShouldBindJSON(&search); err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	db := ctx.MustGet("db").(*gorm.DB)
+	result := repository.GetFrontendUnackedRechargeOrders(db, search)
+	utils.SuccessObjBack(ctx, result)
+}
+
 // AdminRechargeOrderCallback 管理员手动触发充值回调
 func AdminRechargeOrderCallback(ctx *gin.Context) {
 	idStr := ctx.Param("id")
@@ -156,6 +168,50 @@ func AppCreateRechargeOrder(ctx *gin.Context) {
 		return
 	}
 	utils.SuccessObjBack(ctx, result)
+}
+
+func GetCurrentUserPendingRechargeNotifications(ctx *gin.Context) {
+	userIDRaw, ok := ctx.Get("userId")
+	if !ok {
+		utils.UnauthorizedBack(ctx, "token is invalid")
+		return
+	}
+	userID, ok := userIDRaw.(int64)
+	if !ok || userID <= 0 {
+		utils.UnauthorizedBack(ctx, "token is invalid")
+		return
+	}
+	db := ctx.MustGet("db").(*gorm.DB)
+	result, err := repository.GetCurrentUserPendingRechargeNotifications(db, userID)
+	if err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	utils.SuccessObjBack(ctx, result)
+}
+
+func AckRechargeFrontendNotification(ctx *gin.Context) {
+	userIDRaw, ok := ctx.Get("userId")
+	if !ok {
+		utils.UnauthorizedBack(ctx, "token is invalid")
+		return
+	}
+	userID, ok := userIDRaw.(int64)
+	if !ok || userID <= 0 {
+		utils.UnauthorizedBack(ctx, "token is invalid")
+		return
+	}
+	var req pojo.RechargeOrderNotifyAckReq
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		utils.ErrorBack(ctx, "invalid_params")
+		return
+	}
+	db := ctx.MustGet("db").(*gorm.DB)
+	if err := repository.AckRechargeFrontendNotification(db, userID, req.OrderNo); err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	utils.SuccessBack(ctx, "success")
 }
 
 // CheckIsFirstRecharge godoc

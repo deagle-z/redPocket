@@ -17,7 +17,7 @@ type TgUser struct {
 	Avatar   *string `gorm:"size:1024;comment:头像URL" json:"avatar"`
 	Password string  `gorm:"size:128;comment:password" json:"password"`
 	Email    string  `gorm:"size:255;comment:email" json:"email"`
-	Phone    *string `gorm:"column:phone;size:32;comment:手机号码" json:"phone"`
+	Phone    *string `gorm:"column:phone;size:32;index;comment:手机号码" json:"phone"`
 	Country  *string `gorm:"column:country;size:64;comment:国家" json:"country"`
 	IsBot    bool    `gorm:"column:is_bot;not null;default:false;index:idx_tg_user_register_time,priority:1;index:idx_tg_user_tenant_register_time,priority:2;comment:是否机器人" json:"is_bot"`
 

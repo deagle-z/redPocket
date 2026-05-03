@@ -121,29 +121,30 @@ func InitGin() {
 		adminGroup.POST("/dashboard/registerUsers", api.GetAdminDashboardRegisterUsers)
 		adminGroup.POST("/withdrawalTask", api.SendWithdrawalTask)
 		adminGroup.POST("/verifyCodeTask", api.SendVerifyCodeTask)
-		adminGroup.POST("/tgUser/list", api.GetTgUsers)                    // 获取Telegram用户列表
-		adminGroup.GET("/tgUser/:id", api.GetTgUserById)                   // 获取Telegram用户详情
-		adminGroup.POST("/tgUserRebate/list", api.GetTgUserRebateRecords)  // 获取Telegram反水记录列表
-		adminGroup.GET("/tgUserRebate/:id", api.GetTgUserRebateRecordById) // 获取Telegram反水记录详情
-		adminGroup.POST("/lucky/list", api.GetLuckyMoneyListAdmin)         // 管理员获取红包列表
-		adminGroup.POST("/lucky/history", api.GetLuckyHistoryListAdmin)    // 管理员获取领取历史
-		adminGroup.GET("/lucky/:id", api.GetLuckyMoneyDetailAdmin)         // 管理员获取红包详情
-		adminGroup.POST("/luckyItem/list", api.GetLuckyMoneyItems)         // 管理员获取红包明细列表
-		adminGroup.GET("/luckyItem/:id", api.GetLuckyMoneyItemById)        // 管理员获取红包明细详情
-		adminGroup.POST("/cashHistory/list", api.GetCashHistoryListAdmin)  // 管理员获取余额变动记录列表
-		adminGroup.POST("/authGroup/list", api.GetAuthGroups)              // 获取授权群组列表
-		adminGroup.POST("/authGroup", api.SetAuthGroup)                    // 创建或更新授权群组
-		adminGroup.DELETE("/authGroup/:id", api.DelAuthGroup)              // 删除授权群组
-		adminGroup.POST("/tenant/list", api.GetSysTenants)                 // 获取租户列表
-		adminGroup.GET("/tenant/:id", api.GetSysTenantById)                // 获取租户详情
-		adminGroup.POST("/tenantUser/list", api.GetSysTenantUsers)         // 获取租户用户列表
-		adminGroup.GET("/tenantUser/:id", api.GetSysTenantUserById)        // 获取租户用户详情
-		adminGroup.POST("/rechargeOrder/list", api.GetRechargeOrders)      // 获取充值订单列表
-		adminGroup.GET("/rechargeOrder/:id", api.GetRechargeOrderById)     // 获取充值订单详情
-		adminGroup.POST("/withdrawOrderBr/list", api.GetWithdrawOrderBrs)  // 获取巴西提现订单列表
-		adminGroup.GET("/withdrawOrderBr/:id", api.GetWithdrawOrderBrById) // 获取巴西提现订单详情
-		adminGroup.POST("/payChannel/list", api.GetPayChannels)            // 获取支付通道列表
-		adminGroup.GET("/payChannel/:id", api.GetPayChannelById)           // 获取支付通道详情
+		adminGroup.POST("/tgUser/list", api.GetTgUsers)                                               // 获取Telegram用户列表
+		adminGroup.GET("/tgUser/:id", api.GetTgUserById)                                              // 获取Telegram用户详情
+		adminGroup.POST("/tgUserRebate/list", api.GetTgUserRebateRecords)                             // 获取Telegram反水记录列表
+		adminGroup.GET("/tgUserRebate/:id", api.GetTgUserRebateRecordById)                            // 获取Telegram反水记录详情
+		adminGroup.POST("/lucky/list", api.GetLuckyMoneyListAdmin)                                    // 管理员获取红包列表
+		adminGroup.POST("/lucky/history", api.GetLuckyHistoryListAdmin)                               // 管理员获取领取历史
+		adminGroup.GET("/lucky/:id", api.GetLuckyMoneyDetailAdmin)                                    // 管理员获取红包详情
+		adminGroup.POST("/luckyItem/list", api.GetLuckyMoneyItems)                                    // 管理员获取红包明细列表
+		adminGroup.GET("/luckyItem/:id", api.GetLuckyMoneyItemById)                                   // 管理员获取红包明细详情
+		adminGroup.POST("/cashHistory/list", api.GetCashHistoryListAdmin)                             // 管理员获取余额变动记录列表
+		adminGroup.POST("/authGroup/list", api.GetAuthGroups)                                         // 获取授权群组列表
+		adminGroup.POST("/authGroup", api.SetAuthGroup)                                               // 创建或更新授权群组
+		adminGroup.DELETE("/authGroup/:id", api.DelAuthGroup)                                         // 删除授权群组
+		adminGroup.POST("/tenant/list", api.GetSysTenants)                                            // 获取租户列表
+		adminGroup.GET("/tenant/:id", api.GetSysTenantById)                                           // 获取租户详情
+		adminGroup.POST("/tenantUser/list", api.GetSysTenantUsers)                                    // 获取租户用户列表
+		adminGroup.GET("/tenantUser/:id", api.GetSysTenantUserById)                                   // 获取租户用户详情
+		adminGroup.POST("/rechargeOrder/list", api.GetRechargeOrders)                                 // 获取充值订单列表
+		adminGroup.POST("/rechargeOrder/frontendNotifyUnacked", api.GetFrontendUnackedRechargeOrders) // 查询未回执前端支付成功通知的充值订单
+		adminGroup.GET("/rechargeOrder/:id", api.GetRechargeOrderById)                                // 获取充值订单详情
+		adminGroup.POST("/withdrawOrderBr/list", api.GetWithdrawOrderBrs)                             // 获取巴西提现订单列表
+		adminGroup.GET("/withdrawOrderBr/:id", api.GetWithdrawOrderBrById)                            // 获取巴西提现订单详情
+		adminGroup.POST("/payChannel/list", api.GetPayChannels)                                       // 获取支付通道列表
+		adminGroup.GET("/payChannel/:id", api.GetPayChannelById)                                      // 获取支付通道详情
 		adminGroup.POST("/sysCountry/list", api.GetSysCountries)
 		adminGroup.GET("/sysCountry/:id", api.GetSysCountryById)
 		adminGroup.POST("/sysBanner/list", api.GetSysBanners)                          // 获取轮播图列表
@@ -311,6 +312,8 @@ func InitGin() {
 	appAuthRouter.Use(appAuthMiddle(true))
 	{
 		appAuthRouter.POST("/rechargeOrder", api.AppCreateRechargeOrder)
+		appAuthRouter.GET("/rechargeOrder/pendingNotifications", api.GetCurrentUserPendingRechargeNotifications)
+		appAuthRouter.POST("/rechargeOrder/notifyAck", api.AckRechargeFrontendNotification)
 		appAuthRouter.GET("/recharge/isFirst", api.CheckIsFirstRecharge)
 		appAuthRouter.POST("/lucky/send", api.SendRedPacketApp)
 		appAuthRouter.POST("/lucky/history", api.GetLuckyAppHistory)

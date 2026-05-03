@@ -199,6 +199,24 @@ func NormalizeSMSPhone(country string, phone string) string {
 	return dialCode + digits
 }
 
+func NormalizePhoneDigits(phone string) string {
+	phone = strings.TrimSpace(phone)
+	if phone == "" {
+		return phone
+	}
+
+	digits := onlyDigits(phone)
+	if strings.HasPrefix(digits, "00") {
+		return strings.TrimPrefix(digits, "00")
+	}
+	return digits
+}
+
+func HasSupportedRegisterPhoneDialCode(phone string) bool {
+	digits := NormalizePhoneDigits(phone)
+	return strings.HasPrefix(digits, "55") || strings.HasPrefix(digits, "62") || strings.HasPrefix(digits, "52")
+}
+
 // InferCountryByPhone 根据手机号中的国际区号推断国家，推断失败时回退 fallbackCountry。
 func InferCountryByPhone(phone string, fallbackCountry string) string {
 	fallbackCountry = strings.TrimSpace(strings.ToUpper(fallbackCountry))

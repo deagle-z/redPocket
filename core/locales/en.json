@@ -3,6 +3,7 @@
   "device_unique": "one device can only register an account",
   "password_format_error": "password format error",
   "phone_format_error": "phone format error",
+  "phone_country_code_required": "phone number must start with country code 55, 62 or 52",
   "invalid_code_error": "invalid code error",
   "verify_code_error": "verify code error",
   "update_app": "Please update the app version and try again",

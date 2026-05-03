@@ -2,7 +2,11 @@
 import { useLocalStorage } from '@vueuse/core'
 import { useRouteCacheStore } from '@/stores'
 import { STORAGE_TOKEN_KEY } from '@/stores/mutation-type'
+import type { RechargeSuccessNotification } from '@/api/user'
+import { ackRechargeNotification, getPendingRechargeNotifications } from '@/api/user'
 import wsClient, { connectWebSocket } from '@/plugins/websocket'
+import { trackFirstRechargePurchase } from '@/utils/facebook-pixel'
+import { showToast } from 'vant'
 import AppTopHeader from '@/components/AppTopHeader.vue'
 import TabBar from '@/components/TabBar.vue'
 import AppConfirmDialog from '@/components/AppConfirmDialog.vue'
@@ -14,6 +18,7 @@ const { showDialog: showPwaDialog, triggerInstall, dismiss: dismissPwa } = usePw
 const routeCacheStore = useRouteCacheStore()
 const accessToken = useLocalStorage<string | null>(STORAGE_TOKEN_KEY, '')
 const wsInitialized = ref(false)
+const syncingRechargeNotify = ref(false)
 
 const keepAliveRouteNames = computed(() => {
   return routeCacheStore.routeCaches
@@ -51,9 +56,63 @@ function closeWebSocket() {
   wsInitialized.value = false
 }
 
+async function ackRechargeSuccess(orderNo: string, showSuccessToast = true) {
+  const normalizedOrderNo = String(orderNo || '').trim()
+  if (!normalizedOrderNo)
+    return
+  try {
+    await ackRechargeNotification(normalizedOrderNo)
+    if (showSuccessToast)
+      showToast(t('rechargePage.orderRechargeSuccess', { orderNo: normalizedOrderNo }))
+  }
+  catch (error) {
+    console.warn('[recharge ws] ack failed:', normalizedOrderNo, error)
+  }
+}
+
+function trackRechargeSuccessPixel(item: RechargeSuccessNotification) {
+  if (!item?.isFirstRecharge)
+    return
+  trackFirstRechargePurchase({
+    orderNo: item.orderNo,
+    amount: Number(item.amount || 0),
+    currency: item.currency || 'BRL',
+  })
+}
+
+function handleRechargeSuccessMessage(message: any) {
+  const data = message?.data || message || {}
+  trackRechargeSuccessPixel(data)
+  void ackRechargeSuccess(data.orderNo)
+}
+
+async function syncPendingRechargeNotifications() {
+  if (!accessToken.value || syncingRechargeNotify.value)
+    return
+  try {
+    syncingRechargeNotify.value = true
+    const { data } = await getPendingRechargeNotifications()
+    for (const item of data || []) {
+      trackRechargeSuccessPixel(item)
+      await ackRechargeSuccess(item.orderNo, false)
+    }
+  }
+  catch (error) {
+    console.warn('[recharge ws] sync pending failed:', error)
+  }
+  finally {
+    syncingRechargeNotify.value = false
+  }
+}
+
 onMounted(() => {
+  wsClient.on('recharge_success', handleRechargeSuccessMessage)
+  wsClient.onOpen(() => {
+    void syncPendingRechargeNotifications()
+  })
   if (accessToken.value)
     initWebSocket()
+  void syncPendingRechargeNotifications()
 })
 
 watch(accessToken, (token, oldToken) => {
@@ -61,6 +120,7 @@ watch(accessToken, (token, oldToken) => {
   const hadToken = !!oldToken
   if (hasToken && !hadToken) {
     initWebSocket()
+    void syncPendingRechargeNotifications()
     return
   }
   if (!hasToken && hadToken)

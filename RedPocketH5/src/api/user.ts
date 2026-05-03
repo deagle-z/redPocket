@@ -155,6 +155,22 @@ export interface RechargeOrderAppBack {
   devCallback?: boolean
 }
 
+export interface RechargeSuccessNotification {
+  orderNo: string
+  channel: string
+  currency: string
+  amount: number
+  creditAmount?: number | null
+  bonusAmount: number
+  status: number
+  isFirstRecharge?: boolean
+  payTime?: string | null
+  frontendNotifyStatus: number
+  frontendNotifyCount: number
+  frontendNotifyAt?: string | null
+  frontendNotifyAckAt?: string | null
+}
+
 export interface LuckyMoneySendReq {
   amount: number
   gameMode: 0 | 1
@@ -538,6 +554,14 @@ export function bindCurrentTgPhone(data: TgBindPhoneReq) {
 
 export function createRechargeOrder(data: RechargeOrderAppReq) {
   return request.post<ApiResult<RechargeOrderAppBack>>('/api/v1/app/rechargeOrder', data)
+}
+
+export function getPendingRechargeNotifications() {
+  return request.get<ApiResult<RechargeSuccessNotification[]>>('/api/v1/app/rechargeOrder/pendingNotifications')
+}
+
+export function ackRechargeNotification(orderNo: string) {
+  return request.post<ApiResult<string>>('/api/v1/app/rechargeOrder/notifyAck', { orderNo })
 }
 
 export function sendLuckyPacket(data: LuckyMoneySendReq) {

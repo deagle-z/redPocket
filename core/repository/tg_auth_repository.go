@@ -500,11 +500,14 @@ func RegisterTgByEmail(db *gorm.DB, email string, firstName string, password str
 
 // RegisterTgByPhone 手机号注册。
 func RegisterTgByPhone(db *gorm.DB, phone string, country string, firstName string, password string, sourceChannelCode string, tenantID int64, inviteCode string) (pojo.TgUser, error) {
-	phone = strings.TrimSpace(phone)
-	country = utils.InferCountryByPhone(phone, country)
+	phone = utils.NormalizePhoneDigits(phone)
+	country = utils.InferCountryByPhone("+"+phone, country)
 	firstName = strings.TrimSpace(firstName)
 	if !utils.IsPhone(phone) {
 		return pojo.TgUser{}, errors.New("phone_format_error")
+	}
+	if !utils.HasSupportedRegisterPhoneDialCode(phone) {
+		return pojo.TgUser{}, errors.New("phone_country_code_required")
 	}
 	if len([]rune(firstName)) > 128 {
 		return pojo.TgUser{}, errors.New("first_name_too_long")
@@ -513,12 +516,8 @@ func RegisterTgByPhone(db *gorm.DB, phone string, country string, firstName stri
 		return pojo.TgUser{}, errors.New("password_length_6_64")
 	}
 
-	query := db.Where("phone = ?", phone)
-	if country != "" {
-		query = query.Where("country = ?", country)
-	}
 	var exist pojo.TgUser
-	if err := query.First(&exist).Error; err == nil && exist.ID > 0 {
+	if err := db.Where("phone = ? AND status <> ?", phone, -1).First(&exist).Error; err == nil && exist.ID > 0 {
 		return pojo.TgUser{}, errors.New("phone_registered")
 	}
 
@@ -580,11 +579,7 @@ func RegisterTgByPhone(db *gorm.DB, phone string, country string, firstName stri
 			if err := tx.Create(&newUser).Error; err != nil {
 				if strings.Contains(err.Error(), "Duplicate entry") || strings.Contains(err.Error(), "1062") {
 					var exist pojo.TgUser
-					q := tx.Where("phone = ?", phone)
-					if country != "" {
-						q = q.Where("country = ?", country)
-					}
-					if findErr := q.First(&exist).Error; findErr == nil && exist.ID > 0 {
+					if findErr := tx.Where("phone = ? AND status <> ?", phone, -1).First(&exist).Error; findErr == nil && exist.ID > 0 {
 						return errors.New("phone_registered")
 					}
 					continue
@@ -721,12 +716,8 @@ func ResetTgPasswordByPhone(db *gorm.DB, phone string, country string, code stri
 		return errors.New("code_incorrect")
 	}
 
-	query := db.Where("phone = ?", phone)
-	if country != "" {
-		query = query.Where("country = ?", country)
-	}
 	var users []pojo.TgUser
-	query.Order("id desc").Limit(2).Find(&users)
+	db.Where("phone = ? AND status <> ?", phone, -1).Order("id desc").Limit(2).Find(&users)
 	if len(users) == 0 {
 		return errors.New("account_not_exist")
 	}
@@ -774,12 +765,8 @@ func BindCurrentTgPhone(db *gorm.DB, userID int64, phone string, country string,
 		return errors.New("code_incorrect")
 	}
 
-	query := db.Where("phone = ? AND id <> ? AND status <> ?", phone, userID, -1)
-	if country != "" {
-		query = query.Where("country = ?", country)
-	}
 	var exists pojo.TgUser
-	if err = query.First(&exists).Error; err == nil && exists.ID > 0 {
+	if err = db.Where("phone = ? AND id <> ? AND status <> ?", phone, userID, -1).First(&exists).Error; err == nil && exists.ID > 0 {
 		return errors.New("phone_registered")
 	}
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {

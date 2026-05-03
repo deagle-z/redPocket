@@ -895,11 +895,12 @@ func (s *TelegramBotService) manualRechargeCallback(db *gorm.DB, orderID int64) 
 	}
 
 	updateOrder := map[string]any{
-		"status":          8,
-		"pay_time":        time.Now(),
-		"notify_time":     time.Now(),
-		"credit_amount":   order.Amount,
-		"provider_status": "manual_callback",
+		"status":            8,
+		"pay_time":          time.Now(),
+		"notify_time":       time.Now(),
+		"credit_amount":     order.Amount,
+		"provider_status":   "manual_callback",
+		"is_first_recharge": isFirstRecharge,
 	}
 	if err := tx.Model(&pojo.RechargeOrder{}).Where("id = ?", order.ID).Updates(updateOrder).Error; err != nil {
 		tx.Rollback()

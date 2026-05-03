@@ -150,6 +150,85 @@ func GetRechargeOrderById(db *gorm.DB, id int64) (result pojo.RechargeOrderBack,
 	return result, nil
 }
 
+func GetFrontendUnackedRechargeOrders(db *gorm.DB, search pojo.RechargeOrderSearch) (result pojo.RechargeOrderResp) {
+	var orders []pojo.RechargeOrder
+	query := db.Model(&pojo.RechargeOrder{}).
+		Where("status = ? AND frontend_notify_status <> ?", 1, pojo.RechargeFrontendNotifyAcked)
+	if search.TenantId > 0 {
+		query = query.Where("tenant_id = ?", search.TenantId)
+	}
+	if search.UserId > 0 {
+		query = query.Where("user_id = ?", search.UserId)
+	}
+	if search.OrderNo != "" {
+		query = query.Where("order_no = ?", search.OrderNo)
+	}
+	if search.FrontendNotifyStatus != nil {
+		query = query.Where("frontend_notify_status = ?", *search.FrontendNotifyStatus)
+	}
+	query.Count(&result.Total)
+	query = query.Order("pay_time desc, id desc").Limit(search.PageSize).Offset(search.PageSize * search.CurrentPage)
+	query.Find(&orders)
+	for _, order := range orders {
+		var temp pojo.RechargeOrderBack
+		_ = copier.Copy(&temp, &order)
+		result.List = append(result.List, temp)
+	}
+	result.PageSize = search.PageSize
+	result.CurrentPage = search.CurrentPage
+	return result
+}
+
+func GetCurrentUserPendingRechargeNotifications(db *gorm.DB, userID int64) ([]pojo.RechargeOrderFrontendNotifyItem, error) {
+	var orders []pojo.RechargeOrder
+	if err := db.Where("user_id = ? AND status = ? AND frontend_notify_status <> ?", userID, 1, pojo.RechargeFrontendNotifyAcked).
+		Order("pay_time desc, id desc").
+		Limit(50).
+		Find(&orders).Error; err != nil {
+		return nil, err
+	}
+	result := make([]pojo.RechargeOrderFrontendNotifyItem, 0, len(orders))
+	for _, order := range orders {
+		result = append(result, pojo.RechargeOrderFrontendNotifyItem{
+			OrderNo:              order.OrderNo,
+			Channel:              order.Channel,
+			Currency:             order.Currency,
+			Amount:               utils.Truncate2(order.Amount),
+			CreditAmount:         order.CreditAmount,
+			BonusAmount:          utils.Truncate2(order.BonusAmount),
+			Status:               order.Status,
+			IsFirstRecharge:      order.IsFirstRecharge,
+			PayTime:              order.PayTime,
+			FrontendNotifyStatus: order.FrontendNotifyStatus,
+			FrontendNotifyCount:  order.FrontendNotifyCount,
+			FrontendNotifyAt:     order.FrontendNotifyAt,
+			FrontendNotifyAckAt:  order.FrontendNotifyAckAt,
+		})
+	}
+	return result, nil
+}
+
+func AckRechargeFrontendNotification(db *gorm.DB, userID int64, orderNo string) error {
+	orderNo = strings.TrimSpace(orderNo)
+	if userID <= 0 || orderNo == "" {
+		return errors.New("invalid_params")
+	}
+	now := time.Now()
+	result := db.Model(&pojo.RechargeOrder{}).
+		Where("user_id = ? AND order_no = ? AND status = ?", userID, orderNo, 1).
+		Updates(map[string]any{
+			"frontend_notify_status": pojo.RechargeFrontendNotifyAcked,
+			"frontend_notify_ack_at": now,
+		})
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return errors.New("order_not_found")
+	}
+	return nil
+}
+
 // AppCreateRechargeOrder app端创建充值订单（dev环境自动回调）
 func AppCreateRechargeOrder(db *gorm.DB, userID int64, req pojo.RechargeOrderAppReq, tablePrefix string) (result pojo.RechargeOrderAppBack, err error) {
 	req.Channel = strings.TrimSpace(req.Channel)
@@ -303,6 +382,7 @@ func AppCreateRechargeOrder(db *gorm.DB, userID int64, req pojo.RechargeOrderApp
 // providerTradeNo: 三方交易号；payAmount: 三方实际支付金额（仅记录，入账按订单 amount 计算）
 func ProcessRechargeOrderSuccess(db *gorm.DB, orderNo string, providerTradeNo string, payAmount float64, tablePrefix string) error {
 	var successUserID int64
+	var successOrderNo string
 	err := db.Transaction(func(tx *gorm.DB) error {
 		var order pojo.RechargeOrder
 		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("order_no = ?", orderNo).First(&order).Error; err != nil {
@@ -313,6 +393,8 @@ func ProcessRechargeOrderSuccess(db *gorm.DB, orderNo string, providerTradeNo st
 		}
 		// 幂等：已成功则直接返回
 		if order.Status == 1 {
+			successUserID = order.UserId
+			successOrderNo = order.OrderNo
 			return nil
 		}
 		if order.Status != 0 {
@@ -345,6 +427,7 @@ func ProcessRechargeOrderSuccess(db *gorm.DB, orderNo string, providerTradeNo st
 			"notify_count":      gorm.Expr("notify_count + 1"),
 			"provider_status":   "SUCCESS",
 			"provider_trade_no": providerTradeNo,
+			"is_first_recharge": isFirstRecharge,
 		}
 		if err := tx.Model(&pojo.RechargeOrder{}).Where("id = ?", order.ID).Updates(updates).Error; err != nil {
 			return err
@@ -422,10 +505,12 @@ func ProcessRechargeOrderSuccess(db *gorm.DB, orderNo string, providerTradeNo st
 			}
 		}
 		successUserID = order.UserId
+		successOrderNo = order.OrderNo
 		return nil
 	})
 	if err == nil && successUserID > 0 {
 		go CheckAndUpgradeVipLevel(utils.NewPrefixDb(tablePrefix), successUserID)
+		go pushRechargeSuccessFrontendNotification(utils.NewPrefixDb(tablePrefix), successOrderNo)
 	}
 	return err
 }
@@ -471,12 +556,15 @@ func buildRechargeOrderNo() string {
 // rechargeOrderDevCallback 在dev环境模拟三方回调并完成入账
 func rechargeOrderDevCallback(db *gorm.DB, orderNo string, tablePrefix string) error {
 	var successUserID int64
+	var successOrderNo string
 	err := db.Transaction(func(tx *gorm.DB) error {
 		var order pojo.RechargeOrder
 		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("order_no = ?", orderNo).First(&order).Error; err != nil {
 			return err
 		}
 		if order.Status == 1 {
+			successUserID = order.UserId
+			successOrderNo = order.OrderNo
 			return nil
 		}
 		if order.Status != 0 {
@@ -502,14 +590,15 @@ func rechargeOrderDevCallback(db *gorm.DB, orderNo string, tablePrefix string) e
 		if err := tx.Model(&pojo.RechargeOrder{}).
 			Where("id = ?", order.ID).
 			Updates(map[string]any{
-				"status":          1,
-				"credit_amount":   creditAmount,
-				"bonus_amount":    bonusAmount,
-				"pay_time":        now,
-				"notify_time":     now,
-				"notify_last_at":  now,
-				"notify_count":    gorm.Expr("notify_count + 1"),
-				"provider_status": providerStatus,
+				"status":            1,
+				"credit_amount":     creditAmount,
+				"bonus_amount":      bonusAmount,
+				"pay_time":          now,
+				"notify_time":       now,
+				"notify_last_at":    now,
+				"notify_count":      gorm.Expr("notify_count + 1"),
+				"provider_status":   providerStatus,
+				"is_first_recharge": isFirstRecharge,
 			}).Error; err != nil {
 			return err
 		}
@@ -590,12 +679,63 @@ func rechargeOrderDevCallback(db *gorm.DB, orderNo string, tablePrefix string) e
 		}
 
 		successUserID = order.UserId
+		successOrderNo = order.OrderNo
 		return nil
 	})
 	if err == nil && successUserID > 0 {
 		go CheckAndUpgradeVipLevel(utils.NewPrefixDb(tablePrefix), successUserID)
+		go pushRechargeSuccessFrontendNotification(utils.NewPrefixDb(tablePrefix), successOrderNo)
 	}
 	return err
+}
+
+func pushRechargeSuccessFrontendNotification(db *gorm.DB, orderNo string) {
+	orderNo = strings.TrimSpace(orderNo)
+	if orderNo == "" {
+		return
+	}
+	var order pojo.RechargeOrder
+	if err := db.Where("order_no = ?", orderNo).First(&order).Error; err != nil || order.ID == 0 {
+		log.Printf("[recharge ws] order not found orderNo=%s err=%v", orderNo, err)
+		return
+	}
+	if order.Status != 1 || order.FrontendNotifyStatus == pojo.RechargeFrontendNotifyAcked {
+		return
+	}
+	payload := pojo.RechargeOrderFrontendNotifyItem{
+		OrderNo:              order.OrderNo,
+		Channel:              order.Channel,
+		Currency:             order.Currency,
+		Amount:               utils.Truncate2(order.Amount),
+		CreditAmount:         order.CreditAmount,
+		BonusAmount:          utils.Truncate2(order.BonusAmount),
+		Status:               order.Status,
+		IsFirstRecharge:      order.IsFirstRecharge,
+		PayTime:              order.PayTime,
+		FrontendNotifyStatus: order.FrontendNotifyStatus,
+		FrontendNotifyCount:  order.FrontendNotifyCount,
+		FrontendNotifyAt:     order.FrontendNotifyAt,
+		FrontendNotifyAckAt:  order.FrontendNotifyAckAt,
+	}
+	delivered, err := utils.SendWsUserWithType(5, order.TenantId, order.UserId, "recharge_success", payload)
+	if err != nil {
+		log.Printf("[recharge ws] send failed orderNo=%s userID=%d err=%v", order.OrderNo, order.UserId, err)
+		return
+	}
+	if !delivered {
+		log.Printf("[recharge ws] user offline orderNo=%s userID=%d", order.OrderNo, order.UserId)
+		return
+	}
+	now := time.Now()
+	if err = db.Model(&pojo.RechargeOrder{}).
+		Where("id = ? AND frontend_notify_status <> ?", order.ID, pojo.RechargeFrontendNotifyAcked).
+		Updates(map[string]any{
+			"frontend_notify_status": pojo.RechargeFrontendNotifySent,
+			"frontend_notify_count":  gorm.Expr("frontend_notify_count + 1"),
+			"frontend_notify_at":     now,
+		}).Error; err != nil {
+		log.Printf("[recharge ws] update notify status failed orderNo=%s err=%v", order.OrderNo, err)
+	}
 }
 
 // applyFirstRechargeActivityGift 活动赠送：activity_type=1 首充分 3 天赠送；activity_type=2 今日首充仍一次性赠送
