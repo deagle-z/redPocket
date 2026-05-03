@@ -80,10 +80,18 @@ func (g *Provider) CreateOrder(req pay.PayRequest) (pay.PayResponse, error) {
 	}
 
 	payURL := ""
+	providerOrderNo := ""
 	if apiResp.Data != nil {
 		payURL = apiResp.Data.PayURL
+		if strings.TrimSpace(payURL) == "" {
+			payURL = apiResp.Data.OrderData
+		}
+		providerOrderNo = apiResp.Data.OrderNo
 	}
-	return pay.PayResponse{PayURL: payURL}, nil
+	return pay.PayResponse{
+		PayURL:          payURL,
+		ProviderTradeNo: providerOrderNo,
+	}, nil
 }
 
 // resolveBusiCode 从 ExtraFields["busiCode"] 取，或用 PayMethod 兜底，再回退默认值
@@ -265,7 +273,11 @@ type createOrderResp struct {
 }
 
 type createOrderData struct {
-	PayURL string `json:"payUrl"`
+	PayURL    string `json:"payUrl"`
+	OrderData string `json:"orderData"`
+	OrderNo   string `json:"orderNo"`
+	Status    int    `json:"status"`
+	Common    string `json:"common"`
 }
 
 type payoutOrderResp struct {
