@@ -94,8 +94,7 @@ func GetAppVipProgress(db *gorm.DB, userID int64) (pojo.AppVipProgressBack, erro
 		return result, errors.New("user_not_found")
 	}
 
-	var levels []pojo.SysVipLevel
-	db.Where("tenant_id = ? AND status = 1", user.TenantId).Order("level asc").Find(&levels)
+	levels := getActiveVipLevels(db, user.TenantId)
 
 	// 当月充值金额
 	now := time.Now()
@@ -115,26 +114,16 @@ func GetAppVipProgress(db *gorm.DB, userID int64) (pojo.AppVipProgressBack, erro
 		Scan(&totalBetAmount)
 	totalBetAmount = utils.Truncate2(totalBetAmount)
 
+	var monthBetAmount float64
+	db.Model(&pojo.LuckyHistory{}).
+		Select("COALESCE(SUM(amount + lose_money), 0)").
+		Where("user_id = ? AND created_at >= ?", userID, monthStart).
+		Scan(&monthBetAmount)
+	monthBetAmount = utils.Truncate2(monthBetAmount)
+
 	currentLevel := 0
 	if user.VipLevel != nil {
 		currentLevel = *user.VipLevel
-	}
-
-	// 找当前/上一/下一等级行
-	var prevRow, curRow, nextRow *pojo.SysVipLevel
-	for i := range levels {
-		lv := &levels[i]
-		if lv.Level == currentLevel {
-			curRow = lv
-		} else if lv.Level < currentLevel {
-			if prevRow == nil || lv.Level > prevRow.Level {
-				prevRow = lv
-			}
-		} else { // lv.Level > currentLevel
-			if nextRow == nil || lv.Level < nextRow.Level {
-				nextRow = lv
-			}
-		}
 	}
 
 	toSimple := func(lv *pojo.SysVipLevel) *pojo.AppVipLevelSimple {
@@ -147,6 +136,44 @@ func GetAppVipProgress(db *gorm.DB, userID int64) (pojo.AppVipProgressBack, erro
 			UpgradeBonusAmount: utils.Truncate2(lv.UpgradeBonusAmount),
 		}
 	}
+
+	for i := range levels {
+		result.Levels = append(result.Levels, *toSimple(&levels[i]))
+	}
+
+	// 找当前/上一/下一等级行。配置里 level=1 表示 VIP0，所以用户 vip_level 为空或 0 时按最低启用等级处理。
+	var prevRow, curRow, nextRow *pojo.SysVipLevel
+	if len(levels) > 0 {
+		currentIndex := -1
+		for i := range levels {
+			if levels[i].Level == currentLevel {
+				currentIndex = i
+				break
+			}
+		}
+		if currentIndex < 0 {
+			if currentLevel <= 0 {
+				currentIndex = 0
+			} else {
+				for i := range levels {
+					if levels[i].Level < currentLevel {
+						currentIndex = i
+					}
+				}
+				if currentIndex < 0 {
+					currentIndex = 0
+				}
+			}
+		}
+		curRow = &levels[currentIndex]
+		if currentIndex > 0 {
+			prevRow = &levels[currentIndex-1]
+		}
+		if currentIndex+1 < len(levels) {
+			nextRow = &levels[currentIndex+1]
+		}
+	}
+
 	result.CurrentLevel = toSimple(curRow)
 	result.PrevLevel = toSimple(prevRow)
 	result.NextLevel = toSimple(nextRow)
@@ -168,20 +195,19 @@ func GetAppVipProgress(db *gorm.DB, userID int64) (pojo.AppVipProgressBack, erro
 	}
 
 	if upgradeType == 2 {
-		// 当月模式：仅看充值金额
-		result.CurrentValue = utils.Truncate2(monthRechargeAmount)
+		result.CurrentValue, result.TargetValue = getVipProgressDisplayValue(nextRow, user.RechargeAmount, monthRechargeAmount, totalBetAmount, monthBetAmount)
+		var monthRechargeTarget, monthBetTarget float64
 		if nextRow.MonthRechargeAmount != nil {
-			result.TargetValue = utils.Truncate2(*nextRow.MonthRechargeAmount)
+			monthRechargeTarget = *nextRow.MonthRechargeAmount
 		}
-		if result.TargetValue > 0 {
-			p := result.CurrentValue / result.TargetValue * 100
-			if p > 100 {
-				p = 100
-			}
-			result.Progress = utils.Truncate2(p)
+		if nextRow.MonthValidBet != nil {
+			monthBetTarget = *nextRow.MonthValidBet
 		}
+		result.Progress = averageVipProgress([]vipProgressMetric{
+			{current: monthRechargeAmount, target: monthRechargeTarget},
+			{current: monthBetAmount, target: monthBetTarget},
+		})
 	} else {
-		// 累计模式：充值金额和下注流水各占50%，两项进度的均值
 		var rechargeTarget, betTarget float64
 		if nextRow.TotalRechargeAmount != nil {
 			rechargeTarget = *nextRow.TotalRechargeAmount
@@ -190,31 +216,74 @@ func GetAppVipProgress(db *gorm.DB, userID int64) (pojo.AppVipProgressBack, erro
 			betTarget = *nextRow.TotalValidBet
 		}
 
-		var rechargeProgress, betProgress float64
-		if rechargeTarget > 0 {
-			rechargeProgress = user.RechargeAmount / rechargeTarget * 100
-			if rechargeProgress > 100 {
-				rechargeProgress = 100
-			}
-		} else {
-			rechargeProgress = 100
-		}
-		if betTarget > 0 {
-			betProgress = totalBetAmount / betTarget * 100
-			if betProgress > 100 {
-				betProgress = 100
-			}
-		} else {
-			betProgress = 100
-		}
-
-		result.Progress = utils.Truncate2((rechargeProgress + betProgress) / 2)
-		// CurrentValue / TargetValue 展示充值维度（主要指标）
-		result.CurrentValue = utils.Truncate2(user.RechargeAmount)
-		result.TargetValue = utils.Truncate2(rechargeTarget)
+		result.Progress = averageVipProgress([]vipProgressMetric{
+			{current: user.RechargeAmount, target: rechargeTarget},
+			{current: totalBetAmount, target: betTarget},
+		})
+		result.CurrentValue, result.TargetValue = getVipProgressDisplayValue(nextRow, user.RechargeAmount, monthRechargeAmount, totalBetAmount, monthBetAmount)
 	}
 
 	return result, nil
+}
+
+func getActiveVipLevels(db *gorm.DB, tenantID int64) []pojo.SysVipLevel {
+	var levels []pojo.SysVipLevel
+	db.Where("tenant_id = ? AND status = 1", tenantID).Order("level asc").Find(&levels)
+	if len(levels) == 0 && tenantID != 0 {
+		db.Where("tenant_id = ? AND status = 1", 0).Order("level asc").Find(&levels)
+	}
+	return levels
+}
+
+type vipProgressMetric struct {
+	current float64
+	target  float64
+}
+
+func averageVipProgress(metrics []vipProgressMetric) float64 {
+	var total float64
+	var count float64
+	for _, metric := range metrics {
+		if metric.target <= 0 {
+			continue
+		}
+		progress := metric.current / metric.target * 100
+		if progress > 100 {
+			progress = 100
+		}
+		total += progress
+		count++
+	}
+	if count == 0 {
+		return 100
+	}
+	return utils.Truncate2(total / count)
+}
+
+func getVipProgressDisplayValue(nextRow *pojo.SysVipLevel, totalRecharge float64, monthRecharge float64, totalBet float64, monthBet float64) (float64, float64) {
+	if nextRow == nil {
+		return utils.Truncate2(totalRecharge), 0
+	}
+	upgradeType := 1
+	if nextRow.UpgradeType != nil {
+		upgradeType = int(*nextRow.UpgradeType)
+	}
+	if upgradeType == 2 {
+		if nextRow.MonthRechargeAmount != nil && *nextRow.MonthRechargeAmount > 0 {
+			return utils.Truncate2(monthRecharge), utils.Truncate2(*nextRow.MonthRechargeAmount)
+		}
+		if nextRow.MonthValidBet != nil && *nextRow.MonthValidBet > 0 {
+			return utils.Truncate2(monthBet), utils.Truncate2(*nextRow.MonthValidBet)
+		}
+		return utils.Truncate2(monthRecharge), 0
+	}
+	if nextRow.TotalRechargeAmount != nil && *nextRow.TotalRechargeAmount > 0 {
+		return utils.Truncate2(totalRecharge), utils.Truncate2(*nextRow.TotalRechargeAmount)
+	}
+	if nextRow.TotalValidBet != nil && *nextRow.TotalValidBet > 0 {
+		return utils.Truncate2(totalBet), utils.Truncate2(*nextRow.TotalValidBet)
+	}
+	return utils.Truncate2(totalRecharge), 0
 }
 
 // CheckAndUpgradeVipLevel 检查用户是否达到新的VIP等级，如达到则升级并发放奖励。
@@ -227,8 +296,7 @@ func CheckAndUpgradeVipLevel(db *gorm.DB, userID int64) {
 	}
 
 	// 2. 读取该租户全部启用的 VIP 等级（按 level 升序）
-	var levels []pojo.SysVipLevel
-	db.Where("tenant_id = ? AND status = 1", user.TenantId).Order("level asc").Find(&levels)
+	levels := getActiveVipLevels(db, user.TenantId)
 	if len(levels) == 0 {
 		return
 	}

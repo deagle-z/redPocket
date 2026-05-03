@@ -58,6 +58,13 @@ declare module 'vue-router/auto-routes' {
       Record<never, never>,
       | never
     >,
+    'FirstDeposit': RouteRecordInfo<
+      'FirstDeposit',
+      '/firstDeposit',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
     'History': RouteRecordInfo<
       'History',
       '/history',
@@ -238,6 +245,12 @@ declare module 'vue-router/auto-routes' {
     'src/pages/cs/index.vue': {
       routes:
         | '/cs/'
+      views:
+        | never
+    }
+    'src/pages/firstDeposit/index.vue': {
+      routes:
+        | 'FirstDeposit'
       views:
         | never
     }

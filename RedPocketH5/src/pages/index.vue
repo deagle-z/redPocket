@@ -386,10 +386,10 @@ onBeforeUnmount(() => {
             <img :src="item.avatar" alt="" class="winner-avatar">
             <div class="winner-main">
               <p class="winner-amount">
-                {{ t('homeLucky.gotPrefix') }} <strong><CoinAmount :text="item.amount" class="coin-amount--winner" /></strong>
+                {{ item.name }} <strong><CoinAmount :text="item.amount" class="coin-amount--winner" /></strong>
               </p>
               <p class="winner-name">
-                {{ item.name }}
+                {{ t('homeLucky.gotPrefix') }}
               </p>
             </div>
           </article>

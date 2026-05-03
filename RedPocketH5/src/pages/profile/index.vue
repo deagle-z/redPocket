@@ -136,6 +136,7 @@ const promoMenus = computed<MenuItem[]>(() => [
 ])
 
 const activityMenus = computed<MenuItem[]>(() => [
+  { key: 'first-deposit', label: t('rechargePage.firstRechargeTitle'), icon: normalizeInlineSvg(downIcon) },
   { key: 'ranking', label: t('profilePage.activityRanking'), icon: normalizeInlineSvg(chartBarAltIcon) },
   { key: 'spin', label: t('profilePage.activitySpin'), icon: normalizeInlineSvg(gamesIcon) },
 ])
@@ -370,6 +371,9 @@ function onMenuClick(item: MenuItem) {
       break
     case 'rebate':
       goByPath('/rebate')
+      break
+    case 'first-deposit':
+      goByPath('/firstDeposit')
       break
     case 'ranking':
       goByPath('/ranking')

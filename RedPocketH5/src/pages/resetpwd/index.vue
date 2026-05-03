@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
-import type { RouteMap } from 'vue-router'
 import { showToast } from 'vant'
 import { useUserStore } from '@/stores'
 import AppPageHeader from '@/components/AppPageHeader.vue'
@@ -100,7 +99,7 @@ async function submitReset() {
     loading.value = true
     await userStore.reset({ ...postData })
     showToast(t('forgotPassword.passwordResetSuccess'))
-    router.push({ name: 'Login' as keyof RouteMap })
+    router.push('/login')
   }
   catch (error: any) {
     showToast(error?.message || t('forgotPassword.confirm'))

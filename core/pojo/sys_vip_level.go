@@ -54,13 +54,14 @@ type SysVipLevelSet struct {
 
 // AppVipProgressBack app端VIP进度响应
 type AppVipProgressBack struct {
-	CurrentLevel    *AppVipLevelSimple `json:"currentLevel"`    // 当前等级，nil表示未达任何等级
-	PrevLevel       *AppVipLevelSimple `json:"prevLevel"`       // 上一等级，nil表示无
-	NextLevel       *AppVipLevelSimple `json:"nextLevel"`       // 下一等级，nil表示已是最高
-	Progress        float64            `json:"progress"`        // 朝下一等级的进度 0-100
-	CurrentValue    float64            `json:"currentValue"`    // 当前指标值（累计/当月充值额）
-	TargetValue     float64            `json:"targetValue"`     // 下一等级要求值，0表示无下一等级
-	NextBonusAmount float64            `json:"nextBonusAmount"` // 下一等级升级奖励金额
+	CurrentLevel    *AppVipLevelSimple  `json:"currentLevel"`    // 当前等级，nil表示未达任何等级
+	PrevLevel       *AppVipLevelSimple  `json:"prevLevel"`       // 上一等级，nil表示无
+	NextLevel       *AppVipLevelSimple  `json:"nextLevel"`       // 下一等级，nil表示已是最高
+	Levels          []AppVipLevelSimple `json:"levels"`          // 全部启用等级
+	Progress        float64             `json:"progress"`        // 朝下一等级的进度 0-100
+	CurrentValue    float64             `json:"currentValue"`    // 当前指标值（累计/当月充值额）
+	TargetValue     float64             `json:"targetValue"`     // 下一等级要求值，0表示无下一等级
+	NextBonusAmount float64             `json:"nextBonusAmount"` // 下一等级升级奖励金额
 }
 
 type AppVipLevelSimple struct {

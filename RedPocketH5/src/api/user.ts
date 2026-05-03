@@ -77,6 +77,7 @@ export interface VipProgressInfo {
   currentLevel: VipLevelSimple | null
   prevLevel: VipLevelSimple | null
   nextLevel: VipLevelSimple | null
+  levels?: VipLevelSimple[]
   progress: number
   currentValue: number
   targetValue: number

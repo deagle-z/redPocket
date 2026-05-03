@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
-import type { RouteMap } from 'vue-router'
 import { useUserStore } from '@/stores'
 import { getAuthCountry, setAuthCountry } from '@/utils/auth'
 import { trackAttributionEvent } from '@/utils/attribution'
@@ -165,7 +164,7 @@ async function register() {
     })
     setAuthCountry(postData.country)
     showToast(t('register.registerSuccess'))
-    router.push({ name: 'Login' as keyof RouteMap })
+    router.push('/login')
   }
   finally {
     loading.value = false
@@ -222,8 +221,9 @@ async function handleTelegramLogin() {
       })
     })
     const { redirect, ...othersQuery } = router.currentRoute.value.query
+    const redirectPath = Array.isArray(redirect) ? redirect[0] : redirect
     router.push({
-      name: (redirect as keyof RouteMap) || 'Home',
+      path: redirectPath || '/',
       query: { ...othersQuery },
     })
   }
@@ -240,7 +240,7 @@ function goBack() {
 }
 
 function goLogin() {
-  router.push({ name: 'Login' as keyof RouteMap })
+  router.push('/login')
 }
 
 function openLanguagePopup() {
