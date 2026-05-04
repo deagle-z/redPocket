@@ -609,7 +609,7 @@
     "vipPrevLevel": "Level sebelumnya",
     "vipCurrentLevel": "Level saat ini",
     "vipNextLevel": "Level berikutnya",
-    "vipProgressHint": "Isi ulang {amount} lagi untuk mencapai {level}",
+    "vipProgressHint": "Taruhan {amount} lagi untuk mencapai {level}",
     "vipTopLevelReached": "Sudah mencapai level tertinggi",
     "vipUpgradeReward": "Hadiah naik level",
     "vipPendingRewards": "Hadiah yang belum diklaim",

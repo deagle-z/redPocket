@@ -74,10 +74,10 @@ export function useTgUser(tableRef: Ref) {
       formatter: ({ username }) => formatNullable(username)
     },
     {
-      label: "昵称",
-      prop: "firstName",
-      minWidth: 140,
-      formatter: ({ firstName }) => formatNullable(firstName)
+      label: "备注",
+      prop: "remark",
+      minWidth: 160,
+      formatter: ({ remark }) => formatNullable(remark)
     },
     {
       label: "余额",
@@ -128,10 +128,10 @@ export function useTgUser(tableRef: Ref) {
       formatter: ({ inviteCode }) => formatNullable(inviteCode)
     },
     {
-      label: "备注",
-      prop: "remark",
-      minWidth: 160,
-      formatter: ({ remark }) => formatNullable(remark)
+      label: "昵称",
+      prop: "firstName",
+      minWidth: 140,
+      formatter: ({ firstName }) => formatNullable(firstName)
     },
     {
       label: "状态",

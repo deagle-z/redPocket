@@ -609,7 +609,7 @@
     "vipPrevLevel": "上一等级",
     "vipCurrentLevel": "当前等级",
     "vipNextLevel": "下一等级",
-    "vipProgressHint": "距 {level} 还需充值 {amount}",
+    "vipProgressHint": "距 {level} 还需流水 {amount}",
     "vipTopLevelReached": "已达最高等级",
     "vipUpgradeReward": "升级奖励",
     "vipPendingRewards": "待领取奖励",

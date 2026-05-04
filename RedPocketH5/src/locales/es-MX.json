@@ -609,7 +609,7 @@
     "vipPrevLevel": "Nivel anterior",
     "vipCurrentLevel": "Nivel actual",
     "vipNextLevel": "Siguiente nivel",
-    "vipProgressHint": "Recarga {amount} más para llegar a {level}",
+    "vipProgressHint": "Apuesta {amount} más para llegar a {level}",
     "vipTopLevelReached": "Ya alcanzaste el nivel más alto",
     "vipUpgradeReward": "Recompensa de mejora",
     "vipPendingRewards": "Recompensas pendientes",

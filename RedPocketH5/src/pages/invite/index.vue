@@ -136,7 +136,16 @@ onMounted(() => {
       <p class="sub-title">
         {{ t('invitePage.heroSubTitle') }}
       </p>
-      <img class="qr-image" :src="qrCodeUrl" alt="invite qrcode">
+      <div class="qr-frame">
+        <span class="qr-corner top-left" aria-hidden="true" />
+        <span class="qr-corner top-right" aria-hidden="true" />
+        <span class="qr-corner bottom-left" aria-hidden="true" />
+        <span class="qr-corner bottom-right" aria-hidden="true" />
+        <div class="qr-image-wrap">
+          <img class="qr-image" :src="qrCodeUrl" alt="invite qrcode">
+          <!-- <span class="qr-badge" aria-hidden="true">LUCKY</span> -->
+        </div>
+      </div>
       <div class="qr-actions">
         <button type="button" class="main-btn" @click="saveQrCode">
           {{ t('invitePage.saveQr') }}
@@ -343,6 +352,7 @@ onMounted(() => {
 
 .qr-card {
   text-align: center;
+  padding: 18px 14px 16px;
 }
 
 .qr-card h2 {
@@ -358,16 +368,99 @@ onMounted(() => {
   font-size: 12px;
 }
 
+.qr-frame {
+  position: relative;
+  width: min(78vw, 274px);
+  margin: 16px auto 0;
+  padding: 14px;
+  border-radius: 24px;
+  border: 1px solid rgba(255, 223, 135, 0.48);
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255, 223, 135, 0.22), transparent 42%),
+    linear-gradient(180deg, rgba(255, 248, 214, 0.14), rgba(255, 248, 214, 0.04));
+  box-shadow:
+    0 18px 34px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 248, 214, 0.22);
+}
+
+.qr-image-wrap {
+  position: relative;
+  padding: 12px;
+  border-radius: 18px;
+  background: #fffaf0;
+  box-shadow:
+    inset 0 0 0 1px rgba(90, 27, 0, 0.08),
+    0 8px 16px rgba(0, 0, 0, 0.18);
+}
+
 .qr-image {
-  width: 210px;
-  height: 210px;
+  width: 100%;
+  aspect-ratio: 1;
   display: block;
-  margin: 0 auto;
-  border-radius: 4px;
+  border-radius: 10px;
+}
+
+.qr-badge {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 54px;
+  height: 22px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #ffdf87 0%, #d4af37 100%);
+  color: #5a1b00;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 4px 10px rgba(90, 27, 0, 0.26);
+}
+
+.qr-corner {
+  position: absolute;
+  width: 30px;
+  height: 30px;
+  border-color: #ffd98b;
+  opacity: 0.85;
+}
+
+.qr-corner.top-left {
+  top: 8px;
+  left: 8px;
+  border-top: 2px solid;
+  border-left: 2px solid;
+  border-radius: 12px 0 0;
+}
+
+.qr-corner.top-right {
+  top: 8px;
+  right: 8px;
+  border-top: 2px solid;
+  border-right: 2px solid;
+  border-radius: 0 12px 0 0;
+}
+
+.qr-corner.bottom-left {
+  bottom: 8px;
+  left: 8px;
+  border-bottom: 2px solid;
+  border-left: 2px solid;
+  border-radius: 0 0 0 12px;
+}
+
+.qr-corner.bottom-right {
+  right: 8px;
+  bottom: 8px;
+  border-right: 2px solid;
+  border-bottom: 2px solid;
+  border-radius: 0 0 12px;
 }
 
 .qr-actions {
-  margin-top: 14px;
+  margin-top: 16px;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
@@ -381,6 +474,11 @@ onMounted(() => {
   color: #5a1b00;
   font-size: 12px;
   font-weight: 800;
+  box-shadow: 0 8px 18px rgba(90, 27, 0, 0.22);
+}
+
+.main-btn:active {
+  transform: translateY(1px);
 }
 
 .link-card {

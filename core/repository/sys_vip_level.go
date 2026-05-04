@@ -89,6 +89,8 @@ func GetSysVipLevelById(db *gorm.DB, id int64) (result pojo.SysVipLevelBack, err
 func GetAppVipProgress(db *gorm.DB, userID int64) (pojo.AppVipProgressBack, error) {
 	var result pojo.AppVipProgressBack
 
+	CheckAndUpgradeVipLevel(db, userID)
+
 	var user pojo.TgUser
 	if err := db.Where("id = ?", userID).First(&user).Error; err != nil || user.ID == 0 {
 		return result, errors.New("user_not_found")

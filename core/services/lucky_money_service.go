@@ -1113,6 +1113,7 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 	if err := tx.Commit().Error; err != nil {
 		return nil, fmt.Errorf("提交事务失败: %v", err)
 	}
+	triggerVipUpgradeAfterLuckyGrab(tablePrefix, userID, luckyMoney.SenderID)
 	if completedAfterGrab {
 		_ = EnsureMinActiveLuckyPackets(db, tablePrefix)
 		go BroadcastLuckyFinished(db, luckyID)
@@ -1159,6 +1160,13 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 	}
 
 	return result, nil
+}
+
+func triggerVipUpgradeAfterLuckyGrab(tablePrefix string, userID int64, senderID int64) {
+	go repository.CheckAndUpgradeVipLevel(utils.NewPrefixDb(tablePrefix), userID)
+	if senderID > 0 && senderID != userID {
+		go repository.CheckAndUpgradeVipLevel(utils.NewPrefixDb(tablePrefix), senderID)
+	}
 }
 
 // CheckGrabBalance 检查抢包余额

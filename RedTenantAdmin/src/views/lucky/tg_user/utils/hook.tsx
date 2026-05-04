@@ -62,11 +62,6 @@ export function useTgUser(tableRef: Ref) {
       minWidth: 80
     },
     {
-      label: "用户ID",
-      prop: "tgId",
-      minWidth: 140
-    },
-    {
       label: "用户UID",
       prop: "uid",
       minWidth: 120,
@@ -79,10 +74,10 @@ export function useTgUser(tableRef: Ref) {
       formatter: ({ username }) => formatNullable(username)
     },
     {
-      label: "昵称",
-      prop: "firstName",
-      minWidth: 140,
-      formatter: ({ firstName }) => formatNullable(firstName)
+      label: "备注",
+      prop: "remark",
+      minWidth: 160,
+      formatter: ({ remark }) => formatNullable(remark)
     },
     {
       label: "余额",
@@ -121,24 +116,6 @@ export function useTgUser(tableRef: Ref) {
       formatter: ({ rebateRate }) => formatPercent(rebateRate)
     },
     {
-      label: "下级充值",
-      prop: "subRechargeAmount",
-      minWidth: 120,
-      formatter: ({ subRechargeAmount }) => formatMoney(subRechargeAmount)
-    },
-    {
-      label: "下级流水",
-      prop: "subFlowAmount",
-      minWidth: 120,
-      formatter: ({ subFlowAmount }) => formatMoney(subFlowAmount)
-    },
-    {
-      label: "下级提现",
-      prop: "subWithdrawAmount",
-      minWidth: 120,
-      formatter: ({ subWithdrawAmount }) => formatMoney(subWithdrawAmount)
-    },
-    {
       label: "上级UID",
       prop: "parentUid",
       minWidth: 100,
@@ -151,10 +128,10 @@ export function useTgUser(tableRef: Ref) {
       formatter: ({ inviteCode }) => formatNullable(inviteCode)
     },
     {
-      label: "备注",
-      prop: "remark",
-      minWidth: 160,
-      formatter: ({ remark }) => formatNullable(remark)
+      label: "昵称",
+      prop: "firstName",
+      minWidth: 140,
+      formatter: ({ firstName }) => formatNullable(firstName)
     },
     {
       label: "状态",
