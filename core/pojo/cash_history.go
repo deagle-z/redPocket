@@ -33,6 +33,7 @@ const (
 	CashHistoryTypeLuckyExpireRefund      int8 = 12 // 红包过期退回
 	CashHistoryTypeLotteryConsume         int8 = 13 // 抽奖消耗
 	CashHistoryTypeLotteryAward           int8 = 14 // 抽奖中奖
+	CashHistoryTypeVipUpgradeReward       int8 = 15 // VIP升级奖励
 )
 
 type CashHistoryResp struct {

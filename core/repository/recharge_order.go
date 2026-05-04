@@ -41,6 +41,10 @@ type firstRechargeGiftInstallment struct {
 	ExecuteAt  time.Time
 }
 
+type firstRechargeGiftConfigV2 struct {
+	Rates []float64
+}
+
 var (
 	rechargeGiftAsynqOnce   sync.Once
 	rechargeGiftAsynqClient *asynq.Client
@@ -780,10 +784,14 @@ func pushRechargeSuccessFrontendNotification(db *gorm.DB, orderNo string) {
 	}
 }
 
-// applyFirstRechargeActivityGift 活动赠送：activity_type=1 首充分 3 天赠送；activity_type=2 今日首充仍一次性赠送
+// applyFirstRechargeActivityGift 活动赠送：activity_type=1 首充活动 V2；activity_type=2 今日首充仍一次性赠送
 func applyFirstRechargeActivityGift(tx *gorm.DB, order pojo.RechargeOrder, user pojo.TgUser, tablePrefix string, now time.Time) error {
 	if order.ActivityType == nil || *order.ActivityType <= 0 {
 		return nil
+	}
+
+	if *order.ActivityType == 1 {
+		return applyFirstRechargeGiftV2(tx, order, user, tablePrefix, now)
 	}
 
 	var completedCount int64
@@ -794,10 +802,48 @@ func applyFirstRechargeActivityGift(tx *gorm.DB, order pojo.RechargeOrder, user 
 		return nil
 	}
 
-	if *order.ActivityType == 1 {
-		return applySplitFirstRechargeGift(tx, order, user, tablePrefix, now)
-	}
 	return applyTodayFirstRechargeGift(tx, order, user)
+}
+
+func applyFirstRechargeGiftV2(tx *gorm.DB, order pojo.RechargeOrder, user pojo.TgUser, tablePrefix string, now time.Time) error {
+	cfg, err := getFirstRechargeGiftConfigV2(tablePrefix)
+	if err != nil {
+		log.Printf("[recharge] parse first_recharge_gift_config_v2 failed: orderNo=%s err=%v", order.OrderNo, err)
+		return nil
+	}
+
+	payAt := now
+	if order.PayTime != nil {
+		payAt = *order.PayTime
+	}
+
+	startAt := payAt
+	var firstOrder pojo.RechargeOrder
+	if err = tx.Where("user_id = ? AND activity_type = 1 AND status = 1 AND pay_time IS NOT NULL", user.ID).
+		Order("pay_time asc, id asc").
+		First(&firstOrder).Error; err == nil && firstOrder.ID > 0 && firstOrder.PayTime != nil {
+		startAt = *firstOrder.PayTime
+	}
+
+	dayIndex, ok := firstRechargeGiftV2DayIndex(startAt, payAt)
+	if !ok || dayIndex > len(cfg.Rates) {
+		return nil
+	}
+
+	dayStart, dayEnd := naturalDayRange(payAt)
+	var firstDayOrder pojo.RechargeOrder
+	if err = tx.Where("user_id = ? AND activity_type = 1 AND status = 1 AND pay_time >= ? AND pay_time < ?", user.ID, dayStart, dayEnd).
+		Order("pay_time asc, id asc").
+		First(&firstDayOrder).Error; err == nil && firstDayOrder.ID > 0 && firstDayOrder.ID != order.ID {
+		return nil
+	}
+
+	rate := cfg.Rates[dayIndex-1]
+	giftAmount := calculateFirstRechargeGiftV2Amount(order.Amount, rate)
+	if giftAmount <= 0 {
+		return nil
+	}
+	return applyFirstRechargeGiftV2OrderGift(tx, order, user.ID, dayIndex, giftAmount, rate)
 }
 
 func applySplitFirstRechargeGift(tx *gorm.DB, order pojo.RechargeOrder, user pojo.TgUser, tablePrefix string, now time.Time) error {
@@ -827,6 +873,117 @@ func applySplitFirstRechargeGift(tx *gorm.DB, order pojo.RechargeOrder, user poj
 		}
 	}
 	return nil
+}
+
+func getFirstRechargeGiftConfigV2(tablePrefix string) (firstRechargeGiftConfigV2, error) {
+	defaultValue := ""
+	val := utils.GetStringCache(tablePrefix, "first_recharge_gift_config_v2", &defaultValue)
+	if val == nil {
+		return firstRechargeGiftConfigV2{}, fmt.Errorf("config is empty")
+	}
+	return parseFirstRechargeGiftConfigV2(*val)
+}
+
+func parseFirstRechargeGiftConfigV2(raw string) (firstRechargeGiftConfigV2, error) {
+	text := strings.TrimSpace(raw)
+	if text == "" {
+		return firstRechargeGiftConfigV2{}, fmt.Errorf("config is empty")
+	}
+	text = strings.NewReplacer("｜", "|", "，", "|", ",", "|", "％", "%").Replace(text)
+	text = strings.ReplaceAll(text, "%", "")
+	parts := strings.Split(text, "|")
+	if len(parts) != 3 {
+		return firstRechargeGiftConfigV2{}, fmt.Errorf("invalid config format: %s", raw)
+	}
+
+	rates := make([]float64, 0, 3)
+	for _, part := range parts {
+		rate, err := strconv.ParseFloat(strings.TrimSpace(part), 64)
+		if err != nil || rate <= 0 {
+			return firstRechargeGiftConfigV2{}, fmt.Errorf("invalid rate: %s", part)
+		}
+		rates = append(rates, rate)
+	}
+	return firstRechargeGiftConfigV2{Rates: rates}, nil
+}
+
+func firstRechargeGiftV2DayIndex(startAt time.Time, payAt time.Time) (int, bool) {
+	startDay, _ := naturalDayRange(startAt)
+	payDay, _ := naturalDayRange(payAt)
+	if payDay.Before(startDay) {
+		return 0, false
+	}
+	dayIndex := int(payDay.Sub(startDay).Hours()/24) + 1
+	if dayIndex < 1 || dayIndex > 3 {
+		return 0, false
+	}
+	return dayIndex, true
+}
+
+func naturalDayRange(at time.Time) (time.Time, time.Time) {
+	start := time.Date(at.Year(), at.Month(), at.Day(), 0, 0, 0, 0, at.Location())
+	return start, start.Add(24 * time.Hour)
+}
+
+func calculateFirstRechargeGiftV2Amount(orderAmount float64, rate float64) float64 {
+	return utils.Truncate2(utils.ToMoney(orderAmount).Multiply(rate / 100).ToDollars())
+}
+
+func applyFirstRechargeGiftV2OrderGift(tx *gorm.DB, order pojo.RechargeOrder, userID int64, dayIndex int, giftAmount float64, rate float64) error {
+	if giftAmount <= 0 {
+		return nil
+	}
+
+	awardUni := fmt.Sprintf("first_recharge_gift_v2_%s_%d", order.OrderNo, dayIndex)
+	var existing pojo.CashHistory
+	if err := tx.Where("user_id = ? AND award_uni = ?", userID, awardUni).First(&existing).Error; err == nil && existing.ID > 0 {
+		return nil
+	}
+
+	var user pojo.TgUser
+	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ?", userID).First(&user).Error; err != nil {
+		return err
+	}
+
+	if err := tx.Model(&pojo.TgUser{}).Where("id = ?", userID).Updates(map[string]any{
+		"balance":     gorm.Expr("balance + ?", giftAmount),
+		"gift_amount": gorm.Expr("gift_amount + ?", giftAmount),
+		"gift_total":  gorm.Expr("gift_total + ?", giftAmount),
+	}).Error; err != nil {
+		return err
+	}
+	if err := AddUserWithdrawRestrictedBalance(tx, user, giftAmount, 0); err != nil {
+		return err
+	}
+
+	desc := fmt.Sprintf("首充活动V2第%d天首笔赠送，订单%s，充值金额%.2f，赠送比例%.2f%%，赠送%.2f", dayIndex, order.OrderNo, order.Amount, rate, giftAmount)
+	history := pojo.CashHistory{
+		UserId:          userID,
+		AwardUni:        awardUni,
+		Amount:          giftAmount,
+		StartAmount:     user.Balance,
+		EndAmount:       utils.Truncate2(user.Balance + giftAmount),
+		CashMark:        "首充活动赠送",
+		CashDesc:        desc,
+		Type:            pojo.CashHistoryTypeRechargeCredit,
+		IsGift:          1,
+		FromUserId:      0,
+		SourceChannelID: order.SourceChannelID,
+	}
+	if err := tx.Create(&history).Error; err != nil {
+		return err
+	}
+
+	return CreatePlatformProfitLedgerIfAbsent(tx, pojo.PlatformProfitLedger{
+		TenantId:        order.TenantId,
+		UserId:          userID,
+		SourceChannelID: order.SourceChannelID,
+		SourceType:      pojo.PlatformProfitSourceRechargeGift,
+		SourceId:        awardUni,
+		IncomeAmount:    0,
+		ExpenseAmount:   giftAmount,
+		Remark:          desc,
+	})
 }
 
 func applyTodayFirstRechargeGift(tx *gorm.DB, order pojo.RechargeOrder, user pojo.TgUser) error {
@@ -1143,14 +1300,26 @@ func applyInviteFirstRechargeReward(tx *gorm.DB, order pojo.RechargeOrder, subUs
 }
 
 // CheckActivityStatus 检查用户活动参与状态
-// hasFirst: 是否已参加过首充活动（activity_type=1 且 status=1）
+// hasFirst: 当前是否不可参加首充活动（api 层会取反返回可参加状态）
 // hasTodayFirst: 24小时内是否已参加过今日首充活动（activity_type=2 且 status=1）
 func CheckActivityStatus(db *gorm.DB, userID int64) (hasFirst bool, hasTodayFirst bool) {
-	var firstCount int64
-	db.Model(&pojo.RechargeOrder{}).
-		Where("user_id = ? AND activity_type = 1 AND status = 1", userID).
-		Count(&firstCount)
-	hasFirst = firstCount > 0
+	var firstOrder pojo.RechargeOrder
+	if err := db.Where("user_id = ? AND activity_type = 1 AND status = 1 AND pay_time IS NOT NULL", userID).
+		Order("pay_time asc, id asc").
+		First(&firstOrder).Error; err == nil && firstOrder.ID > 0 && firstOrder.PayTime != nil {
+		now := time.Now()
+		_, available := firstRechargeGiftV2DayIndex(*firstOrder.PayTime, now)
+		if !available {
+			hasFirst = true
+		} else {
+			dayStart, dayEnd := naturalDayRange(now)
+			var todayFirstCount int64
+			db.Model(&pojo.RechargeOrder{}).
+				Where("user_id = ? AND activity_type = 1 AND status = 1 AND pay_time >= ? AND pay_time < ?", userID, dayStart, dayEnd).
+				Count(&todayFirstCount)
+			hasFirst = todayFirstCount > 0
+		}
+	}
 
 	var todayCount int64
 	db.Model(&pojo.RechargeOrder{}).

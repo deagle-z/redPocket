@@ -51,21 +51,13 @@ function parseFirstRechargeGiftConfig(raw: string) {
     .replaceAll('％', '%')
     .replace(/\s+/g, '')
 
-  const match = normalizedText.match(/(\d+(?:\.\d+)?)%?\((\d+)\|(\d+)\|(\d+)\)/)
-  if (!match) {
-    const rateMatch = normalizedText.match(/(\d+(?:\.\d+)?)/)
-    const rate = Number(rateMatch?.[1] ?? '')
-    if (!rate)
-      return null
-    return { rate, ratios: [3, 3, 4], ratioBase: 10 }
-  }
-
-  const rate = Number(match[1])
-  const ratios = [Number(match[2]), Number(match[3]), Number(match[4])]
-  const ratioSum = ratios.reduce((sum, item) => sum + item, 0)
-  if (!rate || ratios.some(item => !item) || ![10, 100].includes(ratioSum))
+  const parts = normalizedText.split('|')
+  if (parts.length !== 3)
     return null
-  return { rate, ratios, ratioBase: ratioSum }
+  const rates = parts.map(item => Number(item.replace('%', '')))
+  if (rates.some(item => !item || !Number.isFinite(item) || item <= 0))
+    return null
+  return { rates }
 }
 
 function formatPercent(value: number) {
@@ -84,17 +76,15 @@ const firstRechargeGiftView = computed(() => {
     }
   }
 
-  const firstDayRate = (parsed.rate * parsed.ratios[0]) / parsed.ratioBase
+  const maxRate = Math.max(...parsed.rates)
   return {
-    badge: `+${formatPercent(parsed.rate)}%`,
-    desc: t('rechargePage.firstRechargeInstallmentDesc', {
-      rate: formatPercent(parsed.rate),
-      days: parsed.ratios.length,
+    badge: `+${formatPercent(maxRate)}%`,
+    desc: t('rechargePage.firstRechargeV2Desc', {
+      day1Rate: formatPercent(parsed.rates[0]),
+      day2Rate: formatPercent(parsed.rates[1]),
+      day3Rate: formatPercent(parsed.rates[2]),
     }),
-    detail: t('rechargePage.firstRechargeInstallmentDetail', {
-      firstDayRate: formatPercent(firstDayRate),
-      firstDayRatio: parsed.ratios[0],
-    }),
+    detail: t('rechargePage.firstRechargeV2Detail'),
   }
 })
 
@@ -102,7 +92,7 @@ async function loadFirstRechargeStatus() {
   try {
     const [isFirstRes, giftConfigRes, todayGiftRes] = await Promise.allSettled([
       getRechargeIsFirst(),
-      getAppConfig('first_recharge_gift_config'),
+      getAppConfig('first_recharge_gift_config_v2'),
       getAppConfig('today_first_recharge_gift'),
     ])
 

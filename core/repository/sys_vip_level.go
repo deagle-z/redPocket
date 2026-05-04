@@ -460,7 +460,7 @@ func ClaimVipReward(db *gorm.DB, userID int64, rewardLogID int64, tablePrefix st
 				EndAmount:   utils.Truncate2(runningBalance + item.BonusAmount),
 				CashMark:    "VIP升级奖励",
 				CashDesc:    fmt.Sprintf("领取%s升级奖励 %.2f", item.LevelName, item.BonusAmount),
-				Type:        pojo.CashHistoryTypeAdminManualAward,
+				Type:        pojo.CashHistoryTypeVipUpgradeReward,
 				IsGift:      1,
 				FromUserId:  0,
 			}

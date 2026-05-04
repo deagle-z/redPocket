@@ -337,6 +337,8 @@
     "firstRechargeDesc": "Obtenga recompensas adicionales en su primer depósito",
     "firstRechargeInstallmentDesc": "Obtenga una bonificación total del {rate}%, acreditada durante {days} días",
     "firstRechargeInstallmentDetail": "El día 1 otorga {firstDayRate}% de tu depósito ({firstDayRatio}% del bono total)",
+    "firstRechargeV2Desc": "Día 1 {day1Rate}%, Día 2 {day2Rate}%, Día 3 {day3Rate}%",
+    "firstRechargeV2Detail": "Durante los tres primeros días naturales, solo el primer depósito participante de cada día recibe bono",
     "firstRechargeGift": "Monto del bono:",
     "todayFirstTitle": "Bono diario por primer depósito",
     "todayFirstDesc": "Obtenga recompensas adicionales en su primer depósito hoy",

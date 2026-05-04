@@ -337,6 +337,8 @@
     "firstRechargeDesc": "Get extra rewards on your first deposit",
     "firstRechargeInstallmentDesc": "Get a total bonus of {rate}%, credited over {days} days",
     "firstRechargeInstallmentDetail": "Day 1 gives {firstDayRate}% of your deposit ({firstDayRatio}% of the total bonus)",
+    "firstRechargeV2Desc": "Day 1 {day1Rate}%, Day 2 {day2Rate}%, Day 3 {day3Rate}%",
+    "firstRechargeV2Detail": "During the first three natural days, only the first participating deposit each day gets a bonus",
     "firstRechargeGift": "Bonus amount:",
     "todayFirstTitle": "Daily First Deposit Bonus",
     "todayFirstDesc": "Get extra rewards on your first deposit today",

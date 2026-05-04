@@ -337,6 +337,8 @@
     "firstRechargeDesc": "Dapatkan imbalan ekstra pada setoran pertama Anda",
     "firstRechargeInstallmentDesc": "Dapatkan total bonus {rate}%, dikreditkan selama {days} hari",
     "firstRechargeInstallmentDetail": "Hari ke-1 memberikan {firstDayRate}% dari deposit Anda ({firstDayRatio}% dari total bonus)",
+    "firstRechargeV2Desc": "Hari 1 {day1Rate}%, Hari 2 {day2Rate}%, Hari 3 {day3Rate}%",
+    "firstRechargeV2Detail": "Dalam tiga hari kalender pertama, hanya deposit pertama yang ikut promo setiap hari yang mendapat bonus",
     "firstRechargeGift": "Jumlah bonus:",
     "todayFirstTitle": "Bonus Setoran Pertama Harian",
     "todayFirstDesc": "Dapatkan hadiah ekstra pada deposit pertama Anda hari ini",

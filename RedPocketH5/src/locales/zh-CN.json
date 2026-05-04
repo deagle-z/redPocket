@@ -337,6 +337,8 @@
     "firstRechargeDesc": "首次存款即可获得额外奖励",
     "firstRechargeInstallmentDesc": "首次存款总赠送 {rate}%，分 {days} 天到账",
     "firstRechargeInstallmentDetail": "第 1 天赠送充值金额的 {firstDayRate}%（占总赠送 {firstDayRatio}%）",
+    "firstRechargeV2Desc": "第 1 天 {day1Rate}%，第 2 天 {day2Rate}%，第 3 天 {day3Rate}%",
+    "firstRechargeV2Detail": "前三个自然日内，每天仅首笔参加活动的充值可获得赠送",
     "firstRechargeGift": "赠送金额：",
     "todayFirstTitle": "今日首次充值优惠",
     "todayFirstDesc": "今日首次存款即可享受额外奖励",
