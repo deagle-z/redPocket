@@ -9,6 +9,7 @@ export type TgUser = {
   avatar?: string | null;
   isBot?: boolean;
   tgId: number;
+  uid?: string;
   balance: number;
   giftAmount: number;
   giftTotal: number;
@@ -20,7 +21,9 @@ export type TgUser = {
   rebateRate: number;
   status: number;
   parentId?: number | null;
+  parentUid?: string | null;
   inviteCode?: string | null;
+  remark?: string | null;
   tenantId?: number;
 };
 
@@ -28,11 +31,13 @@ export type TgUserSearch = {
   currentPage: number;
   pageSize: number;
   tgId?: number;
+  uid?: string;
   username?: string;
   firstName?: string;
   isBot?: boolean;
   status?: number;
   parentId?: number;
+  parentUid?: string;
   inviteCode?: string;
 };
 
@@ -46,10 +51,16 @@ export type TgUserRebateRateSet = {
   rebateRate: number;
 };
 
+export type TgUserRemarkSet = {
+  id: number;
+  remark: string;
+};
+
 export type TgUserSubStatsSummarySearch = {
   tenantId?: number;
   parentId?: number;
   tgId?: number;
+  uid?: string;
   isBot?: boolean;
 };
 
@@ -158,6 +169,12 @@ export const setTgUserRebateRate = (data: TgUserRebateRateSet) => {
       data
     }
   );
+};
+
+export const setTgUserRemark = (data: TgUserRemarkSet) => {
+  return http.request<TgUserResult>("post", "/api/v1/admin/tgUser/remark", {
+    data
+  });
 };
 
 export const getAdminBotUserList = (data: TgUserSearch) => {

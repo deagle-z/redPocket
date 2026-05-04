@@ -189,6 +189,7 @@ func InitGin() {
 		adminGroupLog.POST("/tgUser/batchUpdateBot", api.BatchUpdateBotTgUsers)
 		adminGroupLog.POST("/tgUser/status", api.SetTgUserStatus)            // 封禁/解封Telegram用户
 		adminGroupLog.POST("/tgUser/rebateRate", api.SetTgUserRebateRate)    // 修改Telegram用户返佣比例
+		adminGroupLog.POST("/tgUser/remark", api.SetTgUserRemark)            // 修改Telegram用户备注
 		adminGroupLog.DELETE("/tgUser/:id", api.DelTgUser)                   // 删除Telegram用户
 		adminGroupLog.POST("/tgUserRebate", api.SetTgUserRebateRecord)       // 创建或更新Telegram反水记录
 		adminGroupLog.DELETE("/tgUserRebate/:id", api.DelTgUserRebateRecord) // 删除Telegram反水记录
@@ -264,6 +265,7 @@ func InitGin() {
 		tenantGroup.POST("/tgUser", tenantApi.SetTgUser)
 		tenantGroup.POST("/tgUser/status", tenantApi.SetTgUserStatus)
 		tenantGroup.POST("/tgUser/rebateRate", tenantApi.SetTgUserRebateRate)
+		tenantGroup.POST("/tgUser/remark", tenantApi.SetTgUserRemark)
 		tenantGroup.DELETE("/tgUser/:id", tenantApi.DelTgUser)
 
 		tenantGroup.POST("/tgUserRebate/list", tenantApi.GetTgUserRebateRecords)
@@ -306,6 +308,8 @@ func InitGin() {
 		appRouter.GET("/prizePool/balance", api.GetPrizePoolBalanceApp) // 不校验token
 		appRouter.POST("/banners", api.GetAppBanners)                   // 轮播图按position分组
 		appRouter.GET("/config/:key", api.GetAppSysConfig)              // 根据key获取系统配置
+		appRouter.GET("/domain/serviceLinks", api.GetAppTenantServiceLinks)
+		appRouter.GET("/tenant/serviceLinks", api.GetAppTenantServiceLinks) // 兼容旧H5路径，不校验token
 	}
 
 	appAuthRouter := router.Group("/api/v1/app")
@@ -326,10 +330,10 @@ func InitGin() {
 		appAuthRouter.POST("/tg/bindEmail", api.BindCurrentTgEmail)
 		appAuthRouter.POST("/tg/bindPhone", api.BindCurrentTgPhone)
 		appAuthRouter.POST("/tg/audioOpen", api.SetAudioOpen)
-		appAuthRouter.GET("/tenant/serviceLinks", api.GetAppTenantServiceLinks)
 		appAuthRouter.GET("/tg/inviteStats", api.GetCurrentTgInviteStats)
 		appAuthRouter.GET("/tg/inviteRuleConfig", api.GetCurrentTgInviteRuleConfig)
 		appAuthRouter.POST("/tg/rebate/transfer", api.TransferRebateToBalance)
+		appAuthRouter.POST("/tg/rebate/withdraw", api.AppCreateRebateWithdrawOrder)
 		appAuthRouter.POST("/tg/rebate/list", api.GetCurrentTgUserRebateRecords)
 		appAuthRouter.POST("/cashHistory/list", api.GetCurrentTgCashHistory)
 		appAuthRouter.POST("/upload", api.AppUpload)

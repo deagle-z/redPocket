@@ -815,6 +815,10 @@ export function createWithdrawOrder(data: CreateWithdrawOrderReq) {
   return request.post<ApiResult<{ orderNo: string }>>('/api/v1/app/withdraw', data)
 }
 
+export function createRebateWithdrawOrder(data: CreateWithdrawOrderReq) {
+  return request.post<ApiResult<{ orderNo: string, rebateAmount?: number }>>('/api/v1/app/tg/rebate/withdraw', data)
+}
+
 export interface BannerItem {
   id: number
   bannerName: string
@@ -864,7 +868,7 @@ export function getBanners(data: { position?: string, countryCode?: string } = {
 }
 
 export function getTenantServiceLinks() {
-  return request.get<ApiResult<TenantServiceLinks>>('/api/v1/app/tenant/serviceLinks')
+  return request.get<ApiResult<TenantServiceLinks>>('/api/v1/app/domain/serviceLinks')
 }
 
 export function setAudioOpen(audioOpen: 0 | 1) {

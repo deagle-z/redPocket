@@ -1,39 +1,46 @@
 <script setup lang="ts">
 import { showToast } from 'vant'
 import AppPageHeader from '@/components/AppPageHeader.vue'
-import { getTenantServiceLinks } from '@/api/user'
-import type { TenantServiceLinks } from '@/api/user'
-import { useUserStore } from '@/stores'
-import { getTokenTenantId } from '@/utils/auth'
+import { getAppConfig } from '@/api/user'
 import { safeBack } from '@/utils/navigation'
 
 const router = useRouter()
 const { t } = useI18n()
-const userStore = useUserStore()
 
 const loading = ref(false)
-const defaultServiceLink = 't.me/Osanvnei'
-const serviceLinks = ref<TenantServiceLinks>({
-  tgServiceUrl: '',
-  wsServiceUrl: '',
+const defaultServiceUrl = 'https://t.me/Osanvnei'
+const serviceLinks = ref({
+  tgServiceUrl: defaultServiceUrl,
+  wsServiceUrl: defaultServiceUrl,
 })
 
 const serviceItems = computed(() => [
   {
     key: 'tg',
     title: 'Telegram',
-    desc: serviceLinks.value.tgServiceUrl || defaultServiceLink,
-    url: serviceLinks.value.tgServiceUrl || defaultServiceLink,
+    desc: serviceLinks.value.tgServiceUrl,
+    url: serviceLinks.value.tgServiceUrl,
     icon: 'chat-o',
   },
   {
     key: 'ws',
     title: 'WhatsApp',
-    desc: serviceLinks.value.wsServiceUrl || defaultServiceLink,
-    url: serviceLinks.value.wsServiceUrl || defaultServiceLink,
+    desc: serviceLinks.value.wsServiceUrl,
+    url: serviceLinks.value.wsServiceUrl,
     icon: 'service-o',
   },
 ])
+
+function parseCustomerServiceConfig(value?: string | null) {
+  const [tgUrl, wsUrl] = String(value || '')
+    .split('|')
+    .map(item => item.trim())
+
+  return {
+    tgServiceUrl: tgUrl || defaultServiceUrl,
+    wsServiceUrl: wsUrl || defaultServiceUrl,
+  }
+}
 
 function normalizeExternalUrl(url?: string | null) {
   const value = String(url || '').trim()
@@ -61,25 +68,13 @@ function openExternal(url?: string | null) {
 }
 
 async function loadServiceLinks() {
-  const tenantId = Number(userStore.userInfo?.tenantId || getTokenTenantId() || 0)
-  if (tenantId <= 0) {
-    serviceLinks.value = {
-      tgServiceUrl: defaultServiceLink,
-      wsServiceUrl: defaultServiceLink,
-    }
-    return
-  }
-
   loading.value = true
   try {
-    const res = await getTenantServiceLinks()
-    serviceLinks.value = res.data || {}
+    const { data } = await getAppConfig('cs_url')
+    serviceLinks.value = parseCustomerServiceConfig(data?.configValue)
   }
   catch {
-    serviceLinks.value = {
-      tgServiceUrl: defaultServiceLink,
-      wsServiceUrl: defaultServiceLink,
-    }
+    serviceLinks.value = parseCustomerServiceConfig('')
   }
   finally {
     loading.value = false

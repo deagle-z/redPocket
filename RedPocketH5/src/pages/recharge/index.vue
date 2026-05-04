@@ -178,7 +178,7 @@ function onPickerConfirm({ selectedOptions }: { selectedOptions: Array<{ text: s
   pickerVisible.value = false
 }
 
-const amountOptions = [100, 200, 500, 1000, 5000, 10000, 20000, 50000, 'custom']
+const amountOptions = [20, 30, 50, 100, 200, 500, 1000, 5000, 10000, 'custom']
 const selectedAmount = ref<number | 'custom'>(amountOptions[0] as number)
 const customAmount = ref('')
 const submitLoading = ref(false)

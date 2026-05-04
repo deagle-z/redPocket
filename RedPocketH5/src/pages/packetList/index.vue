@@ -93,6 +93,7 @@ function destroyAudio() {
 
 const modePlayType = computed<LuckyPlayType>(() => currentMode.value === 1 ? 'parity' : 'thunder')
 const pageTitle = computed(() => currentMode.value === 1 ? t('packetListPage.modeParity') : t('packetListPage.modeThunder'))
+const ruleContent = computed(() => currentMode.value === 1 ? t('packetListPage.ruleContentParity') : t('packetListPage.ruleContentThunder'))
 const showPacketEmpty = computed(() => !packetLoading.value && packetList.value.length === 0)
 const showPacketLoading = computed(() => packetLoading.value && packetList.value.length === 0)
 const currentUserBalanceText = computed(() => formatAmount(currentUserBalance.value))
@@ -760,7 +761,7 @@ onBeforeUnmount(() => {
           {{ t('packetListPage.ruleTitle') }}
         </h3>
         <div class="rule-modal__content">
-          {{ t('packetListPage.rulePlaceholder') }}
+          {{ ruleContent }}
         </div>
       </section>
     </van-popup>
@@ -1334,6 +1335,8 @@ onBeforeUnmount(() => {
 .rule-modal__content {
   margin-top: 16px;
   min-height: 140px;
+  max-height: 58vh;
+  overflow-y: auto;
   border: 1px dashed rgba(212, 175, 55, 0.32);
   border-radius: 16px;
   background: rgba(255, 248, 214, 0.06);
@@ -1341,6 +1344,8 @@ onBeforeUnmount(() => {
   color: rgba(255, 229, 186, 0.78);
   font-size: 14px;
   line-height: 1.7;
+  white-space: pre-line;
+  -webkit-overflow-scrolling: touch;
 }
 </style>
 

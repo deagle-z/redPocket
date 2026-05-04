@@ -96,8 +96,8 @@
     "tgLoginFailed": "Telegram login failed",
     "feature": {
       "game": {
-        "title": "Mines Game",
-        "desc": "Smart challenge, win rewards"
+        "title": "Support Center",
+        "desc": "Contact support for help"
       },
       "coin": {
         "title": "Earn Coins",
@@ -279,7 +279,9 @@
     "prizePoolLabel": "Prize Pool",
     "ruleAction": "Rules",
     "ruleTitle": "Game Rules",
-    "rulePlaceholder": "Rule content reserved"
+    "rulePlaceholder": "Rule content reserved",
+    "ruleContentThunder": "Bomb Mode Rules\n- Entry Limit: 10 ~ 3000\n- Participation Requirement: Your account balance must be at least 1.8 times the red envelope amount to join the grab.\n- Bomb Number Setting: The sender can set any single digit from 0 to 9 as the bomb ending number.\n- Reward & Penalty Rules\n  1. Hit the Bomb: If the last digit of the amount you grabbed matches the bomb number, you shall pay 1.8 times the total red envelope amount to the sender.\n  2. Avoid the Bomb: If the last digit does not match, all grabbed coins will be credited directly to your wallet.",
+    "ruleContentParity": "Odd & Even Mode Rules\n- Entry Limit: 10 ~ 3000\n- Participation Requirement: Your account balance must be at least 1.8 times the red envelope amount to participate.\n- Game Selection: Choose odd or even in advance to predict the last digit of the red envelope amount.\n- Win & Lose Rules\n  1. Correct guess: Keep all grabbed coins.\n  2. Wrong guess: Pay 1.8 times the grabbed amount to the sender automatically.\n- Red Envelope Setting: Senders can freely set the total amount. The system will settle all profits and penalties automatically."
   },
   "walletPage": {
     "title": "My Wallet",
@@ -429,7 +431,14 @@
     "toastMinAmount": "Minimum transfer amount is {min}",
     "toastExceedBalance": "Transfer amount cannot exceed commission balance",
     "toastSuccess": "Transfer successful {amount}",
-    "txTitleDefault": "Commission Transfer"
+    "txTitleDefault": "Commission Transfer",
+    "rebateWithdraw": "Commission Withdraw",
+    "rebateWithdrawNoFlow": "Commission withdrawal does not require turnover",
+    "rebateWithdrawTip": "Commission withdrawal does not require turnover. Please verify receiver info carefully.",
+    "transferConfirmTitle": "Confirm Transfer",
+    "transferConfirmMessage": "After commission is transferred into wallet balance, normal withdrawal turnover requirements must be met before it can be withdrawn.",
+    "transferConfirmOk": "Confirm",
+    "transferConfirmCancel": "Cancel"
   },
   "teamPage": {
     "title": "My Team",

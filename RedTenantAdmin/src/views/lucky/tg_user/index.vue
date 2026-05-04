@@ -9,6 +9,7 @@ import {
   getTgUserList,
   getTgUserSubStatsSummary,
   setTgUserRebateRate,
+  setTgUserRemark,
   type TgUser
 } from "@/api/tgUser";
 
@@ -55,6 +56,15 @@ const rebateRateForm = reactive({
   firstName: "",
   rebateRate: 0
 });
+const remarkDialogVisible = ref(false);
+const remarkSaving = ref(false);
+const remarkForm = reactive({
+  id: 0,
+  tgId: 0,
+  username: "",
+  firstName: "",
+  remark: ""
+});
 const subStatsPagination = reactive({
   currentPage: 1,
   pageSize: 10,
@@ -77,6 +87,39 @@ function openRebateRateDialog(row: TgUser) {
   rebateRateForm.firstName = row.firstName || "";
   rebateRateForm.rebateRate = Number(row.rebateRate ?? 0);
   rebateRateDialogVisible.value = true;
+}
+
+function openRemarkDialog(row: TgUser) {
+  remarkForm.id = row.id;
+  remarkForm.tgId = row.tgId;
+  remarkForm.username = row.username || "";
+  remarkForm.firstName = row.firstName || "";
+  remarkForm.remark = row.remark || "";
+  remarkDialogVisible.value = true;
+}
+
+async function submitRemark() {
+  if (!remarkForm.id) return;
+  const remark = String(remarkForm.remark || "").trim();
+  if ([...remark].length > 255) {
+    message("备注不能超过 255 个字符", { type: "warning" });
+    return;
+  }
+  remarkSaving.value = true;
+  try {
+    await setTgUserRemark({
+      id: remarkForm.id,
+      remark
+    });
+    message("备注修改成功", { type: "success" });
+    remarkDialogVisible.value = false;
+    onSearch();
+  } catch (error) {
+    console.error("修改备注失败", error);
+    message("修改备注失败", { type: "error" });
+  } finally {
+    remarkSaving.value = false;
+  }
 }
 
 async function submitRebateRate() {
@@ -106,9 +149,10 @@ async function submitRebateRate() {
 function buildQueryPayload() {
   const payload: Record<string, any> = {};
   payload.isBot = false;
+  if (form.uid) payload.uid = form.uid;
   if (form.username) payload.username = form.username;
   if (form.firstName) payload.firstName = form.firstName;
-  if (form.parentId !== undefined) payload.parentId = form.parentId;
+  if (form.parentUid) payload.parentUid = form.parentUid;
   if (form.inviteCode) payload.inviteCode = form.inviteCode;
   if (form.status !== undefined) payload.status = form.status;
   if (currentDialogTgId.value !== undefined) payload.tgId = currentDialogTgId.value;
@@ -179,10 +223,10 @@ function handleSubStatsCurrentChange(page: number) {
         :model="form"
         class="search-form bg-bg_color w-[99/100] pl-8 pt-[12px] overflow-auto"
       >
-        <el-form-item label="用户ID：" prop="tgId">
+        <el-form-item label="用户UID：" prop="uid">
           <el-input
-            v-model.number="form.tgId"
-            placeholder="请输入用户ID"
+            v-model="form.uid"
+            placeholder="请输入用户UID"
             clearable
             class="!w-[180px]"
           />
@@ -203,10 +247,10 @@ function handleSubStatsCurrentChange(page: number) {
             class="!w-[180px]"
           />
         </el-form-item>
-        <el-form-item label="上级ID：" prop="parentId">
+        <el-form-item label="上级UID：" prop="parentUid">
           <el-input
-            v-model.number="form.parentId"
-            placeholder="邀请人ID"
+            v-model="form.parentUid"
+            placeholder="邀请人UID"
             clearable
             class="!w-[180px]"
           />
@@ -290,6 +334,15 @@ function handleSubStatsCurrentChange(page: number) {
                 link
                 type="primary"
                 :size="size"
+                @click="openRemarkDialog(row)"
+              >
+                修改备注
+              </el-button>
+              <el-button
+                class="reset-margin"
+                link
+                type="primary"
+                :size="size"
                 @click="openSubStatsDialog(row)"
               >
                 下级统计
@@ -358,6 +411,7 @@ function handleSubStatsCurrentChange(page: number) {
       <el-table :data="subStatsList" border stripe v-loading="subStatsLoading">
         <el-table-column prop="id" label="ID" width="80" />
         <el-table-column prop="tgId" label="用户ID" min-width="140" />
+        <el-table-column prop="uid" label="用户UID" min-width="120" />
         <el-table-column prop="username" label="用户名" min-width="120" />
         <el-table-column prop="firstName" label="昵称" min-width="120" />
         <el-table-column prop="subRechargeAmount" label="下级充值" min-width="120">
@@ -425,6 +479,38 @@ function handleSubStatsCurrentChange(page: number) {
           :loading="rebateRateSaving"
           @click="submitRebateRate"
         >
+          保存
+        </el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog
+      v-model="remarkDialogVisible"
+      title="修改备注"
+      width="460px"
+      destroy-on-close
+    >
+      <el-form :model="remarkForm" label-width="96px">
+        <el-form-item label="用户">
+          <span>{{ formatName(remarkForm) }}</span>
+        </el-form-item>
+        <el-form-item label="用户ID">
+          <span>{{ remarkForm.tgId || "-" }}</span>
+        </el-form-item>
+        <el-form-item label="备注">
+          <el-input
+            v-model="remarkForm.remark"
+            type="textarea"
+            :rows="4"
+            maxlength="255"
+            show-word-limit
+            placeholder="请输入备注"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="remarkDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="remarkSaving" @click="submitRemark">
           保存
         </el-button>
       </template>

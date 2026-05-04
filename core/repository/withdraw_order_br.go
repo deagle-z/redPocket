@@ -3,12 +3,16 @@ package repository
 import (
 	"BaseGoUni/core/pojo"
 	"BaseGoUni/core/utils"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/jinzhu/copier"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
+	"strings"
 )
+
+const withdrawOrderSourceRebate = "rebate"
 
 // GetWithdrawOrderBrs 巴西提现订单列表（分页）
 func GetWithdrawOrderBrs(db *gorm.DB, search pojo.WithdrawOrderBrSearch) (result pojo.WithdrawOrderBrResp) {
@@ -20,6 +24,15 @@ func GetWithdrawOrderBrs(db *gorm.DB, search pojo.WithdrawOrderBrSearch) (result
 	}
 	if search.UserId > 0 {
 		query = query.Where("user_id = ?", search.UserId)
+	}
+	if userUid := strings.TrimSpace(search.UserUid); userUid != "" {
+		userQuery := db.Model(&pojo.TgUser{}).
+			Select("id").
+			Where("uid = ?", userUid)
+		if search.TenantId > 0 {
+			userQuery = userQuery.Where("tenant_id = ?", search.TenantId)
+		}
+		query = query.Where("user_id IN (?)", userQuery)
 	}
 	if search.Status != nil {
 		query = query.Where("status = ?", *search.Status)
@@ -55,10 +68,43 @@ func GetWithdrawOrderBrs(db *gorm.DB, search pojo.WithdrawOrderBrSearch) (result
 		_ = copier.Copy(&temp, &order)
 		result.List = append(result.List, temp)
 	}
+	fillWithdrawOrderBrUserUIDs(db, result.List)
 
 	result.PageSize = search.PageSize
 	result.CurrentPage = search.CurrentPage
 	return result
+}
+
+func fillWithdrawOrderBrUserUIDs(db *gorm.DB, orders []pojo.WithdrawOrderBrBack) {
+	userIDs := make([]int64, 0, len(orders))
+	seen := make(map[int64]struct{}, len(orders))
+	for _, order := range orders {
+		if order.UserId <= 0 {
+			continue
+		}
+		if _, ok := seen[order.UserId]; ok {
+			continue
+		}
+		seen[order.UserId] = struct{}{}
+		userIDs = append(userIDs, order.UserId)
+	}
+	if len(userIDs) == 0 {
+		return
+	}
+
+	var users []pojo.TgUser
+	_ = db.Model(&pojo.TgUser{}).
+		Select("id, uid").
+		Where("id IN ?", userIDs).
+		Find(&users).Error
+
+	uidMap := make(map[int64]string, len(users))
+	for _, user := range users {
+		uidMap[user.ID] = user.Uid
+	}
+	for i := range orders {
+		orders[i].UserUid = uidMap[orders[i].UserId]
+	}
 }
 
 // SetWithdrawOrderBr 创建或更新巴西提现订单
@@ -79,7 +125,11 @@ func SetWithdrawOrderBr(db *gorm.DB, req pojo.WithdrawOrderBrSet) (result pojo.W
 				return err
 			}
 			oldStatus := dbOrder.Status
+			oldExtra := dbOrder.Extra
 			_ = copier.Copy(&dbOrder, &req)
+			if req.Extra == nil {
+				dbOrder.Extra = oldExtra
+			}
 			if err := tx.Save(&dbOrder).Error; err != nil {
 				return err
 			}
@@ -104,6 +154,41 @@ func SetWithdrawOrderBr(db *gorm.DB, req pojo.WithdrawOrderBrSet) (result pojo.W
 		}
 		if needWithdrawDeductOnCreate(dbOrder.Status) {
 			if err := deductWithdrawAmount(tx, &dbOrder); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return result, err
+	}
+	_ = copier.Copy(&result, &dbOrder)
+	return result, nil
+}
+
+// SetRebateWithdrawOrder 创建佣金提现订单，不占用普通提现流水。
+func SetRebateWithdrawOrder(db *gorm.DB, req pojo.WithdrawOrderBrSet) (result pojo.WithdrawOrderBrBack, err error) {
+	if req.Amount > 0 {
+		req.Amount = utils.Truncate2(req.Amount)
+	}
+	if req.Fee > 0 {
+		req.Fee = utils.Truncate2(req.Fee)
+	}
+	var dbOrder pojo.WithdrawOrderBr
+	err = db.Transaction(func(tx *gorm.DB) error {
+		_ = copier.Copy(&dbOrder, &req)
+		if dbOrder.SourceChannelID == nil && dbOrder.UserId > 0 {
+			sourceChannelID, _, sourceErr := LoadUserSourceChannelSnapshot(tx, dbOrder.UserId)
+			if sourceErr != nil {
+				return sourceErr
+			}
+			dbOrder.SourceChannelID = sourceChannelID
+		}
+		if err := tx.Create(&dbOrder).Error; err != nil {
+			return err
+		}
+		if needWithdrawDeductOnCreate(dbOrder.Status) {
+			if err := deductRebateWithdrawAmount(tx, &dbOrder); err != nil {
 				return err
 			}
 		}
@@ -157,6 +242,9 @@ func deductWithdrawAmount(tx *gorm.DB, order *pojo.WithdrawOrderBr) error {
 	if order == nil || order.UserId <= 0 || order.Amount <= 0 {
 		return nil
 	}
+	if isRebateWithdrawOrder(*order) {
+		return deductRebateWithdrawAmount(tx, order)
+	}
 	var user pojo.TgUser
 	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ?", order.UserId).First(&user).Error; err != nil {
 		return err
@@ -191,6 +279,45 @@ func deductWithdrawAmount(tx *gorm.DB, order *pojo.WithdrawOrderBr) error {
 	return tx.Create(&cashHistory).Error
 }
 
+func deductRebateWithdrawAmount(tx *gorm.DB, order *pojo.WithdrawOrderBr) error {
+	if order == nil || order.UserId <= 0 || order.Amount <= 0 {
+		return nil
+	}
+	var user pojo.TgUser
+	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ?", order.UserId).First(&user).Error; err != nil {
+		return err
+	}
+	if user.ID == 0 {
+		return errors.New("user_not_found")
+	}
+	if user.Status != 1 {
+		return errors.New("user_disabled_contact_admin")
+	}
+	if user.RebateAmount < order.Amount {
+		return errors.New("rebate_amount_insufficient")
+	}
+	newRebateAmount := utils.Truncate2(user.RebateAmount - order.Amount)
+	if err := tx.Model(&pojo.TgUser{}).
+		Where("id = ?", user.ID).
+		Update("rebate_amount", gorm.Expr("rebate_amount - ?", order.Amount)).Error; err != nil {
+		return err
+	}
+	cashHistory := pojo.CashHistory{
+		UserId:          user.ID,
+		AwardUni:        fmt.Sprintf("rebate_withdraw_apply_%s", order.OrderNo),
+		Amount:          -order.Amount,
+		StartAmount:     user.RebateAmount,
+		EndAmount:       newRebateAmount,
+		CashMark:        "佣金提现申请",
+		CashDesc:        fmt.Sprintf("佣金提现申请%s，冻结/扣减%.2f", order.OrderNo, order.Amount),
+		Type:            pojo.CashHistoryTypeWithdrawApply,
+		IsGift:          0,
+		FromUserId:      0,
+		SourceChannelID: order.SourceChannelID,
+	}
+	return tx.Create(&cashHistory).Error
+}
+
 func refundWithdrawAmount(tx *gorm.DB, order pojo.WithdrawOrderBr) error {
 	if order.UserId <= 0 || order.Amount <= 0 {
 		return nil
@@ -201,6 +328,27 @@ func refundWithdrawAmount(tx *gorm.DB, order pojo.WithdrawOrderBr) error {
 	}
 	if user.ID == 0 {
 		return errors.New("user_not_found")
+	}
+	if isRebateWithdrawOrder(order) {
+		if err := tx.Model(&pojo.TgUser{}).
+			Where("id = ?", user.ID).
+			Update("rebate_amount", gorm.Expr("rebate_amount + ?", order.Amount)).Error; err != nil {
+			return err
+		}
+		cashHistory := pojo.CashHistory{
+			UserId:          user.ID,
+			AwardUni:        fmt.Sprintf("rebate_withdraw_refund_%s", order.OrderNo),
+			Amount:          order.Amount,
+			StartAmount:     user.RebateAmount,
+			EndAmount:       utils.Truncate2(user.RebateAmount + order.Amount),
+			CashMark:        "佣金提现退回",
+			CashDesc:        fmt.Sprintf("佣金提现订单%s失败/取消/退回，返还%.2f", order.OrderNo, order.Amount),
+			Type:            pojo.CashHistoryTypeWithdrawRefund,
+			IsGift:          0,
+			FromUserId:      0,
+			SourceChannelID: order.SourceChannelID,
+		}
+		return tx.Create(&cashHistory).Error
 	}
 	if err := RefundWithdrawLimitForOrder(tx, user, order); err != nil {
 		return err
@@ -224,4 +372,20 @@ func refundWithdrawAmount(tx *gorm.DB, order pojo.WithdrawOrderBr) error {
 		SourceChannelID: order.SourceChannelID,
 	}
 	return tx.Create(&cashHistory).Error
+}
+
+func isRebateWithdrawOrder(order pojo.WithdrawOrderBr) bool {
+	if order.Extra == nil || strings.TrimSpace(*order.Extra) == "" {
+		return false
+	}
+	var extra map[string]any
+	if err := json.Unmarshal([]byte(*order.Extra), &extra); err != nil {
+		return false
+	}
+	for _, key := range []string{"source", "balanceSource", "withdrawSource"} {
+		if strings.EqualFold(strings.TrimSpace(fmt.Sprint(extra[key])), withdrawOrderSourceRebate) {
+			return true
+		}
+	}
+	return false
 }

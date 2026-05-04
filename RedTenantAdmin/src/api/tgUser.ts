@@ -9,6 +9,7 @@ export type TgUser = {
   avatar?: string | null;
   isBot?: boolean;
   tgId: number;
+  uid?: string;
   balance: number;
   giftAmount: number;
   giftTotal: number;
@@ -20,18 +21,22 @@ export type TgUser = {
   rebateRate: number;
   status: number;
   parentId?: number | null;
+  parentUid?: string | null;
   inviteCode?: string | null;
+  remark?: string | null;
 };
 
 export type TgUserSearch = {
   currentPage: number;
   pageSize: number;
   tgId?: number;
+  uid?: string;
   username?: string;
   firstName?: string;
   isBot?: boolean;
   status?: number;
   parentId?: number;
+  parentUid?: string;
   inviteCode?: string;
 };
 
@@ -45,13 +50,20 @@ export type TgUserRebateRateSet = {
   rebateRate: number;
 };
 
+export type TgUserRemarkSet = {
+  id: number;
+  remark: string;
+};
+
 export type TgUserSubStatsSummarySearch = {
   tgId?: number;
+  uid?: string;
   username?: string;
   firstName?: string;
   isBot?: boolean;
   status?: number;
   parentId?: number;
+  parentUid?: string;
   inviteCode?: string;
 };
 
@@ -122,6 +134,12 @@ export const setTgUserStatus = (data: TgUserStatusSet) => {
 
 export const setTgUserRebateRate = (data: TgUserRebateRateSet) => {
   return http.request<TgUserResult>("post", "/api/v1/tenant/tgUser/rebateRate", {
+    data
+  });
+};
+
+export const setTgUserRemark = (data: TgUserRemarkSet) => {
+  return http.request<TgUserResult>("post", "/api/v1/tenant/tgUser/remark", {
     data
   });
 };

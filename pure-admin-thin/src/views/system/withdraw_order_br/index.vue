@@ -42,10 +42,10 @@ const {
         :model="form"
         class="search-form bg-bg_color w-[99/100] pl-8 pt-[12px] overflow-auto"
       >
-        <el-form-item label="用户ID：" prop="userId">
+        <el-form-item label="用户UID：" prop="userUid">
           <el-input
-            v-model.number="form.userId"
-            placeholder="请输入用户ID（可选）"
+            v-model="form.userUid"
+            placeholder="请输入用户UID（可选）"
             clearable
             class="!w-[180px]"
           />

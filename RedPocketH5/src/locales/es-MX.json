@@ -96,8 +96,8 @@
     "tgLoginFailed": "Error al iniciar sesión en Telegram",
     "feature": {
       "game": {
-        "title": "Juego de minas",
-        "desc": "Desafío inteligente, gana recompensas"
+        "title": "Centro de soporte",
+        "desc": "Contacta soporte para ayuda"
       },
       "coin": {
         "title": "ganar monedas",
@@ -279,7 +279,9 @@
     "prizePoolLabel": "Bolsa de premios",
     "ruleAction": "Reglas",
     "ruleTitle": "Reglas del juego",
-    "rulePlaceholder": "Contenido de reglas reservado"
+    "rulePlaceholder": "Contenido de reglas reservado",
+    "ruleContentThunder": "Reglas del Modo Bomba\n- Límite de participación: 10 ~ 3000\n- Requisito: El saldo de tu cuenta debe ser al menos 1.8 veces el monto del sobre.\n- Configuración de bomba: El remitente elige un número del 0 al 9 como dígito final de bomba.\n- Reglas de premio y sanción\n  1. Golpear la bomba: Si coincide el último dígito, pagarás 1.8 veces el monto total al remitente.\n  2. Evitar la bomba: Todo el monto ganado se acredita directamente en tu billetera.",
+    "ruleContentParity": "Reglas del Modo Impar y Par\n- Límite de participación: 10 ~ 3000\n- Requisito: El saldo debe ser mínimo 1.8 veces el valor del sobre.\n- Selección: Elige impar o par antes de participar.\n- Reglas de victoria y derrota\n  1. Acierto: Conserva todas las monedas obtenidas.\n  2. Error: Pagarás 1.8 veces el monto al remitente de forma automática.\n- Configuración: El remitente establece el monto total, el sistema realiza el pago automático."
   },
   "walletPage": {
     "title": "Mi billetera",
@@ -429,7 +431,14 @@
     "toastMinAmount": "El monto mínimo de transferencia es {min}",
     "toastExceedBalance": "El monto de la transferencia no puede exceder el saldo de la comisión",
     "toastSuccess": "Transferencia exitosa {amount}",
-    "txTitleDefault": "Transferencia de comisión"
+    "txTitleDefault": "Transferencia de comisión",
+    "rebateWithdraw": "Retiro de comisión",
+    "rebateWithdrawNoFlow": "El retiro de comisión no requiere volumen de apuesta",
+    "rebateWithdrawTip": "El retiro de comisión no requiere volumen de apuesta. Verifica cuidadosamente los datos de cobro.",
+    "transferConfirmTitle": "Confirmar transferencia",
+    "transferConfirmMessage": "Después de transferir la comisión al saldo de la billetera, deberá cumplir los requisitos normales de volumen para poder retirarla.",
+    "transferConfirmOk": "Confirmar",
+    "transferConfirmCancel": "Cancelar"
   },
   "teamPage": {
     "title": "mi equipo",

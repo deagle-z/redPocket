@@ -96,8 +96,8 @@
     "tgLoginFailed": "Falha no login com Telegram",
     "feature": {
       "game": {
-        "title": "Jogo de Minas",
-        "desc": "Desafio inteligente, ganhe recompensas"
+        "title": "Central de suporte",
+        "desc": "Contate o suporte para ajuda"
       },
       "coin": {
         "title": "Ganhe moedas",
@@ -279,7 +279,9 @@
     "prizePoolLabel": "Conjunto de prêmios",
     "ruleAction": "Regras",
     "ruleTitle": "Regras do jogo",
-    "rulePlaceholder": "Conteúdo das regras reservado"
+    "rulePlaceholder": "Conteúdo das regras reservado",
+    "ruleContentThunder": "Regras do Modo Bomba\n- Valor de participação: 10 a 3000\n- Requisito: O saldo da conta deve ser no mínimo 1,8x o valor do pacote para participar.\n- Configuração da bomba: O remetente escolhe um número de 0 a 9 como dígito final da bomba.\n- Regras de premiação e penalidade\n  1. Pegar a bomba: Se o último dígito do valor corresponder ao número da bomba, pague 1,8x o valor total ao remetente.\n  2. Não pegar a bomba: Fique com todo o valor recebido, creditado diretamente na carteira.",
+    "ruleContentParity": "Regras do Modo Ímpar e Par\n- Valor de participação: 10 a 3000\n- Requisito: O saldo da conta deve ser no mínimo 1,8x o valor do pacote.\n- Escolha do jogo: Selecione ímpar ou par antes de pegar o pacote.\n- Regras de resultado\n  1. Acerto: Fique com todas as moedas ganhas.\n  2. Erro: Pague 1,8x o valor recebido ao remetente.\n- Configuração: O remetente define o valor total, o sistema calcula ganhos e penalidades automaticamente."
   },
   "walletPage": {
     "title": "Minha carteira",
@@ -429,7 +431,14 @@
     "toastMinAmount": "O valor mínimo de transferência é {min}",
     "toastExceedBalance": "O valor da transferência não pode exceder o saldo da comissão",
     "toastSuccess": "Transferência realizada com sucesso {amount}",
-    "txTitleDefault": "Transferência de Comissão"
+    "txTitleDefault": "Transferência de Comissão",
+    "rebateWithdraw": "Saque de comissão",
+    "rebateWithdrawNoFlow": "O saque de comissão não exige rollover",
+    "rebateWithdrawTip": "O saque de comissão não exige rollover. Confira cuidadosamente os dados de recebimento.",
+    "transferConfirmTitle": "Confirmar transferência",
+    "transferConfirmMessage": "Após transferir a comissão para o saldo da carteira, será necessário cumprir os requisitos normais de rollover para sacar.",
+    "transferConfirmOk": "Confirmar",
+    "transferConfirmCancel": "Cancelar"
   },
   "teamPage": {
     "title": "Minha equipe",

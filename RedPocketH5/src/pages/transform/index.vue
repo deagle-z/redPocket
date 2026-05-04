@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
-import { showToast } from 'vant'
+import { showConfirmDialog, showToast } from 'vant'
 import { useRouter } from 'vue-router'
 import { getAppCashHistoryList, getCurrentTgUserInfo, transferRebateToBalance } from '@/api/user'
 import AppPageHeader from '@/components/AppPageHeader.vue'
@@ -105,6 +105,10 @@ function goHistory() {
   router.push('/history')
 }
 
+function goRebateWithdraw() {
+  router.push('/rebateWithdraw')
+}
+
 async function handleConfirm() {
   if (confirming.value)
     return
@@ -119,6 +123,17 @@ async function handleConfirm() {
   }
   if (amount > wallet.commission) {
     showToast(t('transformPage.toastExceedBalance'))
+    return
+  }
+  try {
+    await showConfirmDialog({
+      title: t('transformPage.transferConfirmTitle'),
+      message: t('transformPage.transferConfirmMessage'),
+      confirmButtonText: t('transformPage.transferConfirmOk'),
+      cancelButtonText: t('transformPage.transferConfirmCancel'),
+    })
+  }
+  catch {
     return
   }
   confirming.value = true
@@ -209,6 +224,9 @@ onMounted(() => {
     <section class="confirm-wrap">
       <button type="button" class="confirm-btn" :disabled="confirming" @click="handleConfirm">
         {{ t('transformPage.confirmTransfer') }}
+      </button>
+      <button type="button" class="withdraw-btn" @click="goRebateWithdraw">
+        {{ t('transformPage.rebateWithdraw') }}
       </button>
     </section>
 
@@ -463,6 +481,18 @@ onMounted(() => {
 
 .confirm-btn:disabled {
   opacity: 0.7;
+}
+
+.withdraw-btn {
+  width: 100%;
+  height: 44px;
+  margin-top: 10px;
+  border: 1px solid rgba(212, 175, 55, 0.38);
+  border-radius: 22px;
+  color: #ffd98b;
+  font-size: 13px;
+  font-weight: 800;
+  background: rgba(255, 248, 214, 0.06);
 }
 
 .recent-wrap {

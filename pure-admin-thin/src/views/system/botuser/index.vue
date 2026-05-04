@@ -311,14 +311,6 @@ async function submitBatchUpdate() {
         :model="form"
         class="search-form bg-bg_color w-[99/100] pl-8 pt-[12px] overflow-auto"
       >
-        <el-form-item label="TG用户ID：" prop="tgId">
-          <el-input
-            v-model.number="form.tgId"
-            placeholder="请输入TG用户ID"
-            clearable
-            class="!w-[180px]"
-          />
-        </el-form-item>
         <el-form-item label="用户名：" prop="username">
           <el-input
             v-model="form.username"

@@ -6,7 +6,6 @@ import type { RechargeSuccessNotification } from '@/api/user'
 import { ackRechargeNotification, getPendingRechargeNotifications } from '@/api/user'
 import wsClient, { connectWebSocket } from '@/plugins/websocket'
 import { trackFirstRechargePurchase } from '@/utils/facebook-pixel'
-import { showToast } from 'vant'
 import AppTopHeader from '@/components/AppTopHeader.vue'
 import TabBar from '@/components/TabBar.vue'
 import AppConfirmDialog from '@/components/AppConfirmDialog.vue'
@@ -19,6 +18,11 @@ const routeCacheStore = useRouteCacheStore()
 const accessToken = useLocalStorage<string | null>(STORAGE_TOKEN_KEY, '')
 const wsInitialized = ref(false)
 const syncingRechargeNotify = ref(false)
+const rechargeSuccessNotice = reactive({
+  show: false,
+  message: '',
+})
+let rechargeSuccessNoticeTimer: ReturnType<typeof setTimeout> | null = null
 
 const keepAliveRouteNames = computed(() => {
   return routeCacheStore.routeCaches
@@ -63,11 +67,24 @@ async function ackRechargeSuccess(orderNo: string, showSuccessToast = true) {
   try {
     await ackRechargeNotification(normalizedOrderNo)
     if (showSuccessToast)
-      showToast(t('rechargePage.orderRechargeSuccess', { orderNo: normalizedOrderNo }))
+      showRechargeSuccessNotice(normalizedOrderNo)
   }
   catch (error) {
     console.warn('[recharge ws] ack failed:', normalizedOrderNo, error)
   }
+}
+
+function showRechargeSuccessNotice(orderNo: string) {
+  const normalizedOrderNo = String(orderNo || '').trim()
+  if (!normalizedOrderNo)
+    return
+  rechargeSuccessNotice.message = t('rechargePage.orderRechargeSuccess', { orderNo: normalizedOrderNo })
+  rechargeSuccessNotice.show = true
+  if (rechargeSuccessNoticeTimer)
+    clearTimeout(rechargeSuccessNoticeTimer)
+  rechargeSuccessNoticeTimer = setTimeout(() => {
+    rechargeSuccessNotice.show = false
+  }, 2500)
 }
 
 function trackRechargeSuccessPixel(item: RechargeSuccessNotification) {
@@ -83,7 +100,8 @@ function trackRechargeSuccessPixel(item: RechargeSuccessNotification) {
 function handleRechargeSuccessMessage(message: any) {
   const data = message?.data || message || {}
   trackRechargeSuccessPixel(data)
-  void ackRechargeSuccess(data.orderNo)
+  showRechargeSuccessNotice(data.orderNo)
+  void ackRechargeSuccess(data.orderNo, false)
 }
 
 async function syncPendingRechargeNotifications() {
@@ -126,6 +144,11 @@ watch(accessToken, (token, oldToken) => {
   if (!hasToken && hadToken)
     closeWebSocket()
 })
+
+onUnmounted(() => {
+  if (rechargeSuccessNoticeTimer)
+    clearTimeout(rechargeSuccessNoticeTimer)
+})
 </script>
 
 <template>
@@ -152,6 +175,15 @@ watch(accessToken, (token, oldToken) => {
   >
     {{ t('pwaInstall.message') }}
   </AppConfirmDialog>
+
+  <transition name="recharge-success-notice">
+    <div v-if="rechargeSuccessNotice.show" class="recharge-success-notice" role="status">
+      <span class="notice-icon" aria-hidden="true">
+        <van-icon name="success" />
+      </span>
+      <span class="notice-text">{{ rechargeSuccessNotice.message }}</span>
+    </div>
+  </transition>
 </template>
 
 <style scoped>
@@ -171,5 +203,60 @@ watch(accessToken, (token, oldToken) => {
       rgba(212, 175, 55, 0.04) 20px
     );
   background-blend-mode: normal;
+}
+
+.recharge-success-notice {
+  position: fixed;
+  top: calc(12px + env(safe-area-inset-top));
+  left: 12px;
+  z-index: 5000;
+  max-width: min(330px, calc(100vw - 24px));
+  min-height: 42px;
+  padding: 9px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 248, 214, 0.42);
+  background: linear-gradient(135deg, rgba(47, 120, 66, 0.96), rgba(23, 92, 48, 0.96));
+  color: #fff8dc;
+  box-shadow:
+    0 12px 26px rgba(0, 0, 0, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14);
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  pointer-events: none;
+}
+
+.notice-icon {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(255, 248, 214, 0.18);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff8dc;
+  font-size: 15px;
+}
+
+.notice-text {
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+.recharge-success-notice-enter-active,
+.recharge-success-notice-leave-active {
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease;
+}
+
+.recharge-success-notice-enter-from,
+.recharge-success-notice-leave-to {
+  opacity: 0;
+  transform: translate(-8px, -8px);
 }
 </style>

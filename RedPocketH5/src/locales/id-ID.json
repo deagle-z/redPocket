@@ -96,8 +96,8 @@
     "tgLoginFailed": "Gagal masuk Telegram",
     "feature": {
       "game": {
-        "title": "Permainan Tambang",
-        "desc": "Tantangan cerdas, menangkan hadiah"
+        "title": "Pusat Bantuan",
+        "desc": "Hubungi dukungan untuk bantuan"
       },
       "coin": {
         "title": "Hasilkan Koin",
@@ -279,7 +279,9 @@
     "prizePoolLabel": "Kumpulan Hadiah",
     "ruleAction": "Aturan",
     "ruleTitle": "Aturan permainan",
-    "rulePlaceholder": "Konten aturan disiapkan"
+    "rulePlaceholder": "Konten aturan disiapkan",
+    "ruleContentThunder": "Aturan Mode Bom\n- Batas partisipasi: 10 ~ 3000\n- Syarat: Saldo akun minimal 1,8 kali nilai amplop untuk bisa ikut.\n- Pengaturan nomor bom: Pengirim dapat mengatur angka 0 hingga 9 sebagai angka akhir bom.\n- Aturan hadiah & denda\n  1. Terkena bom: Jika angka akhir sama dengan nomor bom, bayar 1,8 kali total nilai amplop.\n  2. Tidak terkena bom: Semua koin yang didapat langsung masuk ke dompet.",
+    "ruleContentParity": "Aturan Mode Ganjil Genap\n- Batas partisipasi: 10 ~ 3000\n- Syarat: Saldo akun harus 1,8 kali nilai amplop.\n- Pilihan permainan: Pilih ganjil atau genap sebelum mengambil amplop.\n- Aturan menang kalah\n  1. Tebakan benar: Simpan semua koin yang didapat.\n  2. Tebakan salah: Bayar 1,8 kali nilai koin kepada pengirim.\n- Pengaturan amplop: Pengirim bebas atur total nilai, sistem akan menghitung otomatis."
   },
   "walletPage": {
     "title": "Dompet saya",
@@ -429,7 +431,14 @@
     "toastMinAmount": "Jumlah transfer minimum adalah {min}",
     "toastExceedBalance": "Jumlah transfer tidak boleh melebihi saldo komisi",
     "toastSuccess": "Transfer berhasil {amount}",
-    "txTitleDefault": "Transfer Komisi"
+    "txTitleDefault": "Transfer Komisi",
+    "rebateWithdraw": "Tarik Komisi",
+    "rebateWithdrawNoFlow": "Penarikan komisi tidak memerlukan turnover",
+    "rebateWithdrawTip": "Penarikan komisi tidak memerlukan turnover. Periksa kembali informasi penerima.",
+    "transferConfirmTitle": "Konfirmasi Transfer",
+    "transferConfirmMessage": "Setelah komisi ditransfer ke saldo dompet, penarikan harus memenuhi persyaratan turnover normal.",
+    "transferConfirmOk": "Konfirmasi",
+    "transferConfirmCancel": "Batal"
   },
   "teamPage": {
     "title": "Tim saya",

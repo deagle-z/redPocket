@@ -142,6 +142,13 @@ declare module 'vue-router/auto-routes' {
       Record<never, never>,
       | never
     >,
+    'RebateWithdraw': RouteRecordInfo<
+      'RebateWithdraw',
+      '/rebateWithdraw',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
     'Recharge': RouteRecordInfo<
       'Recharge',
       '/recharge',
@@ -187,6 +194,13 @@ declare module 'vue-router/auto-routes' {
     'Transform': RouteRecordInfo<
       'Transform',
       '/transform',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
+    'VipActivity': RouteRecordInfo<
+      'VipActivity',
+      '/vipActivity',
       Record<never, never>,
       Record<never, never>,
       | never
@@ -327,6 +341,12 @@ declare module 'vue-router/auto-routes' {
       views:
         | never
     }
+    'src/pages/rebateWithdraw/index.vue': {
+      routes:
+        | 'RebateWithdraw'
+      views:
+        | never
+    }
     'src/pages/recharge/index.vue': {
       routes:
         | 'Recharge'
@@ -366,6 +386,12 @@ declare module 'vue-router/auto-routes' {
     'src/pages/transform/index.vue': {
       routes:
         | 'Transform'
+      views:
+        | never
+    }
+    'src/pages/vipActivity/index.vue': {
+      routes:
+        | 'VipActivity'
       views:
         | never
     }

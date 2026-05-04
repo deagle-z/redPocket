@@ -67,11 +67,6 @@ export function useBotUser(tableRef: Ref) {
       minWidth: 80
     },
     {
-      label: "TG用户ID",
-      prop: "tgId",
-      minWidth: 160
-    },
-    {
       label: "头像",
       prop: "avatar",
       width: 90,

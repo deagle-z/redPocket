@@ -57,6 +57,15 @@ func GetRechargeOrders(db *gorm.DB, search pojo.RechargeOrderSearch) (result poj
 	if search.UserId > 0 {
 		query = query.Where("user_id = ?", search.UserId)
 	}
+	if userUid := strings.TrimSpace(search.UserUid); userUid != "" {
+		userQuery := db.Model(&pojo.TgUser{}).
+			Select("id").
+			Where("uid = ?", userUid)
+		if search.TenantId > 0 {
+			userQuery = userQuery.Where("tenant_id = ?", search.TenantId)
+		}
+		query = query.Where("user_id IN (?)", userQuery)
+	}
 	if search.Status != nil {
 		query = query.Where("status = ?", *search.Status)
 	}
@@ -85,10 +94,43 @@ func GetRechargeOrders(db *gorm.DB, search pojo.RechargeOrderSearch) (result poj
 		_ = copier.Copy(&temp, &order)
 		result.List = append(result.List, temp)
 	}
+	fillRechargeOrderUserUIDs(db, result.List)
 
 	result.PageSize = search.PageSize
 	result.CurrentPage = search.CurrentPage
 	return result
+}
+
+func fillRechargeOrderUserUIDs(db *gorm.DB, orders []pojo.RechargeOrderBack) {
+	userIDs := make([]int64, 0, len(orders))
+	seen := make(map[int64]struct{}, len(orders))
+	for _, order := range orders {
+		if order.UserId <= 0 {
+			continue
+		}
+		if _, ok := seen[order.UserId]; ok {
+			continue
+		}
+		seen[order.UserId] = struct{}{}
+		userIDs = append(userIDs, order.UserId)
+	}
+	if len(userIDs) == 0 {
+		return
+	}
+
+	var users []pojo.TgUser
+	_ = db.Model(&pojo.TgUser{}).
+		Select("id, uid").
+		Where("id IN ?", userIDs).
+		Find(&users).Error
+
+	uidMap := make(map[int64]string, len(users))
+	for _, user := range users {
+		uidMap[user.ID] = user.Uid
+	}
+	for i := range orders {
+		orders[i].UserUid = uidMap[orders[i].UserId]
+	}
 }
 
 // SetRechargeOrder 创建或更新充值订单

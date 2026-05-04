@@ -39,10 +39,10 @@ function formatPercent(val?: number | null) {
 
 export function useTgUser(tableRef: Ref) {
   const form = reactive({
-    tgId: undefined as number | undefined,
+    uid: "",
     username: "",
     firstName: "",
-    parentId: undefined as number | undefined,
+    parentUid: "",
     inviteCode: "",
     status: undefined as number | undefined
   });
@@ -62,9 +62,10 @@ export function useTgUser(tableRef: Ref) {
       minWidth: 80
     },
     {
-      label: "TG用户ID",
-      prop: "tgId",
-      minWidth: 140
+      label: "用户UID",
+      prop: "uid",
+      minWidth: 120,
+      formatter: ({ uid }) => formatNullable(uid)
     },
     {
       label: "用户名",
@@ -115,16 +116,22 @@ export function useTgUser(tableRef: Ref) {
       formatter: ({ rebateRate }) => formatPercent(rebateRate)
     },
     {
-      label: "上级ID",
-      prop: "parentId",
+      label: "上级UID",
+      prop: "parentUid",
       minWidth: 100,
-      formatter: ({ parentId }) => (parentId ? parentId : "-")
+      formatter: ({ parentUid }) => formatNullable(parentUid)
     },
     {
       label: "邀请码",
       prop: "inviteCode",
       minWidth: 120,
       formatter: ({ inviteCode }) => formatNullable(inviteCode)
+    },
+    {
+      label: "备注",
+      prop: "remark",
+      minWidth: 160,
+      formatter: ({ remark }) => formatNullable(remark)
     },
     {
       label: "状态",
@@ -146,7 +153,7 @@ export function useTgUser(tableRef: Ref) {
     {
       label: "操作",
       fixed: "right",
-      width: 280,
+      width: 340,
       slot: "operation"
     }
   ];

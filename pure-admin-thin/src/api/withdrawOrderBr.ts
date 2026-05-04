@@ -8,6 +8,7 @@ export type WithdrawOrderBr = {
   tenantId: number;
   appId?: number | null;
   userId: number;
+  userUid?: string;
   accountId?: string | null;
   orderNo: string;
   merchantOrderNo?: string | null;
@@ -49,6 +50,7 @@ export type WithdrawOrderBrSearch = {
   pageSize: number;
   tenantId?: number;
   userId?: number;
+  userUid?: string;
   status?: number;
   orderNo?: string;
   merchantOrderNo?: string;

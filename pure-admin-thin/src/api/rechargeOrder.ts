@@ -7,6 +7,7 @@ export type RechargeOrder = {
   tenantId: number;
   appId?: number | null;
   userId: number;
+  userUid?: string;
   accountId?: string | null;
   orderNo: string;
   merchantOrderNo?: string | null;
@@ -39,6 +40,7 @@ export type RechargeOrderSearch = {
   pageSize: number;
   tenantId?: number;
   userId?: number;
+  userUid?: string;
   status?: number;
   orderNo?: string;
   merchantOrderNo?: string;

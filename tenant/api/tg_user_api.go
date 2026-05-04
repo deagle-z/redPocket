@@ -106,6 +106,28 @@ func SetTgUserRebateRate(ctx *gin.Context) {
 	utils.SuccessObjBack(ctx, result)
 }
 
+func SetTgUserRemark(ctx *gin.Context) {
+	tenantID, ok := getTenantID(ctx)
+	if !ok {
+		return
+	}
+	var req pojo.TgUserRemarkSet
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	if req.ID <= 0 || len([]rune(req.Remark)) > 255 {
+		utils.ErrorBack(ctx, "参数格式错误")
+		return
+	}
+	result, err := tenantRepo.SetTgUserRemark(getDB(ctx), tenantID, req.ID, req.Remark)
+	if err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	utils.SuccessObjBack(ctx, result)
+}
+
 func DelTgUser(ctx *gin.Context) {
 	tenantID, ok := getTenantID(ctx)
 	if !ok {

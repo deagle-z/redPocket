@@ -45,10 +45,6 @@ function selectLanguage(lang: string) {
 }
 
 async function submitBindEmail() {
-  if (boundEmail.value) {
-    showToast(t('bindEmailPage.boundToast'))
-    return
-  }
   const email = String(formData.email || '').trim()
   if (!email) {
     showToast(t('bindEmailPage.toastEnterEmail'))
@@ -117,15 +113,13 @@ onMounted(() => {
             v-model="formData.email"
             type="text"
             class="field-input"
-            :class="{ 'field-input--locked': !!boundEmail }"
             :placeholder="t('bindEmailPage.emailPlaceholder')"
-            :readonly="!!boundEmail"
           >
         </div>
       </section>
 
-      <button type="button" class="submit-btn" :disabled="!!boundEmail || submitting" @click="submitBindEmail">
-        {{ boundEmail ? t('bindEmailPage.boundLabel') : (submitting ? t('bindEmailPage.submitting') : t('bindEmailPage.submit')) }}
+      <button type="button" class="submit-btn" :disabled="submitting" @click="submitBindEmail">
+        {{ submitting ? t('bindEmailPage.submitting') : t('bindEmailPage.submit') }}
       </button>
     </div>
 
@@ -302,11 +296,6 @@ onMounted(() => {
   border-color: rgba(255, 223, 135, 0.72);
   box-shadow: 0 0 0 4px rgba(212, 175, 55, 0.14);
   background: rgba(255, 248, 214, 0.08);
-}
-
-.field-input--locked {
-  color: rgba(255, 229, 186, 0.64);
-  background: rgba(255, 248, 214, 0.03);
 }
 
 .submit-btn {

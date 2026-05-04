@@ -205,6 +205,10 @@ function goLogin() {
   router.push('/login')
 }
 
+function goCustomerService() {
+  router.push('/cs')
+}
+
 function openLanguagePopup() {
   showLangPopup.value = true
 }
@@ -400,9 +404,9 @@ function selectLanguage(lang: string) {
       </section>
 
       <section class="feature-grid">
-        <article class="feature-card">
-          <div class="feature-icon feature-icon-game" aria-hidden="true">
-            G
+        <button type="button" class="feature-card" @click="goCustomerService">
+          <div class="feature-icon feature-icon-service" aria-hidden="true">
+            CS
           </div>
           <div class="feature-title">
             {{ t('login.feature.game.title') }}
@@ -410,7 +414,7 @@ function selectLanguage(lang: string) {
           <div class="feature-desc">
             {{ t('login.feature.game.desc') }}
           </div>
-        </article>
+        </button>
         <article class="feature-card">
           <div class="feature-icon feature-icon-coin" aria-hidden="true">
             C
@@ -886,7 +890,11 @@ function selectLanguage(lang: string) {
 
 .feature-card {
   background: linear-gradient(165deg, rgba(118, 0, 0, 0.95), rgba(54, 0, 0, 0.96));
+  color: inherit;
+  border: 1px solid rgba(212, 175, 55, 0.38);
   padding: 16px 10px 14px;
+  cursor: pointer;
+  font: inherit;
 }
 
 .feature-icon {
@@ -906,7 +914,7 @@ function selectLanguage(lang: string) {
     0 8px 18px rgba(0, 0, 0, 0.22);
 }
 
-.feature-icon-game {
+.feature-icon-service {
   background: linear-gradient(145deg, #9a1212 0%, #6a0000 100%);
 }
 

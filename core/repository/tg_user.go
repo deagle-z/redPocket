@@ -20,6 +20,9 @@ func GetTgUsers(db *gorm.DB, search pojo.TgUserSearch) (result pojo.TgUserAdminR
 	if search.TgID > 0 {
 		query = query.Where("tg_id = ?", search.TgID)
 	}
+	if uid := strings.TrimSpace(search.Uid); uid != "" {
+		query = query.Where("uid = ?", uid)
+	}
 	if search.Username != "" {
 		query = query.Where("username like ?", "%"+search.Username+"%")
 	}
@@ -41,6 +44,11 @@ func GetTgUsers(db *gorm.DB, search pojo.TgUserSearch) (result pojo.TgUserAdminR
 	if search.ParentID != nil {
 		query = query.Where("parent_id = ?", *search.ParentID)
 	}
+	if search.ParentUid != "" {
+		query = query.Where("parent_id IN (?)", db.Model(&pojo.TgUser{}).
+			Select("id").
+			Where("uid = ?", strings.TrimSpace(search.ParentUid)))
+	}
 	if search.InviteCode != "" {
 		query = query.Where("invite_code = ?", search.InviteCode)
 	}
@@ -54,6 +62,7 @@ func GetTgUsers(db *gorm.DB, search pojo.TgUserSearch) (result pojo.TgUserAdminR
 		_ = copier.Copy(&temp, &user)
 		result.List = append(result.List, temp)
 	}
+	fillAdminTgUserParentUIDs(db, result.List)
 
 	result.PageSize = search.PageSize
 	result.CurrentPage = search.CurrentPage
@@ -146,6 +155,29 @@ func SetTgUserRebateRate(db *gorm.DB, id int64, rebateRate float64) (result pojo
 	}
 	_ = copier.Copy(&result, &dbUser)
 	result.RebateRate = rebateRate
+	return result, nil
+}
+
+func SetTgUserRemark(db *gorm.DB, id int64, remark string) (result pojo.TgUserAdminBack, err error) {
+	var dbUser pojo.TgUser
+	db.Where("id = ?", id).First(&dbUser)
+	if dbUser.ID == 0 {
+		return result, errors.New("record_not_found")
+	}
+	remark = strings.TrimSpace(remark)
+	if len([]rune(remark)) > 255 {
+		return result, errors.New("remark_too_long")
+	}
+	var remarkPtr *string
+	if remark != "" {
+		remarkPtr = &remark
+	}
+	err = db.Model(&dbUser).Update("remark", remarkPtr).Error
+	if err != nil {
+		return result, err
+	}
+	_ = copier.Copy(&result, &dbUser)
+	result.Remark = remarkPtr
 	return result, nil
 }
 
@@ -381,4 +413,37 @@ func uniqueInt64s(values []int64) []int64 {
 		result = append(result, value)
 	}
 	return result
+}
+
+func fillAdminTgUserParentUIDs(db *gorm.DB, users []pojo.TgUserAdminBack) {
+	parentIDs := make([]int64, 0, len(users))
+	for _, user := range users {
+		if user.ParentID != nil {
+			parentIDs = append(parentIDs, *user.ParentID)
+		}
+	}
+	parentIDs = uniqueInt64s(parentIDs)
+	if len(parentIDs) == 0 {
+		return
+	}
+
+	var parents []pojo.TgUser
+	_ = db.Model(&pojo.TgUser{}).
+		Select("id, uid").
+		Where("id IN ?", parentIDs).
+		Find(&parents).Error
+
+	parentUIDMap := make(map[int64]string, len(parents))
+	for _, parent := range parents {
+		parentUIDMap[parent.ID] = parent.Uid
+	}
+
+	for i := range users {
+		if users[i].ParentID == nil {
+			continue
+		}
+		if uid, ok := parentUIDMap[*users[i].ParentID]; ok && uid != "" {
+			users[i].ParentUid = &uid
+		}
+	}
 }

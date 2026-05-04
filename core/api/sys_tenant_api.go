@@ -108,20 +108,14 @@ func GetSysTenantById(ctx *gin.Context) {
 
 // GetAppTenantServiceLinks godoc
 //
-//	@Summary		App端获取当前商户客服链接
+//	@Summary		App端获取当前域名绑定客服链接
 //	@Tags			租户
 //	@Produce		json
 //	@Success		200	{object}		pojo.SysTenantServiceLinksBack
-//	@Router			/api/v1/app/tenant/serviceLinks [get]
+//	@Router			/api/v1/app/domain/serviceLinks [get]
 func GetAppTenantServiceLinks(ctx *gin.Context) {
 	db := ctx.MustGet("db").(*gorm.DB)
-	tenantIDRaw, ok := ctx.Get("tenantId")
-	tenantID, typeOK := tenantIDRaw.(int64)
-	if !ok || !typeOK || tenantID <= 0 {
-		utils.UnauthorizedBack(ctx, "token_invalid")
-		return
-	}
-	result, err := repository.GetCurrentTenantServiceLinks(db, tenantID, getRefererHost(ctx))
+	result, err := repository.GetCurrentTenantServiceLinks(db, 0, getAppServiceLinksHost(ctx))
 	if err != nil {
 		utils.ErrorBack(ctx, err.Error())
 		return
@@ -129,14 +123,28 @@ func GetAppTenantServiceLinks(ctx *gin.Context) {
 	utils.SuccessObjBack(ctx, result)
 }
 
-func getRefererHost(ctx *gin.Context) string {
-	referer := strings.TrimSpace(ctx.GetHeader("Referer"))
-	if referer == "" {
+func getAppServiceLinksHost(ctx *gin.Context) string {
+	for _, rawHost := range []string{
+		ctx.GetHeader("Origin"),
+		ctx.GetHeader("Referer"),
+		ctx.Request.Host,
+	} {
+		if host := parseHeaderHost(rawHost); host != "" {
+			return host
+		}
+	}
+
+	return ""
+}
+
+func parseHeaderHost(raw string) string {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
 		return ""
 	}
-	parsed, err := url.Parse(referer)
+	parsed, err := url.Parse(raw)
 	if err != nil || parsed.Host == "" {
-		parsed, err = url.Parse("//" + referer)
+		parsed, err = url.Parse("//" + raw)
 	}
 	if err != nil {
 		return ""

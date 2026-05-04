@@ -6,6 +6,7 @@ import (
 	"errors"
 	"github.com/jinzhu/copier"
 	"gorm.io/gorm"
+	"strings"
 )
 
 func GetTgUsers(db *gorm.DB, tenantID int64, search pojo.TgUserSearch) (result pojo.TgUserResp) {
@@ -13,6 +14,9 @@ func GetTgUsers(db *gorm.DB, tenantID int64, search pojo.TgUserSearch) (result p
 	query := db.Model(&pojo.TgUser{}).Where("tenant_id = ?", tenantID)
 	if search.TgID > 0 {
 		query = query.Where("tg_id = ?", search.TgID)
+	}
+	if uid := strings.TrimSpace(search.Uid); uid != "" {
+		query = query.Where("uid = ?", uid)
 	}
 	if search.Username != "" {
 		query = query.Where("username like ?", "%"+search.Username+"%")
@@ -29,6 +33,11 @@ func GetTgUsers(db *gorm.DB, tenantID int64, search pojo.TgUserSearch) (result p
 	if search.ParentID != nil {
 		query = query.Where("parent_id = ?", *search.ParentID)
 	}
+	if search.ParentUid != "" {
+		query = query.Where("parent_id IN (?)", db.Model(&pojo.TgUser{}).
+			Select("id").
+			Where("tenant_id = ? AND uid = ?", tenantID, strings.TrimSpace(search.ParentUid)))
+	}
 	if search.InviteCode != "" {
 		query = query.Where("invite_code = ?", search.InviteCode)
 	}
@@ -40,6 +49,7 @@ func GetTgUsers(db *gorm.DB, tenantID int64, search pojo.TgUserSearch) (result p
 		_ = copier.Copy(&temp, &user)
 		result.List = append(result.List, temp)
 	}
+	fillTenantTgUserParentUIDs(db, tenantID, result.List)
 	result.PageSize = search.PageSize
 	result.CurrentPage = search.CurrentPage
 	return result
@@ -107,6 +117,29 @@ func SetTgUserRebateRate(db *gorm.DB, tenantID int64, id int64, rebateRate float
 	return result, nil
 }
 
+func SetTgUserRemark(db *gorm.DB, tenantID int64, id int64, remark string) (result pojo.TgUserBack, err error) {
+	var dbUser pojo.TgUser
+	db.Where("id = ? and tenant_id = ?", id, tenantID).First(&dbUser)
+	if dbUser.ID == 0 {
+		return result, errors.New("数据不存在")
+	}
+	remark = strings.TrimSpace(remark)
+	if len([]rune(remark)) > 255 {
+		return result, errors.New("备注不能超过255个字符")
+	}
+	var remarkPtr *string
+	if remark != "" {
+		remarkPtr = &remark
+	}
+	err = db.Model(&dbUser).Update("remark", remarkPtr).Error
+	if err != nil {
+		return result, err
+	}
+	_ = copier.Copy(&result, &dbUser)
+	result.Remark = remarkPtr
+	return result, nil
+}
+
 func DelTgUser(db *gorm.DB, tenantID int64, id int64) (result string, err error) {
 	var dbUser pojo.TgUser
 	db.Where("id = ? and tenant_id = ?", id, tenantID).First(&dbUser)
@@ -150,6 +183,22 @@ type tgUserTreeAmount struct {
 
 // GetTgUsersWithSubStats 列表并返回所有下级（不限层级）的充值/流水/提现聚合金额
 func GetTgUsersWithSubStats(db *gorm.DB, tenantID int64, search pojo.TgUserSearch) (result TgUserWithSubStatsResp) {
+	if search.ParentID == nil && search.ParentUid != "" {
+		parentUid := strings.TrimSpace(search.ParentUid)
+		parentQuery := db.Model(&pojo.TgUser{}).Select("id").Where("uid = ?", parentUid)
+		if tenantID > 0 {
+			parentQuery = parentQuery.Where("tenant_id = ?", tenantID)
+		}
+		var parent pojo.TgUser
+		_ = parentQuery.First(&parent).Error
+		if parent.ID == 0 {
+			result.PageSize = search.PageSize
+			result.CurrentPage = search.CurrentPage
+			return result
+		}
+		search.ParentID = &parent.ID
+	}
+
 	// 构建整棵用户树：parent -> []children
 	var allUsers []pojo.TgUser
 	allUsersQuery := db.Model(&pojo.TgUser{})
@@ -192,6 +241,9 @@ func GetTgUsersWithSubStats(db *gorm.DB, tenantID int64, search pojo.TgUserSearc
 	}
 	if search.TgID > 0 {
 		query = query.Where("tg_id = ?", search.TgID)
+	}
+	if uid := strings.TrimSpace(search.Uid); uid != "" {
+		query = query.Where("uid = ?", uid)
 	}
 	if search.Username != "" {
 		query = query.Where("username like ?", "%"+search.Username+"%")
@@ -299,9 +351,78 @@ func GetTgUsersWithSubStats(db *gorm.DB, tenantID int64, search pojo.TgUserSearc
 		temp.SubWithdrawAmount = total.Withdraw - withdrawOwn[user.ID]
 		result.List = append(result.List, temp)
 	}
+	fillTenantTgUserWithSubStatsParentUIDs(db, tenantID, result.List)
 	result.PageSize = search.PageSize
 	result.CurrentPage = search.CurrentPage
 	return result
+}
+
+func fillTenantTgUserParentUIDs(db *gorm.DB, tenantID int64, users []pojo.TgUserBack) {
+	parentUIDMap := getTenantParentUIDMap(db, tenantID, users)
+	if len(parentUIDMap) == 0 {
+		return
+	}
+
+	for i := range users {
+		if users[i].ParentID == nil {
+			continue
+		}
+		if uid, ok := parentUIDMap[*users[i].ParentID]; ok && uid != "" {
+			users[i].ParentUid = &uid
+		}
+	}
+}
+
+func fillTenantTgUserWithSubStatsParentUIDs(db *gorm.DB, tenantID int64, users []TgUserWithSubStats) {
+	baseUsers := make([]pojo.TgUserBack, 0, len(users))
+	for _, user := range users {
+		baseUsers = append(baseUsers, user.TgUserBack)
+	}
+	parentUIDMap := getTenantParentUIDMap(db, tenantID, baseUsers)
+	if len(parentUIDMap) == 0 {
+		return
+	}
+
+	for i := range users {
+		if users[i].ParentID == nil {
+			continue
+		}
+		if uid, ok := parentUIDMap[*users[i].ParentID]; ok && uid != "" {
+			users[i].ParentUid = &uid
+		}
+	}
+}
+
+func getTenantParentUIDMap(db *gorm.DB, tenantID int64, users []pojo.TgUserBack) map[int64]string {
+	parentIDs := make([]int64, 0, len(users))
+	seen := make(map[int64]struct{}, len(users))
+	for _, user := range users {
+		if user.ParentID == nil {
+			continue
+		}
+		parentID := *user.ParentID
+		if _, ok := seen[parentID]; ok {
+			continue
+		}
+		seen[parentID] = struct{}{}
+		parentIDs = append(parentIDs, parentID)
+	}
+	if len(parentIDs) == 0 {
+		return nil
+	}
+
+	var parents []pojo.TgUser
+	query := db.Model(&pojo.TgUser{}).Select("id, uid").Where("id IN ?", parentIDs)
+	if tenantID > 0 {
+		query = query.Where("tenant_id = ?", tenantID)
+	}
+	_ = query.Find(&parents).Error
+
+	parentUIDMap := make(map[int64]string, len(parents))
+	for _, parent := range parents {
+		parentUIDMap[parent.ID] = parent.Uid
+	}
+	return parentUIDMap
 }
 
 // GetTgUsersWithSubStatsSummary 返回下级（不限层级）的充值金额之和、流水之和、提现金额之和

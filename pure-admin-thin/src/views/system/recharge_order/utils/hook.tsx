@@ -37,7 +37,7 @@ const callbackLoadingIds = ref<Set<number>>(new Set());
 
 export function useRechargeOrder(tableRef: Ref) {
   const form = reactive({
-    userId: undefined as number | undefined,
+    userUid: "",
     orderNo: "",
     merchantOrderNo: "",
     providerTradeNo: "",
@@ -62,9 +62,10 @@ export function useRechargeOrder(tableRef: Ref) {
       showOverflowTooltip: true
     },
     {
-      label: "用户ID",
-      prop: "userId",
-      minWidth: 100
+      label: "用户UID",
+      prop: "userUid",
+      minWidth: 120,
+      formatter: ({ userUid }) => userUid || "-"
     },
     {
       label: "金额",

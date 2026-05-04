@@ -7,6 +7,7 @@ import (
 	"github.com/jinzhu/copier"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
+	"strings"
 )
 
 func GetWithdrawOrderBrs(db *gorm.DB, tenantID int64, search pojo.WithdrawOrderBrSearch) (result pojo.WithdrawOrderBrResp) {
@@ -14,6 +15,11 @@ func GetWithdrawOrderBrs(db *gorm.DB, tenantID int64, search pojo.WithdrawOrderB
 	query := db.Model(&pojo.WithdrawOrderBr{}).Where("tenant_id = ?", tenantID)
 	if search.UserId > 0 {
 		query = query.Where("user_id = ?", search.UserId)
+	}
+	if userUid := strings.TrimSpace(search.UserUid); userUid != "" {
+		query = query.Where("user_id IN (?)", db.Model(&pojo.TgUser{}).
+			Select("id").
+			Where("tenant_id = ? AND uid = ?", tenantID, userUid))
 	}
 	if search.Status != nil {
 		query = query.Where("status = ?", *search.Status)
@@ -47,9 +53,42 @@ func GetWithdrawOrderBrs(db *gorm.DB, tenantID int64, search pojo.WithdrawOrderB
 		_ = copier.Copy(&temp, &order)
 		result.List = append(result.List, temp)
 	}
+	fillTenantWithdrawOrderBrUserUIDs(db, tenantID, result.List)
 	result.PageSize = search.PageSize
 	result.CurrentPage = search.CurrentPage
 	return result
+}
+
+func fillTenantWithdrawOrderBrUserUIDs(db *gorm.DB, tenantID int64, orders []pojo.WithdrawOrderBrBack) {
+	userIDs := make([]int64, 0, len(orders))
+	seen := make(map[int64]struct{}, len(orders))
+	for _, order := range orders {
+		if order.UserId <= 0 {
+			continue
+		}
+		if _, ok := seen[order.UserId]; ok {
+			continue
+		}
+		seen[order.UserId] = struct{}{}
+		userIDs = append(userIDs, order.UserId)
+	}
+	if len(userIDs) == 0 {
+		return
+	}
+
+	var users []pojo.TgUser
+	_ = db.Model(&pojo.TgUser{}).
+		Select("id, uid").
+		Where("tenant_id = ? AND id IN ?", tenantID, userIDs).
+		Find(&users).Error
+
+	uidMap := make(map[int64]string, len(users))
+	for _, user := range users {
+		uidMap[user.ID] = user.Uid
+	}
+	for i := range orders {
+		orders[i].UserUid = uidMap[orders[i].UserId]
+	}
 }
 
 func GetWithdrawOrderBrByID(db *gorm.DB, tenantID int64, id int64) (result pojo.WithdrawOrderBrBack, err error) {

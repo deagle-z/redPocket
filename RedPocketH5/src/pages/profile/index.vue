@@ -7,7 +7,6 @@ import { truncate2 } from '@/utils/currency'
 import { languageOptions, locale } from '@/utils/i18n'
 import avatarPlaceholderIcon from '@/assets/my/question-circle.svg'
 import bankCardIcon from '@/assets/my/bank card.svg?raw'
-import chartBarAltIcon from '@/assets/my/chart-bar-alt.svg?raw'
 import customerServiceIcon from '@/assets/my/customer-service-fill.svg?raw'
 import downIcon from '@/assets/my/down2.svg?raw'
 import emailIcon from '@/assets/my/email.svg?raw'
@@ -132,11 +131,11 @@ const accountMenus = computed<MenuItem[]>(() => [
 const promoMenus = computed<MenuItem[]>(() => [
   { key: 'team', label: t('profilePage.promoTeam'), icon: normalizeInlineSvg(teamIcon) },
   { key: 'invite', label: t('profilePage.promoInvite'), icon: normalizeInlineSvg(shareIcon), extra: t('profilePage.promoInviteExtra'), tone: 'success' },
-  { key: 'rebate', label: t('profilePage.promoRebate'), icon: normalizeInlineSvg(chartBarAltIcon) },
 ])
 
 const activityMenus = computed<MenuItem[]>(() => [
   { key: 'first-deposit', label: t('rechargePage.firstRechargeTitle'), icon: normalizeInlineSvg(downIcon) },
+  { key: 'vip-activity', label: t('profilePage.vipTitle'), icon: normalizeInlineSvg(gamesIcon) },
   { key: 'spin', label: t('profilePage.activitySpin'), icon: normalizeInlineSvg(gamesIcon) },
 ])
 
@@ -369,11 +368,11 @@ function onMenuClick(item: MenuItem) {
     case 'invite':
       goByPath('/invite')
       break
-    case 'rebate':
-      goByPath('/rebate')
-      break
     case 'first-deposit':
       goByPath('/firstDeposit')
+      break
+    case 'vip-activity':
+      goByPath('/vipActivity')
       break
     case 'spin':
       goByPath('/prize')

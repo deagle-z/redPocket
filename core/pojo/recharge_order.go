@@ -52,6 +52,7 @@ type RechargeOrderSearch struct {
 	PageInfo
 	TenantId             int64  `json:"tenantId"`             // 租户ID
 	UserId               int64  `json:"userId"`               // 用户ID
+	UserUid              string `json:"userUid"`              // 用户UID
 	Status               *int   `json:"status"`               // 状态
 	OrderNo              string `json:"orderNo"`              // 平台订单号
 	MerchantOrderNo      string `json:"merchantOrderNo"`      // 商户订单号
@@ -100,6 +101,7 @@ type RechargeOrderBack struct {
 	TenantId             int64      `json:"tenantId"`
 	AppId                *int64     `json:"appId"`
 	UserId               int64      `json:"userId"`
+	UserUid              string     `json:"userUid"`
 	SourceChannelID      *int64     `json:"sourceChannelId"`
 	AccountId            *string    `json:"accountId"`
 	OrderNo              string     `json:"orderNo"`

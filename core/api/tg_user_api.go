@@ -172,6 +172,34 @@ func SetTgUserRebateRate(ctx *gin.Context) {
 	utils.SuccessObjBack(ctx, result)
 }
 
+// SetTgUserRemark godoc
+//
+//	@Summary		修改Telegram用户备注
+//	@Tags			Telegram用户
+//	@Accept			json
+//	@Produce		json
+//	@Param			data body		pojo.TgUserRemarkSet	true	"备注信息"
+//	@Success		200	{object}		pojo.TgUserAdminBack
+//	@Router			/api/v1/admin/tgUser/remark [post]
+func SetTgUserRemark(ctx *gin.Context) {
+	var req pojo.TgUserRemarkSet
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	if req.ID <= 0 || len([]rune(req.Remark)) > 255 {
+		utils.ErrorBack(ctx, "invalid_params")
+		return
+	}
+	db := ctx.MustGet("db").(*gorm.DB)
+	result, err := repository.SetTgUserRemark(db, req.ID, req.Remark)
+	if err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	utils.SuccessObjBack(ctx, result)
+}
+
 // BatchCreateBotTgUsers godoc
 //
 //	@Summary		批量创建机器人 Telegram 用户

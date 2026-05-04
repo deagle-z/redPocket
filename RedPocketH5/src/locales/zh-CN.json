@@ -96,8 +96,8 @@
     "tgLoginFailed": "Telegram 登录失败",
     "feature": {
       "game": {
-        "title": "扫雷游戏",
-        "desc": "智慧挑战，赢取奖励"
+        "title": "客服中心",
+        "desc": "有问题请联系客服"
       },
       "coin": {
         "title": "赚取金币",
@@ -279,7 +279,9 @@
     "prizePoolLabel": "奖池余额",
     "ruleAction": "规则",
     "ruleTitle": "玩法规则",
-    "rulePlaceholder": "规则内容预留"
+    "rulePlaceholder": "规则内容预留",
+    "ruleContentThunder": "雷号模式规则\n- 参与金额：10 ~ 3000\n- 参与要求：账户余额至少需要达到红包总金额的 1.8 倍，才可参与抢包。\n- 雷号设置：发包人可设置 0 到 9 中任意一个数字作为红包尾数雷号。\n- 奖惩规则\n  1. 中雷：如果抢到金额的最后一位数字与雷号一致，需要向发包人赔付红包总金额的 1.8 倍。\n  2. 避雷：如果最后一位数字与雷号不一致，抢到的金币将直接进入钱包。",
+    "ruleContentParity": "奇偶模式规则\n- 参与金额：10 ~ 3000\n- 参与要求：账户余额至少需要达到红包总金额的 1.8 倍，才可参与。\n- 玩法选择：抢包前需要提前选择奇数或偶数，预测红包金额最后一位数字。\n- 输赢规则\n  1. 猜对：保留抢到的全部金币。\n  2. 猜错：自动向发包人赔付抢到金额的 1.8 倍。\n- 红包设置：发包人可自由设置红包总金额，系统会自动完成收益与赔付结算。"
   },
   "walletPage": {
     "title": "我的钱包",
@@ -429,7 +431,14 @@
     "toastMinAmount": "最低转账金额为 {min}",
     "toastExceedBalance": "转账金额不能超过佣金余额",
     "toastSuccess": "转账成功 {amount}",
-    "txTitleDefault": "佣金转账"
+    "txTitleDefault": "佣金转账",
+    "rebateWithdraw": "佣金提现",
+    "rebateWithdrawNoFlow": "佣金直接提现不需要流水要求",
+    "rebateWithdrawTip": "佣金直接提现不需要流水要求，请仔细核对收款信息",
+    "transferConfirmTitle": "确认转账",
+    "transferConfirmMessage": "佣金转入钱包余额后提现时需要达到正常的提现流水要求才可提现",
+    "transferConfirmOk": "确认",
+    "transferConfirmCancel": "取消"
   },
   "teamPage": {
     "title": "我的团队",

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/jinzhu/copier"
 	"gorm.io/gorm"
+	"strings"
 )
 
 func GetRechargeOrders(db *gorm.DB, tenantID int64, search pojo.RechargeOrderSearch) (result pojo.RechargeOrderResp) {
@@ -12,6 +13,11 @@ func GetRechargeOrders(db *gorm.DB, tenantID int64, search pojo.RechargeOrderSea
 	query := db.Model(&pojo.RechargeOrder{}).Where("tenant_id = ?", tenantID)
 	if search.UserId > 0 {
 		query = query.Where("user_id = ?", search.UserId)
+	}
+	if userUid := strings.TrimSpace(search.UserUid); userUid != "" {
+		query = query.Where("user_id IN (?)", db.Model(&pojo.TgUser{}).
+			Select("id").
+			Where("tenant_id = ? AND uid = ?", tenantID, userUid))
 	}
 	if search.Status != nil {
 		query = query.Where("status = ?", *search.Status)
@@ -39,9 +45,42 @@ func GetRechargeOrders(db *gorm.DB, tenantID int64, search pojo.RechargeOrderSea
 		_ = copier.Copy(&temp, &order)
 		result.List = append(result.List, temp)
 	}
+	fillTenantRechargeOrderUserUIDs(db, tenantID, result.List)
 	result.PageSize = search.PageSize
 	result.CurrentPage = search.CurrentPage
 	return result
+}
+
+func fillTenantRechargeOrderUserUIDs(db *gorm.DB, tenantID int64, orders []pojo.RechargeOrderBack) {
+	userIDs := make([]int64, 0, len(orders))
+	seen := make(map[int64]struct{}, len(orders))
+	for _, order := range orders {
+		if order.UserId <= 0 {
+			continue
+		}
+		if _, ok := seen[order.UserId]; ok {
+			continue
+		}
+		seen[order.UserId] = struct{}{}
+		userIDs = append(userIDs, order.UserId)
+	}
+	if len(userIDs) == 0 {
+		return
+	}
+
+	var users []pojo.TgUser
+	_ = db.Model(&pojo.TgUser{}).
+		Select("id, uid").
+		Where("tenant_id = ? AND id IN ?", tenantID, userIDs).
+		Find(&users).Error
+
+	uidMap := make(map[int64]string, len(users))
+	for _, user := range users {
+		uidMap[user.ID] = user.Uid
+	}
+	for i := range orders {
+		orders[i].UserUid = uidMap[orders[i].UserId]
+	}
 }
 
 func GetRechargeOrderByID(db *gorm.DB, tenantID int64, id int64) (result pojo.RechargeOrderBack, err error) {

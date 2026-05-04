@@ -202,6 +202,118 @@ func AppCreateWithdrawOrder(ctx *gin.Context) {
 	utils.SuccessObjBack(ctx, pojo.AppCreateWithdrawOrderResp{OrderNo: result.OrderNo})
 }
 
+// AppCreateRebateWithdrawOrder App端创建佣金提现订单，佣金直接提现不需要流水要求
+func AppCreateRebateWithdrawOrder(ctx *gin.Context) {
+	userIDRaw, ok := ctx.Get("userId")
+	if !ok {
+		utils.UnauthorizedBack(ctx, "token_invalid")
+		return
+	}
+	userID, ok := userIDRaw.(int64)
+	if !ok || userID <= 0 {
+		utils.UnauthorizedBack(ctx, "token_invalid")
+		return
+	}
+
+	var req pojo.AppCreateWithdrawOrderReq
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	req.Amount = utils.Truncate2(req.Amount)
+	if req.Amount <= 0 {
+		utils.ErrorBack(ctx, "invalid_withdraw_amount")
+		return
+	}
+
+	db := ctx.MustGet("db").(*gorm.DB)
+	var user pojo.TgUser
+	if err := db.Where("id = ?", userID).First(&user).Error; err != nil || user.ID == 0 {
+		utils.ErrorBack(ctx, "user_not_found")
+		return
+	}
+	if user.Status != 1 {
+		utils.ErrorBack(ctx, "user_disabled_contact_admin")
+		return
+	}
+	if req.Amount > utils.Truncate2(user.RebateAmount) {
+		utils.ErrorBack(ctx, "rebate_amount_insufficient")
+		return
+	}
+
+	countryCode := strings.TrimSpace(req.CountryCode)
+	if countryCode == "" && user.Country != nil {
+		countryCode = strings.TrimSpace(*user.Country)
+	}
+	if countryCode == "" {
+		utils.ErrorBack(ctx, "country_required")
+		return
+	}
+
+	var country pojo.SysCountry
+	if err := db.Where("country_code = ? AND status = 1", countryCode).First(&country).Error; err != nil || country.ID == 0 {
+		utils.ErrorBack(ctx, "country_not_available")
+		return
+	}
+
+	var account *pojo.SysUserWithdrawAccount
+	if req.AccountID != nil && *req.AccountID > 0 {
+		var dbAccount pojo.SysUserWithdrawAccount
+		if err := db.Where("id = ? AND user_id = ? AND status = 1", *req.AccountID, userID).First(&dbAccount).Error; err != nil || dbAccount.ID == 0 {
+			utils.ErrorBack(ctx, "account_not_found")
+			return
+		}
+		if !strings.EqualFold(dbAccount.CountryCode, countryCode) {
+			utils.ErrorBack(ctx, "account_country_mismatch")
+			return
+		}
+		account = &dbAccount
+	}
+
+	orderNo := buildWithdrawOrderNo()
+	extraBytes, _ := json.Marshal(map[string]any{
+		"countryCode":   countryCode,
+		"fieldValues":   req.FieldValues,
+		"source":        "rebate",
+		"balanceSource": "rebate",
+	})
+	extra := string(extraBytes)
+	accountID := ""
+	if account != nil {
+		accountID = strconv.FormatInt(account.ID, 10)
+	}
+	remark := "佣金提现"
+	orderReq := pojo.WithdrawOrderBrSet{
+		TenantId:        user.TenantId,
+		UserId:          user.ID,
+		AccountId:       optionalString(accountID),
+		OrderNo:         orderNo,
+		Currency:        country.CurrencyCode,
+		Amount:          req.Amount,
+		Fee:             0,
+		Channel:         "pix",
+		Status:          0,
+		Remark:          &remark,
+		Extra:           &extra,
+		IdempotencyKey:  optionalString(orderNo),
+		SourceChannelID: user.SourceChannelID,
+	}
+	applyWithdrawReceiverSnapshot(&orderReq, account, req.FieldValues)
+
+	result, err := repository.SetRebateWithdrawOrder(db, orderReq)
+	if err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+
+	var updated pojo.TgUser
+	_ = db.Select("rebate_amount").Where("id = ?", user.ID).First(&updated).Error
+	utils.SuccessObjBack(ctx, pojo.AppCreateWithdrawOrderResp{
+		OrderNo:      result.OrderNo,
+		RebateAmount: utils.Truncate2(updated.RebateAmount),
+	})
+}
+
 func buildWithdrawOrderNo() string {
 	return fmt.Sprintf("WD%s%s", time.Now().Format("20060102150405"), utils.RandomString(6))
 }

@@ -780,8 +780,10 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 			tx.Rollback()
 			return nil, errors.New(utils.I18nMessage("lucky_min_balance_required", map[string]interface{}{"amount": fmt.Sprintf("%.2f", lowestAmount)}))
 		}
+		actualAmount = redAmount
+		actualReceivedAmount = redAmount
 
-		// 扣除用户余额
+		// 中雷也需要先到账抢到的红包金额，再扣除中雷赔付金额。
 		giftDeduct := loseMoney
 		if lockedUser.GiftAmount < giftDeduct {
 			giftDeduct = lockedUser.GiftAmount
@@ -794,7 +796,7 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 		if err := tx.Model(&pojo.TgUser{}).
 			Where("id = ?", userID).
 			Updates(map[string]interface{}{
-				"balance":     gorm.Expr("balance - ?", loseMoney),
+				"balance":     gorm.Expr("balance + ? - ?", redAmount, loseMoney),
 				"gift_amount": gorm.Expr("gift_amount - ?", giftDeduct),
 			}).Error; err != nil {
 			tx.Rollback()
@@ -840,6 +842,24 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 		// 记录余额变动（用户）
 		awardUniBase := fmt.Sprintf("lucky_grab_%d_%d_%d_%d", luckyID, userID, awardTs, int64(utils.ToMoney(loseMoney)))
 		runningBalance := utils.Truncate2(lockedUser.Balance)
+		cashHistoryGrab := pojo.CashHistory{
+			UserId:          userID,
+			AwardUni:        fmt.Sprintf("lucky_grab_thunder_win_%d_%d_%d_%s", luckyID, userID, redAmountMilli, utils.RandomString(6)),
+			Amount:          redAmount,
+			StartAmount:     runningBalance,
+			EndAmount:       utils.Truncate2(runningBalance + redAmount),
+			CashMark:        "抢红包",
+			CashDesc:        fmt.Sprintf("抢红包，获得%.2fU", redAmount),
+			Type:            pojo.CashHistoryTypeGrabRedPacketWin,
+			IsGift:          0,
+			FromUserId:      luckyMoney.SenderID,
+			SourceChannelID: user.SourceChannelID,
+		}
+		if err := tx.Create(&cashHistoryGrab).Error; err != nil {
+			tx.Rollback()
+			return nil, fmt.Errorf("记录余额变动失败: %v", err)
+		}
+		runningBalance = utils.Truncate2(runningBalance + redAmount)
 
 		if giftDeduct > 0 {
 			cashHistoryGift := pojo.CashHistory{

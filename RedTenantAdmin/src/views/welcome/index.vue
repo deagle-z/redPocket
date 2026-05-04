@@ -199,6 +199,25 @@ const isRegisterDetail = computed(() =>
 );
 
 const isOnlineDetail = computed(() => detailType.value === "online");
+const detailPageCount = computed(() => {
+  return Math.max(
+    1,
+    Math.ceil(detailPagination.total / detailPagination.pageSize)
+  );
+});
+
+function getDetailExpectedTotal(type: DetailType) {
+  if (type === "online") return stats.value.onlineUsers || 0;
+  if (type === "todayRegisterUsers") return stats.value.today.registerUsers || 0;
+  if (type === "yesterdayRegisterUsers") {
+    return stats.value.yesterday.registerUsers || 0;
+  }
+  if (type === "monthRegisterUsers") return stats.value.month.registerUsers || 0;
+  if (type === "totalRegisterUsers") return stats.value.totalRegisterUsers || 0;
+  if (type === "todayRechargeUsers") return stats.value.today.rechargeUsers || 0;
+  if (type === "monthRechargeUsers") return stats.value.month.rechargeUsers || 0;
+  return 0;
+}
 
 async function loadStats() {
   loading.value = true;
@@ -234,7 +253,11 @@ async function loadDetail() {
       });
     }
     detailList.value = res.data?.list || [];
-    detailPagination.total = res.data?.total || 0;
+    detailPagination.total = Math.max(
+      Number(res.data?.total ?? 0),
+      getDetailExpectedTotal(detailType.value),
+      detailList.value.length
+    );
     detailPagination.pageSize = res.data?.pageSize || detailPagination.pageSize;
     detailPagination.currentPage = (res.data?.currentPage || 0) + 1;
   } finally {
@@ -249,6 +272,7 @@ async function openDetail(item: { title: string; detailType?: DetailType }) {
   detailType.value = item.detailType;
   detailTitle.value = item.title;
   detailPagination.currentPage = 1;
+  detailPagination.total = getDetailExpectedTotal(item.detailType);
   detailDialogVisible.value = true;
   await loadDetail();
 }
@@ -262,6 +286,21 @@ function handleDetailSizeChange(size: number) {
 function handleDetailCurrentChange(page: number) {
   detailPagination.currentPage = page;
   loadDetail();
+}
+
+function handleDetailPrevPage() {
+  if (detailLoading.value || detailPagination.currentPage <= 1) return;
+  handleDetailCurrentChange(detailPagination.currentPage - 1);
+}
+
+function handleDetailNextPage() {
+  if (
+    detailLoading.value ||
+    detailPagination.currentPage >= detailPageCount.value
+  ) {
+    return;
+  }
+  handleDetailCurrentChange(detailPagination.currentPage + 1);
 }
 
 onMounted(() => {
@@ -307,6 +346,45 @@ onMounted(() => {
     </el-skeleton>
 
     <el-dialog v-model="detailDialogVisible" :title="detailTitle" width="76%">
+      <div class="detail-pager">
+        <div class="detail-pager__meta">
+          共 {{ detailPagination.total }} 条，第
+          {{ detailPagination.currentPage }} / {{ detailPageCount }} 页
+        </div>
+        <div class="detail-pager__actions">
+          <span>每页</span>
+          <el-select
+            v-model="detailPagination.pageSize"
+            size="small"
+            class="detail-pager__size"
+            :disabled="detailLoading"
+            @change="handleDetailSizeChange"
+          >
+            <el-option :value="10" label="10" />
+            <el-option :value="20" label="20" />
+            <el-option :value="50" label="50" />
+            <el-option :value="100" label="100" />
+          </el-select>
+          <el-button
+            size="small"
+            :disabled="detailLoading || detailPagination.currentPage <= 1"
+            @click="handleDetailPrevPage"
+          >
+            上一页
+          </el-button>
+          <el-button
+            size="small"
+            type="primary"
+            :disabled="
+              detailLoading || detailPagination.currentPage >= detailPageCount
+            "
+            @click="handleDetailNextPage"
+          >
+            下一页
+          </el-button>
+        </div>
+      </div>
+
       <el-table :data="detailList" border stripe v-loading="detailLoading">
         <el-table-column prop="id" label="ID" width="90" />
         <el-table-column prop="uid" label="UID" min-width="110">
@@ -385,6 +463,8 @@ onMounted(() => {
           v-model:page-size="detailPagination.pageSize"
           :page-sizes="[10, 20, 50, 100]"
           :background="true"
+          :disabled="detailLoading"
+          :hide-on-single-page="false"
           layout="total, sizes, prev, pager, next, jumper"
           :total="detailPagination.total"
           @size-change="handleDetailSizeChange"
@@ -513,5 +593,31 @@ onMounted(() => {
   display: flex;
   justify-content: flex-end;
   margin-top: 16px;
+}
+
+.detail-pager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.detail-pager__meta {
+  color: #606266;
+  font-size: 14px;
+  line-height: 24px;
+}
+
+.detail-pager__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #606266;
+  font-size: 14px;
+}
+
+.detail-pager__size {
+  width: 86px;
 }
 </style>

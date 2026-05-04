@@ -19,6 +19,7 @@ type TgUser struct {
 	Email    string  `gorm:"size:255;comment:email" json:"email"`
 	Phone    *string `gorm:"column:phone;size:32;index;comment:手机号码" json:"phone"`
 	Country  *string `gorm:"column:country;size:64;comment:国家" json:"country"`
+	Remark   *string `gorm:"column:remark;type:varchar(255);comment:备注" json:"remark"`
 	IsBot    bool    `gorm:"column:is_bot;not null;default:false;index:idx_tg_user_register_time,priority:1;index:idx_tg_user_tenant_register_time,priority:2;comment:是否机器人" json:"is_bot"`
 
 	TgID int64 `gorm:"column:tg_id;index;comment:Telegram 用户ID（唯一且稳定）" json:"tg_id"`
@@ -46,6 +47,7 @@ type TgUser struct {
 type TgUserSearch struct {
 	PageInfo
 	TgID              int64  `json:"tgId"`       // Telegram用户ID
+	Uid               string `json:"uid"`        // 用户UID
 	Username          string `json:"username"`   // Telegram用户名
 	FirstName         string `json:"firstName"`  // 展示名
 	Phone             string `json:"phone"`      // 手机号码
@@ -53,6 +55,7 @@ type TgUserSearch struct {
 	IsBot             *bool  `json:"isBot"`      // 是否机器人
 	Status            *int8  `json:"status"`     // 状态
 	ParentID          *int64 `json:"parentId"`   // 上级/邀请人用户ID
+	ParentUid         string `json:"parentUid"`  // 上级/邀请人UID
 	InviteCode        string `json:"inviteCode"` // 邀请码
 	SourceChannelID   int64  `json:"sourceChannelId"`
 	SourceChannelCode string `json:"sourceChannelCode"`
@@ -66,6 +69,7 @@ type TgUserSet struct {
 	Avatar            *string  `json:"avatar"`
 	Phone             *string  `json:"phone"`
 	Country           *string  `json:"country"`
+	Remark            *string  `json:"remark"`
 	IsBot             bool     `json:"isBot"`
 	TgID              int64    `json:"tgId"`
 	Balance           float64  `json:"balance"`
@@ -88,6 +92,11 @@ type TgUserStatusSet struct {
 type TgUserRebateRateSet struct {
 	ID         int64   `json:"id"`
 	RebateRate float64 `json:"rebateRate"`
+}
+
+type TgUserRemarkSet struct {
+	ID     int64  `json:"id"`
+	Remark string `json:"remark"`
 }
 
 type TgUserBatchCreateBotReq struct {
@@ -244,6 +253,7 @@ type TgInviteRuleConfigBack struct {
 
 type TgUserBack struct {
 	ID                int64     `json:"id"`
+	Uid               string    `json:"uid"`
 	CreatedAt         time.Time `json:"createdAt"`
 	UpdatedAt         time.Time `json:"updatedAt"`
 	Username          *string   `json:"username"`
@@ -251,6 +261,7 @@ type TgUserBack struct {
 	Avatar            *string   `json:"avatar"`
 	Phone             *string   `json:"phone"`
 	Country           *string   `json:"country"`
+	Remark            *string   `json:"remark"`
 	TgID              int64     `json:"tgId"`
 	Balance           float64   `json:"balance"`
 	GiftAmount        float64   `json:"giftAmount"`
@@ -258,6 +269,7 @@ type TgUserBack struct {
 	RebateRate        float64   `json:"rebateRate"`
 	Status            int8      `json:"status"`
 	ParentID          *int64    `json:"parentId"`
+	ParentUid         *string   `json:"parentUid"`
 	InviteCode        *string   `json:"inviteCode"`
 	SourceChannelID   *int64    `json:"sourceChannelId"`
 	SourceChannelCode *string   `json:"sourceChannelCode"`
@@ -270,6 +282,7 @@ type TgUserResp struct {
 
 type TgUserAdminBack struct {
 	ID                int64     `json:"id"`
+	Uid               string    `json:"uid"`
 	CreatedAt         time.Time `json:"createdAt"`
 	UpdatedAt         time.Time `json:"updatedAt"`
 	Username          *string   `json:"username"`
@@ -277,6 +290,7 @@ type TgUserAdminBack struct {
 	Avatar            *string   `json:"avatar"`
 	Phone             *string   `json:"phone"`
 	Country           *string   `json:"country"`
+	Remark            *string   `json:"remark"`
 	IsBot             bool      `json:"isBot"`
 	TgID              int64     `json:"tgId"`
 	Balance           float64   `json:"balance"`
@@ -285,6 +299,7 @@ type TgUserAdminBack struct {
 	RebateRate        float64   `json:"rebateRate"`
 	Status            int8      `json:"status"`
 	ParentID          *int64    `json:"parentId"`
+	ParentUid         *string   `json:"parentUid"`
 	InviteCode        *string   `json:"inviteCode"`
 	SourceChannelID   *int64    `json:"sourceChannelId"`
 	SourceChannelCode *string   `json:"sourceChannelCode"`
