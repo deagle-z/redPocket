@@ -82,6 +82,7 @@ function mapCashTypeTitle(type: number) {
     12: t('walletPage.typeLuckyExpiredRefund'),
     13: t('walletPage.typeLotteryConsume'),
     14: t('walletPage.typeLotteryWin'),
+    15: t('walletPage.typeVipUpgradeReward'),
   }
   return map[Number(type) || 0] || t('walletPage.typeAccountChange')
 }

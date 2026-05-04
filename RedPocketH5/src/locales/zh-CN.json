@@ -309,6 +309,7 @@
     "typeLuckyExpiredRefund": "红包过期退回",
     "typeLotteryConsume": "抽奖消耗",
     "typeLotteryWin": "转盘中奖",
+    "typeVipUpgradeReward": "VIP 升级赠送",
     "typeAccountChange": "账户变动"
   },
   "rechargePage": {

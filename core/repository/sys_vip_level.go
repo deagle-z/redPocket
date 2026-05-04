@@ -366,7 +366,6 @@ func CheckAndUpgradeVipLevel(db *gorm.DB, userID int64) {
 			return err
 		}
 
-		// 插入待领取奖励记录（唯一索引防重）
 		if targetRow.UpgradeBonusAmount > 0 {
 			rewardLog := pojo.SysVipRewardLog{
 				TenantID:    user.TenantId,
@@ -375,9 +374,23 @@ func CheckAndUpgradeVipLevel(db *gorm.DB, userID int64) {
 				LevelName:   targetRow.LevelName,
 				RewardType:  pojo.VipRewardTypeUpgrade,
 				BonusAmount: targetRow.UpgradeBonusAmount,
-				Status:      pojo.VipRewardStatusPending,
+				Status:      pojo.VipRewardStatusDone,
 			}
 			if err := tx.Create(&rewardLog).Error; err != nil {
+				return err
+			}
+			if err := tx.Model(&pojo.TgUser{}).Where("id = ?", userID).Updates(map[string]any{
+				"balance":     gorm.Expr("balance + ?", targetRow.UpgradeBonusAmount),
+				"gift_amount": gorm.Expr("gift_amount + ?", targetRow.UpgradeBonusAmount),
+				"gift_total":  gorm.Expr("gift_total + ?", targetRow.UpgradeBonusAmount),
+			}).Error; err != nil {
+				return err
+			}
+			if err := AddUserWithdrawRestrictedBalance(tx, u, targetRow.UpgradeBonusAmount, 0); err != nil {
+				return err
+			}
+			history := buildVipUpgradeCashHistory(userID, rewardLog, u.Balance)
+			if err := tx.Create(&history).Error; err != nil {
 				return err
 			}
 		}
@@ -451,19 +464,7 @@ func ClaimVipReward(db *gorm.DB, userID int64, rewardLogID int64, tablePrefix st
 				return err
 			}
 
-			// 写流水
-			history := pojo.CashHistory{
-				UserId:      userID,
-				AwardUni:    fmt.Sprintf("vip_reward_%d", item.ID),
-				Amount:      item.BonusAmount,
-				StartAmount: runningBalance,
-				EndAmount:   utils.Truncate2(runningBalance + item.BonusAmount),
-				CashMark:    "VIP升级奖励",
-				CashDesc:    fmt.Sprintf("领取%s升级奖励 %.2f", item.LevelName, item.BonusAmount),
-				Type:        pojo.CashHistoryTypeVipUpgradeReward,
-				IsGift:      1,
-				FromUserId:  0,
-			}
+			history := buildVipUpgradeCashHistory(userID, item, runningBalance)
 			if err := tx.Create(&history).Error; err != nil {
 				return err
 			}
@@ -471,6 +472,21 @@ func ClaimVipReward(db *gorm.DB, userID int64, rewardLogID int64, tablePrefix st
 		}
 		return nil
 	})
+}
+
+func buildVipUpgradeCashHistory(userID int64, item pojo.SysVipRewardLog, runningBalance float64) pojo.CashHistory {
+	return pojo.CashHistory{
+		UserId:      userID,
+		AwardUni:    fmt.Sprintf("vip_reward_%d", item.ID),
+		Amount:      item.BonusAmount,
+		StartAmount: runningBalance,
+		EndAmount:   utils.Truncate2(runningBalance + item.BonusAmount),
+		CashMark:    "VIP升级奖励",
+		CashDesc:    fmt.Sprintf("领取%s升级奖励 %.2f", item.LevelName, item.BonusAmount),
+		Type:        pojo.CashHistoryTypeVipUpgradeReward,
+		IsGift:      1,
+		FromUserId:  0,
+	}
 }
 
 // vipLevelQualifies 判断用户当前数据是否满足某 VIP 等级的升级条件。

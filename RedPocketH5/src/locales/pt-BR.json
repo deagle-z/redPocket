@@ -309,6 +309,7 @@
     "typeLuckyExpiredRefund": "Reembolso de pacote expirado",
     "typeLotteryConsume": "Consumo de sorteio",
     "typeLotteryWin": "Prêmio da roleta",
+    "typeVipUpgradeReward": "Bônus de upgrade VIP",
     "typeAccountChange": "Mudança de conta"
   },
   "rechargePage": {

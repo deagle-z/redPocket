@@ -309,6 +309,7 @@
     "typeLuckyExpiredRefund": "Packet Expired Refund",
     "typeLotteryConsume": "Lottery Consumption",
     "typeLotteryWin": "Wheel Prize",
+    "typeVipUpgradeReward": "VIP Upgrade Bonus",
     "typeAccountChange": "Account Change"
   },
   "rechargePage": {

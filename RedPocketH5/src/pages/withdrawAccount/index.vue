@@ -43,9 +43,7 @@ const submitLoading = ref(false)
 // select 选择器
 const pickerVisible = ref(false)
 const pickerField = ref<RechargeField | null>(null)
-const pickerColumns = computed(() =>
-  parseFieldOptions(pickerField.value).map(o => ({ text: o.label, value: o.value })),
-)
+const pickerOptions = computed(() => parseFieldOptions(pickerField.value))
 
 function parseFieldOptions(field: RechargeField | null): RechargeFieldOption[] {
   if (!field?.optionsJson)
@@ -70,9 +68,9 @@ function openPicker(field: RechargeField) {
   pickerVisible.value = true
 }
 
-function onPickerConfirm({ selectedOptions }: { selectedOptions: Array<{ text: string, value: string }> }) {
+function onSelectOption(option: RechargeFieldOption) {
   if (pickerField.value)
-    fieldValues.value[pickerField.value.fieldKey] = selectedOptions[0]?.value ?? ''
+    fieldValues.value[pickerField.value.fieldKey] = option.value
   pickerVisible.value = false
 }
 
@@ -422,12 +420,28 @@ onMounted(() => {
     </section>
 
     <!-- select 选择器弹窗 -->
-    <van-popup v-model:show="pickerVisible" position="bottom" teleport="#app">
-      <van-picker
-        :columns="pickerColumns"
-        @confirm="onPickerConfirm"
-        @cancel="pickerVisible = false"
-      />
+    <van-popup v-model:show="pickerVisible" round position="bottom" teleport="#app" class="wa-select-popup">
+      <div class="wa-select-popup-header">
+        <span class="wa-select-popup-title">{{ pickerField?.fieldLabel }}</span>
+        <button class="wa-select-popup-close" @click="pickerVisible = false">
+          ×
+        </button>
+      </div>
+
+      <div class="wa-select-list">
+        <button
+          v-for="option in pickerOptions"
+          :key="option.value"
+          type="button"
+          class="wa-select-item"
+          :class="{ active: pickerField && fieldValues[pickerField.fieldKey] === option.value }"
+          @click="onSelectOption(option)"
+        >
+          <span class="wa-select-code">{{ option.value }}</span>
+          <span class="wa-select-text">{{ option.label }}</span>
+          <span v-if="pickerField && fieldValues[pickerField.fieldKey] === option.value" class="wa-select-check">✓</span>
+        </button>
+      </div>
     </van-popup>
   </div>
 </template>
@@ -770,5 +784,105 @@ onMounted(() => {
   font-weight: 800;
   letter-spacing: 0.08em;
   box-shadow: 0 12px 22px rgba(75, 25, 0, 0.28);
+}
+
+:global(.wa-select-popup.van-popup) {
+  min-height: 320px;
+  max-height: 72vh;
+  padding: 10px 0 calc(22px + env(safe-area-inset-bottom));
+  overflow: hidden;
+  border-radius: 24px 24px 0 0;
+  border: 1px solid rgba(212, 175, 55, 0.34);
+  background:
+    radial-gradient(circle at 12% 10%, rgba(212, 175, 55, 0.18), transparent 22%),
+    linear-gradient(180deg, #540000 0%, #280000 100%);
+  box-shadow: 0 -12px 32px rgba(0, 0, 0, 0.48);
+}
+
+:global(.wa-select-popup-header) {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 56px;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.15);
+}
+
+:global(.wa-select-popup-title) {
+  max-width: calc(100% - 96px);
+  overflow: hidden;
+  color: #fff0c9;
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  letter-spacing: 0.04em;
+}
+
+:global(.wa-select-popup-close) {
+  position: absolute;
+  top: 50%;
+  right: 16px;
+  border: none;
+  background: transparent;
+  color: #ffd98b;
+  font-size: 18px;
+  line-height: 1;
+  transform: translateY(-50%);
+}
+
+:global(.wa-select-list) {
+  max-height: calc(72vh - 96px);
+  padding: 16px 14px 0;
+  overflow-y: auto;
+}
+
+:global(.wa-select-item) {
+  display: grid;
+  grid-template-columns: minmax(42px, auto) 1fr 24px;
+  align-items: center;
+  width: 100%;
+  min-height: 52px;
+  margin-bottom: 12px;
+  padding: 12px 16px;
+  border: 1px solid rgba(212, 175, 55, 0.14);
+  border-radius: 16px;
+  background: rgba(255, 248, 214, 0.05);
+  text-align: left;
+  transition:
+    border-color 0.2s ease,
+    background-color 0.2s ease;
+}
+
+:global(.wa-select-item.active) {
+  border-color: rgba(212, 175, 55, 0.52);
+  background: rgba(212, 175, 55, 0.12);
+  box-shadow: inset 0 1px 0 rgba(255, 248, 214, 0.08);
+}
+
+:global(.wa-select-code) {
+  min-width: 34px;
+  padding-right: 10px;
+  color: #fff0c9;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+:global(.wa-select-text) {
+  min-width: 0;
+  overflow: hidden;
+  color: #fff0c9;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+:global(.wa-select-check) {
+  color: #ffd98b;
+  font-size: 20px;
+  text-align: right;
 }
 </style>
