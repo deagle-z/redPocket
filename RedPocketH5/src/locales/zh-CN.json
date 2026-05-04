@@ -310,6 +310,8 @@
     "typeLotteryConsume": "抽奖消耗",
     "typeLotteryWin": "转盘中奖",
     "typeVipUpgradeReward": "VIP 升级赠送",
+    "typeFirstRechargeGift": "首充赠送",
+    "typeTodayFirstRechargeGift": "今日首充赠送",
     "typeAccountChange": "账户变动"
   },
   "rechargePage": {

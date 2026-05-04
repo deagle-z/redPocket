@@ -34,6 +34,8 @@ const (
 	CashHistoryTypeLotteryConsume         int8 = 13 // 抽奖消耗
 	CashHistoryTypeLotteryAward           int8 = 14 // 抽奖中奖
 	CashHistoryTypeVipUpgradeReward       int8 = 15 // VIP升级奖励
+	CashHistoryTypeFirstRechargeGift      int8 = 16 // 首充赠送
+	CashHistoryTypeTodayFirstRechargeGift int8 = 17 // 今日首充赠送
 )
 
 type CashHistoryResp struct {

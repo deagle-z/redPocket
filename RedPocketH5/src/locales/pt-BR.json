@@ -310,6 +310,8 @@
     "typeLotteryConsume": "Consumo de sorteio",
     "typeLotteryWin": "Prêmio da roleta",
     "typeVipUpgradeReward": "Bônus de upgrade VIP",
+    "typeFirstRechargeGift": "Bônus de primeira recarga",
+    "typeTodayFirstRechargeGift": "Bônus de primeira recarga diária",
     "typeAccountChange": "Mudança de conta"
   },
   "rechargePage": {

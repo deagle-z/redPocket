@@ -83,6 +83,8 @@ function mapCashTypeTitle(type: number) {
     13: t('walletPage.typeLotteryConsume'),
     14: t('walletPage.typeLotteryWin'),
     15: t('walletPage.typeVipUpgradeReward'),
+    16: t('walletPage.typeFirstRechargeGift'),
+    17: t('walletPage.typeTodayFirstRechargeGift'),
   }
   return map[Number(type) || 0] || t('walletPage.typeAccountChange')
 }

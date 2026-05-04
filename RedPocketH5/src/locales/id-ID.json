@@ -310,6 +310,8 @@
     "typeLotteryConsume": "Konsumsi undian",
     "typeLotteryWin": "Menang roda putar",
     "typeVipUpgradeReward": "Bonus naik level VIP",
+    "typeFirstRechargeGift": "Bonus isi ulang pertama",
+    "typeTodayFirstRechargeGift": "Bonus isi ulang pertama hari ini",
     "typeAccountChange": "Perubahan Akun"
   },
   "rechargePage": {

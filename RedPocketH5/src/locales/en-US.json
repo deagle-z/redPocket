@@ -310,6 +310,8 @@
     "typeLotteryConsume": "Lottery Consumption",
     "typeLotteryWin": "Wheel Prize",
     "typeVipUpgradeReward": "VIP Upgrade Bonus",
+    "typeFirstRechargeGift": "First Recharge Bonus",
+    "typeTodayFirstRechargeGift": "Daily First Recharge Bonus",
     "typeAccountChange": "Account Change"
   },
   "rechargePage": {
