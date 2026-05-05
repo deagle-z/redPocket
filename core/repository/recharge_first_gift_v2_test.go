@@ -67,3 +67,18 @@ func TestCalculateFirstRechargeGiftV2Amount(t *testing.T) {
 		t.Fatalf("calculateFirstRechargeGiftV2Amount() = %.2f, want 15000.00", got)
 	}
 }
+
+func TestBuildFirstRecharge3DayRatesMarksMissedPreviousDayExpired(t *testing.T) {
+	cfg := firstRechargeGiftConfigV2{Rates: []float64{20, 30, 50}}
+	statuses := buildFirstRecharge3DayRates(cfg, 3, map[int]bool{1: true})
+
+	if statuses[0].Status != "done" {
+		t.Fatalf("day1 status = %q, want done", statuses[0].Status)
+	}
+	if statuses[1].Status != "expired" {
+		t.Fatalf("day2 status = %q, want expired", statuses[1].Status)
+	}
+	if statuses[2].Status != "expired" {
+		t.Fatalf("day3 status = %q, want expired", statuses[2].Status)
+	}
+}

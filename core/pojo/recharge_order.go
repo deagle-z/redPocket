@@ -149,6 +149,37 @@ type RechargeOrderAppReq struct {
 	MerchantOrderNo string            `json:"merchantOrderNo"` // 商户订单号（可选）
 	ExtraFields     map[string]string `json:"extraFields"`     // 国家自定义字段
 	ActivityType    int8              `json:"activityType"`    // 活动类型 0无 1首充 2今日首充
+	ActivityCode    string            `json:"activityCode"`    // 活动编码：first_recharge_3day / today_first_recharge
+}
+
+type RechargePromotionStatusResp struct {
+	FirstRecharge3Day  RechargeFirstRecharge3DayPromotion `json:"firstRecharge3Day"`
+	TodayFirstRecharge RechargeTodayFirstPromotion        `json:"todayFirstRecharge"`
+}
+
+type RechargeFirstRecharge3DayPromotion struct {
+	Visible      bool                       `json:"visible"`
+	Selectable   bool                       `json:"selectable"`
+	ActivityCode string                     `json:"activityCode"`
+	CurrentDay   int                        `json:"currentDay"`
+	ValidFrom    string                     `json:"validFrom"`
+	ValidTo      string                     `json:"validTo"`
+	Rates        []RechargePromotionDayRate `json:"rates"`
+	TodayRate    float64                    `json:"todayRate"`
+	Title        string                     `json:"title"`
+}
+
+type RechargePromotionDayRate struct {
+	Day    int     `json:"day"`
+	Rate   float64 `json:"rate"`
+	Status string  `json:"status"`
+}
+
+type RechargeTodayFirstPromotion struct {
+	Visible      bool    `json:"visible"`
+	Selectable   bool    `json:"selectable"`
+	ActivityCode string  `json:"activityCode"`
+	Rate         float64 `json:"rate"`
 }
 
 type RechargeOrderAppBack struct {

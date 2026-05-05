@@ -239,3 +239,19 @@ func CheckIsFirstRecharge(ctx *gin.Context) {
 		"hasTodayFirst": !hasTodayFirst,
 	})
 }
+
+func GetRechargePromotions(ctx *gin.Context) {
+	userIDRaw, ok := ctx.Get("userId")
+	if !ok {
+		utils.UnauthorizedBack(ctx, "token is invalid")
+		return
+	}
+	userID, ok := userIDRaw.(int64)
+	if !ok || userID <= 0 {
+		utils.UnauthorizedBack(ctx, "token is invalid")
+		return
+	}
+	db := ctx.MustGet("db").(*gorm.DB)
+	hostInfo := ctx.MustGet("hostInfo").(pojo.HostInfo)
+	utils.SuccessObjBack(ctx, repository.GetRechargePromotions(db, userID, hostInfo.TablePrefix))
+}

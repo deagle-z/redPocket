@@ -1,11 +1,24 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
 import AppPageHeader from '@/components/AppPageHeader.vue'
-import firstDepositImage from '@/assets/images/first_deposit.png'
+import firstDepositBrazilImage from '@/assets/images/first_deposit_bonus_short_brazil.png'
+import firstDepositEnglishImage from '@/assets/images/first_deposit_bonus_short_english.png'
+import firstDepositIndonesiaImage from '@/assets/images/first_deposit_bonus_short_indonesia.png'
+import firstDepositMexicoImage from '@/assets/images/first_deposit_bonus_short_mexico.png'
+import { locale } from '@/utils/i18n'
 import { safeBack } from '@/utils/navigation'
 
 const { t } = useI18n()
 const router = useRouter()
+
+const firstDepositImageMap: Record<string, string> = {
+  'pt-BR': firstDepositBrazilImage,
+  'en-US': firstDepositEnglishImage,
+  'id-ID': firstDepositIndonesiaImage,
+  'es-MX': firstDepositMexicoImage,
+}
+
+const firstDepositImage = computed(() => firstDepositImageMap[locale.value] || firstDepositEnglishImage)
 
 function goBack() {
   safeBack(router)
@@ -50,7 +63,6 @@ function goRecharge() {
 .first-deposit-entry {
   display: block;
   width: 100%;
-  margin-top: 10px;
   padding: 0;
   border: 0;
   background: transparent;
@@ -65,8 +77,6 @@ function goRecharge() {
   width: 100%;
   max-width: 100%;
   height: auto;
-  border-radius: 16px;
-  border: 1px solid rgba(212, 175, 55, 0.42);
   box-shadow:
     0 12px 24px rgba(0, 0, 0, 0.32),
     0 0 0 1px rgba(255, 248, 214, 0.08);

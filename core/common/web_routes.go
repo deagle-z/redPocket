@@ -336,6 +336,7 @@ func InitGin() {
 		appAuthRouter.POST("/tg/rebate/withdraw", api.AppCreateRebateWithdrawOrder)
 		appAuthRouter.POST("/tg/rebate/list", api.GetCurrentTgUserRebateRecords)
 		appAuthRouter.POST("/cashHistory/list", api.GetCurrentTgCashHistory)
+		appAuthRouter.GET("/recharge/promotions", api.GetRechargePromotions)
 		appAuthRouter.POST("/upload", api.AppUpload)
 		appAuthRouter.POST("/lucky/grab", api.GrabRedPacketApp)
 		appAuthRouter.GET("/countries", api.GetAppCountries)                     // App端获取可用国家列表（IP置顶）

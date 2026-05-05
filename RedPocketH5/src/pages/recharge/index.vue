@@ -2,17 +2,24 @@
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { showToast } from 'vant'
-import type { AppCountryItem, AppPayMethodItem, AppRechargeChannelItem, RechargeField, RechargeFieldOption } from '@/api/user'
+import type {
+  AppCountryItem,
+  AppPayMethodItem,
+  AppRechargeChannelItem,
+  RechargeField,
+  RechargeFieldOption,
+  RechargeFirstRecharge3DayPromotion,
+  RechargeTodayFirstPromotion,
+} from '@/api/user'
 import {
   ackRechargeNotification,
   createRechargeOrder,
-  getAppConfig,
   getAppCountries,
   getCountryRechargeFields,
   getCountryRechargeInfo,
   getCurrentTgUserInfo,
   getPendingRechargeNotifications,
-  getRechargeIsFirst,
+  getRechargePromotions,
 } from '@/api/user'
 import AppPageHeader from '@/components/AppPageHeader.vue'
 import { useUserStore } from '@/stores'
@@ -31,34 +38,22 @@ const pageLoading = ref(true)
 
 // 促销活动
 // promoChoice: '' = 不参加, 'first' = 首充, 'today_first' = 今日首充
-const hasFirst = ref(false)
-const hasTodayFirst = ref(false)
-const firstRechargeGiftConfig = ref('')
-const todayFirstRechargeGift = ref('')
+const firstRecharge3Day = ref<RechargeFirstRecharge3DayPromotion | null>(null)
+const todayFirstRecharge = ref<RechargeTodayFirstPromotion | null>(null)
 const promoChoice = ref<'' | 'first' | 'today_first'>('')
 
+const hasFirst = computed(() => !!firstRecharge3Day.value?.visible)
+const hasTodayFirst = computed(() => !!todayFirstRecharge.value?.visible)
+const canSelectFirst = computed(() => !!firstRecharge3Day.value?.visible && !!firstRecharge3Day.value?.selectable)
+const canSelectTodayFirst = computed(() => !!todayFirstRecharge.value?.visible && !!todayFirstRecharge.value?.selectable)
 const showPromo = computed(() => hasFirst.value || hasTodayFirst.value)
-
-function parseFirstRechargeGiftConfig(raw: string) {
-  const text = raw.trim()
-  if (!text)
-    return null
-
-  const normalizedText = text
-    .replaceAll('（', '(')
-    .replaceAll('）', ')')
-    .replaceAll('｜', '|')
-    .replaceAll('％', '%')
-    .replace(/\s+/g, '')
-
-  const parts = normalizedText.split('|')
-  if (parts.length !== 3)
-    return null
-  const rates = parts.map(item => Number(item.replace('%', '')))
-  if (rates.some(item => !item || !Number.isFinite(item) || item <= 0))
-    return null
-  return { rates }
-}
+const selectedActivityCode = computed(() => {
+  if (promoChoice.value === 'first' && canSelectFirst.value)
+    return firstRecharge3Day.value?.activityCode ?? ''
+  if (promoChoice.value === 'today_first' && canSelectTodayFirst.value)
+    return todayFirstRecharge.value?.activityCode ?? ''
+  return ''
+})
 
 function formatPercent(value: number) {
   if (!Number.isFinite(value))
@@ -67,8 +62,9 @@ function formatPercent(value: number) {
 }
 
 const firstRechargeGiftView = computed(() => {
-  const parsed = parseFirstRechargeGiftConfig(firstRechargeGiftConfig.value)
-  if (!parsed) {
+  const promo = firstRecharge3Day.value
+  const rates = Array.isArray(promo?.rates) ? promo.rates : []
+  if (!promo || rates.length === 0) {
     return {
       badge: '',
       desc: t('rechargePage.firstRechargeDesc'),
@@ -76,13 +72,13 @@ const firstRechargeGiftView = computed(() => {
     }
   }
 
-  const maxRate = Math.max(...parsed.rates)
+  const dayRate = (day: number) => Number(rates.find(item => Number(item.day) === day)?.rate || 0)
   return {
-    badge: `+${formatPercent(maxRate)}%`,
+    badge: promo.todayRate > 0 ? `+${formatPercent(Number(promo.todayRate))}%` : '',
     desc: t('rechargePage.firstRechargeV2Desc', {
-      day1Rate: formatPercent(parsed.rates[0]),
-      day2Rate: formatPercent(parsed.rates[1]),
-      day3Rate: formatPercent(parsed.rates[2]),
+      day1Rate: formatPercent(dayRate(1)),
+      day2Rate: formatPercent(dayRate(2)),
+      day3Rate: formatPercent(dayRate(3)),
     }),
     detail: t('rechargePage.firstRechargeV2Detail'),
   }
@@ -90,31 +86,26 @@ const firstRechargeGiftView = computed(() => {
 
 async function loadFirstRechargeStatus() {
   try {
-    const [isFirstRes, giftConfigRes, todayGiftRes] = await Promise.allSettled([
-      getRechargeIsFirst(),
-      getAppConfig('first_recharge_gift_config_v2'),
-      getAppConfig('today_first_recharge_gift'),
-    ])
+    const { data } = await getRechargePromotions()
+    firstRecharge3Day.value = data?.firstRecharge3Day ?? null
+    todayFirstRecharge.value = data?.todayFirstRecharge ?? null
 
-    if (isFirstRes.status === 'fulfilled') {
-      hasFirst.value = isFirstRes.value.data?.hasFirst ?? false
-      hasTodayFirst.value = isFirstRes.value.data?.hasTodayFirst ?? false
-    }
-
-    const newGiftConfig = giftConfigRes.status === 'fulfilled'
-      ? giftConfigRes.value.data?.configValue ?? ''
-      : ''
-    firstRechargeGiftConfig.value = newGiftConfig
-    todayFirstRechargeGift.value = todayGiftRes.status === 'fulfilled'
-      ? todayGiftRes.value.data?.configValue ?? ''
-      : ''
-
-    if (hasFirst.value)
+    if (canSelectFirst.value)
       promoChoice.value = 'first'
-    else if (hasTodayFirst.value)
+    else if (canSelectTodayFirst.value)
       promoChoice.value = 'today_first'
+    else
+      promoChoice.value = ''
   }
   catch { /* 接口失败不影响主流程 */ }
+}
+
+function togglePromo(choice: 'first' | 'today_first') {
+  if (choice === 'first' && !canSelectFirst.value)
+    return
+  if (choice === 'today_first' && !canSelectTodayFirst.value)
+    return
+  promoChoice.value = promoChoice.value === choice ? '' : choice
 }
 
 // 国家列表
@@ -336,7 +327,7 @@ async function handleSubmitRecharge() {
       currency: selectedCountry.value?.currencyCode,
       countryCode: selectedCountry.value?.countryCode ?? '',
       extraFields: rechargeFields.value.length ? { ...fieldValues.value } : undefined,
-      activityType: promoChoice.value === 'first' ? 1 : promoChoice.value === 'today_first' ? 2 : 0,
+      activityCode: selectedActivityCode.value,
     })
 
     if (data?.payUrl) {
@@ -585,8 +576,9 @@ onMounted(() => {
             v-if="hasFirst"
             type="button"
             class="promo-item"
-            :class="{ active: promoChoice === 'first' }"
-            @click="promoChoice = promoChoice === 'first' ? '' : 'first'"
+            :class="{ active: promoChoice === 'first', disabled: !canSelectFirst }"
+            :disabled="!canSelectFirst"
+            @click="togglePromo('first')"
           >
             <span class="promo-radio">
               <span v-if="promoChoice === 'first'" class="promo-radio-dot" />
@@ -610,8 +602,9 @@ onMounted(() => {
             v-if="hasTodayFirst"
             type="button"
             class="promo-item"
-            :class="{ active: promoChoice === 'today_first' }"
-            @click="promoChoice = promoChoice === 'today_first' ? '' : 'today_first'"
+            :class="{ active: promoChoice === 'today_first', disabled: !canSelectTodayFirst }"
+            :disabled="!canSelectTodayFirst"
+            @click="togglePromo('today_first')"
           >
             <span class="promo-radio">
               <span v-if="promoChoice === 'today_first'" class="promo-radio-dot" />
@@ -619,7 +612,7 @@ onMounted(() => {
             <div class="promo-body">
               <div class="promo-header-row">
                 <span class="promo-name">{{ t('rechargePage.todayFirstTitle') }}</span>
-                <span v-if="todayFirstRechargeGift" class="promo-badge">+{{ todayFirstRechargeGift }}%</span>
+                <span v-if="todayFirstRecharge?.rate" class="promo-badge">+{{ formatPercent(Number(todayFirstRecharge.rate)) }}%</span>
               </div>
               <p class="promo-desc">
                 {{ t('rechargePage.todayFirstDesc') }}
@@ -1165,6 +1158,11 @@ onMounted(() => {
 .promo-item.active {
   border-color: rgba(212, 175, 55, 0.6);
   background: linear-gradient(160deg, rgba(255, 223, 135, 0.1), rgba(116, 24, 0, 0.2));
+}
+
+.promo-item.disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 .promo-radio {

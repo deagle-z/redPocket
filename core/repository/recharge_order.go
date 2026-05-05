@@ -45,6 +45,12 @@ type firstRechargeGiftConfigV2 struct {
 	Rates []float64
 }
 
+const (
+	RechargeActivityCodeFirstRecharge3Day = "first_recharge_3day"
+	RechargeActivityCodeTodayFirst        = "today_first_recharge"
+	rechargePromotionTimeFormat           = "2006-01-02 15:04:05"
+)
+
 var (
 	rechargeGiftAsynqOnce   sync.Once
 	rechargeGiftAsynqClient *asynq.Client
@@ -342,6 +348,10 @@ func AppCreateRechargeOrder(db *gorm.DB, userID int64, req pojo.RechargeOrderApp
 		log.Printf("[AppCreateRechargeOrder] 用户已禁用 userID=%d status=%d", userID, tgUser.Status)
 		return result, errors.New("user_disabled_contact_admin")
 	}
+	activityType, err := resolveRechargeActivityType(db, userID, req, tablePrefix)
+	if err != nil {
+		return result, err
+	}
 
 	// 延迟写库策略：先解析渠道、调用三方，成功后再落库，失败不留脏数据
 	provider, providerErr := pay.MustGet(req.Channel)
@@ -392,7 +402,7 @@ func AppCreateRechargeOrder(db *gorm.DB, userID int64, req pojo.RechargeOrderApp
 		BonusAmount:     0,
 		Status:          0, // 待支付
 		ProviderTradeNo: providerTradeNo,
-		ActivityType:    &req.ActivityType,
+		ActivityType:    &activityType,
 	}
 	if err = db.Create(&order).Error; err != nil {
 		log.Printf("[AppCreateRechargeOrder] 写库失败 userID=%d orderNo=%s err=%v", userID, orderNo, err)
@@ -408,7 +418,7 @@ func AppCreateRechargeOrder(db *gorm.DB, userID int64, req pojo.RechargeOrderApp
 			return result, err
 		}
 	}
-	log.Printf("[AppCreateRechargeOrder] 订单创建成功 userID=%d orderNo=%s channel=%s amount=%.2f activityType=%d", userID, orderNo, req.Channel, req.Amount, req.ActivityType)
+	log.Printf("[AppCreateRechargeOrder] 订单创建成功 userID=%d orderNo=%s channel=%s amount=%.2f activityType=%d activityCode=%s", userID, orderNo, req.Channel, req.Amount, activityType, req.ActivityCode)
 
 	result = pojo.RechargeOrderAppBack{
 		OrderNo:         order.OrderNo,
@@ -830,6 +840,14 @@ func applyFirstRechargeGiftV2(tx *gorm.DB, order pojo.RechargeOrder, user pojo.T
 		return nil
 	}
 
+	var activityOrders []pojo.RechargeOrder
+	_ = tx.Where("user_id = ? AND activity_type = 1 AND status = 1 AND pay_time IS NOT NULL", user.ID).
+		Order("pay_time asc, id asc").
+		Find(&activityOrders).Error
+	if hasMissedFirstRechargeDay(completedFirstRecharge3DayMap(startAt, activityOrders), dayIndex) {
+		return nil
+	}
+
 	dayStart, dayEnd := naturalDayRange(payAt)
 	var firstDayOrder pojo.RechargeOrder
 	if err = tx.Where("user_id = ? AND activity_type = 1 AND status = 1 AND pay_time >= ? AND pay_time < ?", user.ID, dayStart, dayEnd).
@@ -844,6 +862,164 @@ func applyFirstRechargeGiftV2(tx *gorm.DB, order pojo.RechargeOrder, user pojo.T
 		return nil
 	}
 	return applyFirstRechargeGiftV2OrderGift(tx, order, user.ID, dayIndex, giftAmount, rate)
+}
+
+func resolveRechargeActivityType(db *gorm.DB, userID int64, req pojo.RechargeOrderAppReq, tablePrefix string) (int8, error) {
+	code := strings.TrimSpace(req.ActivityCode)
+	if code == "" {
+		switch req.ActivityType {
+		case 0:
+			return 0, nil
+		case 1:
+			code = RechargeActivityCodeFirstRecharge3Day
+		case 2:
+			code = RechargeActivityCodeTodayFirst
+		default:
+			return 0, errors.New("activity_unavailable")
+		}
+	}
+	switch code {
+	case RechargeActivityCodeFirstRecharge3Day:
+		cfg, err := getFirstRechargeGiftConfigV2(tablePrefix)
+		if err != nil {
+			log.Printf("[recharge] first_recharge_3day unavailable: parse first_recharge_gift_config_v2 failed userID=%d err=%v", userID, err)
+			return 0, errors.New("first_recharge_activity_unavailable")
+		}
+		status := getFirstRecharge3DayPromotionStatus(db, userID, cfg, time.Now())
+		if !status.Visible || !status.Selectable {
+			return 0, errors.New("first_recharge_activity_unavailable")
+		}
+		return 1, nil
+	case RechargeActivityCodeTodayFirst:
+		hasTodayFirst := hasTodayFirstRechargeUsed(db, userID, time.Now())
+		if hasTodayFirst {
+			return 0, errors.New("today_first_recharge_activity_unavailable")
+		}
+		return 2, nil
+	default:
+		return 0, errors.New("activity_unavailable")
+	}
+}
+
+func GetRechargePromotions(db *gorm.DB, userID int64, tablePrefix string) pojo.RechargePromotionStatusResp {
+	now := time.Now()
+	cfg, err := getFirstRechargeGiftConfigV2(tablePrefix)
+	if err != nil {
+		cfg = firstRechargeGiftConfigV2{}
+	}
+	todayRate := getTodayFirstRechargeRate(db)
+	hasTodayFirst := hasTodayFirstRechargeUsed(db, userID, now)
+	return pojo.RechargePromotionStatusResp{
+		FirstRecharge3Day:  getFirstRecharge3DayPromotionStatus(db, userID, cfg, now),
+		TodayFirstRecharge: pojo.RechargeTodayFirstPromotion{Visible: todayRate > 0 && !hasTodayFirst, Selectable: todayRate > 0 && !hasTodayFirst, ActivityCode: RechargeActivityCodeTodayFirst, Rate: todayRate},
+	}
+}
+
+func getFirstRecharge3DayPromotionStatus(db *gorm.DB, userID int64, cfg firstRechargeGiftConfigV2, now time.Time) pojo.RechargeFirstRecharge3DayPromotion {
+	resp := pojo.RechargeFirstRecharge3DayPromotion{
+		ActivityCode: RechargeActivityCodeFirstRecharge3Day,
+		Title:        "firstRechargeTitle",
+		Rates:        buildFirstRecharge3DayRates(cfg, 0, nil),
+	}
+	if len(cfg.Rates) == 0 {
+		return resp
+	}
+
+	var orders []pojo.RechargeOrder
+	_ = db.Where("user_id = ? AND activity_type = 1 AND status = 1 AND pay_time IS NOT NULL", userID).
+		Order("pay_time asc, id asc").
+		Find(&orders).Error
+
+	if len(orders) == 0 || orders[0].PayTime == nil {
+		todayStart, _ := naturalDayRange(now)
+		resp.Visible = true
+		resp.Selectable = true
+		resp.CurrentDay = 1
+		resp.ValidFrom = todayStart.Format(rechargePromotionTimeFormat)
+		resp.ValidTo = todayStart.AddDate(0, 0, 3).Add(-time.Second).Format(rechargePromotionTimeFormat)
+		resp.TodayRate = cfg.Rates[0]
+		resp.Rates = buildFirstRecharge3DayRates(cfg, 1, map[int]bool{})
+		return resp
+	}
+
+	startAt := *orders[0].PayTime
+	startDay, _ := naturalDayRange(startAt)
+	dayIndex, available := firstRechargeGiftV2DayIndex(startAt, now)
+	completed := completedFirstRecharge3DayMap(startAt, orders)
+	resp.ValidFrom = startDay.Format(rechargePromotionTimeFormat)
+	resp.ValidTo = startDay.AddDate(0, 0, 3).Add(-time.Second).Format(rechargePromotionTimeFormat)
+	if !available || hasMissedFirstRechargeDay(completed, dayIndex) {
+		resp.Rates = buildFirstRecharge3DayRates(cfg, dayIndex, completed)
+		return resp
+	}
+
+	todayDone := completed[dayIndex]
+	resp.Visible = !todayDone
+	resp.Selectable = !todayDone
+	resp.CurrentDay = dayIndex
+	resp.TodayRate = cfg.Rates[dayIndex-1]
+	resp.Rates = buildFirstRecharge3DayRates(cfg, dayIndex, completed)
+	return resp
+}
+
+func completedFirstRecharge3DayMap(startAt time.Time, orders []pojo.RechargeOrder) map[int]bool {
+	completed := map[int]bool{}
+	for _, order := range orders {
+		if order.PayTime == nil {
+			continue
+		}
+		day, ok := firstRechargeGiftV2DayIndex(startAt, *order.PayTime)
+		if ok {
+			completed[day] = true
+		}
+	}
+	return completed
+}
+
+func hasMissedFirstRechargeDay(completed map[int]bool, currentDay int) bool {
+	for day := 1; day < currentDay; day++ {
+		if !completed[day] {
+			return true
+		}
+	}
+	return false
+}
+
+func buildFirstRecharge3DayRates(cfg firstRechargeGiftConfigV2, currentDay int, completed map[int]bool) []pojo.RechargePromotionDayRate {
+	rates := make([]pojo.RechargePromotionDayRate, 0, len(cfg.Rates))
+	for idx, rate := range cfg.Rates {
+		day := idx + 1
+		status := "pending"
+		if completed != nil && completed[day] {
+			status = "done"
+		} else if currentDay > 0 {
+			if day < currentDay || hasMissedFirstRechargeDay(completed, currentDay) {
+				status = "expired"
+			} else if day == currentDay {
+				status = "available"
+			}
+		}
+		rates = append(rates, pojo.RechargePromotionDayRate{Day: day, Rate: rate, Status: status})
+	}
+	return rates
+}
+
+func hasTodayFirstRechargeUsed(db *gorm.DB, userID int64, now time.Time) bool {
+	var todayCount int64
+	db.Model(&pojo.RechargeOrder{}).
+		Where("user_id = ? AND activity_type = 2 AND status = 1 AND created_at >= ?", userID, now.Add(-24*time.Hour)).
+		Count(&todayCount)
+	return todayCount > 0
+}
+
+func getTodayFirstRechargeRate(db *gorm.DB) float64 {
+	var cfg pojo.SysConfig
+	db.Where("config_key = ?", "today_first_recharge_gift").First(&cfg)
+	rate, err := strconv.ParseFloat(strings.TrimSpace(cfg.ConfigValue), 64)
+	if cfg.ID == 0 || err != nil || rate <= 0 {
+		return 0
+	}
+	return rate
 }
 
 func applySplitFirstRechargeGift(tx *gorm.DB, order pojo.RechargeOrder, user pojo.TgUser, tablePrefix string, now time.Time) error {
@@ -1303,29 +1479,9 @@ func applyInviteFirstRechargeReward(tx *gorm.DB, order pojo.RechargeOrder, subUs
 // hasFirst: 当前是否不可参加首充活动（api 层会取反返回可参加状态）
 // hasTodayFirst: 24小时内是否已参加过今日首充活动（activity_type=2 且 status=1）
 func CheckActivityStatus(db *gorm.DB, userID int64) (hasFirst bool, hasTodayFirst bool) {
-	var firstOrder pojo.RechargeOrder
-	if err := db.Where("user_id = ? AND activity_type = 1 AND status = 1 AND pay_time IS NOT NULL", userID).
-		Order("pay_time asc, id asc").
-		First(&firstOrder).Error; err == nil && firstOrder.ID > 0 && firstOrder.PayTime != nil {
-		now := time.Now()
-		_, available := firstRechargeGiftV2DayIndex(*firstOrder.PayTime, now)
-		if !available {
-			hasFirst = true
-		} else {
-			dayStart, dayEnd := naturalDayRange(now)
-			var todayFirstCount int64
-			db.Model(&pojo.RechargeOrder{}).
-				Where("user_id = ? AND activity_type = 1 AND status = 1 AND pay_time >= ? AND pay_time < ?", userID, dayStart, dayEnd).
-				Count(&todayFirstCount)
-			hasFirst = todayFirstCount > 0
-		}
-	}
-
-	var todayCount int64
-	db.Model(&pojo.RechargeOrder{}).
-		Where("user_id = ? AND activity_type = 2 AND status = 1 AND created_at >= ?", userID, time.Now().Add(-24*time.Hour)).
-		Count(&todayCount)
-	hasTodayFirst = todayCount > 0
+	promotions := GetRechargePromotions(db, userID, utils.GetDbPrefix(db))
+	hasFirst = !promotions.FirstRecharge3Day.Visible || !promotions.FirstRecharge3Day.Selectable
+	hasTodayFirst = !promotions.TodayFirstRecharge.Visible || !promotions.TodayFirstRecharge.Selectable
 	return
 }
 

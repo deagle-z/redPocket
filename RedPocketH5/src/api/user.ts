@@ -132,10 +132,45 @@ export interface RechargeOrderAppReq {
   merchantOrderNo?: string
   extraFields?: Record<string, string>
   activityType?: 0 | 1 | 2
+  activityCode?: '' | 'first_recharge_3day' | 'today_first_recharge'
 }
 
 export function getRechargeIsFirst() {
   return request.get<ApiResult<{ hasFirst: boolean, hasTodayFirst: boolean }>>('/api/v1/app/recharge/isFirst')
+}
+
+export interface RechargePromotionDayRate {
+  day: number
+  rate: number
+  status: 'available' | 'pending' | 'done' | 'expired' | string
+}
+
+export interface RechargeFirstRecharge3DayPromotion {
+  visible: boolean
+  selectable: boolean
+  activityCode: 'first_recharge_3day'
+  currentDay: number
+  validFrom: string
+  validTo: string
+  rates: RechargePromotionDayRate[]
+  todayRate: number
+  title: string
+}
+
+export interface RechargeTodayFirstPromotion {
+  visible: boolean
+  selectable: boolean
+  activityCode: 'today_first_recharge'
+  rate: number
+}
+
+export interface RechargePromotionsResp {
+  firstRecharge3Day: RechargeFirstRecharge3DayPromotion
+  todayFirstRecharge: RechargeTodayFirstPromotion
+}
+
+export function getRechargePromotions() {
+  return request.get<ApiResult<RechargePromotionsResp>>('/api/v1/app/recharge/promotions')
 }
 
 export function getAppConfig(key: string) {
