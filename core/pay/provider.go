@@ -35,17 +35,19 @@ type Provider interface {
 
 // PayoutRequest 代付下单请求参数
 type PayoutRequest struct {
-	OrderNo     string
-	Amount      float64
-	Currency    string
-	AccName     string            // 收款人姓名
-	AccNo       string            // 收款账号/卡号
-	BankCode    string            // 银行编码
-	BusiCode    string            // 支付业务编码
-	Email       string            // 邮箱
-	Phone       string            // 手机号
-	NotifyURL   string            // 回调地址
-	ExtraFields map[string]string // extend/province 等扩展字段
+	OrderNo      string
+	Amount       float64
+	Currency     string
+	AccName      string            // 收款人姓名
+	AccNo        string            // 收款账号/卡号
+	BankCode     string            // 银行编码
+	IdentityType string            // 出款类型/账号类型
+	IdentityNo   string            // 身份证号/身份ID
+	BusiCode     string            // 支付业务编码
+	Email        string            // 邮箱
+	Phone        string            // 手机号
+	NotifyURL    string            // 回调地址
+	ExtraFields  map[string]string // extend/province 等扩展字段
 }
 
 // PayoutResponse 代付下单响应

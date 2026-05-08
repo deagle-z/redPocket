@@ -162,29 +162,14 @@ func (g *Provider) CreatePayoutOrder(req pay.PayoutRequest) (pay.PayoutResponse,
 	if notifyURL == "" {
 		notifyURL = cfg.NotifyURL
 	}
+	identityType := resolvePayoutIdentityType(req)
+	if identityType == "" {
+		return pay.PayoutResponse{}, fmt.Errorf("GCTPKMXN 代付参数缺少 identityType")
+	}
 
 	timestamp := fmt.Sprintf("%d", time.Now().UnixMilli())
 
-	params := map[string]string{
-		"merNo":       cfg.MerNo,
-		"merOrderNo":  req.OrderNo,
-		"accName":     req.AccName,
-		"accNo":       req.AccNo,
-		"bankCode":    req.BankCode,
-		"busiCode":    resolvePayoutBusiCode(req, "207001"),
-		"currency":    req.Currency,
-		"email":       req.Email,
-		"notifyUrl":   notifyURL,
-		"orderAmount": fmt.Sprintf("%.2f", req.Amount),
-		"phone":       req.Phone,
-		"timestamp":   timestamp,
-	}
-	// 可选扩展字段（extend / province 等）
-	for _, k := range []string{"extend", "province"} {
-		if v := strings.TrimSpace(req.ExtraFields[k]); v != "" {
-			params[k] = v
-		}
-	}
+	params := buildPayoutParams(cfg, req, notifyURL, timestamp, identityType)
 
 	// 签名：HmacSHA256 → signA → RSA 私钥加密 → Base64
 	signA := BuildSign(params, cfg.Secret)
@@ -214,6 +199,38 @@ func (g *Provider) CreatePayoutOrder(req pay.PayoutRequest) (pay.PayoutResponse,
 		resp.Status = apiResp.Data.Status
 	}
 	return resp, nil
+}
+
+func buildPayoutParams(cfg base.GctpkPayConfig, req pay.PayoutRequest, notifyURL string, timestamp string, identityType string) map[string]string {
+	params := map[string]string{
+		"merNo":        cfg.MerNo,
+		"merOrderNo":   req.OrderNo,
+		"identityType": identityType,
+		"accName":      req.AccName,
+		"accNo":        req.AccNo,
+		"bankCode":     req.BankCode,
+		"busiCode":     resolvePayoutBusiCode(req, "207001"),
+		"currency":     "MXN",
+		"email":        req.Email,
+		"notifyUrl":    notifyURL,
+		"orderAmount":  fmt.Sprintf("%.2f", req.Amount),
+		"phone":        req.Phone,
+		"timestamp":    timestamp,
+	}
+	// 可选扩展字段（extend / province 等）
+	for _, k := range []string{"extend", "province"} {
+		if v := strings.TrimSpace(req.ExtraFields[k]); v != "" {
+			params[k] = v
+		}
+	}
+	return params
+}
+
+func resolvePayoutIdentityType(req pay.PayoutRequest) string {
+	if v := strings.TrimSpace(req.IdentityType); v != "" {
+		return v
+	}
+	return strings.TrimSpace(req.ExtraFields["identityType"])
 }
 
 func resolvePayoutBusiCode(req pay.PayoutRequest, defaultCode string) string {

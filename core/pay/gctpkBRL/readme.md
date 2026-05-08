@@ -1,26 +1,86 @@
-签名规范
-所有接口的签名规范：
-将所有参数按照字段名的 ASCII 码(字典序)从小到大排序后使用 QueryString 的格式(即key1=value1&key2=value2…) 拼接成签名串,空参数和sign不参与签名
-
-HmacSHA256加密格式案例(案例只做参考,加密后的值可能不准确)
-代付下单接口需要对HmacSHA256加密后的sign值再进行RSA-1024私钥加密,其他接口均只需使用HmacSHA256加密和验签
-(代付下单HmacSHA256+rsa,代付通知,代收下单,代收通知,代收查询,代付查询等均是HmacSHA256)
-加密前:
-bankCode=abc&busiCode=103001&currency=INR&email=tom@gmail.com&merNo=xxxxxxxxx&merOrderNo=1703664046297&name=tom&notifyUrl=https://xxx.xxx.xxx/xxx/xxxxxxxx&orderAmount=1000&pageUrl=https://xxx.xxxx.com&phone=9001941197&timestamp=1703664046000
-加密后:
-3dc928559f8a3657e759c6fda27178071beed1b444df9f76b4538d6985cd6cb1
-
-代付下单RSA加密格式案例(案例只做参考,加密后的值可能不准确)
-1.正式号使用工具类或者在线网址生成RSA密钥对,生成RSA-1024位,密钥格式:PKCS#8,私钥自己保存,公钥上传至商户后台。(测试号使用文档提供的密钥即可)
-2.代付加密流程,使用HmacSHA256对签名串加密后得到signA,再对signA进行RSA私钥加密并base64编码后得到sign。
-加密前:
-accName=tomjrui&accNo=123123156412&bankCode=SCB&busiCode=201001&currency=THB&email=tom@gmail.com&extend=tom@gmail.com&merNo=xxxxxxxxx&merOrderNo=1703663635553&notifyUrl=https://xxx.xxx.com/temp/acqNotify&orderAmount=100&phone=9001941197&province=ICIC1234567&timestamp=1703663635553
-signA:
-aa5db6a30e8a27607904cf8b75ddd368e26960ee34d149ea6d53c81c0230c70d
-对signA进行RSA加密并base64编码后的sign:
-gse2VBCsjN73ICHV0GgaeL3vnvp+4QBhuiH5iVcAh4HN0cQ8G0DrYx/udW724f66ShnB4pHYSfhBYsemfsDnzt583VqJ7OLrCqW0Q9WFengFtQO3IGSn//shzl5pzGzpEKF3PKfoBV6HXY5QUBXNB8zJs/wTuQDVDcx69LfIXPM=
-
-
-支付编码(busiCode)
-印尼网银支付	印尼OVO电子钱包	印尼LINKAJA电子钱包	印尼扫码	印尼DANA电子钱包	印尼BNI网银	印尼卡卡
-104001	104002	104003	104004	104005	104007	104008
+代付编码(busiCode)
+巴西代付
+206001
+请求参数
+bankCode银行编码Stringrequired
+请输入 银行编码
+固定填：PIX
+identityType出款类型Stringrequired
+请输入 出款类型
+需要填写,分为CPF, CNPJ, PHONE, EMAIL, EVP五种，需要让收款人自己选择这五种其中之一，选择对应类型acc_no则对应该类型出款账号
+identityNo身份证号String
+请输入 身份证号
+可选传递CPF号或不传递,如传递CPF号则会进行CPF校验，相当于身份ID,11位或14位。
+accName姓名Stringrequired
+请输入 姓名
+姓名
+accNo卡号Stringrequired
+请输入 卡号
+卡号
+busiCode支付业务编码Stringrequired
+请输入 支付业务编码
+按照表格编码填写
+currency币种Stringrequired
+BRL
+币种
+email邮箱Stringrequired
+请输入 邮箱
+邮箱
+merNo商户号Stringrequired
+请输入 商户号
+商户号
+merOrderNo商户订单号Stringrequired
+请输入 商户订单号
+商户必须保证商户单号唯一,我方不保证商户单号唯一。
+notifyUrl回调地址Stringrequired
+请输入 回调地址
+回调地址
+orderAmount订单金额Stringrequired
+请输入 订单金额
+订单金额
+phone手机号Stringrequired
+请输入 手机号
+纯数字，不需要添加区号
+timestamp时间戳Stringrequired
+当前UTC 13位时间戳,5分钟内有效
+sign签名Stringrequired
+签名
+请求数据
+copy
+{
+bankCode:""
+identityType:""
+identityNo:""
+accName:""
+accNo:""
+busiCode:""
+currency:"BRL"
+email:""
+merNo:""
+merOrderNo:""
+notifyUrl:""
+orderAmount:""
+phone:""
+timestamp:""
+sign:""
+}
+响应体
+copy
+{}
+返回参数
+参数名
+参数名称
+类型
+说明
+data
+承载数据
+Object
+code=200有数据
+code
+接口状态码
+integer(int32)
+code=200或code=500代表请求成功,订单状态以data.status参数为准,code!=200、500则表示请求失败订单不入库（响应异常不能作为失败处理，比如响应超时或者httpCode响应502）
+msg
+接口状态信息
+String
+接口状态信息
