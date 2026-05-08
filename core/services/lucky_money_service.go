@@ -20,6 +20,12 @@ import (
 
 var autoLuckyMaintainMu sync.Mutex
 
+type luckyNumsReward struct {
+	Triggered bool
+	Num       string
+	Amount    float64
+}
+
 // SendRedPacket 发送红包业务逻辑
 func SendRedPacket(db *gorm.DB, senderID int64, senderName string, req pojo.LuckyMoneySend, tablePrefix string) (*pojo.LuckyMoney, error) {
 	return sendRedPacket(db, senderID, senderName, req, tablePrefix)
@@ -717,6 +723,7 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 	loseMoney := 0.0
 	actualAmount := 0.0
 	actualReceivedAmount := 0.0
+	luckyNumsReward := buildLuckyNumsReward(redAmount, GetLuckyNumsConfig(db), GetLuckyNumsAmount(db))
 	thunderFee := 0.0 // 中雷/猜错手续费（发包者端抽成）
 	winFee := 0.0     // 中奖/猜对手续费（抢包者端抽成）
 	sendCommission := 0
@@ -902,6 +909,17 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 			}
 		}
 
+		if luckyNumsReward.Triggered && !user.IsBot {
+			finalBalance := utils.Truncate2(lockedUser.Balance + redAmount - loseMoney)
+			giftUser := lockedUser
+			giftUser.Balance = finalBalance
+			giftUser.GiftAmount = utils.Truncate2(giftUser.GiftAmount - giftDeduct)
+			if err := applyLuckyNumsGift(tx, giftUser, luckyMoney, luckyNumsReward, finalBalance, grabIndex); err != nil {
+				tx.Rollback()
+				return nil, err
+			}
+		}
+
 		// 记录余额变动（发送者）- 抽成后金额（实际到账）
 		// 使用事务内锁定的 lockedSender（UPDATE 前的值，即准确的 StartAmount）
 		cashHistorySender := pojo.CashHistory{
@@ -1021,6 +1039,16 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 			return nil, fmt.Errorf("记录余额变动失败: %v", err)
 		}
 
+		if luckyNumsReward.Triggered && !user.IsBot {
+			finalBalance := utils.Truncate2(lockedWinner.Balance + actualAmount)
+			giftUser := lockedWinner
+			giftUser.Balance = finalBalance
+			if err := applyLuckyNumsGift(tx, giftUser, luckyMoney, luckyNumsReward, finalBalance, grabIndex); err != nil {
+				tx.Rollback()
+				return nil, err
+			}
+		}
+
 		// 记录余额变动 - 抽成金额
 		if commissionAmount > 0 && !botVsBotPump {
 			cashHistoryCommission := pojo.CashHistory{
@@ -1123,20 +1151,30 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 	if shouldHideSecondLastInProgressForBroadcast(luckyMoney, grabbedCount+1, time.Now()) {
 		isAmountHidden = 1
 	}
+	luckyNumsHit := luckyNumsReward.Triggered && !user.IsBot
+	luckyNums := ""
+	luckyNumsAmount := 0.0
+	if luckyNumsHit {
+		luckyNums = luckyNumsReward.Num
+		luckyNumsAmount = luckyNumsReward.Amount
+	}
 
 	// 返回结果
 	result := map[string]interface{}{
-		"amount":         redAmount,
-		"actualAmount":   actualAmount,
-		"isThunder":      isThunder,
-		"loseMoney":      loseMoney,
-		"openNum":        grabIndex,
-		"grabIndex":      grabIndex,
-		"isAmountHidden": isAmountHidden,
-		"luckyInfo":      luckyMoney,
-		"gameMode":       luckyMoney.GameMode,
-		"guess":          guess,
-		"message":        "",
+		"amount":          redAmount,
+		"actualAmount":    actualAmount,
+		"isThunder":       isThunder,
+		"loseMoney":       loseMoney,
+		"openNum":         grabIndex,
+		"grabIndex":       grabIndex,
+		"isAmountHidden":  isAmountHidden,
+		"luckyInfo":       luckyMoney,
+		"gameMode":        luckyMoney.GameMode,
+		"guess":           guess,
+		"luckyNumsHit":    luckyNumsHit,
+		"luckyNums":       luckyNums,
+		"luckyNumsAmount": luckyNumsAmount,
+		"message":         "",
 	}
 
 	if luckyMoney.GameMode == 1 {
@@ -1305,6 +1343,127 @@ func GetLuckyNumConfig(db *gorm.DB) string {
 	utils.RD.SetEX(ctx, redisKey, result, utils.GetRandomRangeSecond(20*60, 40*60))
 
 	return result
+}
+
+// GetLuckyNumsConfig 获取幸运数字活动配置，多个数字用 | 分隔。
+func GetLuckyNumsConfig(db *gorm.DB) string {
+	defaultValue := "111|222|333"
+	redisKey := "bgu_lucky_nums"
+	ctx := context.Background()
+	configKey := "lucky_nums"
+
+	cachedValue, err := utils.RD.Get(ctx, redisKey).Result()
+	if err == nil && cachedValue != "" {
+		return cachedValue
+	}
+
+	result := getOrInitSysConfigValue(db, configKey, defaultValue, "幸运数字活动数字配置")
+	if strings.TrimSpace(result) == "" {
+		result = defaultValue
+		_ = db.Model(&pojo.SysConfig{}).Where("config_key = ?", configKey).Update("config_value", defaultValue).Error
+	}
+	utils.RD.SetEX(ctx, redisKey, result, utils.GetRandomRangeSecond(20*60, 40*60))
+	return result
+}
+
+// GetLuckyNumsAmount 获取幸运数字活动赠送金额。
+func GetLuckyNumsAmount(db *gorm.DB) float64 {
+	defaultValue := 1000.0
+	redisKey := "bgu_lucky_nums_amount"
+	ctx := context.Background()
+	configKey := "lucky_nums_amount"
+
+	cachedValue, err := utils.RD.Get(ctx, redisKey).Result()
+	if err == nil && cachedValue != "" {
+		if value, parseErr := strconv.ParseFloat(cachedValue, 64); parseErr == nil && value > 0 {
+			return utils.Truncate2(value)
+		}
+	}
+
+	configValue := getOrInitSysConfigValue(db, configKey, strconv.FormatFloat(defaultValue, 'f', 2, 64), "幸运数字活动赠送金额")
+	result, parseErr := strconv.ParseFloat(configValue, 64)
+	if parseErr != nil || result <= 0 {
+		result = defaultValue
+		_ = db.Model(&pojo.SysConfig{}).Where("config_key = ?", configKey).Update("config_value", strconv.FormatFloat(defaultValue, 'f', 2, 64)).Error
+	}
+	result = utils.Truncate2(result)
+	utils.RD.SetEX(ctx, redisKey, strconv.FormatFloat(result, 'f', 2, 64), utils.GetRandomRangeSecond(20*60, 40*60))
+	return result
+}
+
+func buildLuckyNumsReward(amount float64, config string, giftAmount float64) luckyNumsReward {
+	giftAmount = utils.Truncate2(giftAmount)
+	if giftAmount <= 0 {
+		return luckyNumsReward{}
+	}
+
+	tail := luckyNumsTail(amount)
+	if tail == "" {
+		return luckyNumsReward{}
+	}
+
+	for _, item := range strings.Split(config, "|") {
+		num := strings.TrimSpace(item)
+		if num == "" {
+			continue
+		}
+		if len(num) > 3 {
+			num = num[len(num)-3:]
+		}
+		if len(num) == 3 && num == tail {
+			return luckyNumsReward{
+				Triggered: true,
+				Num:       tail,
+				Amount:    giftAmount,
+			}
+		}
+	}
+	return luckyNumsReward{}
+}
+
+func luckyNumsTail(amount float64) string {
+	digits := strings.ReplaceAll(fmt.Sprintf("%.2f", utils.Truncate2(amount)), ".", "")
+	if len(digits) < 3 {
+		return ""
+	}
+	return digits[len(digits)-3:]
+}
+
+func applyLuckyNumsGift(tx *gorm.DB, user pojo.TgUser, luckyMoney pojo.LuckyMoney, reward luckyNumsReward, startBalance float64, grabIndex int) error {
+	if tx == nil || user.ID <= 0 || !reward.Triggered || reward.Amount <= 0 {
+		return nil
+	}
+
+	giftAmount := utils.Truncate2(reward.Amount)
+	user.Balance = utils.Truncate2(startBalance)
+	if err := tx.Model(&pojo.TgUser{}).Where("id = ?", user.ID).Updates(map[string]any{
+		"balance":     gorm.Expr("balance + ?", giftAmount),
+		"gift_amount": gorm.Expr("gift_amount + ?", giftAmount),
+		"gift_total":  gorm.Expr("gift_total + ?", giftAmount),
+	}).Error; err != nil {
+		return fmt.Errorf("发放幸运数字奖励失败: %v", err)
+	}
+	if err := repository.AddUserWithdrawRestrictedBalance(tx, user, giftAmount, 0); err != nil {
+		return fmt.Errorf("更新幸运数字奖励提现限制失败: %v", err)
+	}
+
+	cashHistory := pojo.CashHistory{
+		UserId:          user.ID,
+		AwardUni:        fmt.Sprintf("lucky_nums_%d_%d_%d", luckyMoney.ID, user.ID, grabIndex),
+		Amount:          giftAmount,
+		StartAmount:     utils.Truncate2(startBalance),
+		EndAmount:       utils.Truncate2(startBalance + giftAmount),
+		CashMark:        "幸运数字活动",
+		CashDesc:        fmt.Sprintf("抢红包触发幸运数字%s，赠送%.2fU", reward.Num, giftAmount),
+		Type:            pojo.CashHistoryTypeLuckyNumsGift,
+		IsGift:          1,
+		FromUserId:      luckyMoney.SenderID,
+		SourceChannelID: user.SourceChannelID,
+	}
+	if err := tx.Create(&cashHistory).Error; err != nil {
+		return fmt.Errorf("记录幸运数字奖励流水失败: %v", err)
+	}
+	return nil
 }
 
 // GetSendCommission 获取发包中雷抽成百分比（带Redis缓存）

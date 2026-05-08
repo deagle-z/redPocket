@@ -1,41 +1,45 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
 import AppPageHeader from '@/components/AppPageHeader.vue'
-import vipBrazilImage from '@/assets/images/long_image_brazil/VIP_short_brazil.png'
-import vipEnglishImage from '@/assets/images/long_image_english/VIP_short_english.png'
-import vipIndonesiaImage from '@/assets/images/long_image_indonesia/VIP_short_indonesia.png'
-import vipMexicoImage from '@/assets/images/long_image_mexico/VIP_short_mexico.png'
+import luckyWheelBrazilImage from '@/assets/images/long_image_brazil/lucky_wheel_short_brazil.png'
+import luckyWheelEnglishImage from '@/assets/images/long_image_english/lucky_wheel_short_english.png'
+import luckyWheelIndonesiaImage from '@/assets/images/long_image_indonesia/lucky_wheel_short_indonesia.png'
+import luckyWheelMexicoImage from '@/assets/images/long_image_mexico/lucky_wheel_short_mexico.png'
 import { locale } from '@/utils/i18n'
 import { safeBack } from '@/utils/navigation'
 
 const { t } = useI18n()
 const router = useRouter()
 
-const vipImageMap: Record<string, string> = {
-  'pt-BR': vipBrazilImage,
-  'en-US': vipEnglishImage,
-  'id-ID': vipIndonesiaImage,
-  'es-MX': vipMexicoImage,
+const luckyWheelImageMap: Record<string, string> = {
+  'pt-BR': luckyWheelBrazilImage,
+  'en-US': luckyWheelEnglishImage,
+  'id-ID': luckyWheelIndonesiaImage,
+  'es-MX': luckyWheelMexicoImage,
 }
 
-const vipImage = computed(() => vipImageMap[locale.value] || vipEnglishImage)
+const luckyWheelImage = computed(() => luckyWheelImageMap[locale.value] || luckyWheelEnglishImage)
 
 function goBack() {
   safeBack(router)
+}
+
+function goPrize() {
+  router.push('/prize')
 }
 </script>
 
 <template>
   <main class="activity-image-page">
-    <AppPageHeader :title="t('activityPage.vip')" @back="goBack" />
+    <AppPageHeader :title="t('activityPage.luckyWheel')" @back="goBack" />
 
-    <div class="activity-image-entry">
+    <button type="button" class="activity-image-entry" @click="goPrize">
       <img
         class="activity-image"
-        :src="vipImage"
-        :alt="t('activityPage.vip')"
+        :src="luckyWheelImage"
+        :alt="t('activityPage.luckyWheel')"
       >
-    </div>
+    </button>
   </main>
 </template>
 
@@ -59,6 +63,13 @@ function goBack() {
 .activity-image-entry {
   display: block;
   width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.activity-image-entry:active {
+  transform: translateY(1px);
 }
 
 .activity-image {
@@ -74,6 +85,6 @@ function goBack() {
 
 <route lang="json5">
 {
-  name: 'VipActivity',
+  name: 'LuckyWheel',
 }
 </route>

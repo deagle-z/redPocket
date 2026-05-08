@@ -18,14 +18,18 @@
     "ForgotPassword": "❓ Lupa Kata Sandi",
     "Settings": "⚙️ Pengaturan",
     "Team": "Tim",
+    "History": "RIW.",
+    "Prize": "PUTAR",
+    "Wallet": "DOMPET",
     "Undefined": "🤷 Judul tidak ditentukan"
   },
   "tabbar": {
-    "home": "RUMAH",
-    "history": "SEJARAH",
+    "home": "HOME",
+    "history": "RIW.",
+    "prize": "SPIN",
     "sendPacket": "MENGIRIM",
     "team": "TIM",
-    "profile": "PROFIL",
+    "profile": "SAYA",
     "wallet": "DOMPET"
   },
   "home": {
@@ -312,6 +316,7 @@
     "typeVipUpgradeReward": "Bonus naik level VIP",
     "typeFirstRechargeGift": "Bonus isi ulang pertama",
     "typeTodayFirstRechargeGift": "Bonus isi ulang pertama hari ini",
+    "typeLuckyNumsGift": "Bonus angka keberuntungan",
     "typeAccountChange": "Perubahan Akun"
   },
   "rechargePage": {
@@ -505,9 +510,12 @@
     "dateMonth": "Bulan ini",
     "dateCustom": "Kebiasaan",
     "txSendTitle": "Paket terkirim {amount}",
+    "txParitySendTitle": "Paket paritas terkirim {amount}",
     "txGrabTitle": "Mengambil paket {sender} {amount}",
     "txThunderRebateTitle": "Rebate kena petir",
+    "txParityRebateTitle": "Profit pengirim paritas",
     "thunderNo": "Guntur: {no}",
+    "parityMode": "Mode Paritas",
     "badgeWin": "Menang",
     "badgeLoss": "Kehilangan",
     "summaryIncome": "Jumlah Pendapatan",
@@ -879,6 +887,11 @@
         "a": "Aktifkan melalui entri platform setelah fitur tersedia."
       }
     }
+  },
+  "activityPage": {
+    "luckyWheel": "Putaran Keberuntungan",
+    "referralCommission": "Komisi Referal",
+    "vip": "Aktivitas VIP"
   },
   "pwaInstall": {
     "title": "Tambahkan ke Layar Utama",

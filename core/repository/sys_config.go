@@ -2,6 +2,8 @@ package repository
 
 import (
 	"BaseGoUni/core/pojo"
+	"BaseGoUni/core/utils"
+	"context"
 	"errors"
 	"strings"
 
@@ -56,11 +58,13 @@ func SetSysConfig(db *gorm.DB, req pojo.SysConfigSet) (result pojo.SysConfigBack
 	}
 
 	var entity pojo.SysConfig
+	oldConfigKey := ""
 	if req.ID > 0 {
 		db.Where("id = ?", req.ID).First(&entity)
 		if entity.ID == 0 {
 			return result, errors.New("record_not_found_update")
 		}
+		oldConfigKey = entity.ConfigKey
 	} else {
 		var exist pojo.SysConfig
 		db.Where("config_key = ?", req.ConfigKey).First(&exist)
@@ -78,6 +82,8 @@ func SetSysConfig(db *gorm.DB, req pojo.SysConfigSet) (result pojo.SysConfigBack
 	if err != nil {
 		return result, err
 	}
+	clearSysConfigCache(oldConfigKey)
+	clearSysConfigCache(entity.ConfigKey)
 	_ = copier.Copy(&result, &entity)
 	return result, nil
 }
@@ -89,5 +95,33 @@ func DelSysConfig(db *gorm.DB, id int64) error {
 	if entity.ID == 0 {
 		return errors.New("record_not_found_delete")
 	}
-	return db.Delete(&entity).Error
+	if err := db.Delete(&entity).Error; err != nil {
+		return err
+	}
+	clearSysConfigCache(entity.ConfigKey)
+	return nil
+}
+
+func clearSysConfigCache(configKey string) {
+	configKey = strings.TrimSpace(configKey)
+	if configKey == "" || utils.RD == nil {
+		return
+	}
+
+	if redisKey, ok := sysConfigRedisKeyMap[configKey]; ok {
+		_ = utils.RD.Del(context.Background(), redisKey).Err()
+	}
+}
+
+var sysConfigRedisKeyMap = map[string]string{
+	"lucky_lose_rate":                "bgu_auth_group_lose_rate",
+	"lucky_game2_lose_rate":          "bgu_auth_group_game2_lose_rate",
+	"lucky_num_config":               "bgu_auth_group_num_config",
+	"lucky_nums":                     "bgu_lucky_nums",
+	"lucky_nums_amount":              "bgu_lucky_nums_amount",
+	"lucky_send_commission":          "bgu_auth_group_send_commission",
+	"lucky_grabbing_commission":      "bgu_auth_group_grabbing_commission",
+	"lucky_send_pool_commission":     "bgu_auth_group_send_pool_commission",
+	"lucky_grabbing_pool_commission": "bgu_auth_group_grabbing_pool_commission",
+	"lucky_expire_time":              "bgu_lucky_expire_time",
 }

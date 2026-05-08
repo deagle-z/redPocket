@@ -135,6 +135,8 @@ const promoMenus = computed<MenuItem[]>(() => [
 
 const activityMenus = computed<MenuItem[]>(() => [
   { key: 'first-deposit', label: t('rechargePage.firstRechargeTitle'), icon: normalizeInlineSvg(downIcon) },
+  { key: 'lucky-wheel', label: t('activityPage.luckyWheel'), icon: normalizeInlineSvg(gamesIcon) },
+  { key: 'referral-commission', label: t('activityPage.referralCommission'), icon: normalizeInlineSvg(shareIcon) },
   { key: 'vip-activity', label: t('profilePage.vipTitle'), icon: normalizeInlineSvg(gamesIcon) },
   { key: 'spin', label: t('profilePage.activitySpin'), icon: normalizeInlineSvg(gamesIcon) },
 ])
@@ -370,6 +372,12 @@ function onMenuClick(item: MenuItem) {
       break
     case 'first-deposit':
       goByPath('/firstDeposit')
+      break
+    case 'lucky-wheel':
+      goByPath('/luckyWheel')
+      break
+    case 'referral-commission':
+      goByPath('/referralCommission')
       break
     case 'vip-activity':
       goByPath('/vipActivity')

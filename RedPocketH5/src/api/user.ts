@@ -273,6 +273,24 @@ export interface LuckyGrabReq {
   oddEvenGuess?: 0 | 1
 }
 
+export interface LuckyGrabResp {
+  amount: number
+  grabAmount?: number
+  actualAmount: number
+  isThunder: number | string
+  loseMoney: number
+  openNum: number
+  grabIndex: number
+  isAmountHidden: number | string
+  gameMode: 0 | 1
+  guess: number
+  luckyNumsHit: boolean
+  luckyNums: string
+  luckyNumsAmount: number
+  message: string
+  luckyInfo?: LuckyMoneyBack
+}
+
 export interface LuckyDetailReq {
   luckyId: number
 }
@@ -387,6 +405,7 @@ export interface LuckyAppHistoryItem {
   loseMoney: number
   isThunder: number
   thunder: number
+  gameMode: 0 | 1
   senderId: number
   senderName: string
   avatar?: string
@@ -608,7 +627,7 @@ export function getLuckyPacketList(data: LuckyPacketListReq) {
 }
 
 export function grabLuckyPacket(data: LuckyGrabReq) {
-  return request.post<ApiResult<any>>('/api/v1/app/lucky/grab', data)
+  return request.post<ApiResult<LuckyGrabResp>>('/api/v1/app/lucky/grab', data)
 }
 
 export function getLuckyDetail(data: LuckyDetailReq) {

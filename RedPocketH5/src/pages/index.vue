@@ -35,10 +35,14 @@ let coinImagePromise: Promise<HTMLImageElement> | null = null
 const visibleWinners = computed(() => recentWinners.value)
 const showWinnerLoading = computed(() => recentWinnersLoading.value && visibleWinners.value.length === 0)
 const showWinnerEmpty = computed(() => visibleWinners.value.length === 0)
-const marqueeText = computed(() => homeBanners.value[activeIndex.value]?.bannerName || '')
+const marqueeText = computed(() => getBannerTitle(homeBanners.value[activeIndex.value]))
 
 function onSwipeChange(index: number) {
   activeIndex.value = index
+}
+
+function getBannerTitle(banner?: BannerItem | null) {
+  return banner?.title || banner?.bannerName || ''
 }
 
 function goPacketList(mode: 0 | 1) {
@@ -299,7 +303,7 @@ onBeforeUnmount(() => {
           <img
             :src="item.imageUrl"
             class="banner-image"
-            :alt="item.bannerName"
+            :alt="getBannerTitle(item)"
             :style="item.jumpValue ? 'cursor:pointer' : ''"
             @click="onBannerClick(item)"
           >
@@ -412,7 +416,7 @@ onBeforeUnmount(() => {
           v-if="currentPopup"
           :src="currentPopup.imageUrl"
           class="banner-popup__img"
-          :alt="currentPopup.bannerName"
+          :alt="getBannerTitle(currentPopup)"
         >
         <div class="banner-popup__actions">
           <button type="button" class="popup-btn popup-btn--dismiss" @click="onPopupDismiss">

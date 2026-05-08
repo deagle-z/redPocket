@@ -29,11 +29,27 @@ func GctpkMxnPayinCallback(ctx *gin.Context) {
 	})
 }
 
+// GctpkMxnPayoutCallback GCTPKMXN 代付/提现异步回调（公开接口，无需 token）
+// POST /api/v1/pay/gctpkmxn/payoutNotify
+func GctpkMxnPayoutCallback(ctx *gin.Context) {
+	handleGctpkPayoutCallback(ctx, func(req gctpkPayoutNotifyReq) (base.GctpkPayConfig, string, error) {
+		return validateGctpkPayoutConfig(req, utils.GlobalConfig.Pay.Gctpkmxn, "GCTPKMXN")
+	})
+}
+
 // GctpkBrlPayinCallback GCTPKBRL 代收异步回调（公开接口，无需 token）
 // POST /api/v1/pay/gctpkbrl/notify
 func GctpkBrlPayinCallback(ctx *gin.Context) {
 	handleGctpkPayinCallback(ctx, func(req gctpkNotifyReq) (base.GctpkPayConfig, string, error) {
 		return validateGctpkPayConfig(req, utils.GlobalConfig.Pay.Gctpkbrl, "GCTPKBRL")
+	})
+}
+
+// GctpkBrlPayoutCallback GCTPKBRL 代付/提现异步回调（公开接口，无需 token）
+// POST /api/v1/pay/gctpkbrl/payoutNotify
+func GctpkBrlPayoutCallback(ctx *gin.Context) {
+	handleGctpkPayoutCallback(ctx, func(req gctpkPayoutNotifyReq) (base.GctpkPayConfig, string, error) {
+		return validateGctpkPayoutConfig(req, utils.GlobalConfig.Pay.Gctpkbrl, "GCTPKBRL")
 	})
 }
 
@@ -84,6 +100,52 @@ func handleGctpkPayinCallback(ctx *gin.Context, resolveConfig gctpkConfigResolve
 	ctx.String(200, "SUCCESS")
 }
 
+func handleGctpkPayoutCallback(ctx *gin.Context, resolveConfig gctpkPayoutConfigResolver) {
+	var req gctpkPayoutNotifyReq
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.String(400, "FAIL")
+		return
+	}
+
+	_, providerName, err := resolveConfig(req)
+	if err != nil {
+		log.Printf("[GCTPK Payout Notify] 验签失败 provider=%s providerOrderNo=%s merchantOrderNo=%s err=%v", providerName, req.OrderNo, req.MerOrderNo, err)
+		ctx.String(400, "FAIL")
+		return
+	}
+
+	db := ctx.MustGet("db").(*gorm.DB)
+	localOrderNo := strings.TrimSpace(req.MerOrderNo)
+	providerOrderNo := strings.TrimSpace(req.OrderNo)
+	if localOrderNo == "" {
+		log.Printf("[GCTPK Payout Notify] 商户订单号为空 provider=%s providerOrderNo=%s", providerName, providerOrderNo)
+		ctx.String(400, "FAIL")
+		return
+	}
+
+	success := req.Status == 7
+	failed := req.Status == 8 || req.Status == 9 || (!success && strings.TrimSpace(req.ResultCode) != "")
+	if success || failed {
+		if err := repository.ProcessWithdrawOrderPayoutCallback(db, repository.WithdrawPayoutCallback{
+			LocalOrderNo:     localOrderNo,
+			ProviderPayoutNo: providerOrderNo,
+			ProviderStatus:   fmt.Sprintf("%d", req.Status),
+			ProviderAmount:   parsePayFloat(req.OrderAmount),
+			ResultCode:       strings.TrimSpace(req.ResultCode),
+			ResultMsg:        strings.TrimSpace(req.ResultMsg),
+			ProviderPayTime:  strings.TrimSpace(req.PayTime),
+			Success:          success,
+			Failed:           failed,
+		}); err != nil {
+			log.Printf("[GCTPK Payout Notify] 处理提现回调失败 provider=%s localOrderNo=%s providerOrderNo=%s status=%d err=%v", providerName, localOrderNo, providerOrderNo, req.Status, err)
+			ctx.String(500, "FAIL")
+			return
+		}
+	}
+
+	ctx.String(200, "SUCCESS")
+}
+
 func resolveAnyGctpkPayConfig(req gctpkNotifyReq) (base.GctpkPayConfig, string, error) {
 	candidates := []struct {
 		name string
@@ -104,6 +166,37 @@ func resolveAnyGctpkPayConfig(req gctpkNotifyReq) (base.GctpkPayConfig, string, 
 	}
 
 	return base.GctpkPayConfig{}, "UNKNOWN", lastErr
+}
+
+type gctpkPayoutConfigResolver func(req gctpkPayoutNotifyReq) (base.GctpkPayConfig, string, error)
+
+func validateGctpkPayoutConfig(req gctpkPayoutNotifyReq, cfg base.GctpkPayConfig, providerName string) (base.GctpkPayConfig, string, error) {
+	if strings.TrimSpace(cfg.Secret) == "" {
+		return base.GctpkPayConfig{}, providerName, fmt.Errorf("%s 回调密钥为空", providerName)
+	}
+	if merNo := strings.TrimSpace(req.MerNo); merNo != "" && strings.TrimSpace(cfg.MerNo) != "" && !strings.EqualFold(strings.TrimSpace(cfg.MerNo), merNo) {
+		return base.GctpkPayConfig{}, providerName, fmt.Errorf("%s 商户号不匹配", providerName)
+	}
+
+	expectSign := gctpk.BuildSign(buildGctpkPayoutNotifyParams(req), cfg.Secret)
+	if !strings.EqualFold(expectSign, strings.TrimSpace(req.Sign)) {
+		return base.GctpkPayConfig{}, providerName, fmt.Errorf("%s 签名不匹配", providerName)
+	}
+
+	return cfg, providerName, nil
+}
+
+func buildGctpkPayoutNotifyParams(req gctpkPayoutNotifyReq) map[string]string {
+	return map[string]string{
+		"merNo":       req.MerNo,
+		"merOrderNo":  req.MerOrderNo,
+		"orderNo":     req.OrderNo,
+		"orderAmount": req.OrderAmount,
+		"payTime":     req.PayTime,
+		"status":      fmt.Sprintf("%d", req.Status),
+		"resultCode":  req.ResultCode,
+		"resultMsg":   req.ResultMsg,
+	}
 }
 
 func validateGctpkPayConfig(req gctpkNotifyReq, cfg base.GctpkPayConfig, providerName string) (base.GctpkPayConfig, string, error) {
@@ -144,6 +237,19 @@ type gctpkNotifyReq struct {
 	BusiCode   string `json:"busiCode"`   // 支付编码
 	Sign       string `json:"sign"`       // 签名
 	Status     int    `json:"status"`     // 5=支付成功 4=订单已关闭
+}
+
+// gctpkPayoutNotifyReq GCTPK 代付/提现回调请求体
+type gctpkPayoutNotifyReq struct {
+	MerNo       string `json:"merNo"`       // 商户号
+	MerOrderNo  string `json:"merOrderNo"`  // 商户订单号（本地提现订单号）
+	OrderNo     string `json:"orderNo"`     // 三方代付订单号
+	OrderAmount string `json:"orderAmount"` // 代付金额
+	Sign        string `json:"sign"`        // 签名
+	PayTime     string `json:"payTime"`     // 交易时间
+	Status      int    `json:"status"`      // 7=代付成功
+	ResultCode  string `json:"resultCode"`  // 失败码
+	ResultMsg   string `json:"resultMsg"`   // 失败原因
 }
 
 func parsePayFloat(s string) float64 {

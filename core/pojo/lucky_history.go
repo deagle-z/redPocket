@@ -98,6 +98,7 @@ type LuckyAppHistoryBack struct {
 	IsThunder    int       `json:"isThunder" gorm:"column:is_thunder"`
 	Guess        int       `json:"guess" gorm:"column:guess"`
 	Thunder      int       `json:"thunder" gorm:"column:thunder"`
+	GameMode     int       `json:"gameMode" gorm:"column:game_mode"`
 	GrabType     int       `json:"grabType" gorm:"column:grab_type"`
 	SenderID     int64     `json:"senderId" gorm:"column:sender_id"`
 	SenderName   string    `json:"senderName" gorm:"column:sender_name"`

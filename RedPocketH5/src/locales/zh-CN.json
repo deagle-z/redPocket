@@ -18,11 +18,15 @@
     "ForgotPassword": "❓ 忘记密码",
     "Settings": "⚙️ 设置",
     "Team": "团队",
+    "History": "历史",
+    "Prize": "抽奖",
+    "Wallet": "钱包",
     "Undefined": "🤷 未定义标题"
   },
   "tabbar": {
     "home": "首页",
     "history": "历史",
+    "prize": "抽奖",
     "sendPacket": "发红包",
     "team": "团队",
     "profile": "我的",
@@ -297,7 +301,7 @@
     "assetCommission": "佣金",
     "typeSend": "发送红包",
     "typeGrabNoThunderWin": "抢包未中炸弹收益",
-    "typeGrabThunderLoss": "抢红包中雷损失",
+    "typeGrabThunderLoss": "抢包中炸弹",
     "typeSendThunderWin": "发包雷收益",
     "typeLuckyCommission": "红包相关抽成",
     "typeRecharge": "充值到账",
@@ -312,6 +316,7 @@
     "typeVipUpgradeReward": "VIP 升级赠送",
     "typeFirstRechargeGift": "首充赠送",
     "typeTodayFirstRechargeGift": "今日首充赠送",
+    "typeLuckyNumsGift": "幸运数字赠送",
     "typeAccountChange": "账户变动"
   },
   "rechargePage": {
@@ -505,9 +510,12 @@
     "dateMonth": "本月",
     "dateCustom": "自定义",
     "txSendTitle": "发出红包 {amount}",
+    "txParitySendTitle": "发出奇偶红包 {amount}",
     "txGrabTitle": "抢到{sender}的红包 {amount}",
     "txThunderRebateTitle": "中雷返利",
+    "txParityRebateTitle": "奇偶发包盈利",
     "thunderNo": "尾号: {no}",
+    "parityMode": "奇偶模式",
     "badgeWin": "中奖",
     "badgeLoss": "亏损",
     "summaryIncome": "总收入",
@@ -879,6 +887,11 @@
         "a": "如果平台开放该功能，可在对应安全设置入口中启用。"
       }
     }
+  },
+  "activityPage": {
+    "luckyWheel": "幸运转盘",
+    "referralCommission": "邀请佣金",
+    "vip": "VIP 活动"
   },
   "pwaInstall": {
     "title": "添加到主屏幕",

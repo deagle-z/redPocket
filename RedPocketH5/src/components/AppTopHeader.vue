@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { getCurrentTgUserInfo } from '@/api/user'
+import brandLogo from '@/assets/images/logo.png'
+import brandTitleLogo from '@/assets/images/logo-title.png'
 import defaultAvatar from '@/assets/svg/avatar.svg'
 import { rootRouteList } from '@/config/routes'
 import { isLogin } from '@/utils/auth'
@@ -68,14 +70,10 @@ function goRecharge() {
   <header v-if="show" class="app-header">
     <div class="brand-wrap">
       <span class="brand-icon" aria-hidden="true">
-        <svg viewBox="0 0 24 24" fill="none" class="icon-svg">
-          <circle cx="12" cy="12" r="12" fill="currentColor" />
-          <path d="M17.7 6.9L15.8 17c-.1.5-.4.6-.8.4l-2.8-2.1-1.4 1.3c-.2.2-.3.3-.7.3l.2-2.9 5.3-4.8c.2-.2 0-.3-.3-.2l-6.5 4.1-2.8-.9c-.6-.2-.6-.6.1-.9l11-4.2c.5-.2 1 .1.8.9z" fill="#7d2b00" />
-        </svg>
+        <img :src="brandLogo" class="icon-svg" alt="logo">
       </span>
       <div class="brand-text">
-        <span class="brand-title">{{ t('appTopHeader.brandTitle') }}</span>
-        <span class="brand-subtitle">{{ t('appTopHeader.brandSubtitle') }}</span>
+        <img :src="brandTitleLogo" class="brand-title-image" alt="logo title">
       </div>
     </div>
 
@@ -123,26 +121,16 @@ function goRecharge() {
 
 .brand-text {
   display: inline-flex;
-  flex-direction: column;
+  align-items: center;
   min-width: 0;
 }
 
-.brand-title {
-  font-size: clamp(13px, 3.2vw, 17px);
-  line-height: 1;
-  letter-spacing: 0.3px;
-  white-space: nowrap;
-  color: #ffedc3;
-  font-weight: 700;
-}
-
-.brand-subtitle {
-  margin-top: 3px;
-  font-size: clamp(9px, 2.2vw, 11px);
-  line-height: 1;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: rgba(255, 232, 186, 0.75);
+.brand-title-image {
+  display: block;
+  width: auto;
+  height: clamp(22px, 4.8vw, 28px);
+  max-width: min(44vw, 168px);
+  object-fit: contain;
 }
 
 .brand-icon,
@@ -169,6 +157,7 @@ function goRecharge() {
 .icon-svg {
   width: 100%;
   height: 100%;
+  object-fit: cover;
 }
 
 .balance-wrap {
@@ -227,10 +216,6 @@ function goRecharge() {
   .app-header {
     padding: 9px 10px;
     gap: 8px;
-  }
-
-  .brand-subtitle {
-    display: none;
   }
 
   .balance-wrap {

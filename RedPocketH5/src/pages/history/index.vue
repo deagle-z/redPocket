@@ -252,14 +252,15 @@ function mapHistoryItem(item: any): TxItem {
   const luckyAmount = Number(item?.luckyAmount || 0)
   const grabAmount = Number(item?.grabAmount || 0)
   const thunder = Number(item?.thunder || 0)
+  const isParityMode = Number(item?.gameMode) === 1
 
   return {
     id: String(item?.recordId || item?.luckyId || Date.now()),
     avatar: item?.avatar || DEFAULT_AVATAR,
     title: isSend
-      ? t('historyPage.txSendTitle', { amount: formatCurrency(luckyAmount) })
-      : item?.grabType === 2 ? t('historyPage.txThunderRebateTitle') : t('historyPage.txGrabTitle', { sender: senderName, amount: formatCurrency(grabAmount) }),
-    sub: t('historyPage.thunderNo', { no: thunder }),
+      ? t(isParityMode ? 'historyPage.txParitySendTitle' : 'historyPage.txSendTitle', { amount: formatCurrency(luckyAmount) })
+      : item?.grabType === 2 ? t(isParityMode ? 'historyPage.txParityRebateTitle' : 'historyPage.txThunderRebateTitle') : t('historyPage.txGrabTitle', { sender: senderName, amount: formatCurrency(grabAmount) }),
+    sub: isParityMode ? t('historyPage.parityMode') : t('historyPage.thunderNo', { no: thunder }),
     time: formatTime(item?.createdAt || ''),
     amount,
     badge: isWin ? t('historyPage.badgeWin') : t('historyPage.badgeLoss'),

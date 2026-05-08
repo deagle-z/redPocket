@@ -107,6 +107,13 @@ declare module 'vue-router/auto-routes' {
       Record<never, never>,
       | never
     >,
+    'LuckyWheel': RouteRecordInfo<
+      'LuckyWheel',
+      '/luckyWheel',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
     'PacketList': RouteRecordInfo<
       'PacketList',
       '/packetList',
@@ -152,6 +159,13 @@ declare module 'vue-router/auto-routes' {
     'Recharge': RouteRecordInfo<
       'Recharge',
       '/recharge',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
+    'ReferralCommission': RouteRecordInfo<
+      'ReferralCommission',
+      '/referralCommission',
       Record<never, never>,
       Record<never, never>,
       | never
@@ -311,6 +325,12 @@ declare module 'vue-router/auto-routes' {
       views:
         | never
     }
+    'src/pages/luckyWheel/index.vue': {
+      routes:
+        | 'LuckyWheel'
+      views:
+        | never
+    }
     'src/pages/packetList/index.vue': {
       routes:
         | 'PacketList'
@@ -350,6 +370,12 @@ declare module 'vue-router/auto-routes' {
     'src/pages/recharge/index.vue': {
       routes:
         | 'Recharge'
+      views:
+        | never
+    }
+    'src/pages/referralCommission/index.vue': {
+      routes:
+        | 'ReferralCommission'
       views:
         | never
     }

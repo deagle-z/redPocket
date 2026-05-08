@@ -18,15 +18,19 @@
     "ForgotPassword": "❓ Olvidé mi contraseña",
     "Settings": "⚙️ Configuración",
     "Team": "Equipo",
+    "History": "HIST.",
+    "Prize": "GIRO",
+    "Wallet": "SALDO",
     "Undefined": "🤷 Título indefinido"
   },
   "tabbar": {
-    "home": "HOGAR",
-    "history": "HISTORIA",
+    "home": "INICIO",
+    "history": "HIST.",
+    "prize": "GIRO",
     "sendPacket": "ENVIAR",
-    "team": "EQUIPO",
+    "team": "EQUIP.",
     "profile": "PERFIL",
-    "wallet": "BILLETERA"
+    "wallet": "SALDO"
   },
   "home": {
     "darkMode": "🌗 Modo oscuro",
@@ -312,6 +316,7 @@
     "typeVipUpgradeReward": "Bono de mejora VIP",
     "typeFirstRechargeGift": "Bono de primera recarga",
     "typeTodayFirstRechargeGift": "Bono diario de primera recarga",
+    "typeLuckyNumsGift": "Bono de número de la suerte",
     "typeAccountChange": "Cambio de cuenta"
   },
   "rechargePage": {
@@ -505,9 +510,12 @@
     "dateMonth": "este mes",
     "dateCustom": "Costumbre",
     "txSendTitle": "Paquete enviado {amount}",
+    "txParitySendTitle": "Paquete de paridad enviado {amount}",
     "txGrabTitle": "Agarré el paquete de {sender} {amount}",
     "txThunderRebateTitle": "Reembolso por trueno",
+    "txParityRebateTitle": "Ganancia del remitente por paridad",
     "thunderNo": "Trueno: {no}",
+    "parityMode": "Modo de paridad",
     "badgeWin": "Ganar",
     "badgeLoss": "Pérdida",
     "summaryIncome": "Ingresos totales",
@@ -879,6 +887,11 @@
         "a": "Habilítelo mediante la entrada a la plataforma una vez que la función esté disponible."
       }
     }
+  },
+  "activityPage": {
+    "luckyWheel": "Giro Afortunado",
+    "referralCommission": "Comisión por Referidos",
+    "vip": "Actividad VIP"
   },
   "pwaInstall": {
     "title": "Agregar a la pantalla de inicio",

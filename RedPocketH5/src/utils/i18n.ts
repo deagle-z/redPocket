@@ -6,6 +6,11 @@ import ptBR from 'vant/es/locale/lang/pt-BR'
 import zhCN from 'vant/es/locale/lang/zh-CN'
 import { Locale } from 'vant'
 import type { PickerColumn } from 'vant'
+import enUSMessages from '@/locales/en-US.json'
+import esMXMessages from '@/locales/es-MX.json'
+import idIDMessages from '@/locales/id-ID.json'
+import ptBRMessages from '@/locales/pt-BR.json'
+import zhCNMessages from '@/locales/zh-CN.json'
 
 const FALLBACK_LOCALE = 'en-US'
 
@@ -16,6 +21,16 @@ const vantLocales = {
   'es-MX': esES,
   'id-ID': idID,
 }
+
+const messages = {
+  'zh-CN': zhCNMessages,
+  'en-US': enUSMessages,
+  'pt-BR': ptBRMessages,
+  'es-MX': esMXMessages,
+  'id-ID': idIDMessages,
+}
+type SupportedLocale = keyof typeof messages
+const supportedLocales = Object.keys(messages) as SupportedLocale[]
 
 export const languageOptions = [
 
@@ -72,40 +87,31 @@ function setupI18n() {
   const locale = getI18nLocale()
   const i18n = createI18n({
     locale,
+    fallbackLocale: FALLBACK_LOCALE,
+    messages,
     legacy: false,
   })
   setLang(locale, i18n)
   return i18n
 }
 
-async function setLang(lang: string, i18n: I18n) {
-  await loadLocaleMsg(lang, i18n)
+function setLang(lang: string, i18n: I18n) {
+  const normalizedLang = normalizeLocale(lang)
 
-  document.querySelector('html').setAttribute('lang', lang)
-  localStorage.setItem('language', lang)
-  i18n.global.locale.value = lang
+  document.querySelector('html')?.setAttribute('lang', normalizedLang)
+  localStorage.setItem('language', normalizedLang)
+  i18n.global.locale.value = normalizedLang
 
   // 设置 vant 组件语言包
-  Locale.use(lang, vantLocales[lang])
+  Locale.use(normalizedLang, vantLocales[normalizedLang])
 }
 
-// 加载本地语言包
-async function loadLocaleMsg(locale: string, i18n: I18n) {
-  const messages = await import(`../locales/${locale}.json`)
-  i18n.global.setLocaleMessage(locale, messages.default)
+function normalizeLocale(locale: string | null): SupportedLocale {
+  const matchedLocale = supportedLocales.find(v => v === locale || v.indexOf(locale || '') === 0)
+  return matchedLocale || FALLBACK_LOCALE
 }
 
 // 获取当前语言对应的语言包名称
 function getI18nLocale() {
-  const storedLocale = localStorage.getItem('language')
-
-  const langs = languageOptions.map(v => v.value)
-
-  // 存在当前语言的语言包 或 存在当前语言的任意地区的语言包
-  const foundLocale = langs.find(v => v === storedLocale || v.indexOf(storedLocale) === 0)
-
-  // 若未找到，则使用 默认语言包
-  const locale = foundLocale || FALLBACK_LOCALE
-
-  return locale
+  return normalizeLocale(localStorage.getItem('language'))
 }

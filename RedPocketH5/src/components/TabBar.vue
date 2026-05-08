@@ -49,7 +49,7 @@ function isActive(name: string) {
 
     <van-tabbar-item replace class="tab-item" :to="{ name: 'Prize' }">
       <span class="tab-label" :class="{ 'tab-label--active': isActive('Prize') }">
-        {{ $t('profilePage.activitySpin') }}
+        {{ $t('tabbar.prize') }}
       </span>
       <template #icon>
         <div class="icon-wrap" :class="{ 'icon-wrap--active': isActive('Prize') }">
@@ -168,11 +168,17 @@ function isActive(name: string) {
 }
 
 .tab-label {
+  display: block;
+  max-width: 48px;
+  overflow: hidden;
   font-size: 11px;
   font-weight: 600;
   color: rgba(255, 229, 186, 0.56);
   letter-spacing: 0.04em;
   line-height: 1.1;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   transition:
     color 0.2s ease,
     transform 0.2s ease;

@@ -10,6 +10,7 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 	"strings"
+	"time"
 )
 
 const withdrawOrderSourceRebate = "rebate"
@@ -224,6 +225,101 @@ func GetWithdrawOrderBrById(db *gorm.DB, id int64) (result pojo.WithdrawOrderBrB
 	}
 	_ = copier.Copy(&result, &dbOrder)
 	return result, nil
+}
+
+type WithdrawPayoutCallback struct {
+	LocalOrderNo     string
+	ProviderPayoutNo string
+	ProviderStatus   string
+	ProviderAmount   float64
+	ResultCode       string
+	ResultMsg        string
+	ProviderPayTime  string
+	Success          bool
+	Failed           bool
+}
+
+func ProcessWithdrawOrderPayoutCallback(db *gorm.DB, cb WithdrawPayoutCallback) error {
+	localOrderNo := strings.TrimSpace(cb.LocalOrderNo)
+	if localOrderNo == "" {
+		return errors.New("withdraw_order_no_empty")
+	}
+	now := time.Now()
+
+	return db.Transaction(func(tx *gorm.DB) error {
+		var order pojo.WithdrawOrderBr
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+			Where("order_no = ? OR merchant_order_no = ?", localOrderNo, localOrderNo).
+			First(&order).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return errors.New("withdraw_order_not_found")
+			}
+			return err
+		}
+
+		oldStatus := order.Status
+		updates := map[string]any{
+			"notify_time":  now,
+			"notify_count": gorm.Expr("notify_count + 1"),
+		}
+		if providerStatus := strings.TrimSpace(cb.ProviderStatus); providerStatus != "" {
+			updates["provider_status"] = providerStatus
+		}
+		if providerPayoutNo := strings.TrimSpace(cb.ProviderPayoutNo); providerPayoutNo != "" {
+			updates["provider_payout_no"] = providerPayoutNo
+		}
+
+		switch {
+		case cb.Success:
+			if oldStatus == 4 || oldStatus == 5 || oldStatus == 6 {
+				return errors.New("withdraw_order_status_invalid_success")
+			}
+			if oldStatus != 3 {
+				updates["status"] = 3
+			}
+			paidAt := now
+			if parsedPayTime, ok := parseProviderPayTime(cb.ProviderPayTime); ok {
+				paidAt = parsedPayTime
+			}
+			updates["paid_at"] = paidAt
+			updates["fail_code"] = nil
+			updates["fail_msg"] = nil
+		case cb.Failed:
+			failCode := strings.TrimSpace(cb.ResultCode)
+			failMsg := strings.TrimSpace(cb.ResultMsg)
+			if failCode != "" {
+				updates["fail_code"] = failCode
+			}
+			if failMsg != "" {
+				updates["fail_msg"] = failMsg
+			}
+			if oldStatus != 4 && oldStatus != 5 && oldStatus != 6 {
+				updates["status"] = 4
+				order.Status = 4
+			}
+		}
+
+		if err := tx.Model(&pojo.WithdrawOrderBr{}).Where("id = ?", order.ID).Updates(updates).Error; err != nil {
+			return err
+		}
+		if cb.Failed && needWithdrawRefund(oldStatus, 4) {
+			return refundWithdrawAmount(tx, order)
+		}
+		return nil
+	})
+}
+
+func parseProviderPayTime(payTime string) (time.Time, bool) {
+	payTime = strings.TrimSpace(payTime)
+	if payTime == "" {
+		return time.Time{}, false
+	}
+	for _, layout := range []string{"2006-01-02 15:04:05", time.RFC3339} {
+		if parsed, err := time.ParseInLocation(layout, payTime, time.Local); err == nil {
+			return parsed, true
+		}
+	}
+	return time.Time{}, false
 }
 
 func needWithdrawDeductOnCreate(status int) bool {

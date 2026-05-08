@@ -18,15 +18,19 @@
     "ForgotPassword": "❓ Forgot Password",
     "Settings": "⚙️ Settings",
     "Team": "Team",
+    "History": "Logs",
+    "Prize": "Spin",
+    "Wallet": "Wallet",
     "Undefined": "🤷 Undefined title"
   },
   "tabbar": {
-    "home": "HOME",
-    "history": "HISTORY",
+    "home": "Home",
+    "history": "Logs",
+    "prize": "Spin",
     "sendPacket": "SEND",
-    "team": "TEAM",
-    "profile": "PROFILE",
-    "wallet": "WALLET"
+    "team": "Team",
+    "profile": "Me",
+    "wallet": "Wallet"
   },
   "home": {
     "darkMode": "🌗 Dark Mode",
@@ -312,6 +316,7 @@
     "typeVipUpgradeReward": "VIP Upgrade Bonus",
     "typeFirstRechargeGift": "First Recharge Bonus",
     "typeTodayFirstRechargeGift": "Daily First Recharge Bonus",
+    "typeLuckyNumsGift": "Lucky Number Bonus",
     "typeAccountChange": "Account Change"
   },
   "rechargePage": {
@@ -505,9 +510,12 @@
     "dateMonth": "This Month",
     "dateCustom": "Custom",
     "txSendTitle": "Sent packet {amount}",
+    "txParitySendTitle": "Sent parity packet {amount}",
     "txGrabTitle": "Grabbed {sender}'s packet {amount}",
     "txThunderRebateTitle": "Thunder Rebate",
+    "txParityRebateTitle": "Parity Sender Profit",
     "thunderNo": "Thunder: {no}",
+    "parityMode": "Parity Mode",
     "badgeWin": "Win",
     "badgeLoss": "Loss",
     "summaryIncome": "Total Income",
@@ -879,6 +887,11 @@
         "a": "Enable via platform entry once the feature is available."
       }
     }
+  },
+  "activityPage": {
+    "luckyWheel": "Lucky Wheel",
+    "referralCommission": "Referral Commission",
+    "vip": "VIP Activity"
   },
   "pwaInstall": {
     "title": "Add to Home Screen",

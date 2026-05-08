@@ -18,15 +18,19 @@
     "ForgotPassword": "❓ Esqueci a senha",
     "Settings": "⚙️ Configurações",
     "Team": "Equipe",
+    "History": "HIST.",
+    "Prize": "GIRO",
+    "Wallet": "SALDO",
     "Undefined": "🤷 Título indefinido"
   },
   "tabbar": {
     "home": "LAR",
-    "history": "HISTÓRIA",
+    "history": "HIST.",
+    "prize": "GIRO",
     "sendPacket": "ENVIAR",
-    "team": "EQUIPE",
+    "team": "TIME",
     "profile": "PERFIL",
-    "wallet": "CARTEIRA"
+    "wallet": "SALDO"
   },
   "home": {
     "darkMode": "🌗 Modo escuro",
@@ -312,6 +316,7 @@
     "typeVipUpgradeReward": "Bônus de upgrade VIP",
     "typeFirstRechargeGift": "Bônus de primeira recarga",
     "typeTodayFirstRechargeGift": "Bônus de primeira recarga diária",
+    "typeLuckyNumsGift": "Bônus de número da sorte",
     "typeAccountChange": "Mudança de conta"
   },
   "rechargePage": {
@@ -505,9 +510,12 @@
     "dateMonth": "Este mês",
     "dateCustom": "Personalizado",
     "txSendTitle": "Pacote enviado {amount}",
+    "txParitySendTitle": "Pacote de paridade enviado {amount}",
     "txGrabTitle": "Peguei o pacote {amount} de {sender}",
     "txThunderRebateTitle": "Rebate por raio",
+    "txParityRebateTitle": "Lucro do remetente por paridade",
     "thunderNo": "Trovão: {no}",
+    "parityMode": "Modo de paridade",
     "badgeWin": "Ganhar",
     "badgeLoss": "Perda",
     "summaryIncome": "Renda total",
@@ -879,6 +887,11 @@
         "a": "Habilite via entrada na plataforma assim que o recurso estiver disponível."
       }
     }
+  },
+  "activityPage": {
+    "luckyWheel": "Giro da Sorte",
+    "referralCommission": "Comissão de Indicação",
+    "vip": "Atividade VIP"
   },
   "pwaInstall": {
     "title": "Adicionar à tela inicial",
