@@ -171,10 +171,10 @@ func (g *Provider) CreatePayoutOrder(req pay.PayoutRequest) (pay.PayoutResponse,
 		"accName":     req.AccName,
 		"accNo":       req.AccNo,
 		"bankCode":    req.BankCode,
-		"busiCode":    resolvePayoutBusiCode(req, "202001"),
+		"busiCode":    resolvePayoutBusiCode(req, "207001"),
 		"currency":    req.Currency,
 		"email":       req.Email,
-		"notifyUrl":   resolvePayoutNotifyURL(req.NotifyURL, notifyURL),
+		"notifyUrl":   notifyURL,
 		"orderAmount": fmt.Sprintf("%.2f", req.Amount),
 		"phone":       req.Phone,
 		"timestamp":   timestamp,
@@ -221,13 +221,6 @@ func resolvePayoutBusiCode(req pay.PayoutRequest, defaultCode string) string {
 		return v
 	}
 	return defaultCode
-}
-
-func resolvePayoutNotifyURL(reqNotifyURL string, configNotifyURL string) string {
-	if strings.TrimSpace(reqNotifyURL) != "" {
-		return strings.TrimSpace(reqNotifyURL)
-	}
-	return configNotifyURL
 }
 
 // rsaPrivateKeyEncrypt 使用 PKCS#8 RSA-1024 私钥对 data 进行 PKCS1v15 加密（即私钥签名），返回 Base64 字符串

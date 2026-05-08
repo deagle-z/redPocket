@@ -21,6 +21,14 @@ func GctpkPayinCallback(ctx *gin.Context) {
 	handleGctpkPayinCallback(ctx, resolveAnyGctpkPayConfig)
 }
 
+// GctpkPayoutCallback GCTPK 代付/提现异步回调（公开接口，无需 token）
+// POST /api/v1/pay/gctpk/payoutNotify
+func GctpkPayoutCallback(ctx *gin.Context) {
+	handleGctpkPayoutCallback(ctx, func(req gctpkPayoutNotifyReq) (base.GctpkPayConfig, string, error) {
+		return validateGctpkPayoutConfig(req, utils.GlobalConfig.Pay.Gctpk, "GCTPK")
+	})
+}
+
 // GctpkMxnPayinCallback GCTPKMXN 代收异步回调（公开接口，无需 token）
 // POST /api/v1/pay/gctpkmxn/notify
 func GctpkMxnPayinCallback(ctx *gin.Context) {

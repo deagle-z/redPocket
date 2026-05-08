@@ -286,6 +286,7 @@ func InitGin() {
 	payCallbackRouter := router.Group("/api/v1/pay")
 	{
 		payCallbackRouter.POST("/gctpk/notify", api.GctpkPayinCallback)              // GCTPK 代收回调（兼容自动识别）
+		payCallbackRouter.POST("/gctpk/payoutNotify", api.GctpkPayoutCallback)       // GCTPK 代付/提现回调
 		payCallbackRouter.POST("/gctpkmxn/notify", api.GctpkMxnPayinCallback)        // GCTPK MXN 代收回调
 		payCallbackRouter.POST("/gctpkmxn/payoutNotify", api.GctpkMxnPayoutCallback) // GCTPK MXN 代付/提现回调
 		payCallbackRouter.POST("/gctpkbrl/notify", api.GctpkBrlPayinCallback)        // GCTPK BRL 代收回调
