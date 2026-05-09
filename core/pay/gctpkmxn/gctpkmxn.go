@@ -50,6 +50,7 @@ func (g *Provider) CreateOrder(req pay.PayRequest) (pay.PayResponse, error) {
 	params := map[string]string{
 		"merNo":       cfg.MerNo,
 		"merOrderNo":  req.OrderNo,
+		"name":        resolvePayinName(req),
 		"email":       req.ExtraFields["emailmxn"],
 		"phone":       req.ExtraFields["phonemxn"],
 		"orderAmount": fmt.Sprintf("%.2f", req.Amount),
@@ -72,14 +73,27 @@ func (g *Provider) CreateOrder(req pay.PayRequest) (pay.PayResponse, error) {
 		return pay.PayResponse{}, fmt.Errorf("GCTPK 响应解析失败: %w", err)
 	}
 	if apiResp.Code != 200 {
-		return pay.PayResponse{}, fmt.Errorf("GCTPK 下单失败: %s", apiResp.Msg)
+		return pay.PayResponse{}, fmt.Errorf("GCTPKMXN 下单失败 code=%d msg=%s", apiResp.Code, apiResp.Msg)
+	}
+	if apiResp.Data == nil {
+		return pay.PayResponse{}, fmt.Errorf("GCTPKMXN 下单失败: data is empty")
+	}
+	if apiResp.Data.Status != 2 {
+		return pay.PayResponse{}, fmt.Errorf("GCTPKMXN 下单失败 status=%d code=%s msg=%s",
+			apiResp.Data.Status,
+			strings.TrimSpace(apiResp.Data.SubCode),
+			createOrderDataErrorMessage(apiResp.Msg, apiResp.Data.SubMsg),
+		)
 	}
 
-	payURL := ""
-	if apiResp.Data != nil {
-		payURL = apiResp.Data.PayURL
+	payURL := apiResp.Data.PayURL
+	if strings.TrimSpace(payURL) == "" {
+		payURL = apiResp.Data.OrderData
 	}
-	return pay.PayResponse{PayURL: payURL}, nil
+	return pay.PayResponse{
+		PayURL:          payURL,
+		ProviderTradeNo: apiResp.Data.OrderNo,
+	}, nil
 }
 
 // resolveBusiCode 从 ExtraFields["busiCode"] 取，或用 PayMethod 兜底，再回退默认值
@@ -132,6 +146,55 @@ func BuildSign(params map[string]string, secret string) string {
 
 func postJSON(url string, payload map[string]string) ([]byte, error) {
 	return pay.PostJSON("GCTPKMXN", url, payload)
+}
+
+func resolvePayinName(req pay.PayRequest) string {
+	return firstExtraFieldValue(req.ExtraFields,
+		"namemxn",
+		"nameMxn",
+		"nameMXN",
+		"name",
+		"payerName",
+		"fullName",
+		"accNameMxn",
+		"accNameMXN",
+		"accName",
+	)
+}
+
+func firstExtraFieldValue(fields map[string]string, aliases ...string) string {
+	for _, alias := range aliases {
+		if value := strings.TrimSpace(fields[alias]); value != "" {
+			return value
+		}
+	}
+
+	normalized := make(map[string]string, len(fields))
+	for key, value := range fields {
+		normalizedKey := normalizeExtraFieldKey(key)
+		if normalizedKey == "" || strings.TrimSpace(value) == "" {
+			continue
+		}
+		if _, exists := normalized[normalizedKey]; !exists {
+			normalized[normalizedKey] = strings.TrimSpace(value)
+		}
+	}
+	for _, alias := range aliases {
+		if value := normalized[normalizeExtraFieldKey(alias)]; value != "" {
+			return value
+		}
+	}
+	return ""
+}
+
+func normalizeExtraFieldKey(key string) string {
+	var builder strings.Builder
+	for _, r := range strings.ToLower(strings.TrimSpace(key)) {
+		if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') {
+			builder.WriteRune(r)
+		}
+	}
+	return builder.String()
 }
 
 // CreatePayoutOrder 调用 GCTPK 代付下单接口
@@ -277,7 +340,22 @@ type createOrderResp struct {
 }
 
 type createOrderData struct {
-	PayURL string `json:"payUrl"`
+	MerOrderNo string `json:"merOrderNo"`
+	OrderNo    string `json:"orderNo"`
+	SubCode    string `json:"subCode"`
+	SubMsg     string `json:"subMsg"`
+	Status     int    `json:"status"`
+	PayURL     string `json:"payUrl"`
+	OrderData  string `json:"orderData"`
+	Common     string `json:"common"`
+	Sign       string `json:"sign"`
+}
+
+func createOrderDataErrorMessage(apiMsg string, subMsg string) string {
+	if v := strings.TrimSpace(subMsg); v != "" {
+		return v
+	}
+	return strings.TrimSpace(apiMsg)
 }
 
 type payoutOrderResp struct {

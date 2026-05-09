@@ -40,3 +40,15 @@ func TestBuildPayoutParamsMatchesMxnReadme(t *testing.T) {
 		t.Fatalf("notifyUrl = %q, want config payout notify URL", got)
 	}
 }
+
+func TestResolvePayinNameUsesMxnExtraField(t *testing.T) {
+	req := pay.PayRequest{
+		ExtraFields: map[string]string{
+			"nameMXN": " Alice ",
+		},
+	}
+
+	if got := resolvePayinName(req); got != "Alice" {
+		t.Fatalf("resolvePayinName = %q, want Alice", got)
+	}
+}

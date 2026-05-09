@@ -208,6 +208,15 @@ function showHelpTip() {
   showCenterToast(t('rechargePage.helpTip'))
 }
 
+function openPaymentUrl(url: string) {
+  const opened = window.open(url, '_blank', 'noopener,noreferrer')
+  if (opened) {
+    opened.opener = null
+    return
+  }
+  window.location.href = url
+}
+
 function formatLocalAmount(coins: number) {
   const rate = selectedCountry.value?.rate || 1
   return truncate2((Number(coins) || 0) * rate).toFixed(2)
@@ -334,7 +343,7 @@ async function handleSubmitRecharge() {
 
     if (data?.payUrl) {
       showCenterToast(t('rechargePage.orderToPay'))
-      window.location.href = data.payUrl
+      openPaymentUrl(data.payUrl)
       return
     }
 

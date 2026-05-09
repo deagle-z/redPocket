@@ -72,21 +72,26 @@ func (g *Provider) CreateOrder(req pay.PayRequest) (pay.PayResponse, error) {
 		return pay.PayResponse{}, fmt.Errorf("GCTPK 响应解析失败: %w", err)
 	}
 	if apiResp.Code != 200 {
-		return pay.PayResponse{}, fmt.Errorf("GCTPK 下单失败: %s", apiResp.Msg)
+		return pay.PayResponse{}, fmt.Errorf("GCTPKBRL 下单失败 code=%d msg=%s", apiResp.Code, apiResp.Msg)
+	}
+	if apiResp.Data == nil {
+		return pay.PayResponse{}, fmt.Errorf("GCTPKBRL 下单失败: data is empty")
+	}
+	if apiResp.Data.Status != 2 {
+		return pay.PayResponse{}, fmt.Errorf("GCTPKBRL 下单失败 status=%d code=%s msg=%s",
+			apiResp.Data.Status,
+			strings.TrimSpace(apiResp.Data.SubCode),
+			createOrderDataErrorMessage(apiResp.Msg, apiResp.Data.SubMsg),
+		)
 	}
 
-	payURL := ""
-	providerOrderNo := ""
-	if apiResp.Data != nil {
-		payURL = apiResp.Data.PayURL
-		if strings.TrimSpace(payURL) == "" {
-			payURL = apiResp.Data.OrderData
-		}
-		providerOrderNo = apiResp.Data.OrderNo
+	payURL := apiResp.Data.PayURL
+	if strings.TrimSpace(payURL) == "" {
+		payURL = apiResp.Data.OrderData
 	}
 	return pay.PayResponse{
 		PayURL:          payURL,
-		ProviderTradeNo: providerOrderNo,
+		ProviderTradeNo: apiResp.Data.OrderNo,
 	}, nil
 }
 
@@ -278,11 +283,22 @@ type createOrderResp struct {
 }
 
 type createOrderData struct {
-	PayURL    string `json:"payUrl"`
-	OrderData string `json:"orderData"`
-	OrderNo   string `json:"orderNo"`
-	Status    int    `json:"status"`
-	Common    string `json:"common"`
+	MerOrderNo string `json:"merOrderNo"`
+	OrderNo    string `json:"orderNo"`
+	SubCode    string `json:"subCode"`
+	SubMsg     string `json:"subMsg"`
+	Status     int    `json:"status"`
+	PayURL     string `json:"payUrl"`
+	OrderData  string `json:"orderData"`
+	Common     string `json:"common"`
+	Sign       string `json:"sign"`
+}
+
+func createOrderDataErrorMessage(apiMsg string, subMsg string) string {
+	if v := strings.TrimSpace(subMsg); v != "" {
+		return v
+	}
+	return strings.TrimSpace(apiMsg)
 }
 
 type payoutOrderResp struct {
