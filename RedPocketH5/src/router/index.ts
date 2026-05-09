@@ -16,7 +16,7 @@ import { captureSourceChannelCode } from '@/utils/source-channel'
 NProgress.configure({ showSpinner: true, parent: '#app' })
 
 const publicRouteNames = new Set(['Home', 'Login', 'Register', 'ForgotPassword', 'luckyDetail'])
-const publicRoutePaths = new Set(['/', '/login', '/register', '/resetpwd', '/resetpwd/', '/luckyDetail'])
+const publicRoutePaths = new Set(['/', '/login', '/register', '/resetpwd', '/resetpwd/', '/luckyDetail', '/cs', '/cs/'])
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.VITE_APP_PUBLIC_PATH),

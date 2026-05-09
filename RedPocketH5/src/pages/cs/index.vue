@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { showToast } from 'vant'
 import AppPageHeader from '@/components/AppPageHeader.vue'
-import { getAppConfig } from '@/api/user'
+import { getTenantServiceLinks } from '@/api/user'
 import { safeBack } from '@/utils/navigation'
 
 const router = useRouter()
@@ -31,14 +31,10 @@ const serviceItems = computed(() => [
   },
 ])
 
-function parseCustomerServiceConfig(value?: string | null) {
-  const [tgUrl, wsUrl] = String(value || '')
-    .split('|')
-    .map(item => item.trim())
-
+function normalizeServiceLinks(data?: { tgServiceUrl?: string | null, wsServiceUrl?: string | null } | null) {
   return {
-    tgServiceUrl: tgUrl || defaultServiceUrl,
-    wsServiceUrl: wsUrl || defaultServiceUrl,
+    tgServiceUrl: String(data?.tgServiceUrl || '').trim() || defaultServiceUrl,
+    wsServiceUrl: String(data?.wsServiceUrl || '').trim() || defaultServiceUrl,
   }
 }
 
@@ -70,11 +66,11 @@ function openExternal(url?: string | null) {
 async function loadServiceLinks() {
   loading.value = true
   try {
-    const { data } = await getAppConfig('cs_url')
-    serviceLinks.value = parseCustomerServiceConfig(data?.configValue)
+    const { data } = await getTenantServiceLinks()
+    serviceLinks.value = normalizeServiceLinks(data)
   }
   catch {
-    serviceLinks.value = parseCustomerServiceConfig('')
+    serviceLinks.value = normalizeServiceLinks()
   }
   finally {
     loading.value = false

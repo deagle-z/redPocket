@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
 import AppPageHeader from '@/components/AppPageHeader.vue'
+import VipProgressPopup from '@/components/VipProgressPopup.vue'
 import vipBrazilImage from '@/assets/images/long_image_brazil/VIP_short_brazil.png'
 import vipEnglishImage from '@/assets/images/long_image_english/VIP_short_english.png'
 import vipIndonesiaImage from '@/assets/images/long_image_indonesia/VIP_short_indonesia.png'
@@ -10,6 +11,7 @@ import { safeBack } from '@/utils/navigation'
 
 const { t } = useI18n()
 const router = useRouter()
+const showVipPopup = ref(false)
 
 const vipImageMap: Record<string, string> = {
   'pt-BR': vipBrazilImage,
@@ -23,19 +25,25 @@ const vipImage = computed(() => vipImageMap[locale.value] || vipEnglishImage)
 function goBack() {
   safeBack(router)
 }
+
+function openVipPopup() {
+  showVipPopup.value = true
+}
 </script>
 
 <template>
   <main class="activity-image-page">
     <AppPageHeader :title="t('activityPage.vip')" @back="goBack" />
 
-    <div class="activity-image-entry">
+    <button type="button" class="activity-image-entry" @click="openVipPopup">
       <img
         class="activity-image"
         :src="vipImage"
         :alt="t('activityPage.vip')"
       >
-    </div>
+    </button>
+
+    <VipProgressPopup v-model:show="showVipPopup" />
   </main>
 </template>
 
@@ -59,6 +67,10 @@ function goBack() {
 .activity-image-entry {
   display: block;
   width: 100%;
+  padding: 0;
+  border: none;
+  background: transparent;
+  text-align: left;
 }
 
 .activity-image {

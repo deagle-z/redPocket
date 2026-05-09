@@ -222,7 +222,7 @@ func GetCurrentTenantServiceLinks(db *gorm.DB, tenantID int64, host string) (res
 	}
 
 	if tenantID <= 0 {
-		return result, errors.New("tenant_not_found")
+		return result, nil
 	}
 	tenantCacheKey := tenantServiceLinksCacheKey(tenantID, "")
 	if cached, ok := getTenantServiceLinksCache(tenantCacheKey); ok {

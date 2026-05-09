@@ -50,5 +50,6 @@ declare module 'vue' {
     VanSwitch: typeof import('vant/es')['Switch']
     VanTabbar: typeof import('vant/es')['Tabbar']
     VanTabbarItem: typeof import('vant/es')['TabbarItem']
+    VipProgressPopup: typeof import('./../components/VipProgressPopup.vue')['default']
   }
 }
