@@ -1,6 +1,10 @@
 package pojo
 
-import "time"
+import (
+	"encoding/json"
+	"strings"
+	"time"
+)
 
 type WithdrawOrderBr struct { // 巴西地区提现订单（Pix/TED/DOC）
 	BaseModel
@@ -10,8 +14,9 @@ type WithdrawOrderBr struct { // 巴西地区提现订单（Pix/TED/DOC）
 	SourceChannelID          *int64     `json:"sourceChannelId" gorm:"column:source_channel_id;type:bigint;index"`                              // 来源渠道ID
 	AccountId                *string    `json:"accountId" gorm:"column:account_id;type:varchar(64)"`                                            // 账号ID/外部账号标识（可选）
 	OrderNo                  string     `json:"orderNo" gorm:"column:order_no;type:varchar(64);uniqueIndex"`                                    // 平台提现订单号（唯一）
-	MerchantOrderNo          *string    `json:"merchantOrderNo" gorm:"column:merchant_order_no;type:varchar(64)"`                               // 商户侧订单号/前端单号（可选）
+	MerchantOrderNo          *string    `json:"merchantOrderNo" gorm:"column:merchant_order_no;type:varchar(64);uniqueIndex"`                   // 商户侧订单号/前端单号（可选）
 	Currency                 string     `json:"currency" gorm:"column:currency;type:varchar(8);default:BRL"`                                    // 币种
+	CountryCode              string     `json:"countryCode" gorm:"column:country_code;type:varchar(8);index"`                                   // 国家编码
 	Amount                   float64    `json:"amount" gorm:"column:amount;type:numeric(18,2)"`                                                 // 提现金额
 	Fee                      float64    `json:"fee" gorm:"column:fee;type:numeric(18,2);default:0"`                                             // 手续费
 	NetAmount                float64    `json:"netAmount" gorm:"column:net_amount;type:numeric(18,2);->"`                                       // 实际打款金额（只读）
@@ -59,6 +64,7 @@ type WithdrawOrderBrSearch struct {
 	OrderNo              string `json:"orderNo"`              // 平台订单号
 	MerchantOrderNo      string `json:"merchantOrderNo"`      // 商户订单号
 	ProviderPayoutNo     string `json:"providerPayoutNo"`     // 三方代付单号
+	CountryCode          string `json:"countryCode"`          // 国家编码
 	Channel              string `json:"channel"`              // 渠道
 	PayMethod            string `json:"payMethod"`            // 方式/子渠道
 	ReceiverDocumentType string `json:"receiverDocumentType"` // 证件类型
@@ -66,7 +72,8 @@ type WithdrawOrderBrSearch struct {
 }
 
 type WithdrawOrderBrSet struct {
-	ID                   int64      `json:"id"` // ID
+	ID                   int64 `json:"id"` // ID
+	jsonFields           map[string]struct{}
 	TenantId             int64      `json:"tenantId"`
 	AppId                *int64     `json:"appId"`
 	UserId               int64      `json:"userId"`
@@ -75,6 +82,7 @@ type WithdrawOrderBrSet struct {
 	OrderNo              string     `json:"orderNo"`
 	MerchantOrderNo      *string    `json:"merchantOrderNo"`
 	Currency             string     `json:"currency"`
+	CountryCode          string     `json:"countryCode"`
 	Amount               float64    `json:"amount"`
 	Fee                  float64    `json:"fee"`
 	Channel              string     `json:"channel"`
@@ -106,6 +114,174 @@ type WithdrawOrderBrSet struct {
 	Extra                *string    `json:"extra"`
 }
 
+type withdrawOrderBrSetJSON struct {
+	ID                   int64             `json:"id"`
+	TenantId             int64             `json:"tenantId"`
+	AppId                *int64            `json:"appId"`
+	UserId               int64             `json:"userId"`
+	SourceChannelID      *int64            `json:"sourceChannelId"`
+	AccountId            *string           `json:"accountId"`
+	OrderNo              string            `json:"orderNo"`
+	MerchantOrderNo      *string           `json:"merchantOrderNo"`
+	Currency             string            `json:"currency"`
+	CountryCode          string            `json:"countryCode"`
+	Amount               float64           `json:"amount"`
+	Fee                  float64           `json:"fee"`
+	Channel              string            `json:"channel"`
+	PayMethod            *string           `json:"payMethod"`
+	Status               int               `json:"status"`
+	ReviewedBy           *int64            `json:"reviewedBy"`
+	ReviewedAt           *withdrawJSONTime `json:"reviewedAt"`
+	PaidAt               *withdrawJSONTime `json:"paidAt"`
+	FailCode             *string           `json:"failCode"`
+	FailMsg              *string           `json:"failMsg"`
+	ReceiverName         *string           `json:"receiverName"`
+	ReceiverDocument     *string           `json:"receiverDocument"`
+	ReceiverDocumentType *string           `json:"receiverDocumentType"`
+	PixKeyType           *string           `json:"pixKeyType"`
+	PixKey               *string           `json:"pixKey"`
+	BankCode             *string           `json:"bankCode"`
+	BankName             *string           `json:"bankName"`
+	BranchNumber         *string           `json:"branchNumber"`
+	AccountNumber        *string           `json:"accountNumber"`
+	AccountType          *string           `json:"accountType"`
+	Provider             *string           `json:"provider"`
+	ProviderPayoutNo     *string           `json:"providerPayoutNo"`
+	ProviderStatus       *string           `json:"providerStatus"`
+	NotifyTime           *withdrawJSONTime `json:"notifyTime"`
+	NotifyCount          int               `json:"notifyCount"`
+	IdempotencyKey       *string           `json:"idempotencyKey"`
+	RiskLevel            int               `json:"riskLevel"`
+	Remark               *string           `json:"remark"`
+	Extra                *string           `json:"extra"`
+}
+
+type withdrawJSONTime struct {
+	time.Time
+}
+
+func (t *withdrawJSONTime) UnmarshalJSON(data []byte) error {
+	if string(data) == "null" {
+		return nil
+	}
+	var value string
+	if err := json.Unmarshal(data, &value); err != nil {
+		return err
+	}
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return nil
+	}
+	layouts := []string{
+		time.RFC3339Nano,
+		time.RFC3339,
+		"2006-01-02 15:04:05.999",
+		"2006-01-02 15:04:05",
+		"2006-01-02T15:04:05",
+		"2006-01-02",
+	}
+	var lastErr error
+	for _, layout := range layouts {
+		parsed, err := time.ParseInLocation(layout, value, time.Local)
+		if err == nil {
+			t.Time = parsed
+			return nil
+		}
+		lastErr = err
+	}
+	return lastErr
+}
+
+func (req *WithdrawOrderBrSet) UnmarshalJSON(data []byte) error {
+	var raw withdrawOrderBrSetJSON
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(data, &fields); err != nil {
+		return err
+	}
+	req.jsonFields = make(map[string]struct{}, len(fields))
+	for field := range fields {
+		req.jsonFields[field] = struct{}{}
+	}
+	req.ID = raw.ID
+	req.TenantId = raw.TenantId
+	req.AppId = raw.AppId
+	req.UserId = raw.UserId
+	req.SourceChannelID = raw.SourceChannelID
+	req.AccountId = raw.AccountId
+	req.OrderNo = raw.OrderNo
+	req.MerchantOrderNo = raw.MerchantOrderNo
+	req.Currency = raw.Currency
+	req.CountryCode = NormalizeWithdrawCountryCode(raw.CountryCode)
+	req.Amount = raw.Amount
+	req.Fee = raw.Fee
+	req.Channel = raw.Channel
+	req.PayMethod = raw.PayMethod
+	req.Status = raw.Status
+	req.ReviewedBy = raw.ReviewedBy
+	req.ReviewedAt = withdrawJSONTimePtr(raw.ReviewedAt)
+	req.PaidAt = withdrawJSONTimePtr(raw.PaidAt)
+	req.FailCode = raw.FailCode
+	req.FailMsg = raw.FailMsg
+	req.ReceiverName = raw.ReceiverName
+	req.ReceiverDocument = raw.ReceiverDocument
+	req.ReceiverDocumentType = raw.ReceiverDocumentType
+	req.PixKeyType = raw.PixKeyType
+	req.PixKey = raw.PixKey
+	req.BankCode = raw.BankCode
+	req.BankName = raw.BankName
+	req.BranchNumber = raw.BranchNumber
+	req.AccountNumber = raw.AccountNumber
+	req.AccountType = raw.AccountType
+	req.Provider = raw.Provider
+	req.ProviderPayoutNo = raw.ProviderPayoutNo
+	req.ProviderStatus = raw.ProviderStatus
+	req.NotifyTime = withdrawJSONTimePtr(raw.NotifyTime)
+	req.NotifyCount = raw.NotifyCount
+	req.IdempotencyKey = raw.IdempotencyKey
+	req.RiskLevel = raw.RiskLevel
+	req.Remark = raw.Remark
+	req.Extra = raw.Extra
+	return nil
+}
+
+func (req WithdrawOrderBrSet) HasJSONFields() bool {
+	return len(req.jsonFields) > 0
+}
+
+func (req WithdrawOrderBrSet) HasJSONField(field string) bool {
+	_, ok := req.jsonFields[field]
+	return ok
+}
+
+func NormalizeWithdrawCountryCode(value string) string {
+	return strings.ToUpper(strings.TrimSpace(value))
+}
+
+func (req *WithdrawOrderBrSet) NormalizeCountryCodeFromExtra() {
+	req.CountryCode = NormalizeWithdrawCountryCode(req.CountryCode)
+	if req.CountryCode != "" || req.Extra == nil || strings.TrimSpace(*req.Extra) == "" {
+		return
+	}
+	var extra map[string]any
+	if err := json.Unmarshal([]byte(*req.Extra), &extra); err != nil {
+		return
+	}
+	if countryCode, ok := extra["countryCode"].(string); ok {
+		req.CountryCode = NormalizeWithdrawCountryCode(countryCode)
+	}
+}
+
+func withdrawJSONTimePtr(value *withdrawJSONTime) *time.Time {
+	if value == nil || value.IsZero() {
+		return nil
+	}
+	parsed := value.Time
+	return &parsed
+}
+
 type WithdrawOrderBrBack struct {
 	ID                       int64      `json:"id"`
 	CreatedAt                time.Time  `json:"createdAt"`
@@ -120,6 +296,7 @@ type WithdrawOrderBrBack struct {
 	OrderNo                  string     `json:"orderNo"`
 	MerchantOrderNo          *string    `json:"merchantOrderNo"`
 	Currency                 string     `json:"currency"`
+	CountryCode              string     `json:"countryCode"`
 	Amount                   float64    `json:"amount"`
 	Fee                      float64    `json:"fee"`
 	NetAmount                float64    `json:"netAmount"`

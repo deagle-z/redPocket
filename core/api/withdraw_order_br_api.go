@@ -139,9 +139,9 @@ func AppCreateWithdrawOrder(ctx *gin.Context) {
 		return
 	}
 
-	countryCode := strings.TrimSpace(req.CountryCode)
+	countryCode := pojo.NormalizeWithdrawCountryCode(req.CountryCode)
 	if countryCode == "" && user.Country != nil {
-		countryCode = strings.TrimSpace(*user.Country)
+		countryCode = pojo.NormalizeWithdrawCountryCode(*user.Country)
 	}
 	if countryCode == "" {
 		utils.ErrorBack(ctx, "country_required")
@@ -184,6 +184,7 @@ func AppCreateWithdrawOrder(ctx *gin.Context) {
 		AccountId:       optionalString(accountID),
 		OrderNo:         orderNo,
 		Currency:        country.CurrencyCode,
+		CountryCode:     countryCode,
 		Amount:          req.Amount,
 		Fee:             0,
 		Channel:         "pix",
@@ -192,7 +193,7 @@ func AppCreateWithdrawOrder(ctx *gin.Context) {
 		IdempotencyKey:  optionalString(orderNo),
 		SourceChannelID: user.SourceChannelID,
 	}
-	applyWithdrawReceiverSnapshot(&orderReq, account, req.FieldValues)
+	applyWithdrawReceiverSnapshot(&orderReq, countryCode, account, req.FieldValues)
 
 	result, err := repository.SetWithdrawOrderBr(db, orderReq)
 	if err != nil {
@@ -241,9 +242,9 @@ func AppCreateRebateWithdrawOrder(ctx *gin.Context) {
 		return
 	}
 
-	countryCode := strings.TrimSpace(req.CountryCode)
+	countryCode := pojo.NormalizeWithdrawCountryCode(req.CountryCode)
 	if countryCode == "" && user.Country != nil {
-		countryCode = strings.TrimSpace(*user.Country)
+		countryCode = pojo.NormalizeWithdrawCountryCode(*user.Country)
 	}
 	if countryCode == "" {
 		utils.ErrorBack(ctx, "country_required")
@@ -289,6 +290,7 @@ func AppCreateRebateWithdrawOrder(ctx *gin.Context) {
 		AccountId:       optionalString(accountID),
 		OrderNo:         orderNo,
 		Currency:        country.CurrencyCode,
+		CountryCode:     countryCode,
 		Amount:          req.Amount,
 		Fee:             0,
 		Channel:         "pix",
@@ -298,7 +300,7 @@ func AppCreateRebateWithdrawOrder(ctx *gin.Context) {
 		IdempotencyKey:  optionalString(orderNo),
 		SourceChannelID: user.SourceChannelID,
 	}
-	applyWithdrawReceiverSnapshot(&orderReq, account, req.FieldValues)
+	applyWithdrawReceiverSnapshot(&orderReq, countryCode, account, req.FieldValues)
 
 	result, err := repository.SetRebateWithdrawOrder(db, orderReq)
 	if err != nil {
@@ -326,7 +328,7 @@ func optionalString(value string) *string {
 	return &value
 }
 
-func applyWithdrawReceiverSnapshot(req *pojo.WithdrawOrderBrSet, account *pojo.SysUserWithdrawAccount, fieldValues map[string]string) {
+func applyWithdrawReceiverSnapshot(req *pojo.WithdrawOrderBrSet, countryCode string, account *pojo.SysUserWithdrawAccount, fieldValues map[string]string) {
 	values := map[string]string{}
 	if account != nil && strings.TrimSpace(account.AccountData) != "" {
 		_ = json.Unmarshal([]byte(account.AccountData), &values)
@@ -334,23 +336,86 @@ func applyWithdrawReceiverSnapshot(req *pojo.WithdrawOrderBrSet, account *pojo.S
 	for k, v := range fieldValues {
 		values[k] = v
 	}
-	req.ReceiverName = firstOptional(values, "receiverName", "name", "fullName", "accountName")
-	req.ReceiverDocument = firstOptional(values, "receiverDocument", "document", "cpf", "idNumber")
-	req.ReceiverDocumentType = firstOptional(values, "receiverDocumentType", "documentType")
-	req.PixKeyType = firstOptional(values, "pixKeyType")
-	req.PixKey = firstOptional(values, "pixKey")
-	req.BankCode = firstOptional(values, "bankCode")
-	req.BankName = firstOptional(values, "bankName")
-	req.BranchNumber = firstOptional(values, "branchNumber", "agency")
-	req.AccountNumber = firstOptional(values, "accountNumber")
-	req.AccountType = firstOptional(values, "accountType")
+	req.ReceiverName = firstOptional(countryCode, values, "receiverName", "accName", "name", "fullName", "accountName")
+	req.ReceiverDocument = firstOptional(countryCode, values, "receiverDocument", "identityNo", "document", "cpf", "idNumber")
+	req.ReceiverDocumentType = firstOptional(countryCode, values, "receiverDocumentType", "identityType", "documentType")
+	req.PixKeyType = firstOptional(countryCode, values, "pixKeyType", "identityType")
+	req.PixKey = firstOptional(countryCode, values, "pixKey", "accNo", "accountNumber")
+	req.BankCode = firstOptional(countryCode, values, "bankCode", "bnakCode")
+	req.BankName = firstOptional(countryCode, values, "bankName")
+	req.BranchNumber = firstOptional(countryCode, values, "branchNumber", "agency")
+	req.AccountNumber = firstOptional(countryCode, values, "accountNumber")
+	req.AccountType = firstOptional(countryCode, values, "accountType")
 }
 
-func firstOptional(values map[string]string, keys ...string) *string {
-	for _, key := range keys {
-		if value := strings.TrimSpace(values[key]); value != "" {
-			return &value
-		}
+func firstOptional(countryCode string, values map[string]string, keys ...string) *string {
+	if value := countryFieldValue(countryCode, values, keys...); value != "" {
+		return &value
 	}
 	return nil
+}
+
+func countryFieldValue(countryCode string, values map[string]string, keys ...string) string {
+	normalizedValues := make(map[string]string, len(values))
+	for key, value := range values {
+		normalizedKey := normalizeWithdrawFieldKey(key)
+		if normalizedKey == "" || strings.TrimSpace(value) == "" {
+			continue
+		}
+		if _, exists := normalizedValues[normalizedKey]; !exists {
+			normalizedValues[normalizedKey] = strings.TrimSpace(value)
+		}
+	}
+	for _, suffix := range countryFieldSuffixes(countryCode) {
+		for _, key := range keys {
+			normalizedKey := normalizeWithdrawFieldKey(key)
+			if normalizedKey == "" {
+				continue
+			}
+			if value := normalizedValues[normalizedKey+suffix]; value != "" {
+				return value
+			}
+		}
+	}
+	for _, key := range keys {
+		if value := normalizedValues[normalizeWithdrawFieldKey(key)]; value != "" {
+			return value
+		}
+	}
+	if pojo.NormalizeWithdrawCountryCode(countryCode) != "" {
+		return ""
+	}
+	for _, key := range keys {
+		normalizedKey := normalizeWithdrawFieldKey(key)
+		if normalizedKey == "" {
+			continue
+		}
+		for fieldKey, value := range normalizedValues {
+			if strings.HasPrefix(fieldKey, normalizedKey) {
+				return value
+			}
+		}
+	}
+	return ""
+}
+
+func countryFieldSuffixes(countryCode string) []string {
+	switch pojo.NormalizeWithdrawCountryCode(countryCode) {
+	case "BR":
+		return []string{"brlw", "brl", "br"}
+	case "MX":
+		return []string{"mxnw", "mxn", "mx"}
+	default:
+		return nil
+	}
+}
+
+func normalizeWithdrawFieldKey(key string) string {
+	var builder strings.Builder
+	for _, r := range strings.ToLower(strings.TrimSpace(key)) {
+		if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') {
+			builder.WriteRune(r)
+		}
+	}
+	return builder.String()
 }

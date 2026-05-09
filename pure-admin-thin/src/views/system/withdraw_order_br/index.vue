@@ -81,6 +81,14 @@ const {
             />
           </el-select>
         </el-form-item>
+        <el-form-item label="国家：" prop="countryCode">
+          <el-input
+            v-model="form.countryCode"
+            placeholder="国家编码"
+            clearable
+            class="!w-[120px]"
+          />
+        </el-form-item>
         <el-form-item label="渠道：" prop="channel">
           <el-input
             v-model="form.channel"
@@ -112,7 +120,11 @@ const {
         </el-form-item>
       </el-form>
 
-      <PureTableBar title="提现记录（巴西）" :columns="columns" @refresh="onSearch">
+      <PureTableBar
+        title="提现记录（巴西）"
+        :columns="columns"
+        @refresh="onSearch"
+      >
         <template v-slot="{ size, dynamicColumns }">
           <pure-table
             ref="tableRef"

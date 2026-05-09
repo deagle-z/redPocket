@@ -4,7 +4,6 @@ import (
 	"BaseGoUni/core/base"
 	"BaseGoUni/core/pay"
 	"BaseGoUni/core/utils"
-	"bytes"
 	"crypto"
 	"crypto/hmac"
 	"crypto/rand"
@@ -16,9 +15,6 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
-	"io"
-	"log"
-	"net/http"
 	"sort"
 	"strings"
 	"time"
@@ -143,16 +139,7 @@ func BuildSign(params map[string]string, secret string) string {
 }
 
 func postJSON(url string, payload map[string]string) ([]byte, error) {
-	body, _ := json.Marshal(payload)
-	log.Printf("[GCTPKBRL] third-party request url=%s params=%s", url, string(body))
-	resp, err := http.Post(url, "application/json", bytes.NewReader(body)) //nolint:noctx
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	respBody, readErr := io.ReadAll(resp.Body)
-	log.Printf("[GCTPKBRL] third-party response status=%d body=%s", resp.StatusCode, string(respBody))
-	return respBody, readErr
+	return pay.PostJSON("GCTPKBRL", url, payload)
 }
 
 // CreatePayoutOrder 调用 GCTPK 代付下单接口

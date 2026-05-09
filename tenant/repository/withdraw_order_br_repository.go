@@ -2,12 +2,14 @@ package repository
 
 import (
 	"BaseGoUni/core/pojo"
+	"BaseGoUni/core/utils"
 	"errors"
 	"fmt"
 	"github.com/jinzhu/copier"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 	"strings"
+	"time"
 )
 
 func GetWithdrawOrderBrs(db *gorm.DB, tenantID int64, search pojo.WithdrawOrderBrSearch) (result pojo.WithdrawOrderBrResp) {
@@ -32,6 +34,9 @@ func GetWithdrawOrderBrs(db *gorm.DB, tenantID int64, search pojo.WithdrawOrderB
 	}
 	if search.ProviderPayoutNo != "" {
 		query = query.Where("provider_payout_no = ?", search.ProviderPayoutNo)
+	}
+	if countryCode := pojo.NormalizeWithdrawCountryCode(search.CountryCode); countryCode != "" {
+		query = query.Where("country_code = ?", countryCode)
 	}
 	if search.Channel != "" {
 		query = query.Where("channel = ?", search.Channel)
@@ -103,6 +108,7 @@ func GetWithdrawOrderBrByID(db *gorm.DB, tenantID int64, id int64) (result pojo.
 
 func SetWithdrawOrderBr(db *gorm.DB, tenantID int64, req pojo.WithdrawOrderBrSet) (result pojo.WithdrawOrderBrBack, err error) {
 	req.TenantId = tenantID
+	req.NormalizeCountryCodeFromExtra()
 	var dbOrder pojo.WithdrawOrderBr
 	err = db.Transaction(func(tx *gorm.DB) error {
 		if req.ID > 0 {
@@ -115,7 +121,8 @@ func SetWithdrawOrderBr(db *gorm.DB, tenantID int64, req pojo.WithdrawOrderBrSet
 				return err
 			}
 			oldStatus := dbOrder.Status
-			_ = copier.Copy(&dbOrder, &req)
+			mergeTenantWithdrawOrderUpdate(&dbOrder, req)
+			ensureTenantWithdrawMerchantOrderNo(&dbOrder)
 			if err := tx.Save(&dbOrder).Error; err != nil {
 				return err
 			}
@@ -128,6 +135,7 @@ func SetWithdrawOrderBr(db *gorm.DB, tenantID int64, req pojo.WithdrawOrderBrSet
 		}
 
 		_ = copier.Copy(&dbOrder, &req)
+		ensureTenantWithdrawMerchantOrderNo(&dbOrder)
 		return tx.Create(&dbOrder).Error
 	})
 	if err != nil {
@@ -135,6 +143,143 @@ func SetWithdrawOrderBr(db *gorm.DB, tenantID int64, req pojo.WithdrawOrderBrSet
 	}
 	_ = copier.Copy(&result, &dbOrder)
 	return result, nil
+}
+
+func mergeTenantWithdrawOrderUpdate(order *pojo.WithdrawOrderBr, req pojo.WithdrawOrderBrSet) {
+	if !req.HasJSONFields() {
+		oldID := order.ID
+		oldCreatedAt := order.CreatedAt
+		oldDeletedAt := order.DeletedAt
+		_ = copier.Copy(order, &req)
+		order.ID = oldID
+		order.CreatedAt = oldCreatedAt
+		order.DeletedAt = oldDeletedAt
+		return
+	}
+	if req.HasJSONField("tenantId") {
+		order.TenantId = req.TenantId
+	}
+	if req.HasJSONField("appId") {
+		order.AppId = req.AppId
+	}
+	if req.HasJSONField("userId") {
+		order.UserId = req.UserId
+	}
+	if req.HasJSONField("sourceChannelId") {
+		order.SourceChannelID = req.SourceChannelID
+	}
+	if req.HasJSONField("accountId") {
+		order.AccountId = req.AccountId
+	}
+	if req.HasJSONField("orderNo") {
+		order.OrderNo = req.OrderNo
+	}
+	if req.HasJSONField("merchantOrderNo") {
+		order.MerchantOrderNo = req.MerchantOrderNo
+	}
+	if req.HasJSONField("currency") {
+		order.Currency = req.Currency
+	}
+	if req.HasJSONField("countryCode") {
+		order.CountryCode = req.CountryCode
+	}
+	if req.HasJSONField("amount") {
+		order.Amount = req.Amount
+	}
+	if req.HasJSONField("fee") {
+		order.Fee = req.Fee
+	}
+	if req.HasJSONField("channel") {
+		order.Channel = req.Channel
+	}
+	if req.HasJSONField("payMethod") {
+		order.PayMethod = req.PayMethod
+	}
+	if req.HasJSONField("status") {
+		order.Status = req.Status
+	}
+	if req.HasJSONField("reviewedBy") {
+		order.ReviewedBy = req.ReviewedBy
+	}
+	if req.HasJSONField("reviewedAt") {
+		order.ReviewedAt = req.ReviewedAt
+	}
+	if req.HasJSONField("paidAt") {
+		order.PaidAt = req.PaidAt
+	}
+	if req.HasJSONField("failCode") {
+		order.FailCode = req.FailCode
+	}
+	if req.HasJSONField("failMsg") {
+		order.FailMsg = req.FailMsg
+	}
+	if req.HasJSONField("receiverName") {
+		order.ReceiverName = req.ReceiverName
+	}
+	if req.HasJSONField("receiverDocument") {
+		order.ReceiverDocument = req.ReceiverDocument
+	}
+	if req.HasJSONField("receiverDocumentType") {
+		order.ReceiverDocumentType = req.ReceiverDocumentType
+	}
+	if req.HasJSONField("pixKeyType") {
+		order.PixKeyType = req.PixKeyType
+	}
+	if req.HasJSONField("pixKey") {
+		order.PixKey = req.PixKey
+	}
+	if req.HasJSONField("bankCode") {
+		order.BankCode = req.BankCode
+	}
+	if req.HasJSONField("bankName") {
+		order.BankName = req.BankName
+	}
+	if req.HasJSONField("branchNumber") {
+		order.BranchNumber = req.BranchNumber
+	}
+	if req.HasJSONField("accountNumber") {
+		order.AccountNumber = req.AccountNumber
+	}
+	if req.HasJSONField("accountType") {
+		order.AccountType = req.AccountType
+	}
+	if req.HasJSONField("provider") {
+		order.Provider = req.Provider
+	}
+	if req.HasJSONField("providerPayoutNo") {
+		order.ProviderPayoutNo = req.ProviderPayoutNo
+	}
+	if req.HasJSONField("providerStatus") {
+		order.ProviderStatus = req.ProviderStatus
+	}
+	if req.HasJSONField("notifyTime") {
+		order.NotifyTime = req.NotifyTime
+	}
+	if req.HasJSONField("notifyCount") {
+		order.NotifyCount = req.NotifyCount
+	}
+	if req.HasJSONField("idempotencyKey") {
+		order.IdempotencyKey = req.IdempotencyKey
+	}
+	if req.HasJSONField("riskLevel") {
+		order.RiskLevel = req.RiskLevel
+	}
+	if req.HasJSONField("remark") {
+		order.Remark = req.Remark
+	}
+	if req.HasJSONField("extra") {
+		order.Extra = req.Extra
+	}
+}
+
+func ensureTenantWithdrawMerchantOrderNo(order *pojo.WithdrawOrderBr) {
+	if order.MerchantOrderNo != nil && strings.TrimSpace(*order.MerchantOrderNo) != "" {
+		value := strings.TrimSpace(*order.MerchantOrderNo)
+		order.MerchantOrderNo = &value
+		return
+	}
+	value := fmt.Sprintf("ST%s%s", time.Now().Format("060102150405"), utils.RandomString(8))
+	order.MerchantOrderNo = &value
 }
 
 func needTenantWithdrawRefund(oldStatus int, newStatus int) bool {

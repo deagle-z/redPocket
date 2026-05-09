@@ -4,7 +4,6 @@ import (
 	"BaseGoUni/core/base"
 	"BaseGoUni/core/pay"
 	"BaseGoUni/core/utils"
-	"bytes"
 	"crypto"
 	"crypto/hmac"
 	"crypto/rand"
@@ -16,9 +15,6 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
-	"io"
-	"log"
-	"net/http"
 	"sort"
 	"strings"
 	"time"
@@ -135,14 +131,7 @@ func BuildSign(params map[string]string, secret string) string {
 }
 
 func postJSON(url string, payload map[string]string) ([]byte, error) {
-	body, _ := json.Marshal(payload)
-	log.Printf("[GCTPKMXN] third-party request url=%s params=%s", url, string(body))
-	resp, err := http.Post(url, "application/json", bytes.NewReader(body)) //nolint:noctx
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	return io.ReadAll(resp.Body)
+	return pay.PostJSON("GCTPKMXN", url, payload)
 }
 
 // CreatePayoutOrder 调用 GCTPK 代付下单接口
@@ -150,8 +139,9 @@ func postJSON(url string, payload map[string]string) ([]byte, error) {
 // 签名：HmacSHA256 → signA → RSA-1024 私钥加密 → Base64
 func (g *Provider) CreatePayoutOrder(req pay.PayoutRequest) (pay.PayoutResponse, error) {
 	cfg := utils.GlobalConfig.Pay.Gctpkmxn
-	if cfg.MerNo == "" || cfg.Secret == "" || cfg.PrivateKey == "" {
-		return pay.PayoutResponse{}, fmt.Errorf("GCTPKMXN 代付配置不完整，请检查 core.yaml pay.gctpkmxn 节点")
+	missingConfig := missingPayoutConfigFields(cfg)
+	if len(missingConfig) > 0 {
+		return pay.PayoutResponse{}, fmt.Errorf("GCTPKMXN 代付配置不完整，core.yaml pay.gctpkmxn 缺少: %s", strings.Join(missingConfig, ", "))
 	}
 
 	baseURL := strings.TrimRight(cfg.PayoutBaseURL, "/")
@@ -181,16 +171,16 @@ func (g *Provider) CreatePayoutOrder(req pay.PayoutRequest) (pay.PayoutResponse,
 
 	respBody, err := postJSON(baseURL+"/payout/singleOrder", params)
 	if err != nil {
-		return pay.PayoutResponse{}, fmt.Errorf("GCTPK 代付请求失败: %w", err)
+		return pay.PayoutResponse{}, fmt.Errorf("GCTPKMXN 代付请求失败: %w", err)
 	}
 
 	var apiResp payoutOrderResp
 	if err = json.Unmarshal(respBody, &apiResp); err != nil {
-		return pay.PayoutResponse{}, fmt.Errorf("GCTPK 代付响应解析失败: %w", err)
+		return pay.PayoutResponse{}, fmt.Errorf("GCTPKMXN 代付响应解析失败: %w", err)
 	}
 	// code=200 或 code=500 均表示请求成功（订单已入库），以 data.status 为准
 	if apiResp.Code != 200 && apiResp.Code != 500 {
-		return pay.PayoutResponse{}, fmt.Errorf("GCTPK 代付下单失败 code=%d msg=%s", apiResp.Code, apiResp.Msg)
+		return pay.PayoutResponse{}, fmt.Errorf("GCTPKMXN 代付下单失败 code=%d msg=%s", apiResp.Code, apiResp.Msg)
 	}
 
 	resp := pay.PayoutResponse{}
@@ -199,6 +189,20 @@ func (g *Provider) CreatePayoutOrder(req pay.PayoutRequest) (pay.PayoutResponse,
 		resp.Status = apiResp.Data.Status
 	}
 	return resp, nil
+}
+
+func missingPayoutConfigFields(cfg base.GctpkPayConfig) []string {
+	missing := make([]string, 0, 3)
+	if strings.TrimSpace(cfg.MerNo) == "" {
+		missing = append(missing, "merNo")
+	}
+	if strings.TrimSpace(cfg.Secret) == "" {
+		missing = append(missing, "secret")
+	}
+	if strings.TrimSpace(cfg.PrivateKey) == "" {
+		missing = append(missing, "privateKey")
+	}
+	return missing
 }
 
 func buildPayoutParams(cfg base.GctpkPayConfig, req pay.PayoutRequest, notifyURL string, timestamp string, identityType string) map[string]string {

@@ -352,6 +352,26 @@ func AppCreateRechargeOrder(db *gorm.DB, userID int64, req pojo.RechargeOrderApp
 	if err != nil {
 		return result, err
 	}
+	if activityType == 0 && !req.ConfirmUnfinishedActivityCycle {
+		activeCycle, cycleErr := GetActiveWithdrawActivityCycle(db, userID)
+		if cycleErr != nil {
+			return result, cycleErr
+		}
+		if activeCycle.ID > 0 {
+			if CanBypassWithdrawActivityCycleByBalance(tgUser.Balance, activeCycle) {
+				if endErr := EndWithdrawActivityCycle(db, userID, pojo.WithdrawActivityCycleEndReasonBalanceBelowLimit); endErr != nil {
+					return result, endErr
+				}
+				if resetErr := ResetUserWithdrawLimitAfterActivityEnd(db, userID, tgUser.Balance, false); resetErr != nil {
+					return result, resetErr
+				}
+			} else {
+				result.NeedConfirmUnfinishedActivityCycle = true
+				result.ActiveActivityMultiplier = activeCycle.Multiplier
+				return result, nil
+			}
+		}
+	}
 
 	// 延迟写库策略：先解析渠道、调用三方，成功后再落库，失败不留脏数据
 	provider, providerErr := pay.MustGet(req.Channel)
@@ -559,6 +579,24 @@ func ProcessRechargeOrderSuccess(db *gorm.DB, orderNo string, providerTradeNo st
 			if err := applyFirstRechargeActivityGift(tx, order, user, tablePrefix, now); err != nil {
 				return err
 			}
+		}
+		var latestUser pojo.TgUser
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ?", user.ID).First(&latestUser).Error; err != nil {
+			return err
+		}
+		if order.ActivityType != nil && *order.ActivityType > 0 {
+			if err := EnsureWithdrawActivityCycleForRecharge(
+				tx,
+				latestUser,
+				order,
+				GetWithdrawActivityCycleMultiplier(tx),
+				GetWithdrawActivityBalanceThreshold(tx),
+				rechargeActivityCodeByType(*order.ActivityType),
+			); err != nil {
+				return err
+			}
+		} else if err := RefreshActiveWithdrawActivityCycleForRecharge(tx, latestUser, order); err != nil {
+			return err
 		}
 		successUserID = order.UserId
 		successOrderNo = order.OrderNo
@@ -898,6 +936,17 @@ func resolveRechargeActivityType(db *gorm.DB, userID int64, req pojo.RechargeOrd
 		return 2, nil
 	default:
 		return 0, errors.New("activity_unavailable")
+	}
+}
+
+func rechargeActivityCodeByType(activityType int8) string {
+	switch activityType {
+	case 1:
+		return RechargeActivityCodeFirstRecharge3Day
+	case 2:
+		return RechargeActivityCodeTodayFirst
+	default:
+		return ""
 	}
 }
 

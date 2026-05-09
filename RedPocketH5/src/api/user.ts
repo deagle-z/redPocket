@@ -133,6 +133,7 @@ export interface RechargeOrderAppReq {
   extraFields?: Record<string, string>
   activityType?: 0 | 1 | 2
   activityCode?: '' | 'first_recharge_3day' | 'today_first_recharge'
+  confirmUnfinishedActivityCycle?: boolean
 }
 
 export function getRechargeIsFirst() {
@@ -188,6 +189,8 @@ export interface RechargeOrderAppBack {
   creditAmount?: number
   payUrl?: string
   devCallback?: boolean
+  needConfirmUnfinishedActivityCycle?: boolean
+  activeActivityMultiplier?: number
 }
 
 export interface RechargeSuccessNotification {

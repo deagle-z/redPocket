@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { showToast } from 'vant'
+import { showConfirmDialog, showToast } from 'vant'
 import type {
   AppCountryItem,
   AppPayMethodItem,
@@ -9,6 +9,7 @@ import type {
   RechargeField,
   RechargeFieldOption,
   RechargeFirstRecharge3DayPromotion,
+  RechargeOrderAppReq,
   RechargeTodayFirstPromotion,
 } from '@/api/user'
 import {
@@ -320,7 +321,7 @@ async function handleSubmitRecharge() {
 
   submitLoading.value = true
   try {
-    const { data } = await createRechargeOrder({
+    const req: RechargeOrderAppReq = {
       amount,
       channel: selectedChannel.value?.channelCode ?? '',
       payMethod: selectedPay.value?.methodCode ?? '',
@@ -328,7 +329,8 @@ async function handleSubmitRecharge() {
       countryCode: selectedCountry.value?.countryCode ?? '',
       extraFields: rechargeFields.value.length ? { ...fieldValues.value } : undefined,
       activityCode: selectedActivityCode.value,
-    })
+    }
+    const { data } = await submitRechargeOrder(req)
 
     if (data?.payUrl) {
       showCenterToast(t('rechargePage.orderToPay'))
@@ -345,11 +347,52 @@ async function handleSubmitRecharge() {
 
     showCenterToast(t('rechargePage.orderSuccess', { orderNo: data?.orderNo || '--' }))
   }
-  catch {
+  catch (error) {
+    if (error instanceof Error && error.message === 'recharge_confirm_cancelled')
+      return
     showCenterToast(t('rechargePage.orderFailed'))
   }
   finally {
     submitLoading.value = false
+  }
+}
+
+async function submitRechargeOrder(req: RechargeOrderAppReq) {
+  try {
+    const response = await createRechargeOrder(req)
+    if (!response.data?.needConfirmUnfinishedActivityCycle)
+      return response
+
+    await confirmUnfinishedActivityCycle()
+    return await createRechargeOrder({
+      ...req,
+      confirmUnfinishedActivityCycle: true,
+    })
+  }
+  catch (error) {
+    const message = error instanceof Error ? error.message : ''
+    if (message !== 'unfinished_activity_cycle_confirm_required')
+      throw error
+
+    await confirmUnfinishedActivityCycle()
+    return await createRechargeOrder({
+      ...req,
+      confirmUnfinishedActivityCycle: true,
+    })
+  }
+}
+
+async function confirmUnfinishedActivityCycle() {
+  try {
+    await showConfirmDialog({
+      title: t('rechargePage.unfinishedActivityTitle'),
+      message: t('rechargePage.unfinishedActivityMessage'),
+      confirmButtonText: t('rechargePage.continueRecharge'),
+      cancelButtonText: t('rechargePage.cancelRecharge'),
+    })
+  }
+  catch {
+    throw new Error('recharge_confirm_cancelled')
   }
 }
 

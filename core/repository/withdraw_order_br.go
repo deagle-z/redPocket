@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"BaseGoUni/core/pay"
 	"BaseGoUni/core/pojo"
 	"BaseGoUni/core/utils"
 	"encoding/json"
@@ -46,6 +47,9 @@ func GetWithdrawOrderBrs(db *gorm.DB, search pojo.WithdrawOrderBrSearch) (result
 	}
 	if search.ProviderPayoutNo != "" {
 		query = query.Where("provider_payout_no = ?", search.ProviderPayoutNo)
+	}
+	if countryCode := pojo.NormalizeWithdrawCountryCode(search.CountryCode); countryCode != "" {
+		query = query.Where("country_code = ?", countryCode)
 	}
 	if search.Channel != "" {
 		query = query.Where("channel = ?", search.Channel)
@@ -110,6 +114,7 @@ func fillWithdrawOrderBrUserUIDs(db *gorm.DB, orders []pojo.WithdrawOrderBrBack)
 
 // SetWithdrawOrderBr 创建或更新巴西提现订单
 func SetWithdrawOrderBr(db *gorm.DB, req pojo.WithdrawOrderBrSet) (result pojo.WithdrawOrderBrBack, err error) {
+	req.NormalizeCountryCodeFromExtra()
 	if req.Amount > 0 {
 		req.Amount = utils.Truncate2(req.Amount)
 	}
@@ -126,10 +131,12 @@ func SetWithdrawOrderBr(db *gorm.DB, req pojo.WithdrawOrderBrSet) (result pojo.W
 				return err
 			}
 			oldStatus := dbOrder.Status
-			oldExtra := dbOrder.Extra
-			_ = copier.Copy(&dbOrder, &req)
-			if req.Extra == nil {
-				dbOrder.Extra = oldExtra
+			mergeWithdrawOrderUpdate(&dbOrder, req)
+			ensureWithdrawMerchantOrderNo(&dbOrder)
+			if oldStatus == 0 && dbOrder.Status == 1 {
+				if err := submitWithdrawPayout(tx, &dbOrder); err != nil {
+					return err
+				}
 			}
 			if err := tx.Save(&dbOrder).Error; err != nil {
 				return err
@@ -143,6 +150,7 @@ func SetWithdrawOrderBr(db *gorm.DB, req pojo.WithdrawOrderBrSet) (result pojo.W
 		}
 
 		_ = copier.Copy(&dbOrder, &req)
+		ensureWithdrawMerchantOrderNo(&dbOrder)
 		if dbOrder.SourceChannelID == nil && dbOrder.UserId > 0 {
 			sourceChannelID, _, sourceErr := LoadUserSourceChannelSnapshot(tx, dbOrder.UserId)
 			if sourceErr != nil {
@@ -169,6 +177,7 @@ func SetWithdrawOrderBr(db *gorm.DB, req pojo.WithdrawOrderBrSet) (result pojo.W
 
 // SetRebateWithdrawOrder 创建佣金提现订单，不占用普通提现流水。
 func SetRebateWithdrawOrder(db *gorm.DB, req pojo.WithdrawOrderBrSet) (result pojo.WithdrawOrderBrBack, err error) {
+	req.NormalizeCountryCodeFromExtra()
 	if req.Amount > 0 {
 		req.Amount = utils.Truncate2(req.Amount)
 	}
@@ -178,6 +187,7 @@ func SetRebateWithdrawOrder(db *gorm.DB, req pojo.WithdrawOrderBrSet) (result po
 	var dbOrder pojo.WithdrawOrderBr
 	err = db.Transaction(func(tx *gorm.DB) error {
 		_ = copier.Copy(&dbOrder, &req)
+		ensureWithdrawMerchantOrderNo(&dbOrder)
 		if dbOrder.SourceChannelID == nil && dbOrder.UserId > 0 {
 			sourceChannelID, _, sourceErr := LoadUserSourceChannelSnapshot(tx, dbOrder.UserId)
 			if sourceErr != nil {
@@ -200,6 +210,383 @@ func SetRebateWithdrawOrder(db *gorm.DB, req pojo.WithdrawOrderBrSet) (result po
 	}
 	_ = copier.Copy(&result, &dbOrder)
 	return result, nil
+}
+
+func mergeWithdrawOrderUpdate(order *pojo.WithdrawOrderBr, req pojo.WithdrawOrderBrSet) {
+	if !req.HasJSONFields() {
+		oldID := order.ID
+		oldCreatedAt := order.CreatedAt
+		oldDeletedAt := order.DeletedAt
+		_ = copier.Copy(order, &req)
+		order.ID = oldID
+		order.CreatedAt = oldCreatedAt
+		order.DeletedAt = oldDeletedAt
+		return
+	}
+	if req.HasJSONField("tenantId") {
+		order.TenantId = req.TenantId
+	}
+	if req.HasJSONField("appId") {
+		order.AppId = req.AppId
+	}
+	if req.HasJSONField("userId") {
+		order.UserId = req.UserId
+	}
+	if req.HasJSONField("sourceChannelId") {
+		order.SourceChannelID = req.SourceChannelID
+	}
+	if req.HasJSONField("accountId") {
+		order.AccountId = req.AccountId
+	}
+	if req.HasJSONField("orderNo") {
+		order.OrderNo = req.OrderNo
+	}
+	if req.HasJSONField("merchantOrderNo") {
+		order.MerchantOrderNo = req.MerchantOrderNo
+	}
+	if req.HasJSONField("currency") {
+		order.Currency = req.Currency
+	}
+	if req.HasJSONField("countryCode") {
+		order.CountryCode = req.CountryCode
+	}
+	if req.HasJSONField("amount") {
+		order.Amount = req.Amount
+	}
+	if req.HasJSONField("fee") {
+		order.Fee = req.Fee
+	}
+	if req.HasJSONField("channel") {
+		order.Channel = req.Channel
+	}
+	if req.HasJSONField("payMethod") {
+		order.PayMethod = req.PayMethod
+	}
+	if req.HasJSONField("status") {
+		order.Status = req.Status
+	}
+	if req.HasJSONField("reviewedBy") {
+		order.ReviewedBy = req.ReviewedBy
+	}
+	if req.HasJSONField("reviewedAt") {
+		order.ReviewedAt = req.ReviewedAt
+	}
+	if req.HasJSONField("paidAt") {
+		order.PaidAt = req.PaidAt
+	}
+	if req.HasJSONField("failCode") {
+		order.FailCode = req.FailCode
+	}
+	if req.HasJSONField("failMsg") {
+		order.FailMsg = req.FailMsg
+	}
+	if req.HasJSONField("receiverName") {
+		order.ReceiverName = req.ReceiverName
+	}
+	if req.HasJSONField("receiverDocument") {
+		order.ReceiverDocument = req.ReceiverDocument
+	}
+	if req.HasJSONField("receiverDocumentType") {
+		order.ReceiverDocumentType = req.ReceiverDocumentType
+	}
+	if req.HasJSONField("pixKeyType") {
+		order.PixKeyType = req.PixKeyType
+	}
+	if req.HasJSONField("pixKey") {
+		order.PixKey = req.PixKey
+	}
+	if req.HasJSONField("bankCode") {
+		order.BankCode = req.BankCode
+	}
+	if req.HasJSONField("bankName") {
+		order.BankName = req.BankName
+	}
+	if req.HasJSONField("branchNumber") {
+		order.BranchNumber = req.BranchNumber
+	}
+	if req.HasJSONField("accountNumber") {
+		order.AccountNumber = req.AccountNumber
+	}
+	if req.HasJSONField("accountType") {
+		order.AccountType = req.AccountType
+	}
+	if req.HasJSONField("provider") {
+		order.Provider = req.Provider
+	}
+	if req.HasJSONField("providerPayoutNo") {
+		order.ProviderPayoutNo = req.ProviderPayoutNo
+	}
+	if req.HasJSONField("providerStatus") {
+		order.ProviderStatus = req.ProviderStatus
+	}
+	if req.HasJSONField("notifyTime") {
+		order.NotifyTime = req.NotifyTime
+	}
+	if req.HasJSONField("notifyCount") {
+		order.NotifyCount = req.NotifyCount
+	}
+	if req.HasJSONField("idempotencyKey") {
+		order.IdempotencyKey = req.IdempotencyKey
+	}
+	if req.HasJSONField("riskLevel") {
+		order.RiskLevel = req.RiskLevel
+	}
+	if req.HasJSONField("remark") {
+		order.Remark = req.Remark
+	}
+	if req.HasJSONField("extra") {
+		order.Extra = req.Extra
+	}
+}
+
+func ensureWithdrawMerchantOrderNo(order *pojo.WithdrawOrderBr) {
+	if order.MerchantOrderNo != nil && strings.TrimSpace(*order.MerchantOrderNo) != "" {
+		value := strings.TrimSpace(*order.MerchantOrderNo)
+		order.MerchantOrderNo = &value
+		return
+	}
+	value := buildWithdrawMerchantOrderNo()
+	order.MerchantOrderNo = &value
+}
+
+func buildWithdrawMerchantOrderNo() string {
+	return fmt.Sprintf("ST%s%s", time.Now().Format("060102150405"), utils.RandomString(8))
+}
+
+func submitWithdrawPayout(db *gorm.DB, order *pojo.WithdrawOrderBr) error {
+	providerCode := strings.TrimSpace(order.Channel)
+	if order.Provider != nil && strings.TrimSpace(*order.Provider) != "" {
+		providerCode = strings.TrimSpace(*order.Provider)
+	}
+	if providerCode == "" {
+		return errors.New("withdraw_payout_channel_required")
+	}
+	provider := pay.GetPayout(providerCode)
+	if provider == nil {
+		return fmt.Errorf("withdraw_payout_channel_not_supported: %s", providerCode)
+	}
+
+	ensureWithdrawMerchantOrderNo(order)
+	merchantOrderNo := strings.TrimSpace(*order.MerchantOrderNo)
+	extraFields := withdrawOrderExtraFields(order.Extra)
+	countryCode := pojo.NormalizeWithdrawCountryCode(order.CountryCode)
+	if countryCode == "" {
+		countryCode = pojo.NormalizeWithdrawCountryCode(withdrawFieldValue(extraFields, "countryCode"))
+	}
+	var user pojo.TgUser
+	if order.UserId > 0 {
+		_ = db.Select("uid, username, first_name, email, phone").
+			Where("id = ?", order.UserId).
+			First(&user).Error
+	}
+	amount := order.NetAmount
+	if amount <= 0 {
+		amount = order.Amount - order.Fee
+	}
+	amount = utils.Truncate2(amount)
+	if amount <= 0 {
+		return errors.New("withdraw_payout_amount_invalid")
+	}
+
+	accNo := firstWithdrawValue(
+		ptrValue(order.PixKey),
+		ptrValue(order.AccountNumber),
+		withdrawCountryFieldValue(extraFields, countryCode, "accNo", "accountNumber", "pixKey", "cardNo", "clabe"),
+	)
+	bankCode := firstWithdrawValue(
+		ptrValue(order.BankCode),
+		withdrawCountryFieldValue(extraFields, countryCode, "bankCode", "bnakCode", "bank"),
+	)
+	req := pay.PayoutRequest{
+		OrderNo:  merchantOrderNo,
+		Amount:   amount,
+		Currency: strings.TrimSpace(order.Currency),
+		AccName: firstWithdrawValue(
+			ptrValue(order.ReceiverName),
+			withdrawCountryFieldValue(extraFields, countryCode, "accName", "receiverName", "name", "fullName", "accountName"),
+			ptrValue(user.FirstName),
+			ptrValue(user.Username),
+			user.Uid,
+		),
+		AccNo:        accNo,
+		BankCode:     bankCode,
+		IdentityType: firstWithdrawValue(ptrValue(order.PixKeyType), ptrValue(order.ReceiverDocumentType), withdrawCountryFieldValue(extraFields, countryCode, "identityType", "documentType", "pixKeyType")),
+		IdentityNo:   firstWithdrawValue(ptrValue(order.ReceiverDocument), withdrawCountryFieldValue(extraFields, countryCode, "identityNo", "document", "cpf", "idNumber")),
+		BusiCode:     withdrawCountryFieldValue(extraFields, countryCode, "busiCode"),
+		Email:        firstWithdrawValue(withdrawCountryFieldValue(extraFields, countryCode, "email"), user.Email),
+		Phone:        firstWithdrawValue(withdrawCountryFieldValue(extraFields, countryCode, "phone", "mobile", "mobilePhone"), ptrValue(user.Phone), accNo),
+		ExtraFields:  extraFields,
+	}
+	if req.AccName == "" {
+		return errors.New("withdraw_payout_acc_name_required")
+	}
+	if req.AccNo == "" {
+		return errors.New("withdraw_payout_acc_no_required")
+	}
+	if countryCode == "MX" && req.BankCode == "" {
+		return errors.New("withdraw_payout_bank_code_required")
+	}
+	if req.Email == "" {
+		return errors.New("withdraw_payout_email_required")
+	}
+	if req.Phone == "" {
+		return errors.New("withdraw_payout_phone_required")
+	}
+
+	resp, err := provider.CreatePayoutOrder(req)
+	if err != nil {
+		return err
+	}
+	order.Status = 2
+	if resp.ProviderOrderNo != "" {
+		order.ProviderPayoutNo = &resp.ProviderOrderNo
+	}
+	providerStatus := fmt.Sprintf("%d", resp.Status)
+	order.ProviderStatus = &providerStatus
+	return nil
+}
+
+func withdrawOrderExtraFields(extra *string) map[string]string {
+	fields := map[string]string{}
+	if extra == nil || strings.TrimSpace(*extra) == "" {
+		return fields
+	}
+	var raw map[string]any
+	if err := json.Unmarshal([]byte(*extra), &raw); err != nil {
+		return fields
+	}
+	flattenWithdrawExtraFields(fields, raw)
+	if nested, ok := raw["fieldValues"].(map[string]any); ok {
+		flattenWithdrawExtraFields(fields, nested)
+	}
+	return fields
+}
+
+func flattenWithdrawExtraFields(fields map[string]string, values map[string]any) {
+	for key, value := range values {
+		switch typed := value.(type) {
+		case string:
+			if strings.TrimSpace(typed) != "" {
+				fields[key] = strings.TrimSpace(typed)
+			}
+		case float64:
+			fields[key] = fmt.Sprintf("%.0f", typed)
+		}
+	}
+}
+
+func withdrawFieldValue(fields map[string]string, aliases ...string) string {
+	for _, alias := range aliases {
+		if value := strings.TrimSpace(fields[alias]); value != "" {
+			return value
+		}
+	}
+
+	normalized := normalizeWithdrawFields(fields)
+	for _, alias := range aliases {
+		if value := normalized[normalizeWithdrawFieldKey(alias)]; value != "" {
+			return value
+		}
+	}
+	for _, alias := range aliases {
+		normalizedAlias := normalizeWithdrawFieldKey(alias)
+		if normalizedAlias == "" {
+			continue
+		}
+		for key, value := range normalized {
+			if strings.HasPrefix(key, normalizedAlias) {
+				return value
+			}
+		}
+	}
+	return ""
+}
+
+func withdrawCountryFieldValue(fields map[string]string, countryCode string, aliases ...string) string {
+	normalized := normalizeWithdrawFields(fields)
+	suffixes := withdrawCountryFieldSuffixes(countryCode)
+	for _, suffix := range suffixes {
+		for _, alias := range aliases {
+			normalizedAlias := normalizeWithdrawFieldKey(alias)
+			if normalizedAlias == "" {
+				continue
+			}
+			if value := normalized[normalizedAlias+suffix]; value != "" {
+				return value
+			}
+		}
+	}
+	for _, alias := range aliases {
+		if value := normalized[normalizeWithdrawFieldKey(alias)]; value != "" {
+			return value
+		}
+	}
+	if pojo.NormalizeWithdrawCountryCode(countryCode) != "" {
+		return ""
+	}
+	for _, alias := range aliases {
+		normalizedAlias := normalizeWithdrawFieldKey(alias)
+		if normalizedAlias == "" {
+			continue
+		}
+		for key, value := range normalized {
+			if strings.HasPrefix(key, normalizedAlias) {
+				return value
+			}
+		}
+	}
+	return ""
+}
+
+func withdrawCountryFieldSuffixes(countryCode string) []string {
+	switch pojo.NormalizeWithdrawCountryCode(countryCode) {
+	case "BR":
+		return []string{"brlw", "brl", "br"}
+	case "MX":
+		return []string{"mxnw", "mxn", "mx"}
+	default:
+		return nil
+	}
+}
+
+func normalizeWithdrawFields(fields map[string]string) map[string]string {
+	normalized := make(map[string]string, len(fields))
+	for key, value := range fields {
+		normalizedKey := normalizeWithdrawFieldKey(key)
+		if normalizedKey == "" || strings.TrimSpace(value) == "" {
+			continue
+		}
+		if _, exists := normalized[normalizedKey]; !exists {
+			normalized[normalizedKey] = strings.TrimSpace(value)
+		}
+	}
+	return normalized
+}
+
+func normalizeWithdrawFieldKey(key string) string {
+	var builder strings.Builder
+	for _, r := range strings.ToLower(strings.TrimSpace(key)) {
+		if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') {
+			builder.WriteRune(r)
+		}
+	}
+	return builder.String()
+}
+
+func firstWithdrawValue(values ...string) string {
+	for _, value := range values {
+		if trimmed := strings.TrimSpace(value); trimmed != "" {
+			return trimmed
+		}
+	}
+	return ""
+}
+
+func ptrValue(value *string) string {
+	if value == nil {
+		return ""
+	}
+	return *value
 }
 
 // DelWithdrawOrderBr 删除巴西提现订单
@@ -351,6 +738,12 @@ func deductWithdrawAmount(tx *gorm.DB, order *pojo.WithdrawOrderBr) error {
 	if user.Balance < order.Amount {
 		return errors.New("user_balance_insufficient")
 	}
+	activeCycle, err := GetActiveWithdrawActivityCycle(tx, user.ID)
+	if err != nil {
+		return err
+	}
+	hasActiveCycle := activeCycle.ID > 0
+	activityCycleLowBalance := CanBypassWithdrawActivityCycleByBalance(user.Balance, activeCycle)
 	if err := ReserveWithdrawLimitForOrder(tx, user, order); err != nil {
 		return err
 	}
@@ -358,6 +751,21 @@ func deductWithdrawAmount(tx *gorm.DB, order *pojo.WithdrawOrderBr) error {
 		Where("id = ?", user.ID).
 		Update("balance", gorm.Expr("balance - ?", order.Amount)).Error; err != nil {
 		return err
+	}
+	remainingBalance := utils.Truncate2(user.Balance - order.Amount)
+	if hasActiveCycle {
+		endReason := pojo.WithdrawActivityCycleEndReasonWithdraw
+		restrictRemaining := true
+		if activityCycleLowBalance {
+			endReason = pojo.WithdrawActivityCycleEndReasonBalanceBelowLimit
+			restrictRemaining = false
+		}
+		if err := EndWithdrawActivityCycle(tx, user.ID, endReason); err != nil {
+			return err
+		}
+		if err := ResetUserWithdrawLimitAfterActivityEnd(tx, user.ID, remainingBalance, restrictRemaining); err != nil {
+			return err
+		}
 	}
 	cashHistory := pojo.CashHistory{
 		UserId:          user.ID,

@@ -141,15 +141,16 @@ type RechargeOrderResp struct {
 }
 
 type RechargeOrderAppReq struct {
-	Amount          float64           `json:"amount"`          // 充值金额
-	Channel         string            `json:"channel"`         // 充值渠道（必填）
-	PayMethod       string            `json:"payMethod"`       // 支付方式（可选）
-	Currency        string            `json:"currency"`        // 币种（默认BRL）
-	CountryCode     string            `json:"countryCode"`     // 国家编码（可选，用于校验额外字段）
-	MerchantOrderNo string            `json:"merchantOrderNo"` // 商户订单号（可选）
-	ExtraFields     map[string]string `json:"extraFields"`     // 国家自定义字段
-	ActivityType    int8              `json:"activityType"`    // 活动类型 0无 1首充 2今日首充
-	ActivityCode    string            `json:"activityCode"`    // 活动编码：first_recharge_3day / today_first_recharge
+	Amount                         float64           `json:"amount"`                         // 充值金额
+	Channel                        string            `json:"channel"`                        // 充值渠道（必填）
+	PayMethod                      string            `json:"payMethod"`                      // 支付方式（可选）
+	Currency                       string            `json:"currency"`                       // 币种（默认BRL）
+	CountryCode                    string            `json:"countryCode"`                    // 国家编码（可选，用于校验额外字段）
+	MerchantOrderNo                string            `json:"merchantOrderNo"`                // 商户订单号（可选）
+	ExtraFields                    map[string]string `json:"extraFields"`                    // 国家自定义字段
+	ActivityType                   int8              `json:"activityType"`                   // 活动类型 0无 1首充 2今日首充
+	ActivityCode                   string            `json:"activityCode"`                   // 活动编码：first_recharge_3day / today_first_recharge
+	ConfirmUnfinishedActivityCycle bool              `json:"confirmUnfinishedActivityCycle"` // 是否确认在未结束活动周期内继续普通充值
 }
 
 type RechargePromotionStatusResp struct {
@@ -183,15 +184,17 @@ type RechargeTodayFirstPromotion struct {
 }
 
 type RechargeOrderAppBack struct {
-	OrderNo         string   `json:"orderNo"`         // 平台订单号
-	MerchantOrderNo *string  `json:"merchantOrderNo"` // 商户订单号
-	Channel         string   `json:"channel"`         // 渠道
-	PayMethod       *string  `json:"payMethod"`       // 支付方式
-	Currency        string   `json:"currency"`        // 币种
-	Amount          float64  `json:"amount"`          // 充值金额
-	Status          int      `json:"status"`          // 订单状态
-	CreditAmount    *float64 `json:"creditAmount"`    // 入账金额
-	PayURL          string   `json:"payUrl"`          // 支付链接
+	OrderNo                            string   `json:"orderNo"`                                      // 平台订单号
+	MerchantOrderNo                    *string  `json:"merchantOrderNo"`                              // 商户订单号
+	Channel                            string   `json:"channel"`                                      // 渠道
+	PayMethod                          *string  `json:"payMethod"`                                    // 支付方式
+	Currency                           string   `json:"currency"`                                     // 币种
+	Amount                             float64  `json:"amount"`                                       // 充值金额
+	Status                             int      `json:"status"`                                       // 订单状态
+	CreditAmount                       *float64 `json:"creditAmount"`                                 // 入账金额
+	PayURL                             string   `json:"payUrl"`                                       // 支付链接
+	NeedConfirmUnfinishedActivityCycle bool     `json:"needConfirmUnfinishedActivityCycle,omitempty"` // 是否需要确认未结束活动周期
+	ActiveActivityMultiplier           float64  `json:"activeActivityMultiplier,omitempty"`           // 当前活动周期流水倍数
 }
 
 type RechargeOrderNotifyAckReq struct {

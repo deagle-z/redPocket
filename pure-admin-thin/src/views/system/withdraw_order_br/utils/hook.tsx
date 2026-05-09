@@ -7,9 +7,17 @@ import {
   setWithdrawOrderBr,
   type WithdrawOrderBr
 } from "@/api/withdrawOrderBr";
-import { setBalance } from "@/api/system";
+import { getSysPayChannelList, type SysPayChannel } from "@/api/sysPayChannel";
 import { type Ref, reactive, ref, onMounted, toRaw } from "vue";
-import { ElForm, ElFormItem, ElInput, ElTag } from "element-plus";
+import {
+  ElAlert,
+  ElForm,
+  ElFormItem,
+  ElInput,
+  ElOption,
+  ElSelect,
+  ElTag
+} from "element-plus";
 
 const statusOptions = [
   { label: "待审核", value: 0 },
@@ -41,10 +49,10 @@ export function useWithdrawOrderBr(tableRef: Ref) {
     merchantOrderNo: "",
     providerPayoutNo: "",
     status: undefined as number | undefined,
+    countryCode: "",
     channel: "",
     payMethod: ""
   });
-  const formRef = ref();
   const dataList = ref<WithdrawOrderBr[]>([]);
   const loading = ref(true);
   const pagination = reactive<PaginationProps>({
@@ -57,6 +65,12 @@ export function useWithdrawOrderBr(tableRef: Ref) {
     failMsg: ""
   });
   const rejectFormRef = ref();
+  const approveForm = reactive({
+    channelCode: ""
+  });
+  const approveFormRef = ref();
+  const approveChannelLoading = ref(false);
+  const approveChannelOptions = ref<SysPayChannel[]>([]);
   const columns: TableColumnList = [
     {
       label: "订单号",
@@ -69,6 +83,12 @@ export function useWithdrawOrderBr(tableRef: Ref) {
       prop: "userUid",
       minWidth: 120,
       formatter: ({ userUid }) => userUid || "-"
+    },
+    {
+      label: "国家",
+      prop: "countryCode",
+      minWidth: 100,
+      formatter: row => getOrderCountryCode(row) || "-"
     },
     {
       label: "金额",
@@ -163,6 +183,7 @@ export function useWithdrawOrderBr(tableRef: Ref) {
     } finally {
       setTimeout(() => {
         loading.value = false;
+        tableRef.value?.setAdaptive?.();
       }, 500);
     }
   }
@@ -173,19 +194,134 @@ export function useWithdrawOrderBr(tableRef: Ref) {
     onSearch();
   };
 
-  async function approveOrder(row: WithdrawOrderBr) {
-    try {
-      await setWithdrawOrderBr({
-        id: row.id,
-        status: 1,
-        reviewedAt: dayjs().format("YYYY-MM-DD HH:mm:ss")
-      });
-      message(`已通过订单 ${row.orderNo}`, { type: "success" });
-      onSearch();
-    } catch (error) {
-      console.error("审核通过失败", error);
-      message("审核通过失败", { type: "error" });
+  function getOrderCountryCode(row: WithdrawOrderBr) {
+    const rowCountryCode = String(row.countryCode || "").trim();
+    if (rowCountryCode) return rowCountryCode.toUpperCase();
+    const extra = row.extra?.trim();
+    if (extra) {
+      try {
+        const parsed = JSON.parse(extra);
+        const countryCode = String(parsed?.countryCode || "").trim();
+        if (countryCode) return countryCode.toUpperCase();
+      } catch {
+        // ignore invalid historical extra data
+      }
     }
+    const currencyCountryMap: Record<string, string> = {
+      BRL: "BR",
+      MXN: "MX"
+    };
+    return currencyCountryMap[String(row.currency || "").toUpperCase()] || "";
+  }
+
+  async function loadWithdrawPayChannels(countryCode: string) {
+    approveChannelLoading.value = true;
+    try {
+      const requests = ["withdraw", "both"].map(channelType =>
+        getSysPayChannelList({
+          currentPage: 0,
+          pageSize: 500,
+          channelType,
+          countryCode,
+          status: 1
+        })
+      );
+      const results = await Promise.all(requests);
+      const seen = new Set<number>();
+      approveChannelOptions.value = results
+        .flatMap(item => item.data?.list || [])
+        .filter(item => {
+          if (seen.has(item.id)) return false;
+          seen.add(item.id);
+          return true;
+        });
+    } catch (error) {
+      console.error("获取提现支付通道失败", error);
+      approveChannelOptions.value = [];
+      message("获取提现支付通道失败", { type: "error" });
+    } finally {
+      approveChannelLoading.value = false;
+    }
+  }
+
+  async function approveOrder(row: WithdrawOrderBr) {
+    const countryCode = getOrderCountryCode(row);
+    approveForm.channelCode = "";
+    approveChannelOptions.value = [];
+    await loadWithdrawPayChannels(countryCode);
+
+    addDialog({
+      title: `审核通过订单 ${row.orderNo}`,
+      width: "420px",
+      draggable: true,
+      closeOnClickModal: false,
+      contentRenderer: () => (
+        <ElForm ref={approveFormRef} model={approveForm} labelWidth="96px">
+          <ElAlert
+            class="mb-4"
+            type="info"
+            showIcon={true}
+            closable={false}
+            title={`订单国家：${countryCode || "未识别"}，请选择对应国家的提现支付通道`}
+          />
+          <ElFormItem
+            label="支付通道"
+            prop="channelCode"
+            rules={[
+              {
+                required: true,
+                message: "请选择支付通道",
+                trigger: "change"
+              }
+            ]}
+          >
+            <ElSelect
+              v-model={approveForm.channelCode}
+              filterable
+              class="!w-full"
+              loading={approveChannelLoading.value}
+              placeholder="请选择提现支付通道"
+            >
+              {approveChannelOptions.value.map(item => (
+                <ElOption
+                  key={item.id}
+                  label={`${item.channelName} (${item.channelCode})`}
+                  value={item.channelCode}
+                />
+              ))}
+            </ElSelect>
+          </ElFormItem>
+        </ElForm>
+      ),
+      beforeSure: done => {
+        approveFormRef.value.validate(async valid => {
+          if (!valid) return;
+          const selected = approveChannelOptions.value.find(
+            item => item.channelCode === approveForm.channelCode
+          );
+          if (!selected) {
+            message("请选择有效的支付通道", { type: "warning" });
+            return;
+          }
+          try {
+            await setWithdrawOrderBr({
+              id: row.id,
+              status: 1,
+              channel: selected.channelCode,
+              provider: selected.channelCode,
+              payMethod: selected.channelName,
+              reviewedAt: dayjs().format("YYYY-MM-DD HH:mm:ss")
+            });
+            message(`已通过订单 ${row.orderNo}`, { type: "success" });
+            done();
+            onSearch();
+          } catch (error) {
+            console.error("审核通过失败", error);
+            message("审核通过失败", { type: "error" });
+          }
+        });
+      }
+    });
   }
 
   function rejectOrder(row: WithdrawOrderBr) {
@@ -225,11 +361,6 @@ export function useWithdrawOrderBr(tableRef: Ref) {
               status: 6,
               failMsg: rejectForm.failMsg,
               reviewedAt: dayjs().format("YYYY-MM-DD HH:mm:ss")
-            });
-            await setBalance({
-              userId: row.userId,
-              amount: row.amount,
-              cashMark: `提现驳回返还（订单号：${row.orderNo}）`
             });
             message("驳回成功，已返还余额", { type: "success" });
             done();

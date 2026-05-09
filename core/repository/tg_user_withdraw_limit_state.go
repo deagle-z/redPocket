@@ -34,6 +34,41 @@ func GetUserWithdrawSummary(db *gorm.DB, userID int64) (pojo.TgWithdrawSummaryBa
 		return result, errors.New("user_not_found")
 	}
 
+	cycle, err := GetActiveWithdrawActivityCycle(db, user.ID)
+	if err != nil {
+		return result, err
+	}
+	if cycle.ID > 0 {
+		if CanBypassWithdrawActivityCycleByBalance(user.Balance, cycle) {
+			if err := db.Transaction(func(tx *gorm.DB) error {
+				if err := EndWithdrawActivityCycle(tx, user.ID, pojo.WithdrawActivityCycleEndReasonBalanceBelowLimit); err != nil {
+					return err
+				}
+				return ResetUserWithdrawLimitAfterActivityEnd(tx, user.ID, user.Balance, false)
+			}); err != nil {
+				return result, err
+			}
+			return pojo.TgWithdrawSummaryBack{
+				Balance:               utils.Truncate2(user.Balance),
+				NonWithdrawableAmount: 0,
+			}, nil
+		}
+		totalFlow, flowErr := GetUserTotalFlow(db, user.ID)
+		if flowErr != nil {
+			return result, flowErr
+		}
+		availableFlow := clampNonNegative(totalFlow - cycle.FlowStartValue - cycle.FlowConsumed)
+		withdrawableByFlow := 0.0
+		if cycle.Multiplier > 0 {
+			withdrawableByFlow = minFloat(clampNonNegative(cycle.BaseAmount), availableFlow/cycle.Multiplier)
+		}
+		totalWithdrawable := minFloat(clampNonNegative(user.Balance), withdrawableByFlow)
+		return pojo.TgWithdrawSummaryBack{
+			Balance:               utils.Truncate2(user.Balance),
+			NonWithdrawableAmount: clampNonNegative(user.Balance - totalWithdrawable),
+		}, nil
+	}
+
 	state, err := getOrInitUserWithdrawLimitStateSnapshot(db, user)
 	if err != nil {
 		return result, err
@@ -143,6 +178,10 @@ func ReserveWithdrawLimitForOrder(tx *gorm.DB, user pojo.TgUser, order *pojo.Wit
 		return nil
 	}
 
+	if reserved, err := reserveWithdrawActivityCycleForOrder(tx, user, order); err != nil || reserved {
+		return err
+	}
+
 	state, err := getOrInitUserWithdrawLimitState(tx, user)
 	if err != nil {
 		return err
@@ -151,10 +190,15 @@ func ReserveWithdrawLimitForOrder(tx *gorm.DB, user pojo.TgUser, order *pojo.Wit
 	giftMultiplier := loadWithdrawLimitMultiplier(tx, "withdraw_gift_limit")
 	rechargeMultiplier := loadWithdrawLimitMultiplier(tx, "withdraw_limit")
 
-	giftRestrictedAmount := minFloat(order.Amount, clampNonNegative(state.GiftRestrictedBalance))
-	remainingAmount := clampNonNegative(order.Amount - giftRestrictedAmount)
-	rechargeRestrictedAmount := minFloat(remainingAmount, clampNonNegative(state.RechargeRestrictedBalance))
-	unrestrictedAmount := clampNonNegative(order.Amount - giftRestrictedAmount - rechargeRestrictedAmount)
+	giftRestricted := clampNonNegative(state.GiftRestrictedBalance)
+	rechargeRestricted := clampNonNegative(state.RechargeRestrictedBalance)
+	unrestrictedAvailable := clampNonNegative(user.Balance - giftRestricted - rechargeRestricted)
+
+	unrestrictedAmount := minFloat(order.Amount, unrestrictedAvailable)
+	remainingAmount := clampNonNegative(order.Amount - unrestrictedAmount)
+	giftRestrictedAmount := minFloat(remainingAmount, giftRestricted)
+	remainingAmount = clampNonNegative(remainingAmount - giftRestrictedAmount)
+	rechargeRestrictedAmount := minFloat(remainingAmount, rechargeRestricted)
 
 	giftFlowRequired := utils.Truncate2(giftRestrictedAmount * giftMultiplier)
 	rechargeFlowRequired := utils.Truncate2(rechargeRestrictedAmount * rechargeMultiplier)
@@ -195,6 +239,45 @@ func ReserveWithdrawLimitForOrder(tx *gorm.DB, user pojo.TgUser, order *pojo.Wit
 	}).Error
 }
 
+func reserveWithdrawActivityCycleForOrder(tx *gorm.DB, user pojo.TgUser, order *pojo.WithdrawOrderBr) (bool, error) {
+	cycle, err := getLockedActiveWithdrawActivityCycle(tx, user.ID)
+	if err != nil || cycle.ID == 0 {
+		return false, err
+	}
+	if CanBypassWithdrawActivityCycleByBalance(user.Balance, cycle) {
+		return true, nil
+	}
+	totalFlow, err := GetUserTotalFlow(tx, user.ID)
+	if err != nil {
+		return true, err
+	}
+	availableFlow := clampNonNegative(totalFlow - cycle.FlowStartValue - cycle.FlowConsumed)
+	requiredFlow := utils.Truncate2(order.Amount * normalizePositiveConfig(cycle.Multiplier, 5))
+	if availableFlow+withdrawLimitEpsilon < requiredFlow {
+		return true, errors.New(utils.I18nMessage("withdraw_flow_insufficient", map[string]interface{}{
+			"available": fmt.Sprintf("%.2f", availableFlow),
+			"required":  fmt.Sprintf("%.2f", requiredFlow),
+		}))
+	}
+	cycle.FlowConsumed = clampNonNegative(cycle.FlowConsumed + requiredFlow)
+	if err := tx.Model(&pojo.TgUserWithdrawActivityCycle{}).Where("id = ?", cycle.ID).Update("flow_consumed", cycle.FlowConsumed).Error; err != nil {
+		return true, err
+	}
+
+	order.GiftRestrictedAmount = 0
+	order.RechargeRestrictedAmount = order.Amount
+	order.UnrestrictedAmount = 0
+	order.GiftFlowRequired = 0
+	order.RechargeFlowRequired = requiredFlow
+	return true, tx.Model(&pojo.WithdrawOrderBr{}).Where("id = ?", order.ID).Updates(map[string]any{
+		"gift_restricted_amount":     0,
+		"recharge_restricted_amount": order.Amount,
+		"unrestricted_amount":        0,
+		"gift_flow_required":         0,
+		"recharge_flow_required":     requiredFlow,
+	}).Error
+}
+
 func RefundWithdrawLimitForOrder(tx *gorm.DB, user pojo.TgUser, order pojo.WithdrawOrderBr) error {
 	if tx == nil || user.ID <= 0 {
 		return nil
@@ -217,6 +300,40 @@ func RefundWithdrawLimitForOrder(tx *gorm.DB, user pojo.TgUser, order pojo.Withd
 	state.RechargeFlowConsumed = clampNonNegative(state.RechargeFlowConsumed - order.RechargeFlowRequired)
 
 	return saveUserWithdrawLimitState(tx, &state)
+}
+
+func ResetUserWithdrawLimitAfterActivityEnd(tx *gorm.DB, userID int64, remainingBalance float64, restrictRemaining bool) error {
+	if tx == nil || userID <= 0 {
+		return nil
+	}
+	totalFlow, err := GetUserTotalFlow(tx, userID)
+	if err != nil {
+		return err
+	}
+	var state pojo.TgUserWithdrawLimitState
+	err = tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("user_id = ?", userID).First(&state).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		now := time.Now()
+		state = pojo.TgUserWithdrawLimitState{
+			UserID:        userID,
+			InitializedAt: &now,
+		}
+		if createErr := tx.Create(&state).Error; createErr != nil {
+			return createErr
+		}
+	} else if err != nil {
+		return err
+	}
+	rechargeRestricted := 0.0
+	if restrictRemaining {
+		rechargeRestricted = clampNonNegative(remainingBalance)
+	}
+	return tx.Model(&pojo.TgUserWithdrawLimitState{}).Where("id = ?", state.ID).Updates(map[string]any{
+		"gift_restricted_balance":     0,
+		"recharge_restricted_balance": rechargeRestricted,
+		"gift_flow_consumed":          0,
+		"recharge_flow_consumed":      clampNonNegative(totalFlow),
+	}).Error
 }
 
 func RestoreLuckyRefundRestrictedBalance(tx *gorm.DB, user pojo.TgUser, lucky pojo.LuckyMoney, refundAmount float64) error {

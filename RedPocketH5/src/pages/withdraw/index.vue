@@ -21,11 +21,11 @@ const router = useRouter()
 const userStore = useUserStore()
 
 const balance = ref(0)
-const frozen = ref(0)
 const nonWithdrawableAmount = ref(0)
 const currentUserCountry = ref('')
 const hideCountrySelector = ref(false)
 const pageLoading = ref(true)
+const withdrawSummaryLoaded = ref(false)
 
 // 国家列表
 const countries = ref<AppCountryItem[]>([])
@@ -59,9 +59,14 @@ const localAmount = computed(() => {
 })
 
 const localCurrencySymbol = computed(() => selectedCountry.value?.currencySymbol || '')
+const withdrawableAmount = computed(() =>
+  truncate2(Math.max(0, balance.value - nonWithdrawableAmount.value)),
+)
 
 const canSubmit = computed(() =>
   Number(displayAmount.value) > 0
+  && truncate2(Number(displayAmount.value)) <= withdrawableAmount.value
+  && withdrawSummaryLoaded.value
   && !submitLoading.value
   && !!selectedCountry.value
   && !fieldsLoading.value,
@@ -70,9 +75,7 @@ const canSubmit = computed(() =>
 // select 选择器
 const pickerVisible = ref(false)
 const pickerField = ref<RechargeField | null>(null)
-const pickerColumns = computed(() =>
-  parseFieldOptions(pickerField.value).map(o => ({ text: o.label, value: o.value })),
-)
+const pickerOptions = computed(() => parseFieldOptions(pickerField.value))
 
 function parseFieldOptions(field: RechargeField | null): RechargeFieldOption[] {
   if (!field?.optionsJson)
@@ -97,9 +100,9 @@ function openPicker(field: RechargeField) {
   pickerVisible.value = true
 }
 
-function onPickerConfirm({ selectedOptions }: { selectedOptions: Array<{ text: string, value: string }> }) {
+function onSelectOption(option: RechargeFieldOption) {
   if (pickerField.value)
-    fieldValues.value[pickerField.value.fieldKey] = selectedOptions[0]?.value ?? ''
+    fieldValues.value[pickerField.value.fieldKey] = option.value
   pickerVisible.value = false
 }
 
@@ -152,14 +155,14 @@ async function loadUserInfo() {
 }
 
 async function loadWithdrawSummary() {
+  withdrawSummaryLoaded.value = false
   try {
     const { data } = await getCurrentTgWithdrawSummary()
     balance.value = Number(data?.balance ?? balance.value)
     nonWithdrawableAmount.value = Number(data?.nonWithdrawableAmount ?? 0)
-    frozen.value = nonWithdrawableAmount.value
+    withdrawSummaryLoaded.value = true
   }
   catch {
-    frozen.value = 0
     nonWithdrawableAmount.value = 0
   }
 }
@@ -249,16 +252,14 @@ async function loadCountries() {
 async function initPage() {
   pageLoading.value = true
   currentUserCountry.value = String(userStore.userInfo?.country || '').trim()
-  const userInfoPromise = loadUserInfo()
-  const withdrawSummaryPromise = loadWithdrawSummary()
   try {
-    await userInfoPromise
+    await loadUserInfo()
+    await loadWithdrawSummary()
     await loadCountries()
   }
   finally {
     pageLoading.value = false
   }
-  await withdrawSummaryPromise
 }
 
 async function handleSubmitWithdraw() {
@@ -267,6 +268,10 @@ async function handleSubmitWithdraw() {
   const amount = truncate2(Number(displayAmount.value))
   if (!amount || amount <= 0) {
     showCenterToast(t('withdrawPage.invalidAmount'))
+    return
+  }
+  if (amount > withdrawableAmount.value) {
+    showCenterToast(t('withdrawPage.amountExceedsWithdrawable', { amount: formatCurrency(withdrawableAmount.value) }))
     return
   }
 
@@ -370,150 +375,174 @@ onMounted(() => {
     </template>
 
     <template v-else>
-    <section class="card balance-card">
-      <div>
-        <p class="card-label">
-          {{ t('withdrawPage.currentBalance') }}
-        </p>
-        <p class="card-value">
-          <CoinAmount :text="formatCurrency(balance)" />
-        </p>
-        <p class="card-sub">
-          <CurrencyText :text="t('withdrawPage.frozenBalance', { amount: formatCurrency(frozen) })" />
-        </p>
-      </div>
-      <span class="card-chip"><img class="chip-coin" src="@/assets/svg/coin.svg" alt=""></span>
-    </section>
+      <section class="card balance-card">
+        <div>
+          <p class="card-label">
+            {{ t('withdrawPage.currentBalance') }}
+          </p>
+          <p class="card-value">
+            <CoinAmount :text="formatCurrency(balance)" />
+          </p>
+          <div class="card-sub-list">
+            <p class="card-sub">
+              <CurrencyText :text="`${t('withdrawPage.withdrawableAmount')}: ${formatCurrency(withdrawableAmount)}`" />
+            </p>
+            <p class="card-sub">
+              <CurrencyText :text="`${t('withdrawPage.nonWithdrawableAmount')}: ${formatCurrency(nonWithdrawableAmount)}`" />
+            </p>
+          </div>
+        </div>
+        <span class="card-chip"><img class="chip-coin" src="@/assets/svg/coin.svg" alt=""></span>
+      </section>
 
-    <!-- 国家选择行 -->
-    <div v-if="!hideCountrySelector" class="country-bar">
-      <div class="country-scroll">
-        <button
-          v-for="country in countries" :key="country.countryCode" type="button" class="country-pill"
-          :class="{ active: selectedCountry?.countryCode === country.countryCode }"
-          @click="handleSelectCountry(country)"
-        >
-          <span class="country-code">{{ country.countryCode }}</span>
-          <span class="country-name">{{ country.countryNameEn }}</span>
-        </button>
-        <div v-if="countriesLoading" class="country-pill-loading">
-          <van-loading size="16" color="#d4af37" />
+      <!-- 国家选择行 -->
+      <div v-if="!hideCountrySelector" class="country-bar">
+        <div class="country-scroll">
+          <button
+            v-for="country in countries" :key="country.countryCode" type="button" class="country-pill"
+            :class="{ active: selectedCountry?.countryCode === country.countryCode }"
+            @click="handleSelectCountry(country)"
+          >
+            <span class="country-code">{{ country.countryCode }}</span>
+            <span class="country-name">{{ country.countryNameEn }}</span>
+          </button>
+          <div v-if="countriesLoading" class="country-pill-loading">
+            <van-loading size="16" color="#d4af37" />
+          </div>
         </div>
       </div>
-    </div>
 
-    <!-- 提现金额 -->
-    <section class="card">
-      <h2 class="section-title">
-        {{ t('withdrawPage.amountTitle') }}
-      </h2>
-      <van-field
-        v-model="customAmount" type="number" :label="t('withdrawPage.amountLabel')" :placeholder="t('withdrawPage.amountPlaceholder')" class="custom-input"
-        @focus="selectedAmount = 'custom'"
-      />
-      <div class="amount-grid">
-        <button
-          v-for="item in amountOptions" :key="item" type="button" class="amount-item"
-          :class="{ active: selectedAmount === item }" @click="chooseAmount(item as number | 'custom')"
-        >
-          <span v-if="item !== 'custom'"><CoinAmount :text="formatAmountText(Number(item))" /></span>
-          <span v-else>{{ t('withdrawPage.custom') }}</span>
-          <span v-if="item !== 'custom' && selectedCountry?.rate" class="amount-local">
-            {{ localCurrencySymbol }} {{ formatLocalAmount(Number(item)) }}
-          </span>
-        </button>
-      </div>
-
-      <div v-if="displayAmount && selectedCountry?.rate" class="local-amount-hint">
-        ≈ {{ localCurrencySymbol }}{{ localAmount }} {{ selectedCountry?.currencyCode }}
-      </div>
-
-      <van-button type="primary" round block class="submit-btn" :loading="submitLoading" :disabled="!canSubmit" @click="handleSubmitWithdraw">
-        {{ t('withdrawPage.submit') }}
-      </van-button>
-
-      <div class="fee-card">
-        <div class="fee-row">
-          <span>{{ t('withdrawPage.serviceFee') }}</span>
-          <CoinAmount text="0.00" />
-        </div>
-        <div class="fee-row total">
-          <span>{{ t('withdrawPage.actualDeduct') }}</span>
-          <CoinAmount :text="formatAmountText(Number(displayAmount || 0))" />
-        </div>
-      </div>
-    </section>
-
-    <!-- 收款信息 -->
-    <section class="card">
-      <div class="section-head">
+      <!-- 提现金额 -->
+      <section class="card">
         <h2 class="section-title">
-          {{ t('withdrawPage.receiverTitle') }}
+          {{ t('withdrawPage.amountTitle') }}
         </h2>
-        <button type="button" class="bind-btn" @click="router.push('/withdrawAccount')">
-          {{ t('withdrawPage.bindAccount') }}
-        </button>
-      </div>
+        <van-field
+          v-model="customAmount" type="number" :label="t('withdrawPage.amountLabel')" :placeholder="t('withdrawPage.amountPlaceholder')" class="custom-input"
+          @focus="selectedAmount = 'custom'"
+        />
+        <div class="amount-grid">
+          <button
+            v-for="item in amountOptions" :key="item" type="button" class="amount-item"
+            :class="{ active: selectedAmount === item }" @click="chooseAmount(item as number | 'custom')"
+          >
+            <span v-if="item !== 'custom'"><CoinAmount :text="formatAmountText(Number(item))" /></span>
+            <span v-else>{{ t('withdrawPage.custom') }}</span>
+            <span v-if="item !== 'custom' && selectedCountry?.rate" class="amount-local">
+              {{ localCurrencySymbol }} {{ formatLocalAmount(Number(item)) }}
+            </span>
+          </button>
+        </div>
 
-      <van-loading v-if="fieldsLoading" size="20" color="#d4af37" class="section-loading" />
+        <div v-if="displayAmount && selectedCountry?.rate" class="local-amount-hint">
+          ≈ {{ localCurrencySymbol }}{{ localAmount }} {{ selectedCountry?.currencyCode }}
+        </div>
 
-      <template v-else-if="withdrawFields.length">
-        <template v-for="field in withdrawFields" :key="field.fieldKey">
-          <van-field
-            v-if="field.fieldType === 'select'"
-            :model-value="getSelectLabel(field)"
-            :label="field.fieldLabel"
-            :placeholder="field.fieldPlaceholder || ''"
-            :required="field.isRequired === 1"
-            is-link
-            readonly
-            class="custom-input withdraw-field"
-            @click="openPicker(field)"
-          />
-          <van-field
-            v-else
-            v-model="fieldValues[field.fieldKey]"
-            :type="field.fieldType === 'number' ? 'number' : field.fieldType === 'textarea' ? 'textarea' : 'text'"
-            :label="field.fieldLabel"
-            :placeholder="field.fieldPlaceholder || ''"
-            :required="field.isRequired === 1"
-            :maxlength="field.maxLength ?? undefined"
-            class="custom-input withdraw-field"
-            rows="3"
-          />
+        <van-button type="primary" round block class="submit-btn" :loading="submitLoading" :disabled="!canSubmit" @click="handleSubmitWithdraw">
+          {{ t('withdrawPage.submit') }}
+        </van-button>
+
+        <div class="fee-card">
+          <div class="fee-row">
+            <span>{{ t('withdrawPage.serviceFee') }}</span>
+            <CoinAmount text="0.00" />
+          </div>
+          <div class="fee-row total">
+            <span>{{ t('withdrawPage.actualDeduct') }}</span>
+            <CoinAmount :text="formatAmountText(Number(displayAmount || 0))" />
+          </div>
+        </div>
+      </section>
+
+      <!-- 收款信息 -->
+      <section class="card">
+        <div class="section-head">
+          <h2 class="section-title">
+            {{ t('withdrawPage.receiverTitle') }}
+          </h2>
+          <button type="button" class="bind-btn" @click="router.push('/withdrawAccount')">
+            {{ t('withdrawPage.bindAccount') }}
+          </button>
+        </div>
+
+        <van-loading v-if="fieldsLoading" size="20" color="#d4af37" class="section-loading" />
+
+        <template v-else-if="withdrawFields.length">
+          <template v-for="field in withdrawFields" :key="field.fieldKey">
+            <van-field
+              v-if="field.fieldType === 'select'"
+              :model-value="getSelectLabel(field)"
+              :label="field.fieldLabel"
+              :placeholder="field.fieldPlaceholder || ''"
+              :required="field.isRequired === 1"
+              is-link
+              readonly
+              class="custom-input withdraw-field"
+              @click="openPicker(field)"
+            />
+            <van-field
+              v-else
+              v-model="fieldValues[field.fieldKey]"
+              :type="field.fieldType === 'number' ? 'number' : field.fieldType === 'textarea' ? 'textarea' : 'text'"
+              :label="field.fieldLabel"
+              :placeholder="field.fieldPlaceholder || ''"
+              :required="field.isRequired === 1"
+              :maxlength="field.maxLength ?? undefined"
+              class="custom-input withdraw-field"
+              rows="3"
+            />
+          </template>
         </template>
-      </template>
 
-      <p v-else-if="!fieldsLoading && selectedCountry" class="empty-tip">
-        {{ t('withdrawPage.noFields') }}
-        <button type="button" class="bind-btn-block" @click="router.push('/withdrawAccount')">
-          {{ t('withdrawPage.bindAccount') }}
-        </button>
-      </p>
-    </section>
+        <p v-else-if="!fieldsLoading && selectedCountry" class="empty-tip">
+          {{ t('withdrawPage.noFields') }}
+          <button type="button" class="bind-btn-block" @click="router.push('/withdrawAccount')">
+            {{ t('withdrawPage.bindAccount') }}
+          </button>
+        </p>
+      </section>
 
-    <!-- 提示 -->
-    <section class="card tips">
-      <h2 class="tips-title">
-        {{ t('withdrawPage.tipsTitle') }}
-      </h2>
-      <ol>
-        <li>{{ t('withdrawPage.tips1', { amount: '100' }) }}</li>
-        <li>{{ t('withdrawPage.tips2') }}</li>
-        <li>{{ t('withdrawPage.tips3') }}</li>
-        <li>{{ t('withdrawPage.tips4') }}</li>
-        <li>{{ t('withdrawPage.tips5') }}</li>
-      </ol>
-    </section>
+      <!-- 提示 -->
+      <section class="card tips">
+        <h2 class="tips-title">
+          {{ t('withdrawPage.tipsTitle') }}
+        </h2>
+        <ol>
+          <li>{{ t('withdrawPage.tips1', { amount: '100' }) }}</li>
+          <li>{{ t('withdrawPage.tips2') }}</li>
+          <li>{{ t('withdrawPage.tips3') }}</li>
+          <li>{{ t('withdrawPage.tips4') }}</li>
+          <li>{{ t('withdrawPage.tips5') }}</li>
+        </ol>
+      </section>
     </template>
 
     <!-- select 选择器弹窗 -->
-    <van-popup v-if="!pageLoading" v-model:show="pickerVisible" position="bottom" teleport="#app">
-      <van-picker
-        :columns="pickerColumns"
-        @confirm="onPickerConfirm"
-        @cancel="pickerVisible = false"
-      />
+    <van-popup v-if="!pageLoading" v-model:show="pickerVisible" round position="bottom" teleport="#app" class="withdraw-select-popup">
+      <div class="withdraw-select-popup-header">
+        <span class="withdraw-select-popup-title">{{ pickerField?.fieldLabel }}</span>
+        <button type="button" class="withdraw-select-popup-close" @click="pickerVisible = false">
+          ×
+        </button>
+      </div>
+
+      <div v-if="pickerOptions.length" class="withdraw-select-list">
+        <button
+          v-for="option in pickerOptions"
+          :key="option.value"
+          type="button"
+          class="withdraw-select-item"
+          :class="{ active: pickerField && fieldValues[pickerField.fieldKey] === option.value }"
+          @click="onSelectOption(option)"
+        >
+          <span class="withdraw-select-code">{{ option.value }}</span>
+          <span class="withdraw-select-text">{{ option.label }}</span>
+          <span v-if="pickerField && fieldValues[pickerField.fieldKey] === option.value" class="withdraw-select-check">✓</span>
+        </button>
+      </div>
+      <p v-else class="withdraw-select-empty">
+        {{ t('withdrawPage.noFields') }}
+      </p>
     </van-popup>
   </div>
 </template>
@@ -766,6 +795,14 @@ onMounted(() => {
 .card-sub {
   margin: 6px 0 0;
   font-size: 12px;
+}
+
+.card-sub-list {
+  margin-top: 6px;
+}
+
+.card-sub-list .card-sub {
+  margin-top: 3px;
 }
 
 .card-chip {
@@ -1028,6 +1065,114 @@ onMounted(() => {
 :deep(.withdraw-field .van-field__body),
 :deep(.withdraw-field .van-field__control) {
   width: 100%;
+}
+
+:global(.withdraw-select-popup.van-popup) {
+  max-height: 72vh;
+  min-height: 320px;
+  overflow: hidden;
+  padding: 10px 0 calc(22px + env(safe-area-inset-bottom));
+  border: 1px solid rgba(212, 175, 55, 0.34);
+  border-radius: 24px 24px 0 0;
+  background:
+    radial-gradient(circle at 12% 10%, rgba(212, 175, 55, 0.18), transparent 22%),
+    linear-gradient(180deg, #540000 0%, #280000 100%);
+  box-shadow: 0 -12px 32px rgba(0, 0, 0, 0.48);
+}
+
+:global(.withdraw-select-popup-header) {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 56px;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.15);
+}
+
+:global(.withdraw-select-popup-title) {
+  max-width: calc(100% - 96px);
+  overflow: hidden;
+  color: #fff0c9;
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: 0.04em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+:global(.withdraw-select-popup-close) {
+  position: absolute;
+  top: 50%;
+  right: 16px;
+  border: none;
+  background: transparent;
+  color: #ffd98b;
+  font-size: 18px;
+  line-height: 1;
+  transform: translateY(-50%);
+}
+
+:global(.withdraw-select-list) {
+  max-height: calc(72vh - 96px);
+  overflow-y: auto;
+  padding: 16px 14px 0;
+}
+
+:global(.withdraw-select-item) {
+  display: grid;
+  grid-template-columns: minmax(42px, auto) 1fr 24px;
+  align-items: center;
+  width: 100%;
+  min-height: 52px;
+  margin-bottom: 12px;
+  padding: 12px 16px;
+  border: 1px solid rgba(212, 175, 55, 0.14);
+  border-radius: 16px;
+  background: rgba(255, 248, 214, 0.05);
+  text-align: left;
+  transition:
+    border-color 0.2s ease,
+    background-color 0.2s ease;
+}
+
+:global(.withdraw-select-item.active) {
+  border-color: rgba(212, 175, 55, 0.52);
+  background: rgba(212, 175, 55, 0.12);
+  box-shadow: inset 0 1px 0 rgba(255, 248, 214, 0.08);
+}
+
+:global(.withdraw-select-code) {
+  min-width: 34px;
+  padding-right: 10px;
+  color: #ffd98b;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+:global(.withdraw-select-text) {
+  min-width: 0;
+  overflow: hidden;
+  color: #fff0c9;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+:global(.withdraw-select-check) {
+  color: #ffd98b;
+  font-size: 20px;
+  text-align: right;
+}
+
+:global(.withdraw-select-empty) {
+  margin: 48px 18px 0;
+  color: rgba(255, 229, 186, 0.58);
+  font-size: 13px;
+  line-height: 1.5;
+  text-align: center;
 }
 
 .submit-btn {
