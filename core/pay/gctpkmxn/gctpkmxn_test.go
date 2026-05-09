@@ -44,7 +44,7 @@ func TestBuildPayoutParamsMatchesMxnReadme(t *testing.T) {
 func TestResolvePayinNameUsesMxnExtraField(t *testing.T) {
 	req := pay.PayRequest{
 		ExtraFields: map[string]string{
-			"nameMXN": " Alice ",
+			"usernamemxn": " Alice ",
 		},
 	}
 

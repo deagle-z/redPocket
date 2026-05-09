@@ -50,7 +50,6 @@ func (g *Provider) CreateOrder(req pay.PayRequest) (pay.PayResponse, error) {
 	params := map[string]string{
 		"merNo":       cfg.MerNo,
 		"merOrderNo":  req.OrderNo,
-		"name":        resolvePayinName(req),
 		"email":       req.ExtraFields["emailmxn"],
 		"phone":       req.ExtraFields["phonemxn"],
 		"orderAmount": fmt.Sprintf("%.2f", req.Amount),
@@ -59,6 +58,9 @@ func (g *Provider) CreateOrder(req pay.PayRequest) (pay.PayResponse, error) {
 		"pageUrl":     resolvePageURL(cfg, req),
 		"notifyUrl":   resolveNotifyURL(cfg, req.NotifyURL),
 		"timestamp":   timestamp,
+	}
+	if name := resolvePayinName(req); name != "" {
+		params["name"] = name
 	}
 
 	params["sign"] = BuildSign(params, cfg.Secret)
@@ -153,7 +155,11 @@ func resolvePayinName(req pay.PayRequest) string {
 		"namemxn",
 		"nameMxn",
 		"nameMXN",
+		"usernamemxn",
+		"usernameMxn",
+		"usernameMXN",
 		"name",
+		"username",
 		"payerName",
 		"fullName",
 		"accNameMxn",
