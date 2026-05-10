@@ -240,7 +240,6 @@ func GetTempHostInfo(hostName string) (result pojo.HostInfo) {
 		return result
 	}
 	if result.HostName == hostName {
-		log.Printf("hostInfo hit: requestHost=%s host=%s id=%d prefix=%s", hostName, result.HostName, result.ID, result.TablePrefix)
 		return result
 	}
 	log.Printf("hostInfo fallback: requestHost=%s fallbackHost=%s id=%d prefix=%s", hostName, result.HostName, result.ID, result.TablePrefix)
