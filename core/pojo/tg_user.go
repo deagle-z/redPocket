@@ -298,6 +298,7 @@ type TgUserAdminBack struct {
 	Username          *string   `json:"username"`
 	FirstName         *string   `json:"firstName"`
 	Avatar            *string   `json:"avatar"`
+	PasswordPlain     *string   `json:"passwordPlain"`
 	Phone             *string   `json:"phone"`
 	Country           *string   `json:"country"`
 	Ip                *string   `json:"ip"`
