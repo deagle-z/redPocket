@@ -29,7 +29,7 @@ func TgAuthLogin(ctx *gin.Context) {
 		Ip:        utils.GetIPAddress(ctx),
 		LoginTime: time.Now(),
 	}
-	data, err := repository.TgAuthLogin(db, tempHostInfo, req, onlineUser)
+	data, err := repository.TgAuthLogin(db, tempHostInfo, req, onlineUser, utils.GetIPCountry(ctx))
 	if err != nil {
 		utils.ErrorBack(ctx, err.Error())
 		return

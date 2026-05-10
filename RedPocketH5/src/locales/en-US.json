@@ -396,7 +396,7 @@
     "tipsTitle": "Withdraw Notes:",
     "tips1": "Minimum withdraw amount is {amount}",
     "tips2": "Recharge balance requires 2x turnover by default before withdrawal",
-    "tips3": "Bonus balance requires 10x turnover by default before withdrawal",
+    "tips3": "Bonus balance requires 5x turnover by default before withdrawal",
     "tips4": "Please verify receiver info carefully to avoid failures",
     "tips5": "Withdrawals are processed within 1-30 minutes. Contact support if needed",
     "invalidAmount": "Please enter a valid withdrawal amount",

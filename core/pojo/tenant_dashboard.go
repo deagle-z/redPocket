@@ -23,7 +23,8 @@ type TenantDashboardStatsBack struct {
 
 type TenantDashboardDetailSearch struct {
 	PageInfo
-	Period string `json:"period"`
+	Period   string `json:"period"`
+	TenantId int64  `json:"tenantId"`
 }
 
 type TenantDashboardUserDetailBack struct {

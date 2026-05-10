@@ -24,6 +24,8 @@ export type TgUser = {
   parentUid?: string | null;
   inviteCode?: string | null;
   remark?: string | null;
+  ip?: string | null;
+  region?: string | null;
 };
 
 export type TgUserSearch = {
@@ -115,15 +117,23 @@ export type TgUserBatchCreateBotResult = {
 };
 
 export const getTgUserList = (data: TgUserSearch) => {
-  return http.request<TgUserListResult>("post", "/api/v1/tenant/tgUser/listWithSubStats", {
-    data
-  });
+  return http.request<TgUserListResult>(
+    "post",
+    "/api/v1/tenant/tgUser/listWithSubStats",
+    {
+      data
+    }
+  );
 };
 
 export const getTgUserSubStatsSummary = (data: TgUserSubStatsSummarySearch) => {
-  return http.request<TgUserSubStatsSummaryResult>("post", "/api/v1/tenant/tgUser/subStatsSummary", {
-    data
-  });
+  return http.request<TgUserSubStatsSummaryResult>(
+    "post",
+    "/api/v1/tenant/tgUser/subStatsSummary",
+    {
+      data
+    }
+  );
 };
 
 export const setTgUserStatus = (data: TgUserStatusSet) => {
@@ -133,9 +143,13 @@ export const setTgUserStatus = (data: TgUserStatusSet) => {
 };
 
 export const setTgUserRebateRate = (data: TgUserRebateRateSet) => {
-  return http.request<TgUserResult>("post", "/api/v1/tenant/tgUser/rebateRate", {
-    data
-  });
+  return http.request<TgUserResult>(
+    "post",
+    "/api/v1/tenant/tgUser/rebateRate",
+    {
+      data
+    }
+  );
 };
 
 export const setTgUserRemark = (data: TgUserRemarkSet) => {

@@ -396,7 +396,7 @@
     "tipsTitle": "Catatan Penarikan:",
     "tips1": "Jumlah penarikan minimum adalah {amount}",
     "tips2": "Saldo isi ulang membutuhkan turnover 2x secara default sebelum ditarik",
-    "tips3": "Saldo bonus membutuhkan turnover 10x secara default sebelum ditarik",
+    "tips3": "Saldo bonus membutuhkan turnover 5x secara default sebelum ditarik",
     "tips4": "Harap verifikasi informasi penerima dengan hati-hati untuk menghindari kegagalan",
     "tips5": "Penarikan diproses dalam 1-30 menit. Hubungi dukungan jika diperlukan",
     "invalidAmount": "Silakan masukkan jumlah penarikan yang valid",

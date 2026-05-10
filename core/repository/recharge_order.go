@@ -790,7 +790,6 @@ func pushRechargeSuccessFrontendNotification(db *gorm.DB, orderNo string) {
 	}
 	var order pojo.RechargeOrder
 	if err := db.Where("order_no = ?", orderNo).First(&order).Error; err != nil || order.ID == 0 {
-		log.Printf("[recharge ws] order not found orderNo=%s err=%v", orderNo, err)
 		return
 	}
 	if order.Status != 1 || order.FrontendNotifyStatus == pojo.RechargeFrontendNotifyAcked {
@@ -813,23 +812,19 @@ func pushRechargeSuccessFrontendNotification(db *gorm.DB, orderNo string) {
 	}
 	delivered, err := utils.SendWsUserWithType(5, order.TenantId, order.UserId, "recharge_success", payload)
 	if err != nil {
-		log.Printf("[recharge ws] send failed orderNo=%s userID=%d err=%v", order.OrderNo, order.UserId, err)
 		return
 	}
 	if !delivered {
-		log.Printf("[recharge ws] user offline orderNo=%s userID=%d", order.OrderNo, order.UserId)
 		return
 	}
 	now := time.Now()
-	if err = db.Model(&pojo.RechargeOrder{}).
+	_ = db.Model(&pojo.RechargeOrder{}).
 		Where("id = ? AND frontend_notify_status <> ?", order.ID, pojo.RechargeFrontendNotifyAcked).
 		Updates(map[string]any{
 			"frontend_notify_status": pojo.RechargeFrontendNotifySent,
 			"frontend_notify_count":  gorm.Expr("frontend_notify_count + 1"),
 			"frontend_notify_at":     now,
-		}).Error; err != nil {
-		log.Printf("[recharge ws] update notify status failed orderNo=%s err=%v", order.OrderNo, err)
-	}
+		}).Error
 }
 
 // applyFirstRechargeActivityGift 活动赠送：activity_type=1 首充活动 V2；activity_type=2 今日首充仍一次性赠送

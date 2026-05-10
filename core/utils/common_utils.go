@@ -255,6 +255,17 @@ func GetIPAddress(ctx *gin.Context) string {
 	return ip
 }
 
+func GetIPCountry(ctx *gin.Context) string {
+	country := strings.ToUpper(strings.TrimSpace(ctx.GetHeader("CF-IPCountry")))
+	if country == "" || country == "UNKNOWN" || country == "XX" {
+		country = strings.ToUpper(strings.TrimSpace(ctx.GetHeader("CloudFront-Viewer-Country")))
+	}
+	if country == "" || country == "UNKNOWN" || country == "XX" {
+		country = strings.ToUpper(strings.TrimSpace(GetCountryCodeByIP(GetIPAddress(ctx))))
+	}
+	return country
+}
+
 func GetRequestHost(ctx *gin.Context) (host string) {
 	return strings.Split(ctx.Request.Host, ":")[0]
 }

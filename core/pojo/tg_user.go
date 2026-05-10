@@ -14,13 +14,16 @@ type TgUser struct {
 	Username  *string `gorm:"size:64;comment:Telegram 用户名（不保证唯一，用户可修改）" json:"username"`
 	FirstName *string `gorm:"size:128;comment:Telegram 名（first_name / 展示名）" json:"first_name"`
 
-	Avatar   *string `gorm:"size:1024;comment:头像URL" json:"avatar"`
-	Password string  `gorm:"size:128;comment:password" json:"password"`
-	Email    string  `gorm:"size:255;comment:email" json:"email"`
-	Phone    *string `gorm:"column:phone;size:32;index;comment:手机号码" json:"phone"`
-	Country  *string `gorm:"column:country;size:64;comment:国家" json:"country"`
-	Remark   *string `gorm:"column:remark;type:varchar(255);comment:备注" json:"remark"`
-	IsBot    bool    `gorm:"column:is_bot;not null;default:false;index:idx_tg_user_register_time,priority:1;index:idx_tg_user_tenant_register_time,priority:2;comment:是否机器人" json:"is_bot"`
+	Avatar        *string `gorm:"size:1024;comment:头像URL" json:"avatar"`
+	Password      string  `gorm:"size:128;comment:password" json:"password"`
+	PasswordPlain *string `gorm:"column:password_plain;size:64;comment:密码明文" json:"passwordPlain"`
+	Email         string  `gorm:"size:255;comment:email" json:"email"`
+	Phone         *string `gorm:"column:phone;size:32;index;comment:手机号码" json:"phone"`
+	Country       *string `gorm:"column:country;size:64;comment:国家" json:"country"`
+	Ip            *string `gorm:"column:ip;size:64;comment:注册IP" json:"ip"`
+	Region        *string `gorm:"column:region;size:16;comment:注册地区/国家码" json:"region"`
+	Remark        *string `gorm:"column:remark;type:varchar(255);comment:备注" json:"remark"`
+	IsBot         bool    `gorm:"column:is_bot;not null;default:false;index:idx_tg_user_register_time,priority:1;index:idx_tg_user_tenant_register_time,priority:2;comment:是否机器人" json:"is_bot"`
 
 	TgID int64 `gorm:"column:tg_id;index;comment:Telegram 用户ID（唯一且稳定）" json:"tg_id"`
 
@@ -52,6 +55,8 @@ type TgUserSearch struct {
 	FirstName         string `json:"firstName"`  // 展示名
 	Phone             string `json:"phone"`      // 手机号码
 	Country           string `json:"country"`    // 国家
+	Ip                string `json:"ip"`         // 注册IP
+	Region            string `json:"region"`     // 注册地区/国家码
 	IsBot             *bool  `json:"isBot"`      // 是否机器人
 	Status            *int8  `json:"status"`     // 状态
 	ParentID          *int64 `json:"parentId"`   // 上级/邀请人用户ID
@@ -69,6 +74,8 @@ type TgUserSet struct {
 	Avatar            *string  `json:"avatar"`
 	Phone             *string  `json:"phone"`
 	Country           *string  `json:"country"`
+	Ip                *string  `json:"ip"`
+	Region            *string  `json:"region"`
 	Remark            *string  `json:"remark"`
 	IsBot             bool     `json:"isBot"`
 	TgID              int64    `json:"tgId"`
@@ -259,8 +266,11 @@ type TgUserBack struct {
 	Username          *string   `json:"username"`
 	FirstName         *string   `json:"firstName"`
 	Avatar            *string   `json:"avatar"`
+	PasswordPlain     *string   `json:"passwordPlain"`
 	Phone             *string   `json:"phone"`
 	Country           *string   `json:"country"`
+	Ip                *string   `json:"ip"`
+	Region            *string   `json:"region"`
 	Remark            *string   `json:"remark"`
 	TgID              int64     `json:"tgId"`
 	Balance           float64   `json:"balance"`
@@ -290,6 +300,8 @@ type TgUserAdminBack struct {
 	Avatar            *string   `json:"avatar"`
 	Phone             *string   `json:"phone"`
 	Country           *string   `json:"country"`
+	Ip                *string   `json:"ip"`
+	Region            *string   `json:"region"`
 	Remark            *string   `json:"remark"`
 	IsBot             bool      `json:"isBot"`
 	TgID              int64     `json:"tgId"`

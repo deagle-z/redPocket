@@ -11,12 +11,16 @@ import {
   type AdminDashboardStats,
   type AdminDashboardUserDetail
 } from "@/api/dashboard";
+import { getSysTenantList, type SysTenant } from "@/api/tenant";
 
 defineOptions({
   name: "Welcome"
 });
 
 const loading = ref(false);
+const tenantLoading = ref(false);
+const tenantOptions = ref<SysTenant[]>([]);
+const currentTenantId = ref(0);
 const emptyPeriodStats = () => ({
   rechargeAmount: 0,
   betAmount: 0,
@@ -70,6 +74,16 @@ const formatDateTime = (value?: string | null) => {
 const formatNullable = (value?: string | number | null) => {
   return value !== undefined && value !== null && value !== "" ? value : "-";
 };
+
+const dashboardScopeText = computed(() => {
+  if (!currentTenantId.value) return "平台全部商户经营数据";
+  const tenant = tenantOptions.value.find(
+    item => item.id === currentTenantId.value
+  );
+  return tenant
+    ? `${tenant.tenantName} 经营数据`
+    : `商户ID ${currentTenantId.value} 经营数据`;
+});
 
 const metricCards = computed(() => [
   {
@@ -200,26 +214,35 @@ const isRegisterDetail = computed(() =>
 
 const isOnlineDetail = computed(() => detailType.value === "online");
 const detailPageCount = computed(() => {
-  return Math.max(1, Math.ceil(detailPagination.total / detailPagination.pageSize));
+  return Math.max(
+    1,
+    Math.ceil(detailPagination.total / detailPagination.pageSize)
+  );
 });
 
 function getDetailExpectedTotal(type: DetailType) {
   if (type === "online") return stats.value.onlineUsers || 0;
-  if (type === "todayRegisterUsers") return stats.value.today.registerUsers || 0;
+  if (type === "todayRegisterUsers")
+    return stats.value.today.registerUsers || 0;
   if (type === "yesterdayRegisterUsers") {
     return stats.value.yesterday.registerUsers || 0;
   }
-  if (type === "monthRegisterUsers") return stats.value.month.registerUsers || 0;
+  if (type === "monthRegisterUsers")
+    return stats.value.month.registerUsers || 0;
   if (type === "totalRegisterUsers") return stats.value.totalRegisterUsers || 0;
-  if (type === "todayRechargeUsers") return stats.value.today.rechargeUsers || 0;
-  if (type === "monthRechargeUsers") return stats.value.month.rechargeUsers || 0;
+  if (type === "todayRechargeUsers")
+    return stats.value.today.rechargeUsers || 0;
+  if (type === "monthRechargeUsers")
+    return stats.value.month.rechargeUsers || 0;
   return 0;
 }
 
 async function loadStats() {
   loading.value = true;
   try {
-    const res = await getAdminDashboardStats();
+    const res = await getAdminDashboardStats(
+      currentTenantId.value || undefined
+    );
     if (res?.data) {
       stats.value = res.data;
     }
@@ -233,7 +256,8 @@ async function loadDetail() {
   try {
     const payload = {
       currentPage: detailPagination.currentPage - 1,
-      pageSize: detailPagination.pageSize
+      pageSize: detailPagination.pageSize,
+      tenantId: currentTenantId.value || undefined
     };
     let res;
     if (isOnlineDetail.value) {
@@ -259,6 +283,29 @@ async function loadDetail() {
     detailPagination.currentPage = (res.data?.currentPage || 0) + 1;
   } finally {
     detailLoading.value = false;
+  }
+}
+
+async function loadTenantOptions() {
+  tenantLoading.value = true;
+  try {
+    const res = await getSysTenantList({
+      currentPage: 0,
+      pageSize: 1000,
+      status: 1
+    });
+    tenantOptions.value = res.data?.list || [];
+  } finally {
+    tenantLoading.value = false;
+  }
+}
+
+async function handleTenantChange() {
+  await loadStats();
+  if (detailDialogVisible.value) {
+    detailPagination.currentPage = 1;
+    detailPagination.total = getDetailExpectedTotal(detailType.value);
+    await loadDetail();
   }
 }
 
@@ -291,13 +338,17 @@ function handleDetailPrevPage() {
 }
 
 function handleDetailNextPage() {
-  if (detailLoading.value || detailPagination.currentPage >= detailPageCount.value) {
+  if (
+    detailLoading.value ||
+    detailPagination.currentPage >= detailPageCount.value
+  ) {
     return;
   }
   handleDetailCurrentChange(detailPagination.currentPage + 1);
 }
 
 onMounted(() => {
+  loadTenantOptions();
   loadStats();
 });
 </script>
@@ -307,15 +358,33 @@ onMounted(() => {
     <div class="admin-home__header">
       <div>
         <h1>首页</h1>
-        <p>平台全部商户经营数据</p>
+        <p>{{ dashboardScopeText }}</p>
       </div>
-      <el-button
-        :icon="useRenderIcon(Refresh)"
-        :loading="loading"
-        @click="loadStats"
-      >
-        刷新
-      </el-button>
+      <div class="admin-home__actions">
+        <el-select
+          v-model="currentTenantId"
+          filterable
+          class="tenant-filter"
+          placeholder="选择代理/商户"
+          :loading="tenantLoading"
+          @change="handleTenantChange"
+        >
+          <el-option :value="0" label="全部代理/商户" />
+          <el-option
+            v-for="item in tenantOptions"
+            :key="item.id"
+            :label="`${item.tenantName}（${item.tenantCode}）`"
+            :value="item.id"
+          />
+        </el-select>
+        <el-button
+          :icon="useRenderIcon(Refresh)"
+          :loading="loading"
+          @click="loadStats"
+        >
+          刷新
+        </el-button>
+      </div>
     </div>
 
     <el-skeleton :loading="loading" animated :rows="6">
@@ -379,7 +448,7 @@ onMounted(() => {
         </div>
       </div>
 
-      <el-table :data="detailList" border stripe v-loading="detailLoading">
+      <el-table v-loading="detailLoading" :data="detailList" border stripe>
         <el-table-column prop="id" label="ID" width="90" />
         <el-table-column prop="tenantId" label="商户ID" min-width="100">
           <template #default="{ row }">
@@ -401,7 +470,9 @@ onMounted(() => {
           </template>
         </el-table-column>
         <el-table-column prop="phone" label="手机号" min-width="130">
-          <template #default="{ row }">{{ formatNullable(row.phone) }}</template>
+          <template #default="{ row }">{{
+            formatNullable(row.phone)
+          }}</template>
         </el-table-column>
         <el-table-column prop="balance" label="余额" min-width="120">
           <template #default="{ row }">
@@ -483,8 +554,10 @@ onMounted(() => {
 
 .admin-home__header {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
   margin-bottom: 20px;
 }
 
@@ -500,6 +573,18 @@ onMounted(() => {
   margin: 4px 0 0;
   font-size: 14px;
   color: #667085;
+}
+
+.admin-home__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.tenant-filter {
+  width: 260px;
 }
 
 .metric-grid {

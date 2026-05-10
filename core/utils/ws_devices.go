@@ -1,7 +1,6 @@
 package utils
 
 import (
-	"log"
 	"sync"
 	"time"
 )
@@ -34,7 +33,6 @@ func UpdateOnlineDevice(deviceID, deviceName, ip string) {
 		}
 		existing.IP = ip
 		existing.LastSeen = now
-		log.Printf("online device update: id=%s name=%s ip=%s total=%d", existing.DeviceID, existing.Name, existing.IP, len(onlineDevices.items))
 		return
 	}
 	onlineDevices.items[deviceID] = &OnlineDevice{
@@ -44,14 +42,12 @@ func UpdateOnlineDevice(deviceID, deviceName, ip string) {
 		ConnectedAt: now,
 		LastSeen:    now,
 	}
-	log.Printf("online device add: id=%s name=%s ip=%s total=%d", deviceID, deviceName, ip, len(onlineDevices.items))
 }
 
 func RemoveOnlineDevice(deviceID string) {
 	onlineDevices.Lock()
 	defer onlineDevices.Unlock()
 	delete(onlineDevices.items, deviceID)
-	log.Printf("online device remove: id=%s total=%d", deviceID, len(onlineDevices.items))
 }
 
 func ListOnlineDevices() []OnlineDevice {

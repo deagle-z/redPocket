@@ -106,12 +106,41 @@ function setLang(lang: string, i18n: I18n) {
   Locale.use(normalizedLang, vantLocales[normalizedLang])
 }
 
+function matchSupportedLocale(locale: string | null): SupportedLocale | undefined {
+  const normalizedLocale = String(locale || '').trim()
+  if (!normalizedLocale)
+    return undefined
+  return supportedLocales.find(v => v === normalizedLocale || v.indexOf(normalizedLocale) === 0)
+}
+
 function normalizeLocale(locale: string | null): SupportedLocale {
-  const matchedLocale = supportedLocales.find(v => v === locale || v.indexOf(locale || '') === 0)
-  return matchedLocale || FALLBACK_LOCALE
+  return matchSupportedLocale(locale) || FALLBACK_LOCALE
+}
+
+function getBrowserLocale(): SupportedLocale | undefined {
+  if (typeof navigator === 'undefined')
+    return undefined
+
+  const browserLocales = [
+    ...(navigator.languages || []),
+    navigator.language,
+  ].filter(Boolean)
+
+  for (const browserLocale of browserLocales) {
+    const exactMatch = matchSupportedLocale(browserLocale)
+    if (exactMatch)
+      return exactMatch
+
+    const language = browserLocale.split('-')[0]
+    const languageMatch = supportedLocales.find(locale => locale.split('-')[0] === language)
+    if (languageMatch)
+      return languageMatch
+  }
+
+  return undefined
 }
 
 // 获取当前语言对应的语言包名称
 function getI18nLocale() {
-  return normalizeLocale(localStorage.getItem('language'))
+  return matchSupportedLocale(localStorage.getItem('language')) || getBrowserLocale() || FALLBACK_LOCALE
 }

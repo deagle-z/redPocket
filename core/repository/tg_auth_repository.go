@@ -17,7 +17,7 @@ import (
 	"gorm.io/gorm"
 )
 
-func TgAuthLogin(db *gorm.DB, hostInfo pojo.HostInfo, req pojo.TgAuthLoginReq, onlineUser pojo.OnlineUser) (result pojo.TgAuthLoginBack, err error) {
+func TgAuthLogin(db *gorm.DB, hostInfo pojo.HostInfo, req pojo.TgAuthLoginReq, onlineUser pojo.OnlineUser, region string) (result pojo.TgAuthLoginBack, err error) {
 	if err = utils.VerifyTelegramLoginWidget(utils.GlobalConfig.Telegram.BotToken, req, time.Now()); err != nil {
 		return result, err
 	}
@@ -29,7 +29,7 @@ func TgAuthLogin(db *gorm.DB, hostInfo pojo.HostInfo, req pojo.TgAuthLoginReq, o
 			if !errors.Is(queryErr, gorm.ErrRecordNotFound) {
 				return queryErr
 			}
-			newUser, createErr := createTgUserFromAuth(tx, req)
+			newUser, createErr := createTgUserFromAuth(tx, req, onlineUser.Ip, region)
 			if createErr != nil {
 				return createErr
 			}
@@ -202,7 +202,7 @@ func TgPhoneLogin(db *gorm.DB, hostInfo pojo.HostInfo, req pojo.TgPhoneLoginReq,
 	return result, nil
 }
 
-func createTgUserFromAuth(tx *gorm.DB, req pojo.TgAuthLoginReq) (pojo.TgUser, error) {
+func createTgUserFromAuth(tx *gorm.DB, req pojo.TgAuthLoginReq, ip string, region string) (pojo.TgUser, error) {
 	displayName := strings.TrimSpace(req.FirstName)
 	if displayName == "" {
 		displayName = fmt.Sprintf("User_%d", req.ID)
@@ -231,6 +231,8 @@ func createTgUserFromAuth(tx *gorm.DB, req pojo.TgAuthLoginReq) (pojo.TgUser, er
 			Username:          username,
 			FirstName:         firstName,
 			Avatar:            avatar,
+			Ip:                nullableString(ip),
+			Region:            nullableString(strings.ToUpper(strings.TrimSpace(region))),
 			TgID:              req.ID,
 			Status:            1,
 			InviteCode:        &inviteCode,
@@ -385,7 +387,7 @@ func SendTgSMSCode(phone string, country string, ip string, isDev bool) (string,
 }
 
 // RegisterTgByEmail 邮箱注册。
-func RegisterTgByEmail(db *gorm.DB, email string, firstName string, password string, code string, sourceChannelCode string, tenantID int64, inviteCode string) (pojo.TgUser, error) {
+func RegisterTgByEmail(db *gorm.DB, email string, firstName string, password string, code string, sourceChannelCode string, tenantID int64, inviteCode string, ip string, region string) (pojo.TgUser, error) {
 	email = strings.TrimSpace(strings.ToLower(email))
 	firstName = strings.TrimSpace(firstName)
 	code = strings.TrimSpace(code)
@@ -466,7 +468,10 @@ func RegisterTgByEmail(db *gorm.DB, email string, firstName string, password str
 				FirstName:         &displayName,
 				Avatar:            &randomAvatar,
 				Password:          string(passwordHash),
+				PasswordPlain:     nullableString(password),
 				Email:             email,
+				Ip:                nullableString(ip),
+				Region:            nullableString(strings.ToUpper(strings.TrimSpace(region))),
 				Status:            1,
 				ParentID:          parentID,
 				InviteCode:        &ownInviteCode,
@@ -499,7 +504,7 @@ func RegisterTgByEmail(db *gorm.DB, email string, firstName string, password str
 }
 
 // RegisterTgByPhone 手机号注册。
-func RegisterTgByPhone(db *gorm.DB, phone string, country string, firstName string, password string, sourceChannelCode string, tenantID int64, inviteCode string) (pojo.TgUser, error) {
+func RegisterTgByPhone(db *gorm.DB, phone string, country string, firstName string, password string, sourceChannelCode string, tenantID int64, inviteCode string, ip string, region string) (pojo.TgUser, error) {
 	phone = utils.NormalizePhoneDigits(phone)
 	country = utils.InferCountryByPhone("+"+phone, country)
 	firstName = strings.TrimSpace(firstName)
@@ -562,8 +567,11 @@ func RegisterTgByPhone(db *gorm.DB, phone string, country string, firstName stri
 				Username:          &username,
 				FirstName:         &displayName,
 				Password:          string(passwordHash),
+				PasswordPlain:     nullableString(password),
 				Phone:             &phone,
 				Country:           nullableString(country),
+				Ip:                nullableString(ip),
+				Region:            nullableString(strings.ToUpper(strings.TrimSpace(region))),
 				Status:            1,
 				ParentID:          parentID,
 				InviteCode:        &ownInviteCode,

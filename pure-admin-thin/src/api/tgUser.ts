@@ -7,6 +7,7 @@ export type TgUser = {
   username?: string | null;
   firstName?: string | null;
   avatar?: string | null;
+  passwordPlain?: string | null;
   isBot?: boolean;
   tgId: number;
   uid?: string;
@@ -24,6 +25,8 @@ export type TgUser = {
   parentUid?: string | null;
   inviteCode?: string | null;
   remark?: string | null;
+  ip?: string | null;
+  region?: string | null;
   tenantId?: number;
 };
 
@@ -162,13 +165,9 @@ export const setTgUserStatus = (data: TgUserStatusSet) => {
 };
 
 export const setTgUserRebateRate = (data: TgUserRebateRateSet) => {
-  return http.request<TgUserResult>(
-    "post",
-    "/api/v1/admin/tgUser/rebateRate",
-    {
-      data
-    }
-  );
+  return http.request<TgUserResult>("post", "/api/v1/admin/tgUser/rebateRate", {
+    data
+  });
 };
 
 export const setTgUserRemark = (data: TgUserRemarkSet) => {

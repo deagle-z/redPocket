@@ -30,6 +30,7 @@ export type AdminDashboardDetailSearch = {
   currentPage: number;
   pageSize: number;
   period?: "today" | "yesterday" | "month" | "total";
+  tenantId?: number;
 };
 
 export type AdminDashboardUserDetail = {
@@ -61,10 +62,11 @@ export type AdminDashboardUserDetailResult = {
   };
 };
 
-export const getAdminDashboardStats = () => {
+export const getAdminDashboardStats = (tenantId?: number) => {
   return http.request<AdminDashboardStatsResult>(
     "get",
-    "/api/v1/admin/dashboard/stats"
+    "/api/v1/admin/dashboard/stats",
+    tenantId ? { params: { tenantId } } : undefined
   );
 };
 

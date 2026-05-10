@@ -4,6 +4,7 @@ import (
 	"BaseGoUni/core/pojo"
 	"BaseGoUni/core/repository"
 	"BaseGoUni/core/utils"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -11,7 +12,8 @@ import (
 
 func GetAdminDashboardStats(ctx *gin.Context) {
 	db := ctx.MustGet("db").(*gorm.DB)
-	result := repository.GetAdminDashboardStats(db)
+	tenantID, _ := strconv.ParseInt(ctx.Query("tenantId"), 10, 64)
+	result := repository.GetAdminDashboardStats(db, tenantID)
 	utils.SuccessObjBack(ctx, result)
 }
 

@@ -396,7 +396,7 @@
     "tipsTitle": "Notas del retiro:",
     "tips1": "El monto mínimo de retiro es {amount}",
     "tips2": "El saldo de recarga requiere 2x volumen por defecto antes del retiro",
-    "tips3": "El saldo de bono requiere 10x volumen por defecto antes del retiro",
+    "tips3": "El saldo de bono requiere 5x volumen por defecto antes del retiro",
     "tips4": "Verifique la información del receptor cuidadosamente para evitar fallas.",
     "tips5": "Los retiros se procesan entre 1 y 30 minutos. Póngase en contacto con el soporte si es necesario",
     "invalidAmount": "Por favor ingrese un monto de retiro válido",

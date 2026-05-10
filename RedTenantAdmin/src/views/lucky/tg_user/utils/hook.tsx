@@ -37,7 +37,7 @@ function formatPercent(val?: number | null) {
   return `${val.toFixed(2)}%`;
 }
 
-export function useTgUser(tableRef: Ref) {
+export function useTgUser(_tableRef: Ref) {
   const form = reactive({
     uid: "",
     username: "",
@@ -46,7 +46,6 @@ export function useTgUser(tableRef: Ref) {
     inviteCode: "",
     status: undefined as number | undefined
   });
-  const formRef = ref();
   const dataList = ref<TgUser[]>([]);
   const loading = ref(true);
   const pagination = reactive<PaginationProps>({
@@ -132,6 +131,18 @@ export function useTgUser(tableRef: Ref) {
       prop: "firstName",
       minWidth: 140,
       formatter: ({ firstName }) => formatNullable(firstName)
+    },
+    {
+      label: "注册IP",
+      prop: "ip",
+      minWidth: 140,
+      formatter: ({ ip }) => formatNullable(ip)
+    },
+    {
+      label: "地区",
+      prop: "region",
+      minWidth: 90,
+      formatter: ({ region }) => formatNullable(region)
     },
     {
       label: "状态",

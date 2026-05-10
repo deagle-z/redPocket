@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net"
 	"net/http"
 	"sort"
@@ -219,23 +218,19 @@ func wsPushToBuffer(scope string, msg *wsMessage) []byte {
 	ctx := context.Background()
 	seq, err := utils.RD.Incr(ctx, wsMsgSeqKey+scope).Result()
 	if err != nil {
-		log.Printf("[ws] seq incr error: %v", err)
 		payload, _ := json.Marshal(msg)
 		return payload
 	}
 	msg.Seq = seq
 	payload, err := json.Marshal(msg)
 	if err != nil {
-		log.Printf("[ws] marshal error: %v", err)
 		return nil
 	}
 	pipe := utils.RD.Pipeline()
 	pipe.RPush(ctx, wsMsgBufKey+scope, string(payload))
 	pipe.LTrim(ctx, wsMsgBufKey+scope, -int64(wsMsgBufMax), -1)
 	pipe.Expire(ctx, wsMsgBufKey+scope, wsMsgBufExpire)
-	if _, err := pipe.Exec(ctx); err != nil {
-		log.Printf("[ws] buffer push error: %v", err)
-	}
+	_, _ = pipe.Exec(ctx)
 	return payload
 }
 
@@ -270,7 +265,6 @@ func NotifyDevicesWithType(msgType string, deviceIDs []string, data interface{})
 	}
 	payload, err := json.Marshal(msg)
 	if err != nil {
-		log.Printf("ws notify marshal error: %v", err)
 		return
 	}
 	for _, deviceID := range deviceIDs {
@@ -302,7 +296,6 @@ func NotifyUserWithType(userType int, tenantID int64, userID int64, msgType stri
 	}
 	payload, err := json.Marshal(msg)
 	if err != nil {
-		log.Printf("ws user notify marshal error: %v", err)
 		return false, err
 	}
 	key := wsUserKey(userType, tenantID, userID)
@@ -490,14 +483,12 @@ func WsHandler(c *gin.Context) {
 	startWsHub()
 	clientIP := c.ClientIP()
 	if ok, msg := allowWsConnect(clientIP); !ok {
-		log.Printf("ws reject: ip=%s host=%s reason=%s", clientIP, c.Request.Host, msg)
 		c.String(http.StatusTooManyRequests, msg)
 		return
 	}
 	token := extractWsToken(c)
 	userID, userType, tenantID, err := validateWsToken(c, token)
 	if err != nil {
-		log.Printf("ws auth failed: ip=%s host=%s reason=%v", clientIP, c.Request.Host, err)
 		c.String(http.StatusUnauthorized, err.Error())
 		return
 	}
@@ -536,7 +527,6 @@ func (c *wsClient) readPump() {
 			return
 		}
 		touchWsOnline(c)
-		log.Printf("websocket raw: %s", raw)
 		if raw == "" {
 			continue
 		}
@@ -572,7 +562,6 @@ func (c *wsClient) readPump() {
 				if hello.DeviceName != "" {
 					c.deviceName = hello.DeviceName
 				}
-				log.Printf("websocket hello: device_id=%s device_name=%s ip=%s", c.deviceID, c.deviceName, c.ip)
 				if c.deviceID != "" {
 					bindDevice(c, c.deviceID)
 				}

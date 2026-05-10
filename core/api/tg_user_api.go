@@ -329,7 +329,18 @@ func RegisterTgByEmail(ctx *gin.Context) {
 	db := ctx.MustGet("db").(*gorm.DB)
 	sourceChannelCode := repository.FirstSourceChannelCode(req.SourceChannelCode, req.ChannelCode)
 	tenantID := resolveTenantIDByRegisterReferrer(db, registerReferrer(ctx, req.Referrer))
-	newUser, err := repository.RegisterTgByEmail(db, req.Email, req.FirstName, req.Password, req.Code, sourceChannelCode, tenantID, req.InviteCode)
+	newUser, err := repository.RegisterTgByEmail(
+		db,
+		req.Email,
+		req.FirstName,
+		req.Password,
+		req.Code,
+		sourceChannelCode,
+		tenantID,
+		req.InviteCode,
+		utils.GetIPAddress(ctx),
+		utils.GetIPCountry(ctx),
+	)
 	if err != nil {
 		utils.ErrorBack(ctx, err.Error())
 		return
@@ -357,7 +368,18 @@ func RegisterTgByPhone(ctx *gin.Context) {
 	if strings.TrimSpace(inviteCode) == "" {
 		inviteCode = req.Code
 	}
-	newUser, err := repository.RegisterTgByPhone(db, req.Phone, req.Country, req.FirstName, req.Password, sourceChannelCode, tenantID, inviteCode)
+	newUser, err := repository.RegisterTgByPhone(
+		db,
+		req.Phone,
+		req.Country,
+		req.FirstName,
+		req.Password,
+		sourceChannelCode,
+		tenantID,
+		inviteCode,
+		utils.GetIPAddress(ctx),
+		utils.GetIPCountry(ctx),
+	)
 	if err != nil {
 		utils.ErrorBack(ctx, err.Error())
 		return
