@@ -6,6 +6,7 @@ import (
 	"BaseGoUni/core/utils"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
+	"log"
 	"strconv"
 )
 
@@ -119,18 +120,25 @@ func GetFrontendUnackedRechargeOrders(ctx *gin.Context) {
 // AdminRechargeOrderCallback 管理员手动触发充值回调
 func AdminRechargeOrderCallback(ctx *gin.Context) {
 	idStr := ctx.Param("id")
+	log.Printf("[recharge] admin callback api hit method=%s path=%s id=%s clientIP=%s host=%s",
+		ctx.Request.Method, ctx.Request.URL.Path, idStr, ctx.ClientIP(), ctx.Request.Host)
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil || id <= 0 {
+		log.Printf("[recharge] admin callback api invalid id id=%s err=%v", idStr, err)
 		utils.ErrorBack(ctx, "参数格式错误")
 		return
 	}
 	db := ctx.MustGet("db").(*gorm.DB)
 	hostInfo := ctx.MustGet("hostInfo").(pojo.HostInfo)
+	log.Printf("[recharge] admin callback api dispatch orderID=%d tablePrefix=%q hostID=%d host=%s",
+		id, hostInfo.TablePrefix, hostInfo.ID, hostInfo.HostName)
 	result, err := repository.AdminRechargeOrderCallback(db, id, hostInfo.TablePrefix)
 	if err != nil {
+		log.Printf("[recharge] admin callback api failed orderID=%d tablePrefix=%q err=%v", id, hostInfo.TablePrefix, err)
 		utils.ErrorBack(ctx, err.Error())
 		return
 	}
+	log.Printf("[recharge] admin callback api success orderID=%d tablePrefix=%q", id, hostInfo.TablePrefix)
 	utils.SuccessObjBack(ctx, result)
 }
 
