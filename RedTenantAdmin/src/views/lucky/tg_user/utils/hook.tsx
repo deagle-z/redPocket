@@ -133,6 +133,12 @@ export function useTgUser(_tableRef: Ref) {
       formatter: ({ firstName }) => formatNullable(firstName)
     },
     {
+      label: "手机号",
+      prop: "phone",
+      minWidth: 140,
+      formatter: ({ phone }) => formatNullable(phone)
+    },
+    {
       label: "注册IP",
       prop: "ip",
       minWidth: 140,

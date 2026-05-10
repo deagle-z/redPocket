@@ -210,11 +210,8 @@ function showHelpTip() {
 
 function openPaymentUrl(url: string) {
   const opened = window.open(url, '_blank', 'noopener,noreferrer')
-  if (opened) {
+  if (opened)
     opened.opener = null
-    return
-  }
-  window.location.href = url
 }
 
 function formatLocalAmount(coins: number) {

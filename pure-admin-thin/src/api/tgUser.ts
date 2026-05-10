@@ -8,6 +8,7 @@ export type TgUser = {
   firstName?: string | null;
   avatar?: string | null;
   passwordPlain?: string | null;
+  phone?: string | null;
   isBot?: boolean;
   tgId: number;
   uid?: string;
