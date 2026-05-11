@@ -99,11 +99,15 @@ function initFacebookPixel() {
   return true
 }
 
-function trackFacebookPixelEvent(eventName: string, params: Record<string, unknown> = {}) {
+function trackFacebookPixelEvent(eventName: string, params: Record<string, unknown> = {}, eventId = '') {
   if (!eventName || !initFacebookPixel())
     return false
 
-  window.fbq?.('track', eventName, params)
+  const normalizedEventId = String(eventId || '').trim()
+  if (normalizedEventId)
+    window.fbq?.('track', eventName, params, { eventID: normalizedEventId })
+  else
+    window.fbq?.('track', eventName, params)
   return true
 }
 
@@ -122,6 +126,7 @@ function trackFirstRechargePurchase(params: {
   orderNo: string
   amount: number
   currency?: string
+  eventId?: string
 }) {
   const orderNo = String(params.orderNo || '').trim()
   if (!orderNo || hasTrackedFacebookPurchase(orderNo))
@@ -132,7 +137,7 @@ function trackFirstRechargePurchase(params: {
     currency: String(params.currency || 'BRL').trim() || 'BRL',
     order_id: orderNo,
     content_name: 'first_recharge',
-  })
+  }, params.eventId)
 
   if (tracked)
     localStorage.setItem(getFacebookPurchaseSentKey(orderNo), '1')

@@ -243,10 +243,10 @@ onMounted(() => {
           {{ t('invitePage.rule2', { commission: state.luckyGrabbingCommission, rebate: state.inviteLuckyRebateRate })
           }}
         </li>
-        <li>
+        <!-- <li>
           {{ t('invitePage.rule3', { commission: state.luckySendCommission, rebate: state.inviteThunderRebateRate })
           }}
-        </li>
+        </li> -->
       </ul>
     </section>
 

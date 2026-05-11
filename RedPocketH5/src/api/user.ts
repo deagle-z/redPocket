@@ -65,6 +65,7 @@ export interface TgCurrentUserInfo {
 export interface TgWithdrawSummary {
   balance: number
   nonWithdrawableAmount: number
+  todayWithdrawCount?: number
 }
 
 export interface VipLevelSimple {
@@ -869,7 +870,7 @@ export interface CreateWithdrawOrderReq {
 }
 
 export function createWithdrawOrder(data: CreateWithdrawOrderReq) {
-  return request.post<ApiResult<{ orderNo: string }>>('/api/v1/app/withdraw', data)
+  return request.post<ApiResult<{ orderNo: string, fee?: number }>>('/api/v1/app/withdraw', data)
 }
 
 export function createRebateWithdrawOrder(data: CreateWithdrawOrderReq) {

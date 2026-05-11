@@ -15,6 +15,8 @@ type AttributionEvent struct {
 	VisitorID         string    `json:"visitorId" gorm:"column:visitor_id;type:varchar(128);index"`
 	SessionID         string    `json:"sessionId" gorm:"column:session_id;type:varchar(128);index"`
 	EventName         string    `json:"eventName" gorm:"column:event_name;type:varchar(64);not null;index:idx_attribution_event_name_time,priority:1;index:idx_attribution_channel_event_time,priority:2"`
+	ThirdPartyEventID *string   `json:"thirdPartyEventId" gorm:"column:third_party_event_id;type:varchar(128);index"`
+	PixelID           *string   `json:"pixelId" gorm:"column:pixel_id;type:varchar(128);index"`
 	SourceChannelID   *int64    `json:"sourceChannelId" gorm:"column:source_channel_id;type:bigint;index:idx_attribution_channel_event_time,priority:1"`
 	SourceChannelCode *string   `json:"sourceChannelCode" gorm:"column:source_channel_code;type:varchar(64);index"`
 	PageURL           *string   `json:"pageUrl" gorm:"column:page_url;type:varchar(1024)"`
@@ -30,6 +32,8 @@ func (AttributionEvent) TableName() string {
 
 type AttributionEventCreateReq struct {
 	EventName         string          `json:"eventName"`
+	ThirdPartyEventID string          `json:"thirdPartyEventId"`
+	PixelID           string          `json:"pixelId"`
 	SourceChannelCode string          `json:"sourceChannelCode"`
 	ChannelCode       string          `json:"channelCode"`
 	VisitorID         string          `json:"visitorId"`
@@ -42,6 +46,8 @@ type AttributionEventCreateReq struct {
 type AttributionEventSearch struct {
 	PageInfo
 	EventName         string `json:"eventName"`
+	ThirdPartyEventID string `json:"thirdPartyEventId"`
+	PixelID           string `json:"pixelId"`
 	SourceChannelID   int64  `json:"sourceChannelId"`
 	SourceChannelCode string `json:"sourceChannelCode"`
 	UserID            int64  `json:"userId"`
@@ -52,6 +58,8 @@ type AttributionEventSearch struct {
 
 type AttributionEventSummarySearch struct {
 	EventName         string `json:"eventName"`
+	ThirdPartyEventID string `json:"thirdPartyEventId"`
+	PixelID           string `json:"pixelId"`
 	SourceChannelID   int64  `json:"sourceChannelId"`
 	SourceChannelCode string `json:"sourceChannelCode"`
 	UserID            int64  `json:"userId"`
@@ -69,6 +77,8 @@ type AttributionEventBack struct {
 	VisitorID         string    `json:"visitorId"`
 	SessionID         string    `json:"sessionId"`
 	EventName         string    `json:"eventName"`
+	ThirdPartyEventID *string   `json:"thirdPartyEventId"`
+	PixelID           *string   `json:"pixelId"`
 	SourceChannelID   *int64    `json:"sourceChannelId"`
 	SourceChannelCode *string   `json:"sourceChannelCode"`
 	PageURL           *string   `json:"pageUrl"`

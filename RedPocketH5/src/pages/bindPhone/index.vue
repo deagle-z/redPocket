@@ -5,6 +5,7 @@ import { showToast } from 'vant'
 import { bindCurrentTgPhone, getCurrentTgUserInfo, sendRegisterSMSCode } from '@/api/user'
 import { safeBack } from '@/utils/navigation'
 import { getAuthCountry } from '@/utils/auth'
+import { normalizeNationalPhone, onlyPhoneDigits } from '@/utils/phone'
 import AppPageHeader from '@/components/AppPageHeader.vue'
 import languageIcon from '@/assets/svg/language.svg'
 import verifyIcon from '@/assets/svg/verify.svg'
@@ -44,7 +45,7 @@ function goBack() {
 
 function normalizePhoneInput(event: Event) {
   const input = event.target as HTMLInputElement
-  formData.phone = input.value.replace(/\D+/g, '')
+  formData.phone = onlyPhoneDigits(input.value)
 }
 
 function startCountdown() {
@@ -68,7 +69,7 @@ function formatBoundPhone() {
 }
 
 async function sendCode() {
-  const phone = formData.phone.replace(/\D+/g, '')
+  const phone = normalizeNationalPhone(formData.country, formData.phone)
   formData.phone = phone
   if (!phone) {
     showToast(t('bindPhonePage.toastEnterPhone'))
@@ -91,7 +92,7 @@ async function sendCode() {
 }
 
 async function submitBindPhone() {
-  const phone = formData.phone.replace(/\D+/g, '')
+  const phone = normalizeNationalPhone(formData.country, formData.phone)
   formData.phone = phone
   if (!phone) {
     showToast(t('bindPhonePage.toastEnterPhone'))

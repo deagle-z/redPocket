@@ -392,6 +392,7 @@
     "freezing": "提现中冻结",
     "submit": "提交",
     "serviceFee": "手续费",
+    "actualReceive": "实际到账",
     "actualDeduct": "实际扣除",
     "tipsTitle": "提现说明:",
     "tips1": "提现最低金额为 {amount}",

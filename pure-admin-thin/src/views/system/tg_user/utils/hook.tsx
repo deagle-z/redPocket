@@ -67,6 +67,18 @@ export function useTgUser(_tableRef: Ref) {
       formatter: ({ uid }) => formatNullable(uid)
     },
     {
+      label: "代理名称",
+      prop: "tenantName",
+      minWidth: 140,
+      formatter: ({ tenantName }) => formatNullable(tenantName)
+    },
+    {
+      label: "手机号",
+      prop: "phone",
+      minWidth: 140,
+      formatter: ({ phone }) => formatNullable(phone)
+    },
+    {
       label: "用户名",
       prop: "username",
       minWidth: 140,
@@ -131,12 +143,6 @@ export function useTgUser(_tableRef: Ref) {
       prop: "firstName",
       minWidth: 140,
       formatter: ({ firstName }) => formatNullable(firstName)
-    },
-    {
-      label: "手机号",
-      prop: "phone",
-      minWidth: 140,
-      formatter: ({ phone }) => formatNullable(phone)
     },
     {
       label: "密码",

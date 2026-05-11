@@ -4,6 +4,7 @@ import { showToast } from 'vant'
 import { useUserStore } from '@/stores'
 import AppPageHeader from '@/components/AppPageHeader.vue'
 import { safeBack } from '@/utils/navigation'
+import { normalizeNationalPhone, onlyPhoneDigits } from '@/utils/phone'
 import emailIcon from '@/assets/svg/email.svg'
 import lockIcon from '@/assets/svg/lock.svg'
 import verifyIcon from '@/assets/svg/verify.svg'
@@ -55,6 +56,7 @@ onUnmounted(() => {
 })
 
 async function sendCode() {
+  postData.phone = normalizeNationalPhone(postData.country, postData.phone)
   if (!postData.country) {
     showToast(t('forgotPassword.pleaseSelectCountry'))
     return
@@ -78,6 +80,7 @@ async function sendCode() {
 }
 
 async function submitReset() {
+  postData.phone = normalizeNationalPhone(postData.country, postData.phone)
   if (!postData.country) {
     showToast(t('forgotPassword.pleaseSelectCountry'))
     return
@@ -160,6 +163,7 @@ function goBack() {
             autocomplete="tel"
             class="reset-input"
             :placeholder="t('forgotPassword.pleaseEnterPhone')"
+            @input="postData.phone = onlyPhoneDigits(($event.target as HTMLInputElement).value)"
           >
         </div>
 

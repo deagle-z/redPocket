@@ -2,12 +2,13 @@
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores'
 import { getAuthCountry, setAuthCountry } from '@/utils/auth'
-import { trackAttributionEvent } from '@/utils/attribution'
+import { createThirdPartyEventId, trackAttributionEvent } from '@/utils/attribution'
 import { trackFacebookPixelEvent } from '@/utils/facebook-pixel'
 import { getSourceChannelCode } from '@/utils/source-channel'
 import { showToast } from 'vant'
 import { languageOptions, locale } from '@/utils/i18n'
 import { safeBack } from '@/utils/navigation'
+import { buildPhoneWithDialCode, isValidNationalPhone, normalizeNationalPhone, onlyPhoneDigits } from '@/utils/phone'
 import AppPageHeader from '@/components/AppPageHeader.vue'
 import emailIcon from '@/assets/svg/email.svg'
 import lockIcon from '@/assets/svg/lock.svg'
@@ -34,12 +35,6 @@ const registerCountryDialCodeMap = Object.fromEntries(registerCountries.map(item
   RegisterCountryCode,
   string
 >
-const registerPhoneRules: Record<RegisterCountryCode, RegExp> = {
-  MX: /^[2-9]\d{9}$/,
-  ID: /^0?8\d{8,11}$/,
-  BR: /^[1-9]{2}9\d{8}$/,
-}
-
 const postData = reactive<{
   country: RegisterCountryCode
   phone: string
@@ -81,33 +76,18 @@ function detectRegisterCountry(): RegisterCountryCode {
 
 function normalizePhoneInput(event: Event) {
   const input = event.target as HTMLInputElement
-  postData.phone = input.value.replace(/\D+/g, '')
+  postData.phone = onlyPhoneDigits(input.value)
 }
 
 function isValidRegisterPhone(country: RegisterCountryCode, phone: string) {
-  return registerPhoneRules[country].test(phone)
-}
-
-function getRegisterDialCode(country: RegisterCountryCode) {
-  return (registerCountryDialCodeMap[country] || '').replace(/\D+/g, '')
+  return isValidNationalPhone(country, phone)
 }
 
 function buildRegisterPhone(country: RegisterCountryCode, rawPhone: string) {
-  const digits = rawPhone.replace(/\D+/g, '')
-  const dialCode = getRegisterDialCode(country)
-  const phoneWithoutDialCode = dialCode && digits.startsWith(dialCode)
-    ? digits.slice(dialCode.length)
-    : ''
-  const nationalPhone = phoneWithoutDialCode && isValidRegisterPhone(country, phoneWithoutDialCode)
-    ? phoneWithoutDialCode
-    : digits
-  const finalNationalPhone = country === 'ID'
-    ? nationalPhone.replace(/^0+/, '')
-    : nationalPhone
-
+  const nationalPhone = normalizeNationalPhone(country, rawPhone)
   return {
     nationalPhone,
-    phoneWithDialCode: `${dialCode}${finalNationalPhone}`,
+    phoneWithDialCode: buildPhoneWithDialCode(country, rawPhone),
   }
 }
 
@@ -162,8 +142,10 @@ async function register() {
   }
   try {
     loading.value = true
+    const registerSubmitEventId = createThirdPartyEventId('register_submit')
     trackAttributionEvent({
       eventName: 'register_submit',
+      thirdPartyEventId: registerSubmitEventId,
       metadata: {
         country: postData.country,
         method: 'phone',
@@ -177,8 +159,10 @@ async function register() {
       inviteCode: postData.inviteCode.trim(),
       sourceChannelCode: getSourceChannelCode(),
     })
+    const registerSuccessEventId = createThirdPartyEventId('register_success')
     trackAttributionEvent({
       eventName: 'register_success',
+      thirdPartyEventId: registerSuccessEventId,
       metadata: {
         country: postData.country,
         method: 'phone',
@@ -187,7 +171,7 @@ async function register() {
     trackFacebookPixelEvent('CompleteRegistration', {
       content_name: 'phone_register',
       status: true,
-    })
+    }, registerSuccessEventId)
     setAuthCountry(postData.country)
     showToast(t('register.registerSuccess'))
     router.push('/login')

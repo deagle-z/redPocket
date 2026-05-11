@@ -33,6 +33,10 @@ func GetUserWithdrawSummary(db *gorm.DB, userID int64) (pojo.TgWithdrawSummaryBa
 	if user.ID == 0 {
 		return result, errors.New("user_not_found")
 	}
+	todayWithdrawCount, err := countTodayOrdinaryWithdrawOrders(db, user.ID, time.Now())
+	if err != nil {
+		return result, err
+	}
 
 	cycle, err := GetActiveWithdrawActivityCycle(db, user.ID)
 	if err != nil {
@@ -51,6 +55,7 @@ func GetUserWithdrawSummary(db *gorm.DB, userID int64) (pojo.TgWithdrawSummaryBa
 			return pojo.TgWithdrawSummaryBack{
 				Balance:               utils.Truncate2(user.Balance),
 				NonWithdrawableAmount: 0,
+				TodayWithdrawCount:    todayWithdrawCount,
 			}, nil
 		}
 		totalFlow, flowErr := GetUserTotalFlow(db, user.ID)
@@ -66,6 +71,7 @@ func GetUserWithdrawSummary(db *gorm.DB, userID int64) (pojo.TgWithdrawSummaryBa
 		return pojo.TgWithdrawSummaryBack{
 			Balance:               utils.Truncate2(user.Balance),
 			NonWithdrawableAmount: clampNonNegative(user.Balance - totalWithdrawable),
+			TodayWithdrawCount:    todayWithdrawCount,
 		}, nil
 	}
 
@@ -81,6 +87,7 @@ func GetUserWithdrawSummary(db *gorm.DB, userID int64) (pojo.TgWithdrawSummaryBa
 		return pojo.TgWithdrawSummaryBack{
 			Balance:               utils.Truncate2(user.Balance),
 			NonWithdrawableAmount: 0,
+			TodayWithdrawCount:    todayWithdrawCount,
 		}, nil
 	}
 
@@ -111,8 +118,25 @@ func GetUserWithdrawSummary(db *gorm.DB, userID int64) (pojo.TgWithdrawSummaryBa
 	result = pojo.TgWithdrawSummaryBack{
 		Balance:               utils.Truncate2(user.Balance),
 		NonWithdrawableAmount: nonWithdrawable,
+		TodayWithdrawCount:    todayWithdrawCount,
 	}
 	return result, nil
+}
+
+func countTodayOrdinaryWithdrawOrders(db *gorm.DB, userID int64, now time.Time) (int64, error) {
+	if db == nil || userID <= 0 {
+		return 0, nil
+	}
+	start := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	end := start.AddDate(0, 0, 1)
+	var count int64
+	err := db.Model(&pojo.WithdrawOrderBr{}).
+		Where("user_id = ? AND created_at >= ? AND created_at < ?", userID, start, end).
+		Where(`COALESCE(JSON_UNQUOTE(JSON_EXTRACT(extra, '$.source')), '') <> ?`, withdrawOrderSourceRebate).
+		Where(`COALESCE(JSON_UNQUOTE(JSON_EXTRACT(extra, '$.balanceSource')), '') <> ?`, withdrawOrderSourceRebate).
+		Where(`COALESCE(JSON_UNQUOTE(JSON_EXTRACT(extra, '$.withdrawSource')), '') <> ?`, withdrawOrderSourceRebate).
+		Count(&count).Error
+	return count, err
 }
 
 func EnsureUserWithdrawLimitState(tx *gorm.DB, user pojo.TgUser) error {

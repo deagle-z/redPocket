@@ -392,6 +392,7 @@
     "freezing": "Frozen in withdrawal",
     "submit": "Submit",
     "serviceFee": "Service Fee",
+    "actualReceive": "Actual Received",
     "actualDeduct": "Actual Deduction",
     "tipsTitle": "Withdraw Notes:",
     "tips1": "Minimum withdraw amount is {amount}",

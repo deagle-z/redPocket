@@ -20,8 +20,13 @@ const { t } = useI18n()
 const router = useRouter()
 const userStore = useUserStore()
 
+const MIN_WITHDRAW_AMOUNT = 10
+const FREE_WITHDRAW_COUNT = 3
+const WITHDRAW_FEE_RATE = 0.05
+
 const balance = ref(0)
 const nonWithdrawableAmount = ref(0)
+const todayWithdrawCount = ref(0)
 const currentUserCountry = ref('')
 const hideCountrySelector = ref(false)
 const pageLoading = ref(true)
@@ -42,7 +47,7 @@ const boundAccounts = ref<WithdrawAccountItem[]>([])
 const selectedAccountId = ref<number | undefined>(undefined)
 
 // 金额
-const amountOptions = [100, 200, 500, 1000, 5000, 10000, 20000, 50000, 'custom']
+const amountOptions = [10, 100, 200, 500, 1000, 5000, 10000, 20000, 50000, 'custom']
 const selectedAmount = ref<number | 'custom'>(amountOptions[0] as number)
 const customAmount = ref('')
 const submitLoading = ref(false)
@@ -62,9 +67,17 @@ const localCurrencySymbol = computed(() => selectedCountry.value?.currencySymbol
 const withdrawableAmount = computed(() =>
   truncate2(Math.max(0, balance.value - nonWithdrawableAmount.value)),
 )
+const estimatedFee = computed(() => {
+  if (todayWithdrawCount.value < FREE_WITHDRAW_COUNT)
+    return 0
+  return truncate2(Number(displayAmount.value || 0) * WITHDRAW_FEE_RATE)
+})
+const actualReceiveAmount = computed(() =>
+  truncate2(Math.max(0, Number(displayAmount.value || 0) - estimatedFee.value)),
+)
 
 const canSubmit = computed(() =>
-  Number(displayAmount.value) > 0
+  truncate2(Number(displayAmount.value)) >= MIN_WITHDRAW_AMOUNT
   && truncate2(Number(displayAmount.value)) <= withdrawableAmount.value
   && withdrawSummaryLoaded.value
   && !submitLoading.value
@@ -160,10 +173,12 @@ async function loadWithdrawSummary() {
     const { data } = await getCurrentTgWithdrawSummary()
     balance.value = Number(data?.balance ?? balance.value)
     nonWithdrawableAmount.value = Number(data?.nonWithdrawableAmount ?? 0)
+    todayWithdrawCount.value = Number(data?.todayWithdrawCount ?? 0)
     withdrawSummaryLoaded.value = true
   }
   catch {
     nonWithdrawableAmount.value = 0
+    todayWithdrawCount.value = 0
   }
 }
 
@@ -266,7 +281,7 @@ async function handleSubmitWithdraw() {
   if (!canSubmit.value)
     return
   const amount = truncate2(Number(displayAmount.value))
-  if (!amount || amount <= 0) {
+  if (!amount || amount < MIN_WITHDRAW_AMOUNT) {
     showCenterToast(t('withdrawPage.invalidAmount'))
     return
   }
@@ -344,7 +359,7 @@ onMounted(() => {
         <div class="skeleton-line skeleton-line-title" />
         <div class="skeleton-input" />
         <div class="amount-grid skeleton-amount-grid">
-          <div v-for="idx in 9" :key="`amount-skeleton-${idx}`" class="skeleton-amount-item" />
+          <div v-for="idx in amountOptions.length" :key="`amount-skeleton-${idx}`" class="skeleton-amount-item" />
         </div>
         <div class="skeleton-line skeleton-line-center" />
         <div class="skeleton-submit" />
@@ -445,7 +460,11 @@ onMounted(() => {
         <div class="fee-card">
           <div class="fee-row">
             <span>{{ t('withdrawPage.serviceFee') }}</span>
-            <CoinAmount text="0.00" />
+            <CoinAmount :text="formatAmountText(estimatedFee)" />
+          </div>
+          <div class="fee-row">
+            <span>{{ t('withdrawPage.actualReceive') }}</span>
+            <CoinAmount :text="formatAmountText(actualReceiveAmount)" />
           </div>
           <div class="fee-row total">
             <span>{{ t('withdrawPage.actualDeduct') }}</span>
@@ -508,7 +527,7 @@ onMounted(() => {
           {{ t('withdrawPage.tipsTitle') }}
         </h2>
         <ol>
-          <li>{{ t('withdrawPage.tips1', { amount: '100' }) }}</li>
+          <li>{{ t('withdrawPage.tips1', { amount: MIN_WITHDRAW_AMOUNT }) }}</li>
           <li>{{ t('withdrawPage.tips2') }}</li>
           <li>{{ t('withdrawPage.tips3') }}</li>
           <li>{{ t('withdrawPage.tips4') }}</li>

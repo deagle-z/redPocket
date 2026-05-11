@@ -69,6 +69,7 @@ func GetTgUsers(db *gorm.DB, search pojo.TgUserSearch) (result pojo.TgUserAdminR
 		result.List = append(result.List, temp)
 	}
 	fillAdminTgUserParentUIDs(db, result.List)
+	fillAdminTgUserTenantNames(db, result.List)
 
 	result.PageSize = search.PageSize
 	result.CurrentPage = search.CurrentPage
@@ -450,6 +451,41 @@ func fillAdminTgUserParentUIDs(db *gorm.DB, users []pojo.TgUserAdminBack) {
 		}
 		if uid, ok := parentUIDMap[*users[i].ParentID]; ok && uid != "" {
 			users[i].ParentUid = &uid
+		}
+	}
+}
+
+func fillAdminTgUserTenantNames(db *gorm.DB, users []pojo.TgUserAdminBack) {
+	tenantIDs := make([]int64, 0, len(users))
+	seen := make(map[int64]struct{}, len(users))
+	for _, user := range users {
+		if user.TenantId <= 0 {
+			continue
+		}
+		if _, ok := seen[user.TenantId]; ok {
+			continue
+		}
+		seen[user.TenantId] = struct{}{}
+		tenantIDs = append(tenantIDs, user.TenantId)
+	}
+	if len(tenantIDs) == 0 {
+		return
+	}
+
+	var tenants []pojo.SysTenant
+	_ = db.Model(&pojo.SysTenant{}).
+		Select("id, tenant_name").
+		Where("id IN ?", tenantIDs).
+		Find(&tenants).Error
+
+	tenantNameMap := make(map[int64]string, len(tenants))
+	for _, tenant := range tenants {
+		tenantNameMap[tenant.ID] = tenant.TenantName
+	}
+
+	for i := range users {
+		if name, ok := tenantNameMap[users[i].TenantId]; ok && name != "" {
+			users[i].TenantName = &name
 		}
 	}
 }

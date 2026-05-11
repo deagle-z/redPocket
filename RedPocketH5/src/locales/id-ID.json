@@ -392,6 +392,7 @@
     "freezing": "Dibekukan dalam penarikan",
     "submit": "Kirim",
     "serviceFee": "Biaya Layanan",
+    "actualReceive": "Jumlah Diterima",
     "actualDeduct": "Pengurangan Aktual",
     "tipsTitle": "Catatan Penarikan:",
     "tips1": "Jumlah penarikan minimum adalah {amount}",

@@ -49,10 +49,6 @@ const rootClass = computed(() => [
 ])
 const showMineSection = computed(() => selectedPlayType.value === 'thunder')
 
-const availableAmountPresets = computed(() => {
-  return amountPresets.filter(value => value >= amountMin.value && value <= amountMax.value)
-})
-
 const amountRangeText = computed(() => {
   return t('sendPacketPage.amountRange', {
     min: amountMin.value,
@@ -257,7 +253,7 @@ watch(() => props.defaultPlayType, (value) => {
 
         <div class="preset-grid">
           <button
-            v-for="value in availableAmountPresets"
+            v-for="value in amountPresets"
             :key="value"
             type="button"
             class="preset-item"

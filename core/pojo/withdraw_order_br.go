@@ -347,6 +347,7 @@ type AppCreateWithdrawOrderReq struct {
 
 type AppCreateWithdrawOrderResp struct {
 	OrderNo      string  `json:"orderNo"`
+	Fee          float64 `json:"fee,omitempty"`
 	RebateAmount float64 `json:"rebateAmount,omitempty"`
 }
 

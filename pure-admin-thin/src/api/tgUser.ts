@@ -29,6 +29,7 @@ export type TgUser = {
   ip?: string | null;
   region?: string | null;
   tenantId?: number;
+  tenantName?: string | null;
 };
 
 export type TgUserSearch = {

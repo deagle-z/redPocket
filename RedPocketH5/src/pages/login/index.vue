@@ -6,6 +6,7 @@ import { getAuthCountry, setAuthCountry } from '@/utils/auth'
 import { showToast } from 'vant'
 import { languageOptions, locale } from '@/utils/i18n'
 import { safeBack } from '@/utils/navigation'
+import { buildPhoneWithDialCode, normalizeNationalPhone, onlyPhoneDigits } from '@/utils/phone'
 import AppPageHeader from '@/components/AppPageHeader.vue'
 import emailIcon from '@/assets/svg/email.svg'
 import lockIcon from '@/assets/svg/lock.svg'
@@ -30,12 +31,6 @@ const loginCountryDialCodeMap = Object.fromEntries(loginCountries.map(item => [i
   LoginCountryCode,
   string
 >
-const loginPhoneRules: Record<LoginCountryCode, RegExp> = {
-  MX: /^[2-9]\d{9}$/,
-  ID: /^0?8\d{8,11}$/,
-  BR: /^[1-9]{2}9\d{8}$/,
-}
-
 const postData = reactive<{
   country: LoginCountryCode
   phone: string
@@ -70,33 +65,14 @@ function detectLoginCountry(): LoginCountryCode {
 
 function normalizePhoneInput(event: Event) {
   const input = event.target as HTMLInputElement
-  postData.phone = input.value.replace(/\D+/g, '')
-}
-
-function isValidLoginPhone(country: LoginCountryCode, phone: string) {
-  return loginPhoneRules[country].test(phone)
-}
-
-function getLoginDialCode(country: LoginCountryCode) {
-  return (loginCountryDialCodeMap[country] || '').replace(/\D+/g, '')
+  postData.phone = onlyPhoneDigits(input.value)
 }
 
 function buildLoginPhone(country: LoginCountryCode, rawPhone: string) {
-  const digits = rawPhone.replace(/\D+/g, '')
-  const dialCode = getLoginDialCode(country)
-  const phoneWithoutDialCode = dialCode && digits.startsWith(dialCode)
-    ? digits.slice(dialCode.length)
-    : ''
-  const nationalPhone = phoneWithoutDialCode && isValidLoginPhone(country, phoneWithoutDialCode)
-    ? phoneWithoutDialCode
-    : digits
-  const finalNationalPhone = country === 'ID'
-    ? nationalPhone.replace(/^0+/, '')
-    : nationalPhone
-
+  const nationalPhone = normalizeNationalPhone(country, rawPhone)
   return {
     nationalPhone,
-    phoneWithDialCode: `${dialCode}${finalNationalPhone}`,
+    phoneWithDialCode: buildPhoneWithDialCode(country, rawPhone),
   }
 }
 

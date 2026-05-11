@@ -392,6 +392,7 @@
     "freezing": "Congelado em saque",
     "submit": "Enviar",
     "serviceFee": "Taxa de serviço",
+    "actualReceive": "Valor recebido",
     "actualDeduct": "Valor debitado",
     "tipsTitle": "Observações sobre saque:",
     "tips1": "O valor mínimo de retirada é {amount}",

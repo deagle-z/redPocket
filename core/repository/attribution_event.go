@@ -70,6 +70,8 @@ func CreateAttributionEvent(db *gorm.DB, req pojo.AttributionEventCreateReq, use
 		VisitorID:         trimMax(req.VisitorID, 128),
 		SessionID:         trimMax(req.SessionID, 128),
 		EventName:         eventName,
+		ThirdPartyEventID: nullableTrimMax(req.ThirdPartyEventID, 128),
+		PixelID:           nullableTrimMax(req.PixelID, 128),
 		SourceChannelID:   sourceChannelID,
 		SourceChannelCode: sourceChannelCode,
 		PageURL:           nullableTrimMax(req.PageURL, 1024),
@@ -91,6 +93,8 @@ func GetAttributionEvents(db *gorm.DB, search pojo.AttributionEventSearch) pojo.
 	var list []pojo.AttributionEvent
 	query := applyAttributionEventFilters(db.Model(&pojo.AttributionEvent{}), attributionEventFilter{
 		EventName:         search.EventName,
+		ThirdPartyEventID: search.ThirdPartyEventID,
+		PixelID:           search.PixelID,
 		SourceChannelID:   search.SourceChannelID,
 		SourceChannelCode: search.SourceChannelCode,
 		UserID:            search.UserID,
@@ -118,6 +122,8 @@ func GetAttributionEventSummary(db *gorm.DB, search pojo.AttributionEventSummary
 	var result []pojo.AttributionEventSummaryBack
 	query := applyAttributionEventFilters(db.Model(&pojo.AttributionEvent{}), attributionEventFilter{
 		EventName:         search.EventName,
+		ThirdPartyEventID: search.ThirdPartyEventID,
+		PixelID:           search.PixelID,
 		SourceChannelID:   search.SourceChannelID,
 		SourceChannelCode: search.SourceChannelCode,
 		UserID:            search.UserID,
@@ -139,6 +145,8 @@ func GetAttributionEventSummary(db *gorm.DB, search pojo.AttributionEventSummary
 
 type attributionEventFilter struct {
 	EventName         string
+	ThirdPartyEventID string
+	PixelID           string
 	SourceChannelID   int64
 	SourceChannelCode string
 	UserID            int64
@@ -150,6 +158,12 @@ type attributionEventFilter struct {
 func applyAttributionEventFilters(query *gorm.DB, filter attributionEventFilter) *gorm.DB {
 	if strings.TrimSpace(filter.EventName) != "" {
 		query = query.Where("event_name = ?", strings.TrimSpace(filter.EventName))
+	}
+	if strings.TrimSpace(filter.ThirdPartyEventID) != "" {
+		query = query.Where("third_party_event_id = ?", strings.TrimSpace(filter.ThirdPartyEventID))
+	}
+	if strings.TrimSpace(filter.PixelID) != "" {
+		query = query.Where("pixel_id = ?", strings.TrimSpace(filter.PixelID))
 	}
 	if filter.SourceChannelID > 0 {
 		query = query.Where("source_channel_id = ?", filter.SourceChannelID)

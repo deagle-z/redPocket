@@ -235,6 +235,7 @@ type TgCurrentUserInfo struct {
 type TgWithdrawSummaryBack struct {
 	Balance               float64 `json:"balance"`
 	NonWithdrawableAmount float64 `json:"nonWithdrawableAmount"`
+	TodayWithdrawCount    int64   `json:"todayWithdrawCount"`
 }
 
 type TgInviteStatsBack struct {
@@ -317,6 +318,7 @@ type TgUserAdminBack struct {
 	SourceChannelID   *int64    `json:"sourceChannelId"`
 	SourceChannelCode *string   `json:"sourceChannelCode"`
 	TenantId          int64     `json:"tenantId"`
+	TenantName        *string   `json:"tenantName"`
 	AudioOpen         int8      `json:"audio_open"`
 }
 

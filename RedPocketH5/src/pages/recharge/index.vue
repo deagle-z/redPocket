@@ -24,6 +24,7 @@ import {
 } from '@/api/user'
 import AppPageHeader from '@/components/AppPageHeader.vue'
 import { useUserStore } from '@/stores'
+import { createThirdPartyEventId, trackAttributionEvent } from '@/utils/attribution'
 import { formatCurrency, truncate2 } from '@/utils/currency'
 import { trackFirstRechargePurchase } from '@/utils/facebook-pixel'
 import { safeBack } from '@/utils/navigation'
@@ -209,9 +210,7 @@ function showHelpTip() {
 }
 
 function openPaymentUrl(url: string) {
-  const opened = window.open(url, '_blank', 'noopener,noreferrer')
-  if (opened)
-    opened.opener = null
+  window.location.href = url
 }
 
 function formatLocalAmount(coins: number) {
@@ -406,11 +405,28 @@ async function syncPendingRechargeNotificationsForPixel() {
   try {
     const { data } = await getPendingRechargeNotifications()
     for (const item of data || []) {
+      const thirdPartyEventId = createThirdPartyEventId('recharge_success', item.orderNo)
+      trackAttributionEvent({
+        eventName: 'recharge_success',
+        thirdPartyEventId,
+        metadata: {
+          orderNo: item.orderNo,
+          amount: Number(item.amount || 0),
+          creditAmount: Number(item.creditAmount || 0),
+          bonusAmount: Number(item.bonusAmount || 0),
+          currency: item.currency || '',
+          channel: item.channel || '',
+          status: item.status,
+          isFirstRecharge: !!item.isFirstRecharge,
+          payTime: item.payTime || '',
+        },
+      })
       if (item.isFirstRecharge) {
         trackFirstRechargePurchase({
           orderNo: item.orderNo,
           amount: Number(item.amount || 0),
           currency: item.currency || 'BRL',
+          eventId: thirdPartyEventId,
         })
       }
       await ackRechargeNotification(item.orderNo)
@@ -532,7 +548,10 @@ onMounted(() => {
             v-for="item in amountOptions" :key="item" type="button" class="amount-item"
             :class="{ active: selectedAmount === item }" @click="chooseAmount(item as number | 'custom')"
           >
-            <span v-if="item !== 'custom'">{{ item }}</span>
+            <span v-if="item !== 'custom'" class="amount-main">
+              {{ item }}
+              <img class="amount-coin" src="@/assets/svg/coin.svg" alt="">
+            </span>
             <span v-else>{{ t('rechargePage.custom') }}</span>
             <span v-if="item !== 'custom' && selectedCountry?.rate" class="amount-local">
               {{ localCurrencySymbol }} {{ formatLocalAmount(Number(item)) }}
@@ -1039,6 +1058,20 @@ onMounted(() => {
   flex-direction: column;
   align-items: center;
   gap: 3px;
+}
+
+.amount-main {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  line-height: 1;
+}
+
+.amount-coin {
+  width: 14px;
+  height: 14px;
+  object-fit: contain;
 }
 
 .amount-local {

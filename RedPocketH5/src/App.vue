@@ -5,6 +5,7 @@ import { STORAGE_TOKEN_KEY } from '@/stores/mutation-type'
 import type { RechargeSuccessNotification } from '@/api/user'
 import { ackRechargeNotification, getPendingRechargeNotifications } from '@/api/user'
 import wsClient, { connectWebSocket } from '@/plugins/websocket'
+import { createThirdPartyEventId, trackAttributionEvent } from '@/utils/attribution'
 import { trackFirstRechargePurchase } from '@/utils/facebook-pixel'
 import AppTopHeader from '@/components/AppTopHeader.vue'
 import TabBar from '@/components/TabBar.vue'
@@ -87,19 +88,43 @@ function showRechargeSuccessNotice(orderNo: string) {
   }, 2500)
 }
 
-function trackRechargeSuccessPixel(item: RechargeSuccessNotification) {
+function trackRechargeSuccessAttribution(item: RechargeSuccessNotification) {
+  if (!item?.orderNo)
+    return ''
+  const thirdPartyEventId = createThirdPartyEventId('recharge_success', item.orderNo)
+  trackAttributionEvent({
+    eventName: 'recharge_success',
+    thirdPartyEventId,
+    metadata: {
+      orderNo: item.orderNo,
+      amount: Number(item.amount || 0),
+      creditAmount: Number(item.creditAmount || 0),
+      bonusAmount: Number(item.bonusAmount || 0),
+      currency: item.currency || '',
+      channel: item.channel || '',
+      status: item.status,
+      isFirstRecharge: !!item.isFirstRecharge,
+      payTime: item.payTime || '',
+    },
+  })
+  return thirdPartyEventId
+}
+
+function trackRechargeSuccessPixel(item: RechargeSuccessNotification, eventId = '') {
   if (!item?.isFirstRecharge)
     return
   trackFirstRechargePurchase({
     orderNo: item.orderNo,
     amount: Number(item.amount || 0),
     currency: item.currency || 'BRL',
+    eventId,
   })
 }
 
 function handleRechargeSuccessMessage(message: any) {
   const data = message?.data || message || {}
-  trackRechargeSuccessPixel(data)
+  const thirdPartyEventId = trackRechargeSuccessAttribution(data)
+  trackRechargeSuccessPixel(data, thirdPartyEventId)
   showRechargeSuccessNotice(data.orderNo)
   void ackRechargeSuccess(data.orderNo, false)
 }
@@ -111,7 +136,8 @@ async function syncPendingRechargeNotifications() {
     syncingRechargeNotify.value = true
     const { data } = await getPendingRechargeNotifications()
     for (const item of data || []) {
-      trackRechargeSuccessPixel(item)
+      const thirdPartyEventId = trackRechargeSuccessAttribution(item)
+      trackRechargeSuccessPixel(item, thirdPartyEventId)
       await ackRechargeSuccess(item.orderNo, false)
     }
   }

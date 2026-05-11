@@ -59,9 +59,7 @@ const canSubmit = computed(() =>
 
 const pickerVisible = ref(false)
 const pickerField = ref<RechargeField | null>(null)
-const pickerColumns = computed(() =>
-  parseFieldOptions(pickerField.value).map(o => ({ text: o.label, value: o.value })),
-)
+const pickerOptions = computed(() => parseFieldOptions(pickerField.value))
 
 function parseFieldOptions(field: RechargeField | null): RechargeFieldOption[] {
   if (!field?.optionsJson)
@@ -86,9 +84,9 @@ function openPicker(field: RechargeField) {
   pickerVisible.value = true
 }
 
-function onPickerConfirm({ selectedOptions }: { selectedOptions: Array<{ text: string, value: string }> }) {
+function onSelectOption(option: RechargeFieldOption) {
   if (pickerField.value)
-    fieldValues.value[pickerField.value.fieldKey] = selectedOptions[0]?.value ?? ''
+    fieldValues.value[pickerField.value.fieldKey] = option.value
   pickerVisible.value = false
 }
 
@@ -449,12 +447,31 @@ onMounted(() => {
       </section>
     </template>
 
-    <van-popup v-if="!pageLoading" v-model:show="pickerVisible" position="bottom" teleport="#app">
-      <van-picker
-        :columns="pickerColumns"
-        @confirm="onPickerConfirm"
-        @cancel="pickerVisible = false"
-      />
+    <van-popup v-if="!pageLoading" v-model:show="pickerVisible" round position="bottom" teleport="#app" class="withdraw-select-popup">
+      <div class="withdraw-select-popup-header">
+        <span class="withdraw-select-popup-title">{{ pickerField?.fieldLabel }}</span>
+        <button type="button" class="withdraw-select-popup-close" @click="pickerVisible = false">
+          ×
+        </button>
+      </div>
+
+      <div v-if="pickerOptions.length" class="withdraw-select-list">
+        <button
+          v-for="option in pickerOptions"
+          :key="option.value"
+          type="button"
+          class="withdraw-select-item"
+          :class="{ active: pickerField && fieldValues[pickerField.fieldKey] === option.value }"
+          @click="onSelectOption(option)"
+        >
+          <span class="withdraw-select-code">{{ option.value }}</span>
+          <span class="withdraw-select-text">{{ option.label }}</span>
+          <span v-if="pickerField && fieldValues[pickerField.fieldKey] === option.value" class="withdraw-select-check">✓</span>
+        </button>
+      </div>
+      <p v-else class="withdraw-select-empty">
+        {{ t('withdrawPage.noFields') }}
+      </p>
     </van-popup>
   </div>
 </template>
@@ -578,6 +595,57 @@ onMounted(() => {
   border-radius: 14px;
 }
 
+:deep(.custom-input),
+:deep(.withdraw-field) {
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid rgba(212, 175, 55, 0.16);
+  background: rgba(255, 248, 214, 0.05);
+}
+
+.withdraw-field {
+  display: block;
+  margin-top: 10px;
+}
+
+.withdraw-field:first-of-type {
+  margin-top: 0;
+}
+
+:deep(.custom-input .van-field__label),
+:deep(.custom-input .van-field__control) {
+  color: #fff0c9;
+}
+
+:deep(.custom-input .van-field__control::placeholder) {
+  color: rgba(255, 229, 186, 0.4);
+}
+
+:deep(.withdraw-field .van-field__label) {
+  width: 100%;
+  margin: 0 0 6px;
+  color: #fff0c9;
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+:deep(.withdraw-field .van-field__label span) {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+:deep(.withdraw-field .van-field__value) {
+  width: 100%;
+  min-width: 0;
+}
+
+:deep(.withdraw-field .van-field__body),
+:deep(.withdraw-field .van-field__control) {
+  width: 100%;
+}
+
 .amount-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -686,6 +754,114 @@ onMounted(() => {
 
 .tips li + li {
   margin-top: 6px;
+}
+
+:global(.withdraw-select-popup.van-popup) {
+  max-height: 72vh;
+  min-height: 320px;
+  overflow: hidden;
+  padding: 10px 0 calc(22px + env(safe-area-inset-bottom));
+  border: 1px solid rgba(212, 175, 55, 0.34);
+  border-radius: 24px 24px 0 0;
+  background:
+    radial-gradient(circle at 12% 10%, rgba(212, 175, 55, 0.18), transparent 22%),
+    linear-gradient(180deg, #540000 0%, #280000 100%);
+  box-shadow: 0 -12px 32px rgba(0, 0, 0, 0.48);
+}
+
+:global(.withdraw-select-popup-header) {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 56px;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.15);
+}
+
+:global(.withdraw-select-popup-title) {
+  max-width: calc(100% - 96px);
+  overflow: hidden;
+  color: #fff0c9;
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: 0.04em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+:global(.withdraw-select-popup-close) {
+  position: absolute;
+  top: 50%;
+  right: 16px;
+  border: none;
+  background: transparent;
+  color: #ffd98b;
+  font-size: 18px;
+  line-height: 1;
+  transform: translateY(-50%);
+}
+
+:global(.withdraw-select-list) {
+  max-height: calc(72vh - 96px);
+  overflow-y: auto;
+  padding: 16px 14px 0;
+}
+
+:global(.withdraw-select-item) {
+  display: grid;
+  grid-template-columns: minmax(42px, auto) 1fr 24px;
+  align-items: center;
+  width: 100%;
+  min-height: 52px;
+  margin-bottom: 12px;
+  padding: 12px 16px;
+  border: 1px solid rgba(212, 175, 55, 0.14);
+  border-radius: 16px;
+  background: rgba(255, 248, 214, 0.05);
+  text-align: left;
+  transition:
+    border-color 0.2s ease,
+    background-color 0.2s ease;
+}
+
+:global(.withdraw-select-item.active) {
+  border-color: rgba(212, 175, 55, 0.52);
+  background: rgba(212, 175, 55, 0.12);
+  box-shadow: inset 0 1px 0 rgba(255, 248, 214, 0.08);
+}
+
+:global(.withdraw-select-code) {
+  min-width: 34px;
+  padding-right: 10px;
+  color: #ffd98b;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+:global(.withdraw-select-text) {
+  min-width: 0;
+  overflow: hidden;
+  color: #fff0c9;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+:global(.withdraw-select-check) {
+  color: #ffd98b;
+  font-size: 20px;
+  text-align: right;
+}
+
+:global(.withdraw-select-empty) {
+  margin: 48px 18px 0;
+  color: rgba(255, 229, 186, 0.58);
+  font-size: 13px;
+  line-height: 1.5;
+  text-align: center;
 }
 
 .skeleton-card {

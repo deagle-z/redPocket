@@ -392,6 +392,7 @@
     "freezing": "Congelado en retiro",
     "submit": "Enviar",
     "serviceFee": "Tarifa de servicio",
+    "actualReceive": "Monto recibido",
     "actualDeduct": "Deducción real",
     "tipsTitle": "Notas del retiro:",
     "tips1": "El monto mínimo de retiro es {amount}",

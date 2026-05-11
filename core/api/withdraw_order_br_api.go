@@ -13,6 +13,13 @@ import (
 	"time"
 )
 
+const (
+	appWithdrawMinAmount      = 10.0
+	appWithdrawFreeDailyCount = int64(3)
+	appWithdrawFeeRate        = 0.05
+	appWithdrawSourceRebate   = "rebate"
+)
+
 // GetWithdrawOrderBrs godoc
 //
 //	@Summary		获取巴西提现订单列表
@@ -127,7 +134,7 @@ func AppCreateWithdrawOrder(ctx *gin.Context) {
 		return
 	}
 	req.Amount = utils.Truncate2(req.Amount)
-	if req.Amount <= 0 {
+	if req.Amount < appWithdrawMinAmount {
 		utils.ErrorBack(ctx, "invalid_withdraw_amount")
 		return
 	}
@@ -178,6 +185,12 @@ func AppCreateWithdrawOrder(ctx *gin.Context) {
 	if account != nil {
 		accountID = strconv.FormatInt(account.ID, 10)
 	}
+	todayWithdrawCount, err := countTodayAppWithdrawOrders(db, user.ID, time.Now())
+	if err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	withdrawFee := calculateAppWithdrawFee(todayWithdrawCount, req.Amount)
 	orderReq := pojo.WithdrawOrderBrSet{
 		TenantId:        user.TenantId,
 		UserId:          user.ID,
@@ -186,7 +199,7 @@ func AppCreateWithdrawOrder(ctx *gin.Context) {
 		Currency:        country.CurrencyCode,
 		CountryCode:     countryCode,
 		Amount:          req.Amount,
-		Fee:             0,
+		Fee:             withdrawFee,
 		Channel:         "pix",
 		Status:          0,
 		Extra:           &extra,
@@ -200,7 +213,7 @@ func AppCreateWithdrawOrder(ctx *gin.Context) {
 		utils.ErrorBack(ctx, err.Error())
 		return
 	}
-	utils.SuccessObjBack(ctx, pojo.AppCreateWithdrawOrderResp{OrderNo: result.OrderNo})
+	utils.SuccessObjBack(ctx, pojo.AppCreateWithdrawOrderResp{OrderNo: result.OrderNo, Fee: result.Fee})
 }
 
 // AppCreateRebateWithdrawOrder App端创建佣金提现订单，佣金直接提现不需要流水要求
@@ -326,6 +339,29 @@ func optionalString(value string) *string {
 		return nil
 	}
 	return &value
+}
+
+func calculateAppWithdrawFee(todayWithdrawCount int64, amount float64) float64 {
+	if todayWithdrawCount < appWithdrawFreeDailyCount {
+		return 0
+	}
+	return utils.Truncate2(amount * appWithdrawFeeRate)
+}
+
+func countTodayAppWithdrawOrders(db *gorm.DB, userID int64, now time.Time) (int64, error) {
+	if db == nil || userID <= 0 {
+		return 0, nil
+	}
+	start := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	end := start.AddDate(0, 0, 1)
+	var count int64
+	err := db.Model(&pojo.WithdrawOrderBr{}).
+		Where("user_id = ? AND created_at >= ? AND created_at < ?", userID, start, end).
+		Where(`COALESCE(JSON_UNQUOTE(JSON_EXTRACT(extra, '$.source')), '') <> ?`, appWithdrawSourceRebate).
+		Where(`COALESCE(JSON_UNQUOTE(JSON_EXTRACT(extra, '$.balanceSource')), '') <> ?`, appWithdrawSourceRebate).
+		Where(`COALESCE(JSON_UNQUOTE(JSON_EXTRACT(extra, '$.withdrawSource')), '') <> ?`, appWithdrawSourceRebate).
+		Count(&count).Error
+	return count, err
 }
 
 func applyWithdrawReceiverSnapshot(req *pojo.WithdrawOrderBrSet, countryCode string, account *pojo.SysUserWithdrawAccount, fieldValues map[string]string) {
