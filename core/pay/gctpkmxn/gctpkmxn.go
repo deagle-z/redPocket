@@ -56,7 +56,7 @@ func (g *Provider) CreateOrder(req pay.PayRequest) (pay.PayResponse, error) {
 		"currency":    "MXN",
 		"busiCode":    resolveBusiCode(req, "107001"),
 		"pageUrl":     resolvePageURL(cfg, req),
-		"notifyUrl":   resolveNotifyURL(cfg, req.NotifyURL),
+		"notifyUrl":   resolveNotifyURL(cfg),
 		"timestamp":   timestamp,
 	}
 	if name := resolvePayinName(req); name != "" {
@@ -117,10 +117,7 @@ func resolvePageURL(cfg base.GctpkPayConfig, req pay.PayRequest) string {
 	return cfg.PageURL
 }
 
-func resolveNotifyURL(cfg base.GctpkPayConfig, notifyURL string) string {
-	if strings.TrimSpace(notifyURL) != "" {
-		return strings.TrimSpace(notifyURL)
-	}
+func resolveNotifyURL(cfg base.GctpkPayConfig) string {
 	return cfg.NotifyURL
 }
 

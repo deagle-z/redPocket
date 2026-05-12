@@ -43,3 +43,11 @@ func TestBuildPayoutParamsMatchesBrlReadme(t *testing.T) {
 		t.Fatalf("busiCode = %q, want 206001", got)
 	}
 }
+
+func TestResolveNotifyURLUsesConfigNotifyURL(t *testing.T) {
+	cfg := base.GctpkPayConfig{NotifyURL: "https://config.example.com/brl/notify"}
+
+	if got := resolveNotifyURL(cfg); got != cfg.NotifyURL {
+		t.Fatalf("resolveNotifyURL = %q, want config notify URL", got)
+	}
+}

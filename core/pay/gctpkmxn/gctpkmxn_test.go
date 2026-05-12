@@ -52,3 +52,11 @@ func TestResolvePayinNameUsesMxnExtraField(t *testing.T) {
 		t.Fatalf("resolvePayinName = %q, want Alice", got)
 	}
 }
+
+func TestResolveNotifyURLUsesConfigNotifyURL(t *testing.T) {
+	cfg := base.GctpkPayConfig{NotifyURL: "https://config.example.com/mxn/notify"}
+
+	if got := resolveNotifyURL(cfg); got != cfg.NotifyURL {
+		t.Fatalf("resolveNotifyURL = %q, want config notify URL", got)
+	}
+}
