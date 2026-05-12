@@ -69,14 +69,20 @@ func GetStringCache(preFix string, key string, defaultValue *string) (result *st
 	data := RD.Get(context.Background(), redisKey)
 	if data != nil && data.Err() == nil {
 		dataStr = data.Val()
+		log.Printf("[config-cache] string cache hit prefix=%q key=%s redisKey=%s value=%q", preFix, key, redisKey, dataStr)
 		return &dataStr
+	}
+	if data != nil && data.Err() != nil {
+		log.Printf("[config-cache] string cache miss prefix=%q key=%s redisKey=%s err=%v", preFix, key, redisKey, data.Err())
 	}
 	db := NewPrefixDb(preFix)
 	var sysConfig pojo.SysConfig
 	db.Where("config_key = ?", key).First(&sysConfig)
 	if sysConfig.ID != 0 {
+		log.Printf("[config-cache] string db hit prefix=%q key=%s configID=%d value=%q", preFix, key, sysConfig.ID, sysConfig.ConfigValue)
 		return &sysConfig.ConfigValue
 	}
+	log.Printf("[config-cache] string default used prefix=%q key=%s default=%q", preFix, key, *defaultValue)
 	FlushStringCache(preFix, key, *defaultValue)
 	return defaultValue
 }

@@ -48,6 +48,7 @@ func InitLuckyExpireAsynq() error {
 		mux := asynq.NewServeMux()
 		mux.HandleFunc(TaskTypeLuckyExpire, handleLuckyExpireTask)
 		mux.HandleFunc(TaskTypeLuckyBotGrab, handleLuckyBotGrabTask)
+		mux.HandleFunc(TaskTypeTrialLuckyBotGrab, handleTrialLuckyBotGrabTask)
 		mux.HandleFunc(pojo.TaskTypeRechargeFirstGiftInstallment, handleRechargeFirstGiftInstallmentTask)
 		go func() {
 			if err := srv.Run(mux); err != nil {

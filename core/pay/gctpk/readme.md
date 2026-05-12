@@ -1,26 +1,73 @@
-签名规范
-所有接口的签名规范：
-将所有参数按照字段名的 ASCII 码(字典序)从小到大排序后使用 QueryString 的格式(即key1=value1&key2=value2…) 拼接成签名串,空参数和sign不参与签名
+代收参数
+name姓名Stringrequired
+请输入 姓名
+案例:zhang san(必须是字母),如没有可以固定上传
+merNo商户号Stringrequired
+请输入 商户号
+商户编号
+merOrderNo商户订单号Stringrequired
+请输入 商户订单号
+商户必须保证商户单号唯一,我方不保证商户单号唯一。
+email邮箱Stringrequired
+请输入 邮箱
+案例:test@gmail.com(需要符合邮箱格式),如没有可以固定上传
+phone手机号Stringrequired
+请输入 手机号
+纯数字,不需要添加区号
+orderAmount订单金额Stringrequired
+请输入 订单金额
+金额,两位小数
+currency币种编码Stringrequired
+IDR
+最上方有编码信息
+busiCode支付类型编码Stringrequired
+请输入 支付类型编码
+按照表格编码填写
+pageUrl支付成功跳转地址Stringrequired
+请输入 支付成功跳转地址
+支付成功,页面跳转地址。
+notifyUrl通知地址Stringrequired
+请输入 通知地址
+支付成功后，平台主动通知商家系统，商家系统必须指定接收通知的地址。
+timestamp时间戳Stringrequired
+当前UTC 13位时间戳,5分钟内有效
+sign数字签名Stringrequired
 
-HmacSHA256加密格式案例(案例只做参考,加密后的值可能不准确)
-代付下单接口需要对HmacSHA256加密后的sign值再进行RSA-1024私钥加密,其他接口均只需使用HmacSHA256加密和验签
-(代付下单HmacSHA256+rsa,代付通知,代收下单,代收通知,代收查询,代付查询等均是HmacSHA256)
-加密前:
-bankCode=abc&busiCode=103001&currency=INR&email=tom@gmail.com&merNo=xxxxxxxxx&merOrderNo=1703664046297&name=tom&notifyUrl=https://xxx.xxx.xxx/xxx/xxxxxxxx&orderAmount=1000&pageUrl=https://xxx.xxxx.com&phone=9001941197&timestamp=1703664046000
-加密后:
-3dc928559f8a3657e759c6fda27178071beed1b444df9f76b4538d6985cd6cb1
 
-代付下单RSA加密格式案例(案例只做参考,加密后的值可能不准确)
-1.正式号使用工具类或者在线网址生成RSA密钥对,生成RSA-1024位,密钥格式:PKCS#8,私钥自己保存,公钥上传至商户后台。(测试号使用文档提供的密钥即可)
-2.代付加密流程,使用HmacSHA256对签名串加密后得到signA,再对signA进行RSA私钥加密并base64编码后得到sign。
-加密前:
-accName=tomjrui&accNo=123123156412&bankCode=SCB&busiCode=201001&currency=THB&email=tom@gmail.com&extend=tom@gmail.com&merNo=xxxxxxxxx&merOrderNo=1703663635553&notifyUrl=https://xxx.xxx.com/temp/acqNotify&orderAmount=100&phone=9001941197&province=ICIC1234567&timestamp=1703663635553
-signA:
-aa5db6a30e8a27607904cf8b75ddd368e26960ee34d149ea6d53c81c0230c70d
-对signA进行RSA加密并base64编码后的sign:
-gse2VBCsjN73ICHV0GgaeL3vnvp+4QBhuiH5iVcAh4HN0cQ8G0DrYx/udW724f66ShnB4pHYSfhBYsemfsDnzt583VqJ7OLrCqW0Q9WFengFtQO3IGSn//shzl5pzGzpEKF3PKfoBV6HXY5QUBXNB8zJs/wTuQDVDcx69LfIXPM=
-
-
-支付编码(busiCode)
-印尼网银支付	印尼OVO电子钱包	印尼LINKAJA电子钱包	印尼扫码	印尼DANA电子钱包	印尼BNI网银	印尼卡卡
-104001	104002	104003	104004	104005	104007	104008
+代付参数
+accName姓名Stringrequired
+请输入 姓名
+姓名
+accNo卡号Stringrequired
+请输入 卡号
+卡号
+bankCode银行编码Stringrequired
+请输入 银行编码
+银行编码,左侧目录有对应国家银行编码
+busiCode支付业务编码Stringrequired
+请输入 支付业务编码
+按照表格编码填写
+currency币种Stringrequired
+IDR
+币种
+email邮箱Stringrequired
+请输入 邮箱
+邮箱
+merNo商户号Stringrequired
+请输入 商户号
+商户号
+merOrderNo商户订单号Stringrequired
+请输入 商户订单号
+商户必须保证商户单号唯一,我方不保证商户单号唯一。
+notifyUrl回调地址Stringrequired
+请输入 回调地址
+回调地址
+orderAmount订单金额Stringrequired
+请输入 订单金额
+订单金额
+phone手机号Stringrequired
+请输入 手机号
+纯数字，不需要添加区号
+timestamp时间戳Stringrequired
+当前UTC 13位时间戳,5分钟内有效
+sign签名Stringrequired

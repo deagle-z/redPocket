@@ -6,6 +6,12 @@ import { resolveOddEvenGuess } from '@/utils/lucky-play'
 import { formatCurrency, formatCurrencyPlain } from '@/utils/currency'
 import imgCoin from '@/assets/svg/coin.svg'
 
+type GrabPacketApi = (data: {
+  luckyId: number
+  grabIndex?: number
+  oddEvenGuess?: 0 | 1
+}) => Promise<{ data: any }>
+
 interface Props {
   show: boolean
   luckyId?: number
@@ -14,6 +20,7 @@ interface Props {
   choice?: string
   closeOnClickOverlay?: boolean
   showResultToast?: boolean
+  grabApi?: GrabPacketApi
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -29,7 +36,7 @@ const emit = defineEmits<{
   (e: 'update:show', value: boolean): void
   (e: 'success', payload: { luckyId: number, grabIndex: number, data: any }): void
   (e: 'close'): void
-  (e: 'coin-click'): void
+  (e: 'coinClick'): void
 }>()
 
 const { t } = useI18n()
@@ -101,7 +108,7 @@ function sleep(ms: number) {
 function handleOpen() {
   if (loading.value || spinning.value || opened.value || resultReady.value)
     return
-  emit('coin-click')
+  emit('coinClick')
   void runOpenFlow()
 }
 
@@ -157,7 +164,8 @@ async function submitGrab(): Promise<boolean> {
   }
   loading.value = true
   try {
-    const { data } = await grabLuckyPacket({
+    const api = props.grabApi || grabLuckyPacket
+    const { data } = await api({
       luckyId,
       grabIndex: grabIndex > 0 ? grabIndex : undefined,
       oddEvenGuess: resolvedOddEvenGuess.value ?? undefined,
@@ -251,7 +259,9 @@ onBeforeUnmount(() => {
               </div>
               <div class="amount">
                 <CoinAmount v-if="resultReady && !isThunderHit && displayAmountText" :text="displayAmountText" class="amount-coin" />
-                <template v-else><CurrencyText :text="displayAmountText" /></template>
+                <template v-else>
+                  <CurrencyText :text="displayAmountText" />
+                </template>
               </div>
               <div class="blessing">
                 <CurrencyText :text="blessingText" />

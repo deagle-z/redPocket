@@ -121,16 +121,18 @@ func InitGin() {
 		adminGroup.POST("/dashboard/registerUsers", api.GetAdminDashboardRegisterUsers)
 		adminGroup.POST("/withdrawalTask", api.SendWithdrawalTask)
 		adminGroup.POST("/verifyCodeTask", api.SendVerifyCodeTask)
-		adminGroup.POST("/tgUser/list", api.GetTgUsers)                                               // 获取Telegram用户列表
-		adminGroup.GET("/tgUser/:id", api.GetTgUserById)                                              // 获取Telegram用户详情
-		adminGroup.POST("/tgUserRebate/list", api.GetTgUserRebateRecords)                             // 获取Telegram反水记录列表
-		adminGroup.GET("/tgUserRebate/:id", api.GetTgUserRebateRecordById)                            // 获取Telegram反水记录详情
-		adminGroup.POST("/lucky/list", api.GetLuckyMoneyListAdmin)                                    // 管理员获取红包列表
-		adminGroup.POST("/lucky/history", api.GetLuckyHistoryListAdmin)                               // 管理员获取领取历史
-		adminGroup.GET("/lucky/:id", api.GetLuckyMoneyDetailAdmin)                                    // 管理员获取红包详情
-		adminGroup.POST("/luckyItem/list", api.GetLuckyMoneyItems)                                    // 管理员获取红包明细列表
-		adminGroup.GET("/luckyItem/:id", api.GetLuckyMoneyItemById)                                   // 管理员获取红包明细详情
-		adminGroup.POST("/cashHistory/list", api.GetCashHistoryListAdmin)                             // 管理员获取余额变动记录列表
+		adminGroup.POST("/tgUser/list", api.GetTgUsers)                    // 获取Telegram用户列表
+		adminGroup.GET("/tgUser/:id", api.GetTgUserById)                   // 获取Telegram用户详情
+		adminGroup.POST("/tgUserRebate/list", api.GetTgUserRebateRecords)  // 获取Telegram反水记录列表
+		adminGroup.GET("/tgUserRebate/:id", api.GetTgUserRebateRecordById) // 获取Telegram反水记录详情
+		adminGroup.POST("/lucky/list", api.GetLuckyMoneyListAdmin)         // 管理员获取红包列表
+		adminGroup.POST("/lucky/history", api.GetLuckyHistoryListAdmin)    // 管理员获取领取历史
+		adminGroup.GET("/lucky/:id", api.GetLuckyMoneyDetailAdmin)         // 管理员获取红包详情
+		adminGroup.POST("/luckyItem/list", api.GetLuckyMoneyItems)         // 管理员获取红包明细列表
+		adminGroup.GET("/luckyItem/:id", api.GetLuckyMoneyItemById)        // 管理员获取红包明细详情
+		adminGroup.POST("/cashHistory/list", api.GetCashHistoryListAdmin)  // 管理员获取余额变动记录列表
+		adminGroup.POST("/trialBot/list", api.GetTrialBotUsers)
+		adminGroup.POST("/trial/lucky/list", api.GetTrialLuckyListAdmin)
 		adminGroup.POST("/authGroup/list", api.GetAuthGroups)                                         // 获取授权群组列表
 		adminGroup.POST("/authGroup", api.SetAuthGroup)                                               // 创建或更新授权群组
 		adminGroup.DELETE("/authGroup/:id", api.DelAuthGroup)                                         // 删除授权群组
@@ -187,10 +189,14 @@ func InitGin() {
 		adminGroupLog.POST("/tgUser", api.SetTgUser)   // 创建或更新Telegram用户
 		adminGroupLog.POST("/tgUser/batchCreateBot", api.BatchCreateBotTgUsers)
 		adminGroupLog.POST("/tgUser/batchUpdateBot", api.BatchUpdateBotTgUsers)
-		adminGroupLog.POST("/tgUser/status", api.SetTgUserStatus)            // 封禁/解封Telegram用户
-		adminGroupLog.POST("/tgUser/rebateRate", api.SetTgUserRebateRate)    // 修改Telegram用户返佣比例
-		adminGroupLog.POST("/tgUser/remark", api.SetTgUserRemark)            // 修改Telegram用户备注
-		adminGroupLog.DELETE("/tgUser/:id", api.DelTgUser)                   // 删除Telegram用户
+		adminGroupLog.POST("/tgUser/status", api.SetTgUserStatus)         // 封禁/解封Telegram用户
+		adminGroupLog.POST("/tgUser/rebateRate", api.SetTgUserRebateRate) // 修改Telegram用户返佣比例
+		adminGroupLog.POST("/tgUser/remark", api.SetTgUserRemark)         // 修改Telegram用户备注
+		adminGroupLog.DELETE("/tgUser/:id", api.DelTgUser)                // 删除Telegram用户
+		adminGroupLog.POST("/trialBot/batchCreate", api.BatchCreateTrialBotUsers)
+		adminGroupLog.POST("/trialBot/batchUpdate", api.BatchUpdateTrialBotUsers)
+		adminGroupLog.POST("/trialBot/status", api.SetTrialBotUserStatus)
+		adminGroupLog.DELETE("/trialBot/:id", api.DelTrialBotUser)
 		adminGroupLog.POST("/tgUserRebate", api.SetTgUserRebateRecord)       // 创建或更新Telegram反水记录
 		adminGroupLog.DELETE("/tgUserRebate/:id", api.DelTgUserRebateRecord) // 删除Telegram反水记录
 		adminGroupLog.POST("/luckyItem", api.SetLuckyMoneyItem)              // 创建或更新红包明细
@@ -324,6 +330,10 @@ func InitGin() {
 		appAuthRouter.GET("/recharge/isFirst", api.CheckIsFirstRecharge)
 		appAuthRouter.POST("/lucky/send", api.SendRedPacketApp)
 		appAuthRouter.POST("/lucky/history", api.GetLuckyAppHistory)
+		appAuthRouter.GET("/trial/me", api.GetTrialMeApp)
+		appRouter.POST("/trial/lucky/list", api.GetTrialLuckyListApp)
+		appAuthRouter.POST("/trial/lucky/send", api.SendTrialLuckyApp)
+		appAuthRouter.POST("/trial/lucky/grab", api.GrabTrialLuckyApp)
 		appRouter.POST("/lucky/recentWinners", api.GetRecentLuckyWinnersApp) // 不校验token
 		appAuthRouter.POST("/tg/logout", api.TgLogout)
 		appAuthRouter.GET("/tg/currentUserInfo", api.GetCurrentTgUserInfo)

@@ -52,6 +52,13 @@ function goPacketList(mode: 0 | 1) {
   })
 }
 
+function goTrial(mode: 0 | 1) {
+  router.push({
+    path: '/trial',
+    query: { mode: String(mode) },
+  })
+}
+
 function ensureCoinImage() {
   if (coinImagePromise)
     return coinImagePromise
@@ -315,60 +322,78 @@ onBeforeUnmount(() => {
 
     <section class="packet-entry-card">
       <div class="packet-entry-grid">
-        <button type="button" class="packet-entry-btn thunder" @click="goPacketList(0)">
-          <span class="packet-entry-btn__sunburst" aria-hidden="true" />
-          <span class="packet-entry-btn__tag">{{ t('homeLucky.playModeThunderEyebrow') }}</span>
-          <svg class="packet-entry-btn__kranok packet-entry-btn__kranok--tl" viewBox="0 0 100 100" aria-hidden="true">
-            <path d="M10 90 Q 10 10 90 10 L 70 30 Q 30 30 30 70 Z" />
-          </svg>
-          <svg class="packet-entry-btn__kranok packet-entry-btn__kranok--br" viewBox="0 0 100 100" aria-hidden="true">
-            <path d="M10 90 Q 10 10 90 10 L 70 30 Q 30 30 30 70 Z" />
-          </svg>
-          <canvas ref="thunderCanvasRef" class="packet-entry-btn__coins" aria-hidden="true" />
+        <div class="packet-entry-option">
+          <button type="button" class="packet-entry-btn thunder" @click="goPacketList(0)">
+            <span class="packet-entry-btn__sunburst" aria-hidden="true" />
+            <span class="packet-entry-btn__tag">{{ t('homeLucky.playModeThunderEyebrow') }}</span>
+            <svg class="packet-entry-btn__kranok packet-entry-btn__kranok--tl" viewBox="0 0 100 100" aria-hidden="true">
+              <path d="M10 90 Q 10 10 90 10 L 70 30 Q 30 30 30 70 Z" />
+            </svg>
+            <svg class="packet-entry-btn__kranok packet-entry-btn__kranok--br" viewBox="0 0 100 100" aria-hidden="true">
+              <path d="M10 90 Q 10 10 90 10 L 70 30 Q 30 30 30 70 Z" />
+            </svg>
+            <canvas ref="thunderCanvasRef" class="packet-entry-btn__coins" aria-hidden="true" />
 
-          <span class="packet-entry-btn__visual packet-entry-btn__visual--bomb" aria-hidden="true">
-            <span class="bomb-wrapper">
-              <span class="bomb-fuse" />
-              <span class="bomb-spark">✦</span>
-              <span class="bomb-main" />
-              <span class="bomb-rim" />
+            <span class="packet-entry-btn__visual packet-entry-btn__visual--bomb" aria-hidden="true">
+              <span class="bomb-wrapper">
+                <span class="bomb-fuse" />
+                <span class="bomb-spark">✦</span>
+                <span class="bomb-main" />
+                <span class="bomb-rim" />
+              </span>
             </span>
-          </span>
 
-          <span class="packet-entry-btn__content">
-            <span class="packet-entry-btn__ticker">{{ t('homeLucky.playModeThunderDesc') }}</span>
-            <span class="packet-entry-btn__footer">
-              <strong class="packet-entry-btn__title">BOMB</strong>
-              <small class="packet-entry-btn__subtitle">{{ t('packetListPage.modeThunder') }}</small>
+            <span class="packet-entry-btn__content">
+              <span class="packet-entry-btn__ticker">{{ t('homeLucky.playModeThunderDesc') }}</span>
+              <span class="packet-entry-btn__footer">
+                <strong class="packet-entry-btn__title">BOMB</strong>
+                <small class="packet-entry-btn__subtitle">{{ t('packetListPage.modeThunder') }}</small>
+              </span>
             </span>
-          </span>
-        </button>
-        <button type="button" class="packet-entry-btn parity" @click="goPacketList(1)">
-          <span class="packet-entry-btn__sunburst" aria-hidden="true" />
-          <span class="packet-entry-btn__tag">{{ t('homeLucky.playModeParityEyebrow') }}</span>
-          <svg class="packet-entry-btn__kranok packet-entry-btn__kranok--tl" viewBox="0 0 100 100" aria-hidden="true">
-            <path d="M10 90 Q 10 10 90 10 L 70 30 Q 30 30 30 70 Z" />
-          </svg>
-          <svg class="packet-entry-btn__kranok packet-entry-btn__kranok--br" viewBox="0 0 100 100" aria-hidden="true">
-            <path d="M10 90 Q 10 10 90 10 L 70 30 Q 30 30 30 70 Z" />
-          </svg>
-          <canvas ref="parityCanvasRef" class="packet-entry-btn__coins" aria-hidden="true" />
+          </button>
+          <button type="button" class="trial-entry-btn" @click="goTrial(0)">
+            <span class="trial-entry-btn__icon" aria-hidden="true">
+              <van-icon name="fire-o" />
+            </span>
+            <span class="trial-entry-btn__text">{{ t('homeLucky.trialEntry') }} {{ t('packetListPage.modeThunder') }}</span>
+            <van-icon class="trial-entry-btn__arrow" name="arrow" />
+          </button>
+        </div>
+        <div class="packet-entry-option">
+          <button type="button" class="packet-entry-btn parity" @click="goPacketList(1)">
+            <span class="packet-entry-btn__sunburst" aria-hidden="true" />
+            <span class="packet-entry-btn__tag">{{ t('homeLucky.playModeParityEyebrow') }}</span>
+            <svg class="packet-entry-btn__kranok packet-entry-btn__kranok--tl" viewBox="0 0 100 100" aria-hidden="true">
+              <path d="M10 90 Q 10 10 90 10 L 70 30 Q 30 30 30 70 Z" />
+            </svg>
+            <svg class="packet-entry-btn__kranok packet-entry-btn__kranok--br" viewBox="0 0 100 100" aria-hidden="true">
+              <path d="M10 90 Q 10 10 90 10 L 70 30 Q 30 30 30 70 Z" />
+            </svg>
+            <canvas ref="parityCanvasRef" class="packet-entry-btn__coins" aria-hidden="true" />
 
-          <span class="packet-entry-btn__visual packet-entry-btn__visual--parity" aria-hidden="true">
-            <span class="pill-group">
-              <span class="pill odd">ODD</span>
-              <span class="pill even">EVEN</span>
+            <span class="packet-entry-btn__visual packet-entry-btn__visual--parity" aria-hidden="true">
+              <span class="pill-group">
+                <span class="pill odd">ODD</span>
+                <span class="pill even">EVEN</span>
+              </span>
             </span>
-          </span>
 
-          <span class="packet-entry-btn__content">
-            <span class="packet-entry-btn__ticker">{{ t('homeLucky.playModeParityDesc') }}</span>
-            <span class="packet-entry-btn__footer">
-              <strong class="packet-entry-btn__title">ODD/EVEN</strong>
-              <small class="packet-entry-btn__subtitle">{{ t('packetListPage.modeParity') }}</small>
+            <span class="packet-entry-btn__content">
+              <span class="packet-entry-btn__ticker">{{ t('homeLucky.playModeParityDesc') }}</span>
+              <span class="packet-entry-btn__footer">
+                <strong class="packet-entry-btn__title">ODD/EVEN</strong>
+                <small class="packet-entry-btn__subtitle">{{ t('packetListPage.modeParity') }}</small>
+              </span>
             </span>
-          </span>
-        </button>
+          </button>
+          <button type="button" class="trial-entry-btn" @click="goTrial(1)">
+            <span class="trial-entry-btn__icon" aria-hidden="true">
+              <van-icon name="fire-o" />
+            </span>
+            <span class="trial-entry-btn__text">{{ t('homeLucky.trialEntry') }} {{ t('packetListPage.modeParity') }}</span>
+            <van-icon class="trial-entry-btn__arrow" name="arrow" />
+          </button>
+        </div>
       </div>
     </section>
 
@@ -525,8 +550,61 @@ onBeforeUnmount(() => {
   gap: 10px;
 }
 
+.packet-entry-option {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.trial-entry-btn {
+  width: 100%;
+  min-height: 42px;
+  padding: 0 10px;
+  border: 1px solid rgba(255, 221, 149, 0.32);
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(255, 221, 149, 0.18), rgba(92, 0, 0, 0.22)), rgba(36, 2, 2, 0.72);
+  color: #ffe7a8;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  box-shadow:
+    0 10px 20px rgba(0, 0, 0, 0.22),
+    inset 0 0 0 1px rgba(255, 248, 214, 0.05);
+}
+
+.trial-entry-btn__icon {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #ffdf87 0%, #d4af37 100%);
+  color: #5a1b00;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+}
+
+.trial-entry-btn__text {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.trial-entry-btn__arrow {
+  flex-shrink: 0;
+  color: rgba(255, 229, 186, 0.72);
+}
+
 .packet-entry-btn {
   position: relative;
+  width: 100%;
   min-height: 228px;
   padding: 0;
   border-radius: 24px;

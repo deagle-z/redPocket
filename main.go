@@ -93,6 +93,9 @@ func main() {
 		if err = services.EnsureMinActiveLuckyPackets(utils.NewPrefixDb(dbHostInfo.TablePrefix), dbHostInfo.TablePrefix); err != nil {
 			log.Printf("ensure min active lucky packets error.err=%v\n", err)
 		}
+		if err = services.EnsureMinActiveTrialLuckyPackets(utils.NewPrefixDb(dbHostInfo.TablePrefix), dbHostInfo.TablePrefix); err != nil {
+			log.Printf("ensure min active trial lucky packets error.err=%v\n", err)
+		}
 	}
 
 	// 初始化 Telegram Bot（如果配置了）

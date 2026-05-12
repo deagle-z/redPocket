@@ -7,6 +7,12 @@ import { truncate2 } from '@/utils/currency'
 import { resolveGameMode } from '@/utils/lucky-play'
 import type { LuckyPlayType } from '@/utils/lucky-play'
 
+type SendPacketApi = (data: {
+  amount: number
+  gameMode: 0 | 1
+  thunder?: number
+}) => Promise<{ data: any }>
+
 const props = withDefaults(defineProps<{
   variant?: 'page' | 'modal'
   showIntro?: boolean
@@ -15,6 +21,7 @@ const props = withDefaults(defineProps<{
   autoReset?: boolean
   defaultPlayType?: LuckyPlayType
   lockPlayType?: boolean
+  sendApi?: SendPacketApi
 }>(), {
   variant: 'page',
   showIntro: true,
@@ -143,7 +150,8 @@ async function submitPacket() {
 
   submitLoading.value = true
   try {
-    const { data } = await sendLuckyPacket({
+    const api = props.sendApi || sendLuckyPacket
+    const { data } = await api({
       amount,
       gameMode: resolveGameMode(selectedPlayType.value),
       thunder: requiresThunder ? thunder : undefined,

@@ -212,6 +212,13 @@ declare module 'vue-router/auto-routes' {
       Record<never, never>,
       | never
     >,
+    'Trial': RouteRecordInfo<
+      'Trial',
+      '/trial',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
     'VipActivity': RouteRecordInfo<
       'VipActivity',
       '/vipActivity',
@@ -412,6 +419,12 @@ declare module 'vue-router/auto-routes' {
     'src/pages/transform/index.vue': {
       routes:
         | 'Transform'
+      views:
+        | never
+    }
+    'src/pages/trial/index.vue': {
+      routes:
+        | 'Trial'
       views:
         | never
     }

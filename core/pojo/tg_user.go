@@ -28,6 +28,7 @@ type TgUser struct {
 	TgID int64 `gorm:"column:tg_id;index;comment:Telegram 用户ID（唯一且稳定）" json:"tg_id"`
 
 	Balance           float64 `gorm:"type:decimal(20,2);not null;default:0.00;comment:账户可用余额" json:"balance"`
+	TrialBalance      float64 `gorm:"column:trial_balance;type:decimal(20,2);not null;default:10000.00;comment:试玩额度" json:"trialBalance"`
 	GiftAmount        float64 `gorm:"type:decimal(20,2);not null;default:0.00;comment:赠送余额（可用）" json:"gift_amount"`
 	GiftTotal         float64 `gorm:"type:decimal(20,2);not null;default:0.00;comment:累计赠送金额" json:"gift_total"`
 	RechargeAmount    float64 `gorm:"type:decimal(20,2);not null;default:0.00;comment:累计充值金额" json:"recharge_amount"`
@@ -80,6 +81,7 @@ type TgUserSet struct {
 	IsBot             bool     `json:"isBot"`
 	TgID              int64    `json:"tgId"`
 	Balance           float64  `json:"balance"`
+	TrialBalance      float64  `json:"trialBalance"`
 	GiftAmount        float64  `json:"giftAmount"`
 	GiftTotal         float64  `json:"giftTotal"`
 	RebateRate        *float64 `json:"rebateRate"`
@@ -217,6 +219,7 @@ type TgCurrentUserInfo struct {
 	Avatar       *string `json:"avatar"`
 	TenantId     int64   `json:"tenantId"`
 	Balance      float64 `json:"balance"`
+	TrialBalance float64 `json:"trialBalance"`
 	Uid          string  `json:"uid"`
 	Username     *string `json:"username"`
 	FirstName    *string `json:"firstName"`
@@ -275,6 +278,7 @@ type TgUserBack struct {
 	Remark            *string   `json:"remark"`
 	TgID              int64     `json:"tgId"`
 	Balance           float64   `json:"balance"`
+	TrialBalance      float64   `json:"trialBalance"`
 	GiftAmount        float64   `json:"giftAmount"`
 	GiftTotal         float64   `json:"giftTotal"`
 	RebateRate        float64   `json:"rebateRate"`
@@ -308,6 +312,7 @@ type TgUserAdminBack struct {
 	IsBot             bool      `json:"isBot"`
 	TgID              int64     `json:"tgId"`
 	Balance           float64   `json:"balance"`
+	TrialBalance      float64   `json:"trialBalance"`
 	GiftAmount        float64   `json:"giftAmount"`
 	GiftTotal         float64   `json:"giftTotal"`
 	RebateRate        float64   `json:"rebateRate"`

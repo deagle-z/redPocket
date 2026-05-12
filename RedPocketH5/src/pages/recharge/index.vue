@@ -185,6 +185,10 @@ const localAmount = computed(() => {
 })
 
 const localCurrencySymbol = computed(() => selectedCountry.value?.currencySymbol || '')
+const formattedExchangeRate = computed(() => {
+  const rate = Number(selectedCountry.value?.rate || 0)
+  return rate > 0 ? truncate2(rate).toFixed(2) : ''
+})
 
 function chooseAmount(value: number | 'custom') {
   selectedAmount.value = value
@@ -538,6 +542,16 @@ onMounted(() => {
           <p v-else class="empty-tip">
             {{ t('rechargePage.noChannel') }}
           </p>
+          <div v-if="formattedExchangeRate" class="exchange-rate-row">
+            <span class="exchange-rate-label">{{ t('rechargePage.exchangeRate') }}</span>
+            <span class="exchange-rate-value">
+              1
+              <img class="exchange-rate-coin" src="@/assets/svg/coin.svg" alt="">
+              =
+              {{ localCurrencySymbol }} {{ formattedExchangeRate }}
+              <span class="exchange-rate-code">{{ selectedCountry?.currencyCode }}</span>
+            </span>
+          </div>
         </template>
       </section>
 
@@ -1038,6 +1052,50 @@ onMounted(() => {
   height: 18px;
   border-radius: 4px;
   object-fit: contain;
+}
+
+.exchange-rate-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(212, 175, 55, 0.18);
+  background: rgba(255, 248, 214, 0.06);
+}
+
+.exchange-rate-label {
+  flex-shrink: 0;
+  font-size: 12px;
+  color: rgba(255, 229, 186, 0.62);
+}
+
+.exchange-rate-value {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: 0;
+  gap: 4px;
+  color: #ffd87f;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.exchange-rate-coin {
+  width: 14px;
+  height: 14px;
+  object-fit: contain;
+}
+
+.exchange-rate-code {
+  color: rgba(255, 229, 186, 0.64);
+  font-size: 11px;
+  font-weight: 600;
 }
 
 .amount-grid {
