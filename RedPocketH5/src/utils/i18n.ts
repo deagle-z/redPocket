@@ -31,6 +31,7 @@ const messages = {
 }
 type SupportedLocale = keyof typeof messages
 const supportedLocales = Object.keys(messages) as SupportedLocale[]
+const browserMatchLocales = supportedLocales.filter(locale => locale !== 'zh-CN')
 
 export const languageOptions = [
 
@@ -113,6 +114,13 @@ function matchSupportedLocale(locale: string | null): SupportedLocale | undefine
   return supportedLocales.find(v => v === normalizedLocale || v.indexOf(normalizedLocale) === 0)
 }
 
+function matchBrowserLocale(locale: string | null): SupportedLocale | undefined {
+  const normalizedLocale = String(locale || '').trim()
+  if (!normalizedLocale)
+    return undefined
+  return browserMatchLocales.find(v => v === normalizedLocale || v.indexOf(normalizedLocale) === 0)
+}
+
 function normalizeLocale(locale: string | null): SupportedLocale {
   return matchSupportedLocale(locale) || FALLBACK_LOCALE
 }
@@ -127,12 +135,12 @@ function getBrowserLocale(): SupportedLocale | undefined {
   ].filter(Boolean)
 
   for (const browserLocale of browserLocales) {
-    const exactMatch = matchSupportedLocale(browserLocale)
+    const exactMatch = matchBrowserLocale(browserLocale)
     if (exactMatch)
       return exactMatch
 
     const language = browserLocale.split('-')[0]
-    const languageMatch = supportedLocales.find(locale => locale.split('-')[0] === language)
+    const languageMatch = browserMatchLocales.find(locale => locale.split('-')[0] === language)
     if (languageMatch)
       return languageMatch
   }

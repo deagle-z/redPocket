@@ -1115,17 +1115,21 @@ onBeforeUnmount(() => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: fit-content;
+  box-sizing: border-box;
+  width: 100%;
   max-width: 100%;
-  height: 16px;
-  padding: 0 6px;
+  min-height: 16px;
+  padding: 1px 4px;
   border-radius: 999px;
   background: linear-gradient(180deg, #ffdf87 0%, #d4af37 100%);
   color: #5a1b00;
   font-size: 8px;
+  line-height: 1.15;
+  text-align: center;
   margin: 0 auto 2px;
   font-weight: 700;
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .packet-image {

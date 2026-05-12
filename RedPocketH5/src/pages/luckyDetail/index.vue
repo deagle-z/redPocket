@@ -579,21 +579,25 @@ onBeforeUnmount(() => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: fit-content;
+  box-sizing: border-box;
+  width: 100%;
   max-width: 100%;
-  height: 20px;
-  padding: 0 8px;
+  min-height: 20px;
+  padding: 2px 6px;
   margin-bottom: 4px;
   border-radius: 999px;
   background: linear-gradient(180deg, #ffdf87 0%, #d4af37 100%);
   color: #5a1b00;
   font-size: 10px;
+  line-height: 1.15;
+  text-align: center;
   font-weight: 700;
   border: 1px solid rgba(255, 248, 214, 0.5);
   box-shadow:
     0 2px 6px rgba(0, 0, 0, 0.2),
     inset 0 1px 0 rgba(255, 255, 255, 0.3);
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .packet-image {

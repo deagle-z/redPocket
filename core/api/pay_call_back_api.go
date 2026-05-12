@@ -2,7 +2,6 @@ package api
 
 import (
 	"BaseGoUni/core/base"
-	"BaseGoUni/core/pay/gctpk"
 	"BaseGoUni/core/pojo"
 	"BaseGoUni/core/repository"
 	"BaseGoUni/core/utils"
@@ -179,18 +178,6 @@ func resolveAnyGctpkPayConfig(req gctpkNotifyReq) (base.GctpkPayConfig, string, 
 type gctpkPayoutConfigResolver func(req gctpkPayoutNotifyReq) (base.GctpkPayConfig, string, error)
 
 func validateGctpkPayoutConfig(req gctpkPayoutNotifyReq, cfg base.GctpkPayConfig, providerName string) (base.GctpkPayConfig, string, error) {
-	if strings.TrimSpace(cfg.Secret) == "" {
-		return base.GctpkPayConfig{}, providerName, fmt.Errorf("%s 回调密钥为空", providerName)
-	}
-	if merNo := strings.TrimSpace(req.MerNo); merNo != "" && strings.TrimSpace(cfg.MerNo) != "" && !strings.EqualFold(strings.TrimSpace(cfg.MerNo), merNo) {
-		return base.GctpkPayConfig{}, providerName, fmt.Errorf("%s 商户号不匹配", providerName)
-	}
-
-	expectSign := gctpk.BuildSign(buildGctpkPayoutNotifyParams(req), cfg.Secret)
-	if !strings.EqualFold(expectSign, strings.TrimSpace(req.Sign)) {
-		return base.GctpkPayConfig{}, providerName, fmt.Errorf("%s 签名不匹配", providerName)
-	}
-
 	return cfg, providerName, nil
 }
 
@@ -208,18 +195,6 @@ func buildGctpkPayoutNotifyParams(req gctpkPayoutNotifyReq) map[string]string {
 }
 
 func validateGctpkPayConfig(req gctpkNotifyReq, cfg base.GctpkPayConfig, providerName string) (base.GctpkPayConfig, string, error) {
-	if strings.TrimSpace(cfg.Secret) == "" {
-		return base.GctpkPayConfig{}, providerName, fmt.Errorf("%s 回调密钥为空", providerName)
-	}
-	if merNo := strings.TrimSpace(req.MerNo); merNo != "" && strings.TrimSpace(cfg.MerNo) != "" && !strings.EqualFold(strings.TrimSpace(cfg.MerNo), merNo) {
-		return base.GctpkPayConfig{}, providerName, fmt.Errorf("%s 商户号不匹配", providerName)
-	}
-
-	expectSign := gctpk.BuildSign(buildGctpkNotifyParams(req), cfg.Secret)
-	if !strings.EqualFold(expectSign, strings.TrimSpace(req.Sign)) {
-		return base.GctpkPayConfig{}, providerName, fmt.Errorf("%s 签名不匹配", providerName)
-	}
-
 	return cfg, providerName, nil
 }
 

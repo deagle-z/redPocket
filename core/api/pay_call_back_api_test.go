@@ -60,3 +60,44 @@ func TestValidateGctpkPayoutConfigAcceptsSignedNotify(t *testing.T) {
 		t.Fatalf("validateGctpkPayoutConfig() error = %v", err)
 	}
 }
+
+func TestGctpkPayoutCallbackConfigDoesNotRequireMerchantOrSignMatch(t *testing.T) {
+	req := gctpkPayoutNotifyReq{
+		MerNo:       "callback-merchant",
+		MerOrderNo:  "RC20260511143309rrELN2",
+		OrderNo:     "2605113000000394280561965",
+		OrderAmount: "100.00",
+		PayTime:     "2026-05-12 12:32:18",
+		Status:      7,
+		Sign:        "",
+	}
+	cfg := base.GctpkPayConfig{
+		MerNo:  "configured-merchant",
+		Secret: "configured-secret",
+	}
+
+	if _, _, err := validateGctpkPayoutConfig(req, cfg, "GCTPKMXN"); err != nil {
+		t.Fatalf("validateGctpkPayoutConfig() error = %v", err)
+	}
+}
+
+func TestGctpkPayinCallbackConfigDoesNotRequireMerchantOrSignMatch(t *testing.T) {
+	req := gctpkNotifyReq{
+		PayAmount:  "100.00",
+		OrderNo:    "2605113000000394280561965",
+		MerNo:      "callback-merchant",
+		MerOrderNo: "RC20260511143309rrELN2",
+		PayTime:    "2026-05-12 12:32:18",
+		BusiCode:   "107001",
+		Status:     5,
+		Sign:       "",
+	}
+	cfg := base.GctpkPayConfig{
+		MerNo:  "configured-merchant",
+		Secret: "configured-secret",
+	}
+
+	if _, _, err := validateGctpkPayConfig(req, cfg, "GCTPKMXN"); err != nil {
+		t.Fatalf("validateGctpkPayConfig() error = %v", err)
+	}
+}
