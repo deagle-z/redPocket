@@ -76,12 +76,25 @@ func (g *Provider) CreateOrder(req pay.PayRequest) (pay.PayResponse, error) {
 	if apiResp.Code != 200 {
 		return pay.PayResponse{}, fmt.Errorf("GCTPK 下单失败: %s", apiResp.Msg)
 	}
-
-	payURL := ""
-	if apiResp.Data != nil {
-		payURL = apiResp.Data.PayURL
+	if apiResp.Data == nil {
+		return pay.PayResponse{}, fmt.Errorf("GCTPK 下单失败: data is empty")
 	}
-	return pay.PayResponse{PayURL: payURL}, nil
+	if apiResp.Data.Status != 2 {
+		return pay.PayResponse{}, fmt.Errorf("GCTPK 下单失败 status=%d code=%s msg=%s",
+			apiResp.Data.Status,
+			strings.TrimSpace(apiResp.Data.SubCode),
+			createOrderDataErrorMessage(apiResp.Msg, apiResp.Data.SubMsg),
+		)
+	}
+
+	payURL := apiResp.Data.PayURL
+	if strings.TrimSpace(payURL) == "" {
+		payURL = apiResp.Data.OrderData
+	}
+	return pay.PayResponse{
+		PayURL:          payURL,
+		ProviderTradeNo: apiResp.Data.OrderNo,
+	}, nil
 }
 
 // resolveBusiCode 从 ExtraFields["busiCode"] 取，或用 PayMethod 兜底，再回退默认值
@@ -245,7 +258,22 @@ type createOrderResp struct {
 }
 
 type createOrderData struct {
-	PayURL string `json:"payUrl"`
+	MerOrderNo string `json:"merOrderNo"`
+	OrderNo    string `json:"orderNo"`
+	SubCode    string `json:"subCode"`
+	SubMsg     string `json:"subMsg"`
+	Status     int    `json:"status"`
+	PayURL     string `json:"payUrl"`
+	OrderData  string `json:"orderData"`
+	Common     string `json:"common"`
+	Sign       string `json:"sign"`
+}
+
+func createOrderDataErrorMessage(apiMsg string, subMsg string) string {
+	if v := strings.TrimSpace(subMsg); v != "" {
+		return v
+	}
+	return strings.TrimSpace(apiMsg)
 }
 
 type payoutOrderResp struct {
