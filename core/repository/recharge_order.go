@@ -12,6 +12,7 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 	"log"
+	"math"
 	"regexp"
 	"strconv"
 	"strings"
@@ -340,7 +341,7 @@ func AppCreateRechargeOrder(db *gorm.DB, userID int64, req pojo.RechargeOrderApp
 	}
 	providerAmount := req.Amount
 	if country.ID > 0 && country.Rate > 0 {
-		providerAmount = utils.Truncate2(req.Amount * country.Rate)
+		providerAmount = ceilProviderAmount(req.Amount * country.Rate)
 	}
 
 	var tgUser pojo.TgUser
@@ -457,6 +458,13 @@ func AppCreateRechargeOrder(db *gorm.DB, userID int64, req pojo.RechargeOrderApp
 		PayURL:          payResp.PayURL,
 	}
 	return result, nil
+}
+
+func ceilProviderAmount(amount float64) float64 {
+	if amount <= 0 || math.IsNaN(amount) || math.IsInf(amount, 0) {
+		return 0
+	}
+	return math.Ceil(amount)
 }
 
 // ProcessRechargeOrderSuccess 处理代收支付成功回调，入账并更新订单状态

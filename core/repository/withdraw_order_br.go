@@ -391,7 +391,7 @@ func submitWithdrawPayout(db *gorm.DB, order *pojo.WithdrawOrderBr) error {
 	if countryCode != "" {
 		var country pojo.SysCountry
 		if err := db.Select("rate").Where("country_code = ?", countryCode).First(&country).Error; err == nil && country.Rate > 0 {
-			providerAmount = utils.Truncate2(amount * country.Rate)
+			providerAmount = ceilProviderAmount(amount * country.Rate)
 		}
 	}
 
