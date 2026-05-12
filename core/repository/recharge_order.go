@@ -298,10 +298,10 @@ func AppCreateRechargeOrder(db *gorm.DB, userID int64, req pojo.RechargeOrderApp
 		req.Currency = "BRL"
 	}
 	req.CountryCode = strings.TrimSpace(req.CountryCode)
+	var country pojo.SysCountry
 
 	// 若提供了 countryCode，根据国家字段配置校验 extraFields
 	if req.CountryCode != "" {
-		var country pojo.SysCountry
 		db.Where("country_code = ? AND status = 1", req.CountryCode).First(&country)
 		if country.ID == 0 {
 			return result, errors.New("country_not_available")
@@ -337,6 +337,10 @@ func AppCreateRechargeOrder(db *gorm.DB, userID int64, req pojo.RechargeOrderApp
 				}
 			}
 		}
+	}
+	providerAmount := req.Amount
+	if country.ID > 0 && country.Rate > 0 {
+		providerAmount = utils.Truncate2(req.Amount * country.Rate)
 	}
 
 	var tgUser pojo.TgUser
@@ -382,15 +386,16 @@ func AppCreateRechargeOrder(db *gorm.DB, userID int64, req pojo.RechargeOrderApp
 
 	orderNo := buildRechargeOrderNo()
 	payResp, err := provider.CreateOrder(pay.PayRequest{
-		OrderNo:     orderNo,
-		Amount:      req.Amount,
-		Currency:    req.Currency,
-		PayMethod:   req.PayMethod,
-		CountryCode: req.CountryCode,
-		ExtraFields: req.ExtraFields,
+		OrderNo:        orderNo,
+		Amount:         req.Amount,
+		ProviderAmount: providerAmount,
+		Currency:       req.Currency,
+		PayMethod:      req.PayMethod,
+		CountryCode:    req.CountryCode,
+		ExtraFields:    req.ExtraFields,
 	})
 	if err != nil {
-		log.Printf("[AppCreateRechargeOrder] 三方创建订单失败 userID=%d orderNo=%s channel=%s amount=%.2f err=%v", userID, orderNo, req.Channel, req.Amount, err)
+		log.Printf("[AppCreateRechargeOrder] 三方创建订单失败 userID=%d orderNo=%s channel=%s amount=%.2f providerAmount=%.2f currency=%s country=%s err=%v", userID, orderNo, req.Channel, req.Amount, providerAmount, req.Currency, req.CountryCode, err)
 		return result, err
 	}
 

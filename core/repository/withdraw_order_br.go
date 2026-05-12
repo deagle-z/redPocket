@@ -387,6 +387,13 @@ func submitWithdrawPayout(db *gorm.DB, order *pojo.WithdrawOrderBr) error {
 	if amount <= 0 {
 		return errors.New("withdraw_payout_amount_invalid")
 	}
+	providerAmount := amount
+	if countryCode != "" {
+		var country pojo.SysCountry
+		if err := db.Select("rate").Where("country_code = ?", countryCode).First(&country).Error; err == nil && country.Rate > 0 {
+			providerAmount = utils.Truncate2(amount * country.Rate)
+		}
+	}
 
 	accNo := firstWithdrawValue(
 		ptrValue(order.PixKey),
@@ -398,9 +405,10 @@ func submitWithdrawPayout(db *gorm.DB, order *pojo.WithdrawOrderBr) error {
 		withdrawCountryFieldValue(extraFields, countryCode, "bankCode", "bnakCode", "bank"),
 	)
 	req := pay.PayoutRequest{
-		OrderNo:  merchantOrderNo,
-		Amount:   amount,
-		Currency: strings.TrimSpace(order.Currency),
+		OrderNo:        merchantOrderNo,
+		Amount:         amount,
+		ProviderAmount: providerAmount,
+		Currency:       strings.TrimSpace(order.Currency),
 		AccName: firstWithdrawValue(
 			ptrValue(order.ReceiverName),
 			withdrawCountryFieldValue(extraFields, countryCode, "accName", "receiverName", "name", "fullName", "accountName"),

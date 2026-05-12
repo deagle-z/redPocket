@@ -45,6 +45,7 @@ func (g *Provider) CreateOrder(req pay.PayRequest) (pay.PayResponse, error) {
 	}
 
 	timestamp := fmt.Sprintf("%d", time.Now().UnixMilli())
+	orderAmount := pay.ResolveOrderAmount(req)
 
 	// 必填参数
 	params := map[string]string{
@@ -53,7 +54,7 @@ func (g *Provider) CreateOrder(req pay.PayRequest) (pay.PayResponse, error) {
 		"name":        req.ExtraFields["name"],
 		"email":       req.ExtraFields["email"],
 		"phone":       req.ExtraFields["phone"],
-		"orderAmount": fmt.Sprintf("%.2f", req.Amount),
+		"orderAmount": fmt.Sprintf("%.2f", orderAmount),
 		"currency":    "IDR",
 		"busiCode":    resolveBusiCode(req, "104004"),
 		"pageUrl":     resolvePageURL(cfg, req),
@@ -151,6 +152,7 @@ func (g *Provider) CreatePayoutOrder(req pay.PayoutRequest) (pay.PayoutResponse,
 	}
 
 	timestamp := fmt.Sprintf("%d", time.Now().UnixMilli())
+	orderAmount := pay.ResolvePayoutAmount(req)
 
 	params := map[string]string{
 		"merNo":       cfg.MerNo,
@@ -162,7 +164,7 @@ func (g *Provider) CreatePayoutOrder(req pay.PayoutRequest) (pay.PayoutResponse,
 		"currency":    req.Currency,
 		"email":       req.Email,
 		"notifyUrl":   notifyURL,
-		"orderAmount": fmt.Sprintf("%.2f", req.Amount),
+		"orderAmount": fmt.Sprintf("%.2f", orderAmount),
 		"phone":       req.Phone,
 		"timestamp":   timestamp,
 	}

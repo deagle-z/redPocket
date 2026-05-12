@@ -8,14 +8,15 @@ import (
 
 // PayRequest 发起支付的请求参数
 type PayRequest struct {
-	OrderNo     string
-	Amount      float64
-	Currency    string
-	PayMethod   string
-	CountryCode string
-	ExtraFields map[string]string
-	NotifyURL   string
-	ReturnURL   string
+	OrderNo        string
+	Amount         float64
+	ProviderAmount float64
+	Currency       string
+	PayMethod      string
+	CountryCode    string
+	ExtraFields    map[string]string
+	NotifyURL      string
+	ReturnURL      string
 }
 
 // PayResponse 三方支付创单响应
@@ -33,21 +34,36 @@ type Provider interface {
 	CreateOrder(req PayRequest) (PayResponse, error)
 }
 
+func ResolveOrderAmount(req PayRequest) float64 {
+	if req.ProviderAmount > 0 {
+		return req.ProviderAmount
+	}
+	return req.Amount
+}
+
 // PayoutRequest 代付下单请求参数
 type PayoutRequest struct {
-	OrderNo      string
-	Amount       float64
-	Currency     string
-	AccName      string            // 收款人姓名
-	AccNo        string            // 收款账号/卡号
-	BankCode     string            // 银行编码
-	IdentityType string            // 出款类型/账号类型
-	IdentityNo   string            // 身份证号/身份ID
-	BusiCode     string            // 支付业务编码
-	Email        string            // 邮箱
-	Phone        string            // 手机号
-	NotifyURL    string            // 回调地址
-	ExtraFields  map[string]string // extend/province 等扩展字段
+	OrderNo        string
+	Amount         float64
+	ProviderAmount float64
+	Currency       string
+	AccName        string            // 收款人姓名
+	AccNo          string            // 收款账号/卡号
+	BankCode       string            // 银行编码
+	IdentityType   string            // 出款类型/账号类型
+	IdentityNo     string            // 身份证号/身份ID
+	BusiCode       string            // 支付业务编码
+	Email          string            // 邮箱
+	Phone          string            // 手机号
+	NotifyURL      string            // 回调地址
+	ExtraFields    map[string]string // extend/province 等扩展字段
+}
+
+func ResolvePayoutAmount(req PayoutRequest) float64 {
+	if req.ProviderAmount > 0 {
+		return req.ProviderAmount
+	}
+	return req.Amount
 }
 
 // PayoutResponse 代付下单响应
