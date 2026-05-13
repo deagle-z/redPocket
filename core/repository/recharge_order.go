@@ -1219,6 +1219,7 @@ func parseFirstRechargeGiftConfigV2(raw string) (firstRechargeGiftConfigV2, erro
 }
 
 func firstRechargeGiftV2DayIndex(startAt time.Time, payAt time.Time) (int, bool) {
+	startAt = startAt.In(payAt.Location())
 	startDay, _ := naturalDayRange(startAt)
 	payDay, _ := naturalDayRange(payAt)
 	if payDay.Before(startDay) {

@@ -52,9 +52,9 @@ function goPacketList(mode: 0 | 1) {
   })
 }
 
-function goTrial(mode: 0 | 1) {
+function goDemo(mode: 0 | 1) {
   router.push({
-    path: '/trial',
+    path: '/demo',
     query: { mode: String(mode) },
   })
 }
@@ -351,7 +351,7 @@ onBeforeUnmount(() => {
               </span>
             </span>
           </button>
-          <button type="button" class="trial-entry-btn" @click="goTrial(0)">
+          <button type="button" class="trial-entry-btn" @click="goDemo(0)">
             <span class="trial-entry-btn__icon" aria-hidden="true">
               <van-icon name="fire-o" />
             </span>
@@ -386,7 +386,7 @@ onBeforeUnmount(() => {
               </span>
             </span>
           </button>
-          <button type="button" class="trial-entry-btn" @click="goTrial(1)">
+          <button type="button" class="trial-entry-btn" @click="goDemo(1)">
             <span class="trial-entry-btn__icon" aria-hidden="true">
               <van-icon name="fire-o" />
             </span>

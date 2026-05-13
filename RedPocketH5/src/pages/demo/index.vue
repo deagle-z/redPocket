@@ -1204,6 +1204,6 @@ onBeforeUnmount(() => {
 
 <route lang="json5">
 {
-  name: 'Trial',
+  name: 'Demo',
 }
 </route>

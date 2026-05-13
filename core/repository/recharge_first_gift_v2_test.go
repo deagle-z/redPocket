@@ -61,6 +61,20 @@ func TestFirstRechargeGiftV2DayIndex(t *testing.T) {
 	}
 }
 
+func TestFirstRechargeGiftV2DayIndexUsesPayTimeLocation(t *testing.T) {
+	loc := time.FixedZone("Asia/Shanghai", 8*60*60)
+	start := time.Date(2026, 5, 13, 15, 55, 15, 0, time.UTC)
+	pay := time.Date(2026, 5, 13, 23, 55, 15, 0, loc)
+
+	got, ok := firstRechargeGiftV2DayIndex(start, pay)
+	if !ok {
+		t.Fatalf("ok = false, want true")
+	}
+	if got != 1 {
+		t.Fatalf("day = %d, want 1", got)
+	}
+}
+
 func TestCalculateFirstRechargeGiftV2Amount(t *testing.T) {
 	got := calculateFirstRechargeGiftV2Amount(50000, 30)
 	if got != 15000 {

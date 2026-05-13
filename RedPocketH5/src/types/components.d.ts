@@ -39,9 +39,7 @@ declare module 'vue' {
     VanLoading: typeof import('vant/es')['Loading']
     VanNoticeBar: typeof import('vant/es')['NoticeBar']
     VanOverlay: typeof import('vant/es')['Overlay']
-    VanPicker: typeof import('vant/es')['Picker']
     VanPopup: typeof import('vant/es')['Popup']
-    VanPullRefresh: typeof import('vant/es')['PullRefresh']
     VanSkeleton: typeof import('vant/es')['Skeleton']
     VanSkeletonAvatar: typeof import('vant/es')['SkeletonAvatar']
     VanSkeletonImage: typeof import('vant/es')['SkeletonImage']
@@ -49,10 +47,8 @@ declare module 'vue' {
     VanSwipe: typeof import('vant/es')['Swipe']
     VanSwipeItem: typeof import('vant/es')['SwipeItem']
     VanSwitch: typeof import('vant/es')['Switch']
-    VanTab: typeof import('vant/es')['Tab']
     VanTabbar: typeof import('vant/es')['Tabbar']
     VanTabbarItem: typeof import('vant/es')['TabbarItem']
-    VanTabs: typeof import('vant/es')['Tabs']
     VipProgressPopup: typeof import('./../components/VipProgressPopup.vue')['default']
   }
 }

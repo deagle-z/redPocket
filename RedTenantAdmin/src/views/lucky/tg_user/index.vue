@@ -72,8 +72,8 @@ const subStatsPagination = reactive({
 });
 
 function formatMoney(val?: number | null) {
-  if (typeof val !== "number" || Number.isNaN(val)) return "0.000";
-  return val.toFixed(3);
+  if (val === null || val === undefined || Number.isNaN(Number(val))) return "0";
+  return String(val);
 }
 
 function formatName(row: { id?: number; username?: string | null; firstName?: string | null }) {

@@ -28,8 +28,8 @@ function formatNullable(val?: string | null) {
 }
 
 function formatMoney(val?: number | null) {
-  if (typeof val !== "number" || Number.isNaN(val)) return "0.000";
-  return val.toFixed(3);
+  if (val === null || val === undefined || Number.isNaN(Number(val))) return "0";
+  return String(val);
 }
 
 function formatPercent(val?: number | null) {
