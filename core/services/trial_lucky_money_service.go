@@ -161,15 +161,6 @@ func GrabTrialRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix st
 				return errors.New("odd_even_guess_required")
 			}
 		}
-		var exists int64
-		if err := tx.Model(&pojo.TrialLuckyHistory{}).
-			Where("lucky_id = ? AND user_id = ? AND actor_type = ? AND grab_type = ?", lucky.ID, userID, pojo.TrialActorUser, 1).
-			Count(&exists).Error; err != nil {
-			return err
-		}
-		if exists > 0 {
-			return errors.New("already_grabbed")
-		}
 		var user pojo.TgUser
 		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ?", userID).First(&user).Error; err != nil {
 			return errors.New("user_not_found")
@@ -246,7 +237,7 @@ func GrabTrialRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix st
 		if err := createTrialCashHistory(tx, pojo.TrialCashHistory{
 			UserId:      user.ID,
 			ActorType:   pojo.TrialActorUser,
-			AwardUni:    fmt.Sprintf("trial_grab_%d_%d", lucky.ID, user.ID),
+			AwardUni:    fmt.Sprintf("trial_grab_%d_%d_%d_%d", lucky.ID, user.ID, item.SeqNo, now.UnixNano()),
 			Amount:      actualAmount,
 			StartAmount: startBalance,
 			EndAmount:   endBalance,
