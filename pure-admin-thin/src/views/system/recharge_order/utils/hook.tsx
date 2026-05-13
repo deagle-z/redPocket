@@ -33,7 +33,33 @@ function getStatusType(status: number) {
   return "info";
 }
 
+function getActivityTypeLabel(activityType?: number | null) {
+  if (activityType === 1) return "首充活动";
+  if (activityType === 2) return "今日首充";
+  return "无";
+}
+
+function getActivityTypeTagType(activityType?: number | null) {
+  if (activityType === 1) return "success";
+  if (activityType === 2) return "warning";
+  return "info";
+}
+
 const callbackLoadingIds = ref<Set<number>>(new Set());
+
+function formatMoney(value: number | string | null | undefined) {
+  const amount = Number(value ?? 0);
+  return Number.isFinite(amount)
+    ? amount.toLocaleString("en-US", { maximumFractionDigits: 2 })
+    : "0";
+}
+
+function formatMoneyWithCurrency(
+  value: number | string | null | undefined,
+  currency?: string | null
+) {
+  return `${formatMoney(value)} ${currency || ""}`.trim();
+}
 
 export function useRechargeOrder(tableRef: Ref) {
   const form = reactive({
@@ -71,20 +97,39 @@ export function useRechargeOrder(tableRef: Ref) {
       label: "金额",
       prop: "amount",
       minWidth: 140,
-      formatter: ({ amount, currency }) => `${amount.toFixed(6)} ${currency}`
+      formatter: ({ amount }) => formatMoney(amount)
     },
     {
       label: "手续费",
       prop: "fee",
       minWidth: 120,
-      formatter: ({ fee, currency }) => `${fee.toFixed(6)} ${currency}`
+      formatter: ({ fee }) => formatMoney(fee)
     },
     {
       label: "净入账",
       prop: "netAmount",
       minWidth: 120,
       formatter: ({ netAmount, currency }) =>
-        `${netAmount.toFixed(6)} ${currency}`
+        formatMoneyWithCurrency(netAmount, currency)
+    },
+    {
+      label: "赠送金额",
+      prop: "bonusAmount",
+      minWidth: 120,
+      formatter: ({ bonusAmount }) => formatMoney(bonusAmount)
+    },
+    {
+      label: "活动类型",
+      prop: "activityType",
+      minWidth: 120,
+      cellRenderer: scope => (
+        <ElTag
+          type={getActivityTypeTagType(scope.row.activityType)}
+          effect="plain"
+        >
+          {getActivityTypeLabel(scope.row.activityType)}
+        </ElTag>
+      )
     },
     {
       label: "渠道",

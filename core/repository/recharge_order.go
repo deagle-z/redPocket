@@ -152,6 +152,9 @@ func SetRechargeOrder(db *gorm.DB, req pojo.RechargeOrderSet) (result pojo.Recha
 	if req.Fee > 0 {
 		req.Fee = utils.Truncate2(req.Fee)
 	}
+	if req.NetAmount > 0 {
+		req.NetAmount = utils.Truncate2(req.NetAmount)
+	}
 	if req.CreditAmount != nil {
 		creditAmount := utils.Truncate2(*req.CreditAmount)
 		req.CreditAmount = &creditAmount
@@ -425,6 +428,7 @@ func AppCreateRechargeOrder(db *gorm.DB, userID int64, req pojo.RechargeOrderApp
 		Currency:        req.Currency,
 		Amount:          req.Amount,
 		Fee:             0,
+		NetAmount:       providerAmount,
 		BonusAmount:     0,
 		Status:          0, // 待支付
 		ProviderTradeNo: providerTradeNo,
@@ -453,8 +457,10 @@ func AppCreateRechargeOrder(db *gorm.DB, userID int64, req pojo.RechargeOrderApp
 		PayMethod:       order.PayMethod,
 		Currency:        order.Currency,
 		Amount:          order.Amount,
+		NetAmount:       order.NetAmount,
 		Status:          order.Status,
 		CreditAmount:    order.CreditAmount,
+		BonusAmount:     order.BonusAmount,
 		PayURL:          payResp.PayURL,
 	}
 	return result, nil
@@ -472,6 +478,16 @@ func floorRechargeAmount(amount float64) float64 {
 		return 0
 	}
 	return math.Floor(amount)
+}
+
+func addRechargeOrderBonusAmount(tx *gorm.DB, orderID int64, bonusAmount float64) error {
+	bonusAmount = utils.Truncate2(bonusAmount)
+	if tx == nil || orderID <= 0 || bonusAmount <= 0 {
+		return nil
+	}
+	return tx.Model(&pojo.RechargeOrder{}).
+		Where("id = ?", orderID).
+		Update("bonus_amount", gorm.Expr("bonus_amount + ?", bonusAmount)).Error
 }
 
 // ProcessRechargeOrderSuccess 处理代收支付成功回调，入账并更新订单状态
@@ -1279,6 +1295,10 @@ func applyFirstRechargeGiftV2OrderGift(tx *gorm.DB, order pojo.RechargeOrder, us
 		log.Printf("[recharge] first recharge gift v2 order gift create cash history failed orderNo=%s userID=%d awardUni=%s err=%v", order.OrderNo, userID, awardUni, err)
 		return err
 	}
+	if err := addRechargeOrderBonusAmount(tx, order.ID, giftAmount); err != nil {
+		log.Printf("[recharge] first recharge gift v2 order gift update order bonus failed orderNo=%s userID=%d awardUni=%s err=%v", order.OrderNo, userID, awardUni, err)
+		return err
+	}
 	log.Printf("[recharge] first recharge gift v2 order gift cash history created orderNo=%s userID=%d awardUni=%s cashHistoryID=%d giftAmount=%.2f",
 		order.OrderNo, userID, awardUni, history.ID, giftAmount)
 
@@ -1360,6 +1380,9 @@ func applyTodayFirstRechargeGift(tx *gorm.DB, order pojo.RechargeOrder, user poj
 		SourceChannelID: order.SourceChannelID,
 	}
 	if err = tx.Create(&history).Error; err != nil {
+		return err
+	}
+	if err = addRechargeOrderBonusAmount(tx, order.ID, giftAmount); err != nil {
 		return err
 	}
 
@@ -1494,6 +1517,9 @@ func applyFirstRechargeGiftInstallment(tx *gorm.DB, order pojo.RechargeOrder, us
 		SourceChannelID: order.SourceChannelID,
 	}
 	if err := tx.Create(&history).Error; err != nil {
+		return err
+	}
+	if err := addRechargeOrderBonusAmount(tx, order.ID, installment.GiftAmount); err != nil {
 		return err
 	}
 

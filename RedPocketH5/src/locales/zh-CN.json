@@ -357,7 +357,8 @@
     "todayFirstTitle": "今日首次充值优惠",
     "todayFirstDesc": "今日首次存款即可享受额外奖励",
     "requiredField": "{field} 不能为空",
-    "invalidField": "{field} 格式不正确"
+    "invalidField": "{field} 格式不正确",
+    "noSelectOptions": "暂无可选项"
   },
   "withdrawPage": {
     "title": "提现",

@@ -3,11 +3,13 @@ package repository
 import (
 	"BaseGoUni/core/pojo"
 	"BaseGoUni/core/utils"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/jinzhu/copier"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
+	"math"
 	"strings"
 	"time"
 )
@@ -123,6 +125,7 @@ func SetWithdrawOrderBr(db *gorm.DB, tenantID int64, req pojo.WithdrawOrderBrSet
 			oldStatus := dbOrder.Status
 			mergeTenantWithdrawOrderUpdate(&dbOrder, req)
 			ensureTenantWithdrawMerchantOrderNo(&dbOrder)
+			fillTenantWithdrawOrderNetAmount(tx, &dbOrder)
 			if err := tx.Save(&dbOrder).Error; err != nil {
 				return err
 			}
@@ -136,6 +139,7 @@ func SetWithdrawOrderBr(db *gorm.DB, tenantID int64, req pojo.WithdrawOrderBrSet
 
 		_ = copier.Copy(&dbOrder, &req)
 		ensureTenantWithdrawMerchantOrderNo(&dbOrder)
+		fillTenantWithdrawOrderNetAmount(tx, &dbOrder)
 		return tx.Create(&dbOrder).Error
 	})
 	if err != nil {
@@ -280,6 +284,84 @@ func ensureTenantWithdrawMerchantOrderNo(order *pojo.WithdrawOrderBr) {
 	}
 	value := fmt.Sprintf("ST%s%s", time.Now().Format("060102150405"), utils.RandomString(8))
 	order.MerchantOrderNo = &value
+}
+
+func fillTenantWithdrawOrderNetAmount(db *gorm.DB, order *pojo.WithdrawOrderBr) {
+	if order == nil {
+		return
+	}
+	order.Amount = utils.Truncate2(order.Amount)
+	order.Fee = utils.Truncate2(order.Fee)
+	order.NetAmount = calculateTenantWithdrawNetAmount(order.Amount, order.Fee, tenantWithdrawOrderCountryRate(db, *order))
+}
+
+func calculateTenantWithdrawNetAmount(amount float64, fee float64, rate float64) float64 {
+	baseAmount := utils.Truncate2(amount) - utils.Truncate2(fee)
+	if baseAmount <= 0 {
+		return 0
+	}
+	if rate <= 0 {
+		rate = 1
+	}
+	converted := baseAmount * rate
+	if converted <= 0 || math.IsNaN(converted) || math.IsInf(converted, 0) {
+		return 0
+	}
+	return math.Ceil(converted)
+}
+
+func tenantWithdrawOrderCountryRate(db *gorm.DB, order pojo.WithdrawOrderBr) float64 {
+	countryCode := pojo.NormalizeWithdrawCountryCode(order.CountryCode)
+	if countryCode == "" {
+		countryCode = pojo.NormalizeWithdrawCountryCode(tenantWithdrawFieldValue(tenantWithdrawOrderExtraFields(order.Extra), "countryCode"))
+	}
+	if db == nil || countryCode == "" {
+		return 1
+	}
+
+	var country pojo.SysCountry
+	if err := db.Select("rate").
+		Where("country_code = ? AND status = 1", countryCode).
+		First(&country).Error; err != nil || country.Rate <= 0 {
+		return 1
+	}
+	return country.Rate
+}
+
+func tenantWithdrawOrderExtraFields(extra *string) map[string]string {
+	fields := map[string]string{}
+	if extra == nil || strings.TrimSpace(*extra) == "" {
+		return fields
+	}
+	var raw map[string]any
+	if err := json.Unmarshal([]byte(*extra), &raw); err != nil {
+		return fields
+	}
+	flattenTenantWithdrawExtraFields(fields, raw)
+	if nested, ok := raw["fieldValues"].(map[string]any); ok {
+		flattenTenantWithdrawExtraFields(fields, nested)
+	}
+	return fields
+}
+
+func flattenTenantWithdrawExtraFields(fields map[string]string, raw map[string]any) {
+	for key, value := range raw {
+		switch typed := value.(type) {
+		case string:
+			fields[key] = strings.TrimSpace(typed)
+		case float64, bool:
+			fields[key] = strings.TrimSpace(fmt.Sprint(typed))
+		}
+	}
+}
+
+func tenantWithdrawFieldValue(fields map[string]string, aliases ...string) string {
+	for _, alias := range aliases {
+		if value := strings.TrimSpace(fields[alias]); value != "" {
+			return value
+		}
+	}
+	return ""
 }
 
 func needTenantWithdrawRefund(oldStatus int, newStatus int) bool {

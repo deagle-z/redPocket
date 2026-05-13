@@ -73,8 +73,13 @@ func SetTgUser(db *gorm.DB, tenantID int64, req pojo.TgUserSet) (result pojo.TgU
 		if dbUser.ID == 0 {
 			return result, errors.New("更新的数据不存在")
 		}
-		_ = copier.Copy(&dbUser, &req)
-		err = db.Save(&dbUser).Error
+		updates := buildTenantTgUserUpdateMap(req)
+		if len(updates) > 0 {
+			err = db.Model(&pojo.TgUser{}).Where("id = ? and tenant_id = ?", dbUser.ID, tenantID).Updates(updates).Error
+		}
+		if err == nil {
+			db.Where("id = ? and tenant_id = ?", dbUser.ID, tenantID).First(&dbUser)
+		}
 	} else {
 		_ = copier.Copy(&dbUser, &req)
 		err = db.Create(&dbUser).Error
@@ -84,6 +89,31 @@ func SetTgUser(db *gorm.DB, tenantID int64, req pojo.TgUserSet) (result pojo.TgU
 	}
 	_ = copier.Copy(&result, &dbUser)
 	return result, nil
+}
+
+func buildTenantTgUserUpdateMap(req pojo.TgUserSet) map[string]any {
+	updates := map[string]any{
+		"username":            req.Username,
+		"first_name":          req.FirstName,
+		"avatar":              req.Avatar,
+		"phone":               req.Phone,
+		"country":             req.Country,
+		"ip":                  req.Ip,
+		"region":              req.Region,
+		"remark":              req.Remark,
+		"is_bot":              req.IsBot,
+		"tg_id":               req.TgID,
+		"status":              req.Status,
+		"parent_id":           req.ParentID,
+		"invite_code":         req.InviteCode,
+		"source_channel_id":   req.SourceChannelID,
+		"source_channel_code": req.SourceChannelCode,
+		"tenant_id":           req.TenantId,
+	}
+	if req.RebateRate != nil {
+		updates["rebate_rate"] = utils.Truncate2(*req.RebateRate)
+	}
+	return updates
 }
 
 func SetTgUserStatus(db *gorm.DB, tenantID int64, id int64, status int8) (result pojo.TgUserBack, err error) {

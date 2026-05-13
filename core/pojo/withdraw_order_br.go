@@ -19,7 +19,7 @@ type WithdrawOrderBr struct { // 巴西地区提现订单（Pix/TED/DOC）
 	CountryCode              string     `json:"countryCode" gorm:"column:country_code;type:varchar(8);index"`                                   // 国家编码
 	Amount                   float64    `json:"amount" gorm:"column:amount;type:numeric(18,2)"`                                                 // 提现金额
 	Fee                      float64    `json:"fee" gorm:"column:fee;type:numeric(18,2);default:0"`                                             // 手续费
-	NetAmount                float64    `json:"netAmount" gorm:"column:net_amount;type:numeric(18,2);->"`                                       // 实际打款金额（只读）
+	NetAmount                float64    `json:"netAmount" gorm:"column:net_amount;type:numeric(18,2)"`                                          // 实际提交通道金额
 	Channel                  string     `json:"channel" gorm:"column:channel;type:varchar(32);default:pix"`                                     // 渠道
 	PayMethod                *string    `json:"payMethod" gorm:"column:pay_method;type:varchar(32)"`                                            // 方式/子渠道
 	Status                   int        `json:"status" gorm:"column:status;type:tinyint;default:0"`                                             // 状态：0待审核 1待打款 2打款中 3成功 4失败 5取消 6退回

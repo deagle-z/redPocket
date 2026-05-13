@@ -22,7 +22,7 @@ type RechargeOrder struct { // 充值记录/充值订单表
 	Currency             string     `json:"currency" gorm:"column:currency;type:varchar(8);default:USD"`                                                // 币种
 	Amount               float64    `json:"amount" gorm:"column:amount;type:numeric(18,2)"`                                                             // 充值金额
 	Fee                  float64    `json:"fee" gorm:"column:fee;type:numeric(18,2);default:0"`                                                         // 手续费
-	NetAmount            float64    `json:"netAmount" gorm:"column:net_amount;type:numeric(18,2);->"`                                                   // 净入账金额（只读）
+	NetAmount            float64    `json:"netAmount" gorm:"column:net_amount;type:numeric(18,2)"`                                                      // 三方换算金额/净额
 	CreditAmount         *float64   `json:"creditAmount" gorm:"column:credit_amount;type:numeric(18,2)"`                                                // 实际入账金额（可选）
 	BonusAmount          float64    `json:"bonusAmount" gorm:"column:bonus_amount;type:numeric(18,2);default:0"`                                        // 赠送金额
 	Status               int        `json:"status" gorm:"column:status;type:tinyint;default:0;index:idx_recharge_order_user_first_recharge,priority:3"` // 状态
@@ -76,6 +76,7 @@ type RechargeOrderSet struct {
 	Currency        string     `json:"currency"`
 	Amount          float64    `json:"amount"`
 	Fee             float64    `json:"fee"`
+	NetAmount       float64    `json:"netAmount"`
 	CreditAmount    *float64   `json:"creditAmount"`
 	BonusAmount     float64    `json:"bonusAmount"`
 	Status          int        `json:"status"`
@@ -190,8 +191,10 @@ type RechargeOrderAppBack struct {
 	PayMethod                          *string  `json:"payMethod"`                                    // 支付方式
 	Currency                           string   `json:"currency"`                                     // 币种
 	Amount                             float64  `json:"amount"`                                       // 充值金额
+	NetAmount                          float64  `json:"netAmount"`                                    // 三方换算金额/净额
 	Status                             int      `json:"status"`                                       // 订单状态
 	CreditAmount                       *float64 `json:"creditAmount"`                                 // 入账金额
+	BonusAmount                        float64  `json:"bonusAmount"`                                  // 活动赠送金额
 	PayURL                             string   `json:"payUrl"`                                       // 支付链接
 	NeedConfirmUnfinishedActivityCycle bool     `json:"needConfirmUnfinishedActivityCycle,omitempty"` // 是否需要确认未结束活动周期
 	ActiveActivityMultiplier           float64  `json:"activeActivityMultiplier,omitempty"`           // 当前活动周期流水倍数

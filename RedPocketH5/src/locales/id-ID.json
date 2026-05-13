@@ -357,7 +357,8 @@
     "todayFirstTitle": "Bonus Setoran Pertama Harian",
     "todayFirstDesc": "Dapatkan bonus ekstra pada deposit pertama Anda hari ini",
     "requiredField": "{field} tidak boleh kosong",
-    "invalidField": "Format {field} tidak valid"
+    "invalidField": "Format {field} tidak valid",
+    "noSelectOptions": "Tidak ada opsi tersedia"
   },
   "withdrawPage": {
     "title": "Tarik Dana",

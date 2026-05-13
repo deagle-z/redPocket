@@ -133,6 +133,7 @@ func SetWithdrawOrderBr(db *gorm.DB, req pojo.WithdrawOrderBrSet) (result pojo.W
 			oldStatus := dbOrder.Status
 			mergeWithdrawOrderUpdate(&dbOrder, req)
 			ensureWithdrawMerchantOrderNo(&dbOrder)
+			fillWithdrawOrderNetAmount(tx, &dbOrder)
 			if oldStatus == 0 && dbOrder.Status == 1 {
 				if err := submitWithdrawPayout(tx, &dbOrder); err != nil {
 					return err
@@ -151,6 +152,7 @@ func SetWithdrawOrderBr(db *gorm.DB, req pojo.WithdrawOrderBrSet) (result pojo.W
 
 		_ = copier.Copy(&dbOrder, &req)
 		ensureWithdrawMerchantOrderNo(&dbOrder)
+		fillWithdrawOrderNetAmount(tx, &dbOrder)
 		if dbOrder.SourceChannelID == nil && dbOrder.UserId > 0 {
 			sourceChannelID, _, sourceErr := LoadUserSourceChannelSnapshot(tx, dbOrder.UserId)
 			if sourceErr != nil {
@@ -188,6 +190,7 @@ func SetRebateWithdrawOrder(db *gorm.DB, req pojo.WithdrawOrderBrSet) (result po
 	err = db.Transaction(func(tx *gorm.DB) error {
 		_ = copier.Copy(&dbOrder, &req)
 		ensureWithdrawMerchantOrderNo(&dbOrder)
+		fillWithdrawOrderNetAmount(tx, &dbOrder)
 		if dbOrder.SourceChannelID == nil && dbOrder.UserId > 0 {
 			sourceChannelID, _, sourceErr := LoadUserSourceChannelSnapshot(tx, dbOrder.UserId)
 			if sourceErr != nil {
@@ -353,6 +356,44 @@ func buildWithdrawMerchantOrderNo() string {
 	return fmt.Sprintf("ST%s%s", time.Now().Format("060102150405"), utils.RandomString(8))
 }
 
+func fillWithdrawOrderNetAmount(db *gorm.DB, order *pojo.WithdrawOrderBr) {
+	if order == nil {
+		return
+	}
+	order.Amount = utils.Truncate2(order.Amount)
+	order.Fee = utils.Truncate2(order.Fee)
+	order.NetAmount = calculateWithdrawNetAmount(order.Amount, order.Fee, withdrawOrderCountryRate(db, *order))
+}
+
+func calculateWithdrawNetAmount(amount float64, fee float64, rate float64) float64 {
+	baseAmount := utils.Truncate2(amount) - utils.Truncate2(fee)
+	if baseAmount <= 0 {
+		return 0
+	}
+	if rate <= 0 {
+		rate = 1
+	}
+	return ceilProviderAmount(baseAmount * rate)
+}
+
+func withdrawOrderCountryRate(db *gorm.DB, order pojo.WithdrawOrderBr) float64 {
+	countryCode := pojo.NormalizeWithdrawCountryCode(order.CountryCode)
+	if countryCode == "" {
+		countryCode = pojo.NormalizeWithdrawCountryCode(withdrawFieldValue(withdrawOrderExtraFields(order.Extra), "countryCode"))
+	}
+	if db == nil || countryCode == "" {
+		return 1
+	}
+
+	var country pojo.SysCountry
+	if err := db.Select("rate").
+		Where("country_code = ? AND status = 1", countryCode).
+		First(&country).Error; err != nil || country.Rate <= 0 {
+		return 1
+	}
+	return country.Rate
+}
+
 func submitWithdrawPayout(db *gorm.DB, order *pojo.WithdrawOrderBr) error {
 	providerCode := strings.TrimSpace(order.Channel)
 	if order.Provider != nil && strings.TrimSpace(*order.Provider) != "" {
@@ -379,10 +420,10 @@ func submitWithdrawPayout(db *gorm.DB, order *pojo.WithdrawOrderBr) error {
 			Where("id = ?", order.UserId).
 			First(&user).Error
 	}
-	amount := order.NetAmount
-	if amount <= 0 {
-		amount = order.Amount - order.Fee
+	if order.NetAmount <= 0 {
+		fillWithdrawOrderNetAmount(db, order)
 	}
+	amount := order.NetAmount
 	amount = utils.Truncate2(amount)
 	if amount <= 0 {
 		return errors.New("withdraw_payout_amount_invalid")

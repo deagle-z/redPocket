@@ -357,7 +357,8 @@
     "todayFirstTitle": "Bono diario por primer depósito",
     "todayFirstDesc": "Obtenga recompensas adicionales en su primer depósito hoy",
     "requiredField": "{field} no puede estar vacío",
-    "invalidField": "El formato de {field} no es válido"
+    "invalidField": "El formato de {field} no es válido",
+    "noSelectOptions": "No hay opciones disponibles"
   },
   "withdrawPage": {
     "title": "Retiro",

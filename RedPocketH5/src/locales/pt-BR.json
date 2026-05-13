@@ -357,7 +357,8 @@
     "todayFirstTitle": "Bônus diário de primeiro depósito",
     "todayFirstDesc": "Obtenha recompensas extras em seu primeiro depósito hoje",
     "requiredField": "{field} não pode ficar vazio",
-    "invalidField": "O formato de {field} é inválido"
+    "invalidField": "O formato de {field} é inválido",
+    "noSelectOptions": "Nenhuma opção disponível"
   },
   "withdrawPage": {
     "title": "Saque",

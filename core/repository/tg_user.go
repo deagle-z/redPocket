@@ -78,20 +78,19 @@ func GetTgUsers(db *gorm.DB, search pojo.TgUserSearch) (result pojo.TgUserAdminR
 
 // SetTgUser 创建或更新Telegram用户
 func SetTgUser(db *gorm.DB, req pojo.TgUserSet) (result pojo.TgUserAdminBack, err error) {
-	req.Balance = utils.Truncate2(req.Balance)
-	req.GiftAmount = utils.Truncate2(req.GiftAmount)
-	req.GiftTotal = utils.Truncate2(req.GiftTotal)
 	var dbUser pojo.TgUser
 	if req.ID > 0 {
 		db.Where("id = ?", req.ID).First(&dbUser)
 		if dbUser.ID == 0 {
 			return result, errors.New("record_not_found_update")
 		}
-		_ = copier.Copy(&dbUser, &req)
-		if req.RebateRate != nil {
-			dbUser.RebateRate = utils.Truncate2(*req.RebateRate)
+		updates := buildTgUserUpdateMap(req)
+		if len(updates) > 0 {
+			err = db.Model(&pojo.TgUser{}).Where("id = ?", dbUser.ID).Updates(updates).Error
 		}
-		err = db.Save(&dbUser).Error
+		if err == nil {
+			db.Where("id = ?", dbUser.ID).First(&dbUser)
+		}
 	} else {
 		_ = copier.Copy(&dbUser, &req)
 		if req.RebateRate != nil {
@@ -106,6 +105,31 @@ func SetTgUser(db *gorm.DB, req pojo.TgUserSet) (result pojo.TgUserAdminBack, er
 	}
 	_ = copier.Copy(&result, &dbUser)
 	return result, nil
+}
+
+func buildTgUserUpdateMap(req pojo.TgUserSet) map[string]any {
+	updates := map[string]any{
+		"username":            req.Username,
+		"first_name":          req.FirstName,
+		"avatar":              req.Avatar,
+		"phone":               req.Phone,
+		"country":             req.Country,
+		"ip":                  req.Ip,
+		"region":              req.Region,
+		"remark":              req.Remark,
+		"is_bot":              req.IsBot,
+		"tg_id":               req.TgID,
+		"status":              req.Status,
+		"parent_id":           req.ParentID,
+		"invite_code":         req.InviteCode,
+		"source_channel_id":   req.SourceChannelID,
+		"source_channel_code": req.SourceChannelCode,
+		"tenant_id":           req.TenantId,
+	}
+	if req.RebateRate != nil {
+		updates["rebate_rate"] = utils.Truncate2(*req.RebateRate)
+	}
+	return updates
 }
 
 // DelTgUser 删除Telegram用户

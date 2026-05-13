@@ -33,6 +33,7 @@ export type RechargeOrder = {
   remark?: string | null;
   extra?: string | null;
   isDev?: number | null;
+  activityType?: number | null;
 };
 
 export type RechargeOrderSearch = {

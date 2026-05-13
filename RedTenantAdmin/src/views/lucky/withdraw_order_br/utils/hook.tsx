@@ -33,6 +33,20 @@ function getStatusType(status: number) {
   return "info";
 }
 
+function formatMoney(value: number | string | null | undefined) {
+  const amount = Number(value ?? 0);
+  return Number.isFinite(amount)
+    ? amount.toLocaleString("en-US", { maximumFractionDigits: 2 })
+    : "0";
+}
+
+function formatMoneyWithCurrency(
+  value: number | string | null | undefined,
+  currency?: string | null
+) {
+  return `${formatMoney(value)} ${currency || ""}`.trim();
+}
+
 export function useWithdrawOrderBr(tableRef: Ref) {
   const form = reactive({
     userUid: "",
@@ -59,9 +73,10 @@ export function useWithdrawOrderBr(tableRef: Ref) {
   const columns: TableColumnList = [
     {
       label: "订单号",
-      prop: "orderNo",
+      prop: "merchantOrderNo",
       minWidth: 180,
-      showOverflowTooltip: true
+      showOverflowTooltip: true,
+      formatter: ({ merchantOrderNo, orderNo }) => merchantOrderNo || orderNo
     },
     {
       label: "用户UID",
@@ -70,23 +85,23 @@ export function useWithdrawOrderBr(tableRef: Ref) {
       formatter: ({ userUid }) => userUid || "-"
     },
     {
-      label: "金额",
+      label: "原始金额",
       prop: "amount",
       minWidth: 140,
-      formatter: ({ amount, currency }) => `${amount.toFixed(6)} ${currency}`
+      formatter: ({ amount }) => formatMoney(amount)
     },
     {
       label: "手续费",
       prop: "fee",
       minWidth: 120,
-      formatter: ({ fee, currency }) => `${fee.toFixed(6)} ${currency}`
+      formatter: ({ fee }) => formatMoney(fee)
     },
     {
       label: "净打款",
       prop: "netAmount",
       minWidth: 120,
       formatter: ({ netAmount, currency }) =>
-        `${netAmount.toFixed(6)} ${currency}`
+        formatMoneyWithCurrency(netAmount, currency)
     },
     {
       label: "渠道",

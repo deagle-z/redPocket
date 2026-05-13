@@ -357,7 +357,8 @@
     "todayFirstTitle": "Daily First Deposit Bonus",
     "todayFirstDesc": "Get extra rewards on your first deposit today",
     "requiredField": "{field} cannot be empty",
-    "invalidField": "{field} format is invalid"
+    "invalidField": "{field} format is invalid",
+    "noSelectOptions": "No options available"
   },
   "withdrawPage": {
     "title": "Withdraw",

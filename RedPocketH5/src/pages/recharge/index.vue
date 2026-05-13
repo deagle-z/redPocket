@@ -128,9 +128,7 @@ const fieldValues = ref<Record<string, string>>({})
 // select 选择器
 const pickerVisible = ref(false)
 const pickerField = ref<RechargeField | null>(null)
-const pickerColumns = computed(() =>
-  parseFieldOptions(pickerField.value).map(o => ({ text: o.label, value: o.value })),
-)
+const pickerOptions = computed(() => parseFieldOptions(pickerField.value))
 
 function parseFieldOptions(field: RechargeField | null): RechargeFieldOption[] {
   if (!field?.optionsJson)
@@ -155,9 +153,9 @@ function openPicker(field: RechargeField) {
   pickerVisible.value = true
 }
 
-function onPickerConfirm({ selectedOptions }: { selectedOptions: Array<{ text: string, value: string }> }) {
+function onSelectOption(option: RechargeFieldOption) {
   if (pickerField.value)
-    fieldValues.value[pickerField.value.fieldKey] = selectedOptions[0]?.value ?? ''
+    fieldValues.value[pickerField.value.fieldKey] = option.value
   pickerVisible.value = false
 }
 
@@ -641,12 +639,31 @@ onMounted(() => {
       </section>
 
       <!-- select 选择器弹窗 -->
-      <van-popup v-model:show="pickerVisible" position="bottom" teleport="#app">
-        <van-picker
-          :columns="pickerColumns"
-          @confirm="onPickerConfirm"
-          @cancel="pickerVisible = false"
-        />
+      <van-popup v-model:show="pickerVisible" round position="bottom" teleport="#app" class="recharge-select-popup">
+        <div class="recharge-select-popup-header">
+          <span class="recharge-select-popup-title">{{ pickerField?.fieldLabel }}</span>
+          <button type="button" class="recharge-select-popup-close" @click="pickerVisible = false">
+            ×
+          </button>
+        </div>
+
+        <div v-if="pickerOptions.length" class="recharge-select-list">
+          <button
+            v-for="option in pickerOptions"
+            :key="option.value"
+            type="button"
+            class="recharge-select-item"
+            :class="{ active: pickerField && fieldValues[pickerField.fieldKey] === option.value }"
+            @click="onSelectOption(option)"
+          >
+            <span class="recharge-select-code">{{ option.value }}</span>
+            <span class="recharge-select-text">{{ option.label }}</span>
+            <span v-if="pickerField && fieldValues[pickerField.fieldKey] === option.value" class="recharge-select-check">✓</span>
+          </button>
+        </div>
+        <p v-else class="recharge-select-empty">
+          {{ t('rechargePage.noSelectOptions') }}
+        </p>
       </van-popup>
 
       <!-- 促销活动选择 -->
@@ -1274,6 +1291,113 @@ onMounted(() => {
 :deep(.recharge-field .van-field__body),
 :deep(.recharge-field .van-field__control) {
   width: 100%;
+}
+
+:global(.recharge-select-popup.van-popup) {
+  max-height: 72vh;
+  min-height: 320px;
+  overflow: hidden;
+  padding: 10px 0 calc(22px + env(safe-area-inset-bottom));
+  border: 1px solid rgba(212, 175, 55, 0.34);
+  border-radius: 24px 24px 0 0;
+  background:
+    radial-gradient(circle at top, rgba(212, 175, 55, 0.14), transparent 26%),
+    linear-gradient(180deg, #540000 0%, #280000 100%);
+  box-shadow: 0 -12px 32px rgba(0, 0, 0, 0.48);
+}
+
+:global(.recharge-select-popup-header) {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 56px;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.18);
+}
+
+:global(.recharge-select-popup-title) {
+  max-width: calc(100% - 96px);
+  overflow: hidden;
+  color: #fff0c9;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+:global(.recharge-select-popup-close) {
+  position: absolute;
+  top: 50%;
+  right: 16px;
+  border: none;
+  background: transparent;
+  color: rgba(255, 229, 186, 0.7);
+  font-size: 18px;
+  line-height: 1;
+  transform: translateY(-50%);
+}
+
+:global(.recharge-select-list) {
+  max-height: calc(72vh - 96px);
+  overflow-y: auto;
+  padding: 14px 14px 0;
+}
+
+:global(.recharge-select-item) {
+  display: grid;
+  grid-template-columns: minmax(42px, auto) 1fr 24px;
+  align-items: center;
+  width: 100%;
+  min-height: 52px;
+  margin-bottom: 12px;
+  padding: 14px;
+  border: 1px solid rgba(212, 175, 55, 0.18);
+  border-radius: 16px;
+  background: linear-gradient(165deg, rgba(120, 0, 0, 0.84), rgba(58, 0, 0, 0.9));
+  text-align: left;
+  transition:
+    border-color 0.2s ease,
+    background-color 0.2s ease;
+}
+
+:global(.recharge-select-item.active) {
+  border-color: rgba(255, 248, 214, 0.4);
+  background: linear-gradient(165deg, rgba(142, 38, 0, 0.94), rgba(88, 0, 0, 0.95));
+  box-shadow: 0 10px 18px rgba(0, 0, 0, 0.24);
+}
+
+:global(.recharge-select-code) {
+  min-width: 34px;
+  padding-right: 10px;
+  color: #ffd98b;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+:global(.recharge-select-text) {
+  min-width: 0;
+  overflow: hidden;
+  color: #fff0c9;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+:global(.recharge-select-check) {
+  color: #ffd87f;
+  font-size: 20px;
+  text-align: right;
+}
+
+:global(.recharge-select-empty) {
+  margin: 48px 18px 0;
+  color: rgba(255, 229, 186, 0.58);
+  font-size: 13px;
+  line-height: 1.5;
+  text-align: center;
 }
 
 .promo-list {
