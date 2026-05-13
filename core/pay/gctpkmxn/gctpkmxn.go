@@ -280,7 +280,6 @@ func buildPayoutParams(cfg base.GctpkPayConfig, req pay.PayoutRequest, notifyURL
 		"identityType": identityType,
 		"accName":      req.AccName,
 		"accNo":        req.AccNo,
-		"bankCode":     req.BankCode,
 		"busiCode":     resolvePayoutBusiCode(req, "207001"),
 		"currency":     "MXN",
 		"email":        req.Email,
