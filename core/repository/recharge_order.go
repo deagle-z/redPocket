@@ -288,10 +288,10 @@ func AppCreateRechargeOrder(db *gorm.DB, userID int64, req pojo.RechargeOrderApp
 	req.PayMethod = strings.TrimSpace(req.PayMethod)
 	req.Currency = strings.ToUpper(strings.TrimSpace(req.Currency))
 	req.MerchantOrderNo = strings.TrimSpace(req.MerchantOrderNo)
+	req.Amount = floorRechargeAmount(req.Amount)
 	if req.Amount <= 0 {
 		return result, errors.New("recharge_amount_positive")
 	}
-	req.Amount = utils.Truncate2(req.Amount)
 	if req.Channel == "" {
 		return result, errors.New("recharge_channel_required")
 	}
@@ -465,6 +465,13 @@ func ceilProviderAmount(amount float64) float64 {
 		return 0
 	}
 	return math.Ceil(amount)
+}
+
+func floorRechargeAmount(amount float64) float64 {
+	if amount <= 0 || math.IsNaN(amount) || math.IsInf(amount, 0) {
+		return 0
+	}
+	return math.Floor(amount)
 }
 
 // ProcessRechargeOrderSuccess 处理代收支付成功回调，入账并更新订单状态
