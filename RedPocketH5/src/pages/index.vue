@@ -3,6 +3,7 @@ import { showToast } from 'vant'
 import type { BannerItem, LuckyHistoryUserFlowItem } from '@/api/user'
 import { getBanners, getLuckyHistoryUserFlow } from '@/api/user'
 import { formatCurrency } from '@/utils/currency'
+import AppConfirmDialog from '@/components/AppConfirmDialog.vue'
 import imgAvatarPlaceholder from '@/assets/images/avatar-placeholder.png'
 import coinSvgUrl from '@/assets/svg/coin.svg'
 
@@ -10,6 +11,7 @@ const { t } = useI18n()
 const router = useRouter()
 
 const DISMISSED_KEY = 'dismissed_popup_banner_ids'
+const PACKET_ENTRY_TIP_HIDDEN_KEY_PREFIX = 'home_packet_entry_tip_hidden_'
 
 const DEFAULT_AVATAR = imgAvatarPlaceholder
 const activeIndex = ref(0)
@@ -18,6 +20,8 @@ const homeBanners = ref<BannerItem[]>([])
 const popupQueue = ref<BannerItem[]>([])
 const popupVisible = ref(false)
 const popupIndex = ref(0)
+const packetEntryTipVisible = ref(false)
+const packetEntryTipMode = ref<0 | 1>(0)
 
 const currentPopup = computed(() => popupQueue.value[popupIndex.value] ?? null)
 const recentWinnersLoading = ref(false)
@@ -36,6 +40,7 @@ const visibleWinners = computed(() => recentWinners.value)
 const showWinnerLoading = computed(() => recentWinnersLoading.value && visibleWinners.value.length === 0)
 const showWinnerEmpty = computed(() => visibleWinners.value.length === 0)
 const marqueeText = computed(() => getBannerTitle(homeBanners.value[activeIndex.value]))
+const packetEntryTipText = computed(() => getPacketEntryTip(packetEntryTipMode.value))
 
 function onSwipeChange(index: number) {
   activeIndex.value = index
@@ -45,11 +50,42 @@ function getBannerTitle(banner?: BannerItem | null) {
   return banner?.title || banner?.bannerName || ''
 }
 
-function goPacketList(mode: 0 | 1) {
+function goPacketListDirectly(mode: 0 | 1) {
   router.push({
     path: '/packetList',
     query: { mode: String(mode) },
   })
+}
+
+function isPacketEntryTipHidden(mode: 0 | 1) {
+  return localStorage.getItem(`${PACKET_ENTRY_TIP_HIDDEN_KEY_PREFIX}${mode}`) === '1'
+}
+
+function hidePacketEntryTip(mode: 0 | 1) {
+  localStorage.setItem(`${PACKET_ENTRY_TIP_HIDDEN_KEY_PREFIX}${mode}`, '1')
+}
+
+function getPacketEntryTip(mode: 0 | 1) {
+  return mode === 1 ? t('homeLucky.playModeParityDesc') : t('homeLucky.playModeThunderDesc')
+}
+
+function goPacketList(mode: 0 | 1) {
+  if (isPacketEntryTipHidden(mode)) {
+    goPacketListDirectly(mode)
+    return
+  }
+
+  packetEntryTipMode.value = mode
+  packetEntryTipVisible.value = true
+}
+
+function confirmPacketEntryTip() {
+  goPacketListDirectly(packetEntryTipMode.value)
+}
+
+function dismissPacketEntryTip() {
+  hidePacketEntryTip(packetEntryTipMode.value)
+  goPacketListDirectly(packetEntryTipMode.value)
 }
 
 function goDemo(mode: 0 | 1) {
@@ -344,7 +380,6 @@ onBeforeUnmount(() => {
             </span>
 
             <span class="packet-entry-btn__content">
-              <span class="packet-entry-btn__ticker">{{ t('homeLucky.playModeThunderDesc') }}</span>
               <span class="packet-entry-btn__footer">
                 <strong class="packet-entry-btn__title">BOMB</strong>
                 <small class="packet-entry-btn__subtitle">{{ t('packetListPage.modeThunder') }}</small>
@@ -355,7 +390,7 @@ onBeforeUnmount(() => {
             <span class="trial-entry-btn__icon" aria-hidden="true">
               <van-icon name="fire-o" />
             </span>
-            <span class="trial-entry-btn__text">{{ t('homeLucky.trialEntry') }} {{ t('packetListPage.modeThunder') }}</span>
+            <span class="trial-entry-btn__text">DEMO</span>
             <van-icon class="trial-entry-btn__arrow" name="arrow" />
           </button>
         </div>
@@ -379,7 +414,6 @@ onBeforeUnmount(() => {
             </span>
 
             <span class="packet-entry-btn__content">
-              <span class="packet-entry-btn__ticker">{{ t('homeLucky.playModeParityDesc') }}</span>
               <span class="packet-entry-btn__footer">
                 <strong class="packet-entry-btn__title">ODD/EVEN</strong>
                 <small class="packet-entry-btn__subtitle">{{ t('packetListPage.modeParity') }}</small>
@@ -390,7 +424,7 @@ onBeforeUnmount(() => {
             <span class="trial-entry-btn__icon" aria-hidden="true">
               <van-icon name="fire-o" />
             </span>
-            <span class="trial-entry-btn__text">{{ t('homeLucky.trialEntry') }} {{ t('packetListPage.modeParity') }}</span>
+            <span class="trial-entry-btn__text">DEMO</span>
             <van-icon class="trial-entry-btn__arrow" name="arrow" />
           </button>
         </div>
@@ -453,6 +487,18 @@ onBeforeUnmount(() => {
         </div>
       </div>
     </van-overlay>
+
+    <AppConfirmDialog
+      v-model:show="packetEntryTipVisible"
+      :title="t('homeLucky.entryTipTitle')"
+      :cancel-text="t('homeLucky.entryTipNeverShow')"
+      :confirm-text="t('common.confirm')"
+      :close-on-click-overlay="false"
+      @confirm="confirmPacketEntryTip"
+      @cancel="dismissPacketEntryTip"
+    >
+      {{ packetEntryTipText }}
+    </AppConfirmDialog>
   </div>
 </template>
 
@@ -558,48 +604,97 @@ onBeforeUnmount(() => {
 }
 
 .trial-entry-btn {
+  position: relative;
   width: 100%;
-  min-height: 42px;
-  padding: 0 10px;
-  border: 1px solid rgba(255, 221, 149, 0.32);
-  border-radius: 14px;
-  background: linear-gradient(135deg, rgba(255, 221, 149, 0.18), rgba(92, 0, 0, 0.22)), rgba(36, 2, 2, 0.72);
-  color: #ffe7a8;
+  min-height: 46px;
+  padding: 0 12px;
+  border: 1px solid rgba(255, 245, 195, 0.86);
+  border-radius: 999px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.28), transparent 42%),
+    linear-gradient(135deg, #ffec9c 0%, #ffbb00 48%, #d27900 100%);
+  color: #3a0800;
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: 8px;
   box-shadow:
-    0 10px 20px rgba(0, 0, 0, 0.22),
-    inset 0 0 0 1px rgba(255, 248, 214, 0.05);
+    0 12px 22px rgba(122, 30, 0, 0.34),
+    0 0 16px rgba(255, 187, 0, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.64),
+    inset 0 -2px 0 rgba(98, 22, 0, 0.22);
+  overflow: hidden;
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease,
+    filter 160ms ease;
+}
+
+.trial-entry-btn::before {
+  content: '';
+  position: absolute;
+  inset: 2px 10px auto;
+  height: 11px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.32);
+  pointer-events: none;
+}
+
+.trial-entry-btn:active {
+  transform: translateY(1px) scale(0.99);
+  filter: saturate(1.08);
+  box-shadow:
+    0 8px 16px rgba(122, 30, 0, 0.32),
+    0 0 12px rgba(255, 187, 0, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    inset 0 -1px 0 rgba(98, 22, 0, 0.24);
 }
 
 .trial-entry-btn__icon {
+  position: relative;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #6a1200 0%, #2b0500 100%);
+  color: #ffd98b;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 217, 139, 0.32),
+    0 4px 10px rgba(74, 10, 0, 0.24);
+  z-index: 1;
+}
+
+.trial-entry-btn__text {
+  position: relative;
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 15px;
+  line-height: 1;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-shadow: 0 1px 0 rgba(255, 248, 214, 0.42);
+  z-index: 1;
+}
+
+.trial-entry-btn__arrow {
+  position: relative;
   flex-shrink: 0;
   width: 24px;
   height: 24px;
   border-radius: 50%;
-  background: linear-gradient(180deg, #ffdf87 0%, #d4af37 100%);
-  color: #5a1b00;
+  color: #4a0c00;
+  background: rgba(255, 248, 214, 0.38);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 14px;
-}
-
-.trial-entry-btn__text {
-  min-width: 0;
-  flex: 1;
-  overflow: hidden;
-  text-align: left;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 12px;
-  font-weight: 800;
-}
-
-.trial-entry-btn__arrow {
-  flex-shrink: 0;
-  color: rgba(255, 229, 186, 0.72);
+  z-index: 1;
 }
 
 .packet-entry-btn {

@@ -40,6 +40,23 @@ func GetTgUserById(ctx *gin.Context) {
 	utils.SuccessObjBack(ctx, result)
 }
 
+func GetTgUserWithdrawActivityFlow(ctx *gin.Context) {
+	tenantID, ok := getTenantID(ctx)
+	if !ok {
+		return
+	}
+	id, ok := parsePathID(ctx)
+	if !ok {
+		return
+	}
+	result, err := tenantRepo.GetTgUserWithdrawActivityFlow(getDB(ctx), tenantID, id)
+	if err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	utils.SuccessObjBack(ctx, result)
+}
+
 func SetTgUser(ctx *gin.Context) {
 	tenantID, ok := getTenantID(ctx)
 	if !ok {

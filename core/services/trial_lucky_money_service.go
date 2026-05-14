@@ -153,7 +153,7 @@ func GrabTrialRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix st
 			}
 			return errors.New("lucky_expired")
 		}
-		if lucky.SenderType == pojo.TrialActorUser && lucky.SenderID == userID {
+		if !canTrialUserGrabSender(lucky.SenderType, lucky.SenderID, userID) {
 			return errors.New("cannot_grab_self")
 		}
 		if lucky.GameMode == 1 {
@@ -736,7 +736,7 @@ func grabTrialRedPacketByBot(db *gorm.DB, luckyID int64, botID int64, grabIndex 
 		if lucky.Status != 1 {
 			return errors.New("lucky_finished")
 		}
-		if lucky.SenderType == pojo.TrialActorBot && lucky.SenderID == botID {
+		if !canTrialBotGrabSender(lucky.SenderType, lucky.SenderID, botID) {
 			return errors.New("cannot_grab_self")
 		}
 		var bot pojo.TrialBotUser
@@ -889,6 +889,14 @@ func pickTrialLuckyItem(tx *gorm.DB, luckyID int64, grabIndex int) (pojo.TrialLu
 		return item, errors.New("lucky_empty")
 	}
 	return item, nil
+}
+
+func canTrialUserGrabSender(senderType string, senderID int64, userID int64) bool {
+	return true
+}
+
+func canTrialBotGrabSender(senderType string, senderID int64, botID int64) bool {
+	return !(senderType == pojo.TrialActorBot && senderID == botID)
 }
 
 func addTrialSenderThunderIncome(tx *gorm.DB, lucky pojo.TrialLuckyMoney, amount float64) error {

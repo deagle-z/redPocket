@@ -6,6 +6,7 @@ import { useRenderIcon } from "@/components/ReIcon/src/hooks";
 import { deviceDetection } from "@pureadmin/utils";
 import { message } from "@/utils/message";
 import {
+  addTgUserRebateAmount,
   getTgUserListWithSubStats,
   getTgUserSubStatsSummary,
   setTgUserRebateRate,
@@ -57,6 +58,16 @@ const rebateRateForm = reactive({
   firstName: "",
   rebateRate: 0
 });
+const rebateAmountDialogVisible = ref(false);
+const rebateAmountSaving = ref(false);
+const rebateAmountForm = reactive({
+  id: 0,
+  tgId: 0,
+  username: "",
+  firstName: "",
+  currentAmount: 0,
+  amount: 0
+});
 const remarkDialogVisible = ref(false);
 const remarkSaving = ref(false);
 const remarkForm = reactive({
@@ -73,7 +84,8 @@ const subStatsPagination = reactive({
 });
 
 function formatMoney(val?: number | null) {
-  if (val === null || val === undefined || Number.isNaN(Number(val))) return "0";
+  if (val === null || val === undefined || Number.isNaN(Number(val)))
+    return "0";
   return String(val);
 }
 
@@ -91,6 +103,16 @@ function openRebateRateDialog(row: TgUser) {
   rebateRateDialogVisible.value = true;
 }
 
+function openRebateAmountDialog(row: TgUser) {
+  rebateAmountForm.id = row.id;
+  rebateAmountForm.tgId = row.tgId;
+  rebateAmountForm.username = row.username || "";
+  rebateAmountForm.firstName = row.firstName || "";
+  rebateAmountForm.currentAmount = Number(row.rebateAmount ?? 0);
+  rebateAmountForm.amount = 0;
+  rebateAmountDialogVisible.value = true;
+}
+
 function openRemarkDialog(row: TgUser) {
   remarkForm.id = row.id;
   remarkForm.tgId = row.tgId;
@@ -98,6 +120,30 @@ function openRemarkDialog(row: TgUser) {
   remarkForm.firstName = row.firstName || "";
   remarkForm.remark = row.remark || "";
   remarkDialogVisible.value = true;
+}
+
+async function submitRebateAmount() {
+  if (!rebateAmountForm.id) return;
+  const amount = Number(rebateAmountForm.amount);
+  if (Number.isNaN(amount) || amount <= 0) {
+    message("加佣金金额必须大于 0", { type: "warning" });
+    return;
+  }
+  rebateAmountSaving.value = true;
+  try {
+    await addTgUserRebateAmount({
+      id: rebateAmountForm.id,
+      amount
+    });
+    message("佣金增加成功", { type: "success" });
+    rebateAmountDialogVisible.value = false;
+    onSearch();
+  } catch (error) {
+    console.error("增加佣金失败", error);
+    message("增加佣金失败", { type: "error" });
+  } finally {
+    rebateAmountSaving.value = false;
+  }
 }
 
 async function submitRemark() {
@@ -326,6 +372,15 @@ function handleSubStatsCurrentChange(page: number) {
               <el-button
                 class="reset-margin"
                 link
+                type="success"
+                :size="size"
+                @click="openRebateAmountDialog(row)"
+              >
+                加佣金
+              </el-button>
+              <el-button
+                class="reset-margin"
+                link
                 type="primary"
                 :size="size"
                 @click="openRemarkDialog(row)"
@@ -402,13 +457,17 @@ function handleSubStatsCurrentChange(page: number) {
         </el-row>
       </el-skeleton>
 
-      <el-table :data="subStatsList" border stripe v-loading="subStatsLoading">
+      <el-table v-loading="subStatsLoading" :data="subStatsList" border stripe>
         <el-table-column prop="id" label="ID" width="80" />
         <el-table-column prop="tgId" label="TG用户ID" min-width="140" />
         <el-table-column prop="uid" label="用户UID" min-width="120" />
         <el-table-column prop="username" label="用户名" min-width="120" />
         <el-table-column prop="firstName" label="昵称" min-width="120" />
-        <el-table-column prop="subRechargeAmount" label="下级充值" min-width="120">
+        <el-table-column
+          prop="subRechargeAmount"
+          label="下级充值"
+          min-width="120"
+        >
           <template #default="{ row }">
             {{ formatMoney(row.subRechargeAmount) }}
           </template>
@@ -418,7 +477,11 @@ function handleSubStatsCurrentChange(page: number) {
             {{ formatMoney(row.subFlowAmount) }}
           </template>
         </el-table-column>
-        <el-table-column prop="subWithdrawAmount" label="下级提现" min-width="120">
+        <el-table-column
+          prop="subWithdrawAmount"
+          label="下级提现"
+          min-width="120"
+        >
           <template #default="{ row }">
             {{ formatMoney(row.subWithdrawAmount) }}
           </template>
@@ -478,6 +541,48 @@ function handleSubStatsCurrentChange(page: number) {
           @click="submitRebateRate"
         >
           保存
+        </el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog
+      v-model="rebateAmountDialogVisible"
+      title="给用户加佣金"
+      width="420px"
+      destroy-on-close
+    >
+      <el-form :model="rebateAmountForm" label-width="96px">
+        <el-form-item label="用户">
+          <span>{{ formatName(rebateAmountForm as unknown as TgUser) }}</span>
+        </el-form-item>
+        <el-form-item label="TG用户ID">
+          <span>{{ rebateAmountForm.tgId || "-" }}</span>
+        </el-form-item>
+        <el-form-item label="当前佣金">
+          <span>{{ formatMoney(rebateAmountForm.currentAmount) }}</span>
+        </el-form-item>
+        <el-form-item label="加佣金额">
+          <el-input-number
+            v-model="rebateAmountForm.amount"
+            :min="0"
+            :precision="2"
+            :step="1"
+            controls-position="right"
+            class="!w-full"
+          />
+          <div class="form-tip">
+            只增加可用佣金和累计佣金，不修改余额或其他字段
+          </div>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="rebateAmountDialogVisible = false">取消</el-button>
+        <el-button
+          type="primary"
+          :loading="rebateAmountSaving"
+          @click="submitRebateAmount"
+        >
+          确认加佣金
         </el-button>
       </template>
     </el-dialog>

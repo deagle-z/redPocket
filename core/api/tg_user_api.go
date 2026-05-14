@@ -172,6 +172,35 @@ func SetTgUserRebateRate(ctx *gin.Context) {
 	utils.SuccessObjBack(ctx, result)
 }
 
+// AddTgUserRebateAmount godoc
+//
+//	@Summary		后台给Telegram用户增加佣金金额
+//	@Tags			Telegram用户
+//	@Accept			json
+//	@Produce		json
+//	@Param			data body		pojo.TgUserRebateAmountAdd	true	"加佣金金额"
+//	@Success		200	{object}		pojo.TgUserAdminBack
+//	@Router			/api/v1/admin/tgUser/rebateAmount [post]
+func AddTgUserRebateAmount(ctx *gin.Context) {
+	var req pojo.TgUserRebateAmountAdd
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	req.Amount = utils.Truncate2(req.Amount)
+	if req.ID <= 0 || req.Amount <= 0 {
+		utils.ErrorBack(ctx, "invalid_params")
+		return
+	}
+	db := ctx.MustGet("db").(*gorm.DB)
+	result, err := repository.AddTgUserRebateAmount(db, req.ID, req.Amount)
+	if err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	utils.SuccessObjBack(ctx, result)
+}
+
 // SetTgUserRemark godoc
 //
 //	@Summary		修改Telegram用户备注
@@ -627,6 +656,46 @@ func GetCurrentTgWithdrawSummary(ctx *gin.Context) {
 
 	db := ctx.MustGet("db").(*gorm.DB)
 	data, err := repository.GetUserWithdrawSummary(db, userID)
+	if err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	utils.SuccessObjBack(ctx, data)
+}
+
+// GetCurrentTgWithdrawActivityFlow 获取当前TG用户提现活动和流水进度
+func GetCurrentTgWithdrawActivityFlow(ctx *gin.Context) {
+	userIDRaw, ok := ctx.Get("userId")
+	if !ok {
+		utils.UnauthorizedBack(ctx, "token_invalid")
+		return
+	}
+	userID, ok := userIDRaw.(int64)
+	if !ok || userID <= 0 {
+		utils.UnauthorizedBack(ctx, "token_invalid")
+		return
+	}
+
+	db := ctx.MustGet("db").(*gorm.DB)
+	data, err := repository.GetUserWithdrawActivityFlow(db, userID)
+	if err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	utils.SuccessObjBack(ctx, data)
+}
+
+// GetTgUserWithdrawActivityFlowById 管理端查询指定TG用户提现活动和流水进度
+func GetTgUserWithdrawActivityFlowById(ctx *gin.Context) {
+	idStr := ctx.Param("id")
+	userID, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil || userID <= 0 {
+		utils.ErrorBack(ctx, "invalid_params")
+		return
+	}
+
+	db := ctx.MustGet("db").(*gorm.DB)
+	data, err := repository.GetUserWithdrawActivityFlow(db, userID)
 	if err != nil {
 		utils.ErrorBack(ctx, err.Error())
 		return

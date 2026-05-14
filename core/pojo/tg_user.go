@@ -35,6 +35,7 @@ type TgUser struct {
 	RebateAmount      float64 `gorm:"type:decimal(20,2);not null;default:0.00;comment:可用返水余额" json:"rebate_amount"`
 	RebateTotalAmount float64 `gorm:"type:decimal(20,2);not null;default:0.00;comment:累计返水金额" json:"rebate_total_amount"`
 	RebateRate        float64 `gorm:"column:rebate_rate;type:decimal(10,2);not null;default:40.00;comment:返水比例" json:"rebate_rate"`
+	FreeLotteryCount  int     `gorm:"column:free_lottery_count;type:int;not null;default:0;comment:免费转盘次数" json:"freeLotteryCount"`
 
 	Status       int8    `gorm:"not null;default:1;index;comment:状态 1=正常 0=禁用 -1=删除" json:"status"`
 	VipLevel     *int    `gorm:"column:vip_level;default:null;comment:当前VIP等级（对应sys_vip_level.level）" json:"vip_level"`
@@ -85,6 +86,7 @@ type TgUserSet struct {
 	GiftAmount        float64  `json:"giftAmount"`
 	GiftTotal         float64  `json:"giftTotal"`
 	RebateRate        *float64 `json:"rebateRate"`
+	FreeLotteryCount  *int     `json:"freeLotteryCount"`
 	Status            int8     `json:"status"`
 	ParentID          *int64   `json:"parentId"`
 	InviteCode        *string  `json:"inviteCode"`
@@ -101,6 +103,11 @@ type TgUserStatusSet struct {
 type TgUserRebateRateSet struct {
 	ID         int64   `json:"id"`
 	RebateRate float64 `json:"rebateRate"`
+}
+
+type TgUserRebateAmountAdd struct {
+	ID     int64   `json:"id"`
+	Amount float64 `json:"amount"`
 }
 
 type TgUserRemarkSet struct {
@@ -216,29 +223,62 @@ type TgRebateTransferReq struct {
 }
 
 type TgCurrentUserInfo struct {
-	Avatar       *string `json:"avatar"`
-	TenantId     int64   `json:"tenantId"`
-	Balance      float64 `json:"balance"`
-	TrialBalance float64 `json:"trialBalance"`
-	Uid          string  `json:"uid"`
-	Username     *string `json:"username"`
-	FirstName    *string `json:"firstName"`
-	TgID         int64   `json:"tg_id"`
-	GiftAmount   float64 `json:"gift_amount"`
-	RebateAmount float64 `json:"rebate_amount"`
-	RebateRate   float64 `json:"rebate_rate"`
-	Email        string  `json:"email"`
-	Phone        *string `json:"phone"`
-	Country      *string `json:"country"`
-	VipLevel     *int    `json:"vip_level"`
-	VipLevelName *string `json:"vip_level_name"`
-	AudioOpen    int8    `json:"audio_open"`
+	Avatar           *string `json:"avatar"`
+	TenantId         int64   `json:"tenantId"`
+	Balance          float64 `json:"balance"`
+	TrialBalance     float64 `json:"trialBalance"`
+	Uid              string  `json:"uid"`
+	Username         *string `json:"username"`
+	FirstName        *string `json:"firstName"`
+	TgID             int64   `json:"tg_id"`
+	GiftAmount       float64 `json:"gift_amount"`
+	RebateAmount     float64 `json:"rebate_amount"`
+	RebateRate       float64 `json:"rebate_rate"`
+	FreeLotteryCount int     `json:"freeLotteryCount"`
+	Email            string  `json:"email"`
+	Phone            *string `json:"phone"`
+	Country          *string `json:"country"`
+	VipLevel         *int    `json:"vip_level"`
+	VipLevelName     *string `json:"vip_level_name"`
+	AudioOpen        int8    `json:"audio_open"`
 }
 
 type TgWithdrawSummaryBack struct {
 	Balance               float64 `json:"balance"`
 	NonWithdrawableAmount float64 `json:"nonWithdrawableAmount"`
 	TodayWithdrawCount    int64   `json:"todayWithdrawCount"`
+}
+
+type TgWithdrawActivityFlowBack struct {
+	UserID         int64                             `json:"userId"`
+	Balance        float64                           `json:"balance"`
+	TotalFlow      float64                           `json:"totalFlow"`
+	HasActivity    bool                              `json:"hasActivity"`
+	ActiveActivity *TgWithdrawActivityFlowCycleBack  `json:"activeActivity,omitempty"`
+	Activities     []TgWithdrawActivityFlowCycleBack `json:"activities"`
+}
+
+type TgWithdrawActivityFlowCycleBack struct {
+	ID               int64      `json:"id"`
+	CreatedAt        time.Time  `json:"createdAt"`
+	UpdatedAt        time.Time  `json:"updatedAt"`
+	ActivityCode     string     `json:"activityCode"`
+	ActivityType     int8       `json:"activityType"`
+	Status           int        `json:"status"`
+	Multiplier       float64    `json:"multiplier"`
+	BaseAmount       float64    `json:"baseAmount"`
+	RequiredFlow     float64    `json:"requiredFlow"`
+	FlowStartValue   float64    `json:"flowStartValue"`
+	FlowConsumed     float64    `json:"flowConsumed"`
+	CurrentFlow      float64    `json:"currentFlow"`
+	AvailableFlow    float64    `json:"availableFlow"`
+	RemainingFlow    float64    `json:"remainingFlow"`
+	ProgressPercent  float64    `json:"progressPercent"`
+	BalanceThreshold float64    `json:"balanceThreshold"`
+	LastRechargeNo   string     `json:"lastRechargeNo"`
+	EndReason        string     `json:"endReason"`
+	StartedAt        *time.Time `json:"startedAt"`
+	EndedAt          *time.Time `json:"endedAt"`
 }
 
 type TgInviteStatsBack struct {
@@ -281,7 +321,10 @@ type TgUserBack struct {
 	TrialBalance      float64   `json:"trialBalance"`
 	GiftAmount        float64   `json:"giftAmount"`
 	GiftTotal         float64   `json:"giftTotal"`
+	RebateAmount      float64   `json:"rebateAmount"`
+	RebateTotalAmount float64   `json:"rebateTotalAmount"`
 	RebateRate        float64   `json:"rebateRate"`
+	FreeLotteryCount  int       `json:"freeLotteryCount"`
 	Status            int8      `json:"status"`
 	ParentID          *int64    `json:"parentId"`
 	ParentUid         *string   `json:"parentUid"`
@@ -315,7 +358,10 @@ type TgUserAdminBack struct {
 	TrialBalance      float64   `json:"trialBalance"`
 	GiftAmount        float64   `json:"giftAmount"`
 	GiftTotal         float64   `json:"giftTotal"`
+	RebateAmount      float64   `json:"rebateAmount"`
+	RebateTotalAmount float64   `json:"rebateTotalAmount"`
 	RebateRate        float64   `json:"rebateRate"`
+	FreeLotteryCount  int       `json:"freeLotteryCount"`
 	Status            int8      `json:"status"`
 	ParentID          *int64    `json:"parentId"`
 	ParentUid         *string   `json:"parentUid"`

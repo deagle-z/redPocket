@@ -2,6 +2,7 @@ package repository
 
 import (
 	"BaseGoUni/core/pojo"
+	coreRepo "BaseGoUni/core/repository"
 	"BaseGoUni/core/utils"
 	"errors"
 	"github.com/jinzhu/copier"
@@ -65,6 +66,17 @@ func GetTgUserByID(db *gorm.DB, tenantID int64, id int64) (result pojo.TgUserBac
 	return result, nil
 }
 
+func GetTgUserWithdrawActivityFlow(db *gorm.DB, tenantID int64, id int64) (pojo.TgWithdrawActivityFlowBack, error) {
+	var user pojo.TgUser
+	if err := db.Select("id").Where("id = ? and tenant_id = ?", id, tenantID).First(&user).Error; err != nil {
+		return pojo.TgWithdrawActivityFlowBack{}, err
+	}
+	if user.ID == 0 {
+		return pojo.TgWithdrawActivityFlowBack{}, errors.New("数据不存在")
+	}
+	return coreRepo.GetUserWithdrawActivityFlow(db, user.ID)
+}
+
 func SetTgUser(db *gorm.DB, tenantID int64, req pojo.TgUserSet) (result pojo.TgUserBack, err error) {
 	req.TenantId = tenantID
 	var dbUser pojo.TgUser
@@ -82,6 +94,9 @@ func SetTgUser(db *gorm.DB, tenantID int64, req pojo.TgUserSet) (result pojo.TgU
 		}
 	} else {
 		_ = copier.Copy(&dbUser, &req)
+		if req.FreeLotteryCount != nil {
+			dbUser.FreeLotteryCount = *req.FreeLotteryCount
+		}
 		err = db.Create(&dbUser).Error
 	}
 	if err != nil {
@@ -112,6 +127,9 @@ func buildTenantTgUserUpdateMap(req pojo.TgUserSet) map[string]any {
 	}
 	if req.RebateRate != nil {
 		updates["rebate_rate"] = utils.Truncate2(*req.RebateRate)
+	}
+	if req.FreeLotteryCount != nil {
+		updates["free_lottery_count"] = *req.FreeLotteryCount
 	}
 	return updates
 }

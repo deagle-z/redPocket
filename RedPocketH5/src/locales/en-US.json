@@ -237,6 +237,8 @@
     "playModeParityDesc": "Only set the amount. Players choose odd or even before grabbing.",
     "playModeParityAction": "Send This Mode",
     "playModeParityNote": "Faster to send and easier for new users to join.",
+    "entryTipTitle": "Mode Guide",
+    "entryTipNeverShow": "Don't show again",
     "trialEntry": "Try Demo",
     "hotPackets": "Hot Packets",
     "latestWinners": "Flow Ranking",

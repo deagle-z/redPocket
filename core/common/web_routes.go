@@ -145,6 +145,7 @@ func InitGin() {
 		adminGroup.GET("/rechargeOrder/:id", api.GetRechargeOrderById)                                // 获取充值订单详情
 		adminGroup.POST("/withdrawOrderBr/list", api.GetWithdrawOrderBrs)                             // 获取巴西提现订单列表
 		adminGroup.GET("/withdrawOrderBr/:id", api.GetWithdrawOrderBrById)                            // 获取巴西提现订单详情
+		adminGroup.GET("/tgUser/:id/withdrawActivityFlow", api.GetTgUserWithdrawActivityFlowById)     // 查询用户提现活动和流水进度
 		adminGroup.POST("/payChannel/list", api.GetPayChannels)                                       // 获取支付通道列表
 		adminGroup.GET("/payChannel/:id", api.GetPayChannelById)                                      // 获取支付通道详情
 		adminGroup.POST("/sysCountry/list", api.GetSysCountries)
@@ -191,8 +192,9 @@ func InitGin() {
 		adminGroupLog.POST("/tgUser/batchUpdateBot", api.BatchUpdateBotTgUsers)
 		adminGroupLog.POST("/tgUser/status", api.SetTgUserStatus)         // 封禁/解封Telegram用户
 		adminGroupLog.POST("/tgUser/rebateRate", api.SetTgUserRebateRate) // 修改Telegram用户返佣比例
-		adminGroupLog.POST("/tgUser/remark", api.SetTgUserRemark)         // 修改Telegram用户备注
-		adminGroupLog.DELETE("/tgUser/:id", api.DelTgUser)                // 删除Telegram用户
+		adminGroupLog.POST("/tgUser/rebateAmount", api.AddTgUserRebateAmount)
+		adminGroupLog.POST("/tgUser/remark", api.SetTgUserRemark) // 修改Telegram用户备注
+		adminGroupLog.DELETE("/tgUser/:id", api.DelTgUser)        // 删除Telegram用户
 		adminGroupLog.POST("/trialBot/batchCreate", api.BatchCreateTrialBotUsers)
 		adminGroupLog.POST("/trialBot/batchUpdate", api.BatchUpdateTrialBotUsers)
 		adminGroupLog.POST("/trialBot/status", api.SetTrialBotUserStatus)
@@ -268,6 +270,7 @@ func InitGin() {
 		tenantGroup.POST("/tgUser/listWithSubStats", tenantApi.GetTgUsersWithSubStats)
 		tenantGroup.POST("/tgUser/subStatsSummary", tenantApi.GetTgUsersWithSubStatsSummary)
 		tenantGroup.GET("/tgUser/:id", tenantApi.GetTgUserById)
+		tenantGroup.GET("/tgUser/:id/withdrawActivityFlow", tenantApi.GetTgUserWithdrawActivityFlow)
 		tenantGroup.POST("/tgUser", tenantApi.SetTgUser)
 		tenantGroup.POST("/tgUser/status", tenantApi.SetTgUserStatus)
 		tenantGroup.POST("/tgUser/rebateRate", tenantApi.SetTgUserRebateRate)
@@ -338,6 +341,7 @@ func InitGin() {
 		appAuthRouter.POST("/tg/logout", api.TgLogout)
 		appAuthRouter.GET("/tg/currentUserInfo", api.GetCurrentTgUserInfo)
 		appAuthRouter.GET("/tg/withdrawSummary", api.GetCurrentTgWithdrawSummary)
+		appAuthRouter.GET("/tg/withdrawActivityFlow", api.GetCurrentTgWithdrawActivityFlow)
 		appAuthRouter.POST("/tg/avatar", api.UpdateCurrentTgUserAvatar)
 		appAuthRouter.POST("/tg/name", api.UpdateCurrentTgUserName)
 		appAuthRouter.POST("/tg/bindEmail", api.BindCurrentTgEmail)

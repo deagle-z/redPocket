@@ -125,6 +125,10 @@ func InitTables(prefix string) (firstInit bool, err error) {
 	if db.Migrator().HasColumn(&pojo.TgUser{}, "is_bot") {
 		_ = db.Exec("UPDATE `tg_user` SET `is_bot` = false WHERE `is_bot` IS NULL").Error
 	}
+	// 兼容历史/半迁移数据：免费转盘次数只允许非负整数，避免 AutoMigrate 改列类型时报 1265。
+	if db.Migrator().HasColumn(&pojo.TgUser{}, "free_lottery_count") {
+		_ = db.Exec("UPDATE `tg_user` SET `free_lottery_count` = 0 WHERE `free_lottery_count` IS NULL OR TRIM(CAST(`free_lottery_count` AS CHAR)) = '' OR TRIM(CAST(`free_lottery_count` AS CHAR)) NOT REGEXP '^[0-9]+$'").Error
+	}
 	// 兼容增量字段/新表变更
 	if err = db.AutoMigrate(
 		&pojo.SysSourceChannel{},

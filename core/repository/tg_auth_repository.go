@@ -216,6 +216,7 @@ func createTgUserFromAuth(tx *gorm.DB, req pojo.TgAuthLoginReq, ip string, regio
 		return pojo.TgUser{}, err
 	}
 	defaultRebateRate := getDefaultInviteLuckyRebateRate(tx)
+	freeLotteryCount := GetRegisterFreeLotteryCount(tx)
 
 	for i := 0; i < 5; i++ {
 		inviteCode, err := generateInviteCode(tx)
@@ -241,6 +242,7 @@ func createTgUserFromAuth(tx *gorm.DB, req pojo.TgAuthLoginReq, ip string, regio
 			SourceChannelCode: nil,
 			TenantId:          0,
 			RebateRate:        defaultRebateRate,
+			FreeLotteryCount:  freeLotteryCount,
 		}
 		if sourceChannel != nil {
 			newUser.SourceChannelID = &sourceChannel.ID
@@ -286,6 +288,19 @@ func getDefaultInviteLuckyRebateRate(db *gorm.DB) float64 {
 		return defaultRate
 	}
 	return rate
+}
+
+func GetRegisterFreeLotteryCount(db *gorm.DB) int {
+	const defaultCount int = 1
+	var config pojo.SysConfig
+	if err := db.Where("config_key = ?", "register_free_lottery_count").First(&config).Error; err != nil || strings.TrimSpace(config.ConfigValue) == "" {
+		return defaultCount
+	}
+	count, err := strconv.Atoi(strings.TrimSpace(config.ConfigValue))
+	if err != nil || count < 0 {
+		return defaultCount
+	}
+	return count
 }
 
 func nullableString(v string) *string {
@@ -455,6 +470,7 @@ func RegisterTgByEmail(db *gorm.DB, email string, firstName string, password str
 			return err
 		}
 		defaultRebateRate := getDefaultInviteLuckyRebateRate(tx)
+		freeLotteryCount := GetRegisterFreeLotteryCount(tx)
 		for i := 0; i < 5; i++ {
 			//tgID := time.Now().UnixNano()/1e3 + int64(rand.IntN(1000))
 			ownInviteCode := fmt.Sprintf("%06d", rand.IntN(1000000))
@@ -481,6 +497,7 @@ func RegisterTgByEmail(db *gorm.DB, email string, firstName string, password str
 				SourceChannelCode: nil,
 				TenantId:          tenantID,
 				RebateRate:        defaultRebateRate,
+				FreeLotteryCount:  freeLotteryCount,
 			}
 			if sourceChannel != nil {
 				user.SourceChannelID = &sourceChannel.ID
@@ -558,6 +575,7 @@ func RegisterTgByPhone(db *gorm.DB, phone string, country string, firstName stri
 			return err
 		}
 		defaultRebateRate := getDefaultInviteLuckyRebateRate(tx)
+		freeLotteryCount := GetRegisterFreeLotteryCount(tx)
 		for i := 0; i < 5; i++ {
 			ownInviteCode := fmt.Sprintf("%06d", rand.IntN(1000000))
 			uid, uidErr := generateUniqueUID(tx)
@@ -582,6 +600,7 @@ func RegisterTgByPhone(db *gorm.DB, phone string, country string, firstName stri
 				SourceChannelCode: nil,
 				TenantId:          tenantID,
 				RebateRate:        defaultRebateRate,
+				FreeLotteryCount:  freeLotteryCount,
 			}
 			if sourceChannel != nil {
 				newUser.SourceChannelID = &sourceChannel.ID
@@ -829,23 +848,24 @@ func GetCurrentTgUserInfo(db *gorm.DB, accessSecret string, token string) (pojo.
 	}
 
 	return pojo.TgCurrentUserInfo{
-		Avatar:       user.Avatar,
-		TenantId:     user.TenantId,
-		Balance:      utils.Truncate2(user.Balance),
-		TrialBalance: utils.Truncate2(user.TrialBalance),
-		Uid:          user.Uid,
-		Username:     user.Username,
-		FirstName:    user.FirstName,
-		TgID:         user.TgID,
-		GiftAmount:   utils.Truncate2(user.GiftAmount),
-		RebateAmount: utils.Truncate2(user.RebateAmount),
-		RebateRate:   utils.Truncate2(user.RebateRate),
-		Email:        user.Email,
-		Phone:        user.Phone,
-		Country:      user.Country,
-		VipLevel:     user.VipLevel,
-		VipLevelName: user.VipLevelName,
-		AudioOpen:    user.AudioOpen,
+		Avatar:           user.Avatar,
+		TenantId:         user.TenantId,
+		Balance:          utils.Truncate2(user.Balance),
+		TrialBalance:     utils.Truncate2(user.TrialBalance),
+		Uid:              user.Uid,
+		Username:         user.Username,
+		FirstName:        user.FirstName,
+		TgID:             user.TgID,
+		GiftAmount:       utils.Truncate2(user.GiftAmount),
+		RebateAmount:     utils.Truncate2(user.RebateAmount),
+		RebateRate:       utils.Truncate2(user.RebateRate),
+		FreeLotteryCount: user.FreeLotteryCount,
+		Email:            user.Email,
+		Phone:            user.Phone,
+		Country:          user.Country,
+		VipLevel:         user.VipLevel,
+		VipLevelName:     user.VipLevelName,
+		AudioOpen:        user.AudioOpen,
 	}, nil
 }
 

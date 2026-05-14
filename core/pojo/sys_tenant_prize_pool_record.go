@@ -66,6 +66,7 @@ type LotteryChancesResp struct {
 	TotalFlow      float64   `json:"totalFlow"`      // 累计总流水
 	EarnedCount    int64     `json:"earnedCount"`    // 已获得次数 = floor(totalFlow/1000)
 	UsedCount      int64     `json:"usedCount"`      // 已使用次数
+	FreeCount      int       `json:"freeCount"`      // 免费转盘次数
 	AvailableCount int64     `json:"availableCount"` // 可用次数
 	Amounts        []float64 `json:"amounts"`        // 奖池金额列表
 }

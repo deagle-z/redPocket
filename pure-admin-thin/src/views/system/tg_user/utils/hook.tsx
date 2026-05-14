@@ -28,7 +28,8 @@ function formatNullable(val?: string | null) {
 }
 
 function formatMoney(val?: number | null) {
-  if (val === null || val === undefined || Number.isNaN(Number(val))) return "0";
+  if (val === null || val === undefined || Number.isNaN(Number(val)))
+    return "0";
   return String(val);
 }
 
@@ -182,7 +183,7 @@ export function useTgUser(_tableRef: Ref) {
     {
       label: "操作",
       fixed: "right",
-      width: 340,
+      width: 400,
       slot: "operation"
     }
   ];

@@ -237,6 +237,8 @@
     "playModeParityDesc": "发包只设金额，抢包前先选奇数或偶数再结算。",
     "playModeParityAction": "发这个玩法红包",
     "playModeParityNote": "更快发包，入门门槛更低。",
+    "entryTipTitle": "玩法说明",
+    "entryTipNeverShow": "不再展示",
     "trialEntry": "试玩一下",
     "hotPackets": "热门红包",
     "latestWinners": "流水排名",

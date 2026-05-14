@@ -201,7 +201,7 @@ func GetUserTotalFlow(db *gorm.DB, userID int64) (float64, error) {
 func GetUsedLotteryCount(db *gorm.DB, userID int64) (int64, error) {
 	var count int64
 	err := db.Model(&pojo.UserLotteryRecord{}).
-		Where("user_id = ?", userID).
+		Where("user_id = ? AND peer_amount > 0", userID).
 		Count(&count).Error
 	return count, err
 }

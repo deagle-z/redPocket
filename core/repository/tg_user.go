@@ -10,6 +10,8 @@ import (
 	"math/rand/v2"
 	"strings"
 	"time"
+
+	"gorm.io/gorm/clause"
 )
 
 // GetTgUsers Telegram用户列表（分页）
@@ -98,6 +100,9 @@ func SetTgUser(db *gorm.DB, req pojo.TgUserSet) (result pojo.TgUserAdminBack, er
 		} else {
 			dbUser.RebateRate = getDefaultInviteLuckyRebateRate(db)
 		}
+		if req.FreeLotteryCount != nil {
+			dbUser.FreeLotteryCount = *req.FreeLotteryCount
+		}
 		err = db.Create(&dbUser).Error
 	}
 	if err != nil {
@@ -128,6 +133,9 @@ func buildTgUserUpdateMap(req pojo.TgUserSet) map[string]any {
 	}
 	if req.RebateRate != nil {
 		updates["rebate_rate"] = utils.Truncate2(*req.RebateRate)
+	}
+	if req.FreeLotteryCount != nil {
+		updates["free_lottery_count"] = *req.FreeLotteryCount
 	}
 	return updates
 }
@@ -187,6 +195,49 @@ func SetTgUserRebateRate(db *gorm.DB, id int64, rebateRate float64) (result pojo
 	_ = copier.Copy(&result, &dbUser)
 	result.RebateRate = rebateRate
 	return result, nil
+}
+
+func AddTgUserRebateAmount(db *gorm.DB, id int64, amount float64) (result pojo.TgUserAdminBack, err error) {
+	amount = utils.Truncate2(amount)
+	if amount <= 0 {
+		return result, errors.New("invalid_amount")
+	}
+
+	err = db.Transaction(func(tx *gorm.DB) error {
+		var dbUser pojo.TgUser
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ?", id).First(&dbUser).Error; err != nil {
+			return errors.New("record_not_found")
+		}
+		startAmount := utils.Truncate2(dbUser.RebateAmount)
+		endAmount := utils.Truncate2(startAmount + amount)
+		if err := tx.Model(&pojo.TgUser{}).Where("id = ?", dbUser.ID).Updates(map[string]any{
+			"rebate_amount":       gorm.Expr("rebate_amount + ?", amount),
+			"rebate_total_amount": gorm.Expr("rebate_total_amount + ?", amount),
+		}).Error; err != nil {
+			return err
+		}
+		if err := tx.Create(&pojo.CashHistory{
+			UserId:          dbUser.ID,
+			AwardUni:        fmt.Sprintf("admin_manual_rebate_%d_%d", dbUser.ID, time.Now().UnixNano()),
+			Amount:          amount,
+			StartAmount:     startAmount,
+			EndAmount:       endAmount,
+			CashMark:        "后台加佣金",
+			CashDesc:        fmt.Sprintf("后台手工增加佣金%.2f", amount),
+			Type:            pojo.CashHistoryTypeAdminManualRebate,
+			IsGift:          0,
+			FromUserId:      0,
+			SourceChannelID: dbUser.SourceChannelID,
+		}).Error; err != nil {
+			return err
+		}
+		if err := tx.Where("id = ?", dbUser.ID).First(&dbUser).Error; err != nil {
+			return err
+		}
+		_ = copier.Copy(&result, &dbUser)
+		return nil
+	})
+	return result, err
 }
 
 func SetTgUserRemark(db *gorm.DB, id int64, remark string) (result pojo.TgUserAdminBack, err error) {

@@ -1853,16 +1853,18 @@ func (s *TelegramBotService) HandleRegisterCommand(chatID int64, userID int64, u
 	}
 
 	registerGiftAmount := s.getRegisterGiftAmount()
+	freeLotteryCount := repository.GetRegisterFreeLotteryCount(s.DB)
 	newUser := pojo.TgUser{
-		Username:   usernamePtr,
-		FirstName:  firstNamePtr,
-		TgID:       userID,
-		Balance:    registerGiftAmount,
-		GiftAmount: registerGiftAmount,
-		GiftTotal:  registerGiftAmount,
-		Status:     1,
-		ParentID:   parentID,
-		InviteCode: &inviteCode,
+		Username:         usernamePtr,
+		FirstName:        firstNamePtr,
+		TgID:             userID,
+		Balance:          registerGiftAmount,
+		GiftAmount:       registerGiftAmount,
+		GiftTotal:        registerGiftAmount,
+		FreeLotteryCount: freeLotteryCount,
+		Status:           1,
+		ParentID:         parentID,
+		InviteCode:       &inviteCode,
 	}
 	if err = s.DB.Create(&newUser).Error; err != nil {
 		if strings.Contains(err.Error(), "Duplicate entry") || strings.Contains(err.Error(), "1062") {
@@ -2035,14 +2037,16 @@ func (s *TelegramBotService) GetOrCreateTgUserByTelegramID(telegramUserID int64,
 		displayName = fmt.Sprintf("User_%d", telegramUserID)
 	}
 	registerGiftAmount := s.getRegisterGiftAmount()
+	freeLotteryCount := repository.GetRegisterFreeLotteryCount(s.DB)
 	newUser := pojo.TgUser{
-		FirstName:  strPtr(displayName),
-		TgID:       telegramUserID,
-		Balance:    registerGiftAmount,
-		GiftAmount: registerGiftAmount,
-		GiftTotal:  registerGiftAmount,
-		Status:     1,
-		InviteCode: &inviteCode,
+		FirstName:        strPtr(displayName),
+		TgID:             telegramUserID,
+		Balance:          registerGiftAmount,
+		GiftAmount:       registerGiftAmount,
+		GiftTotal:        registerGiftAmount,
+		FreeLotteryCount: freeLotteryCount,
+		Status:           1,
+		InviteCode:       &inviteCode,
 	}
 
 	if err := s.DB.Create(&newUser).Error; err != nil {

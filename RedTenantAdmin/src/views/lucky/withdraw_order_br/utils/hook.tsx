@@ -3,12 +3,26 @@ import { message } from "@/utils/message";
 import { addDialog } from "@/components/ReDialog";
 import type { PaginationProps } from "@pureadmin/table";
 import {
+  getTgUserWithdrawActivityFlowTenant,
   getWithdrawOrderBrListAdmin,
   setWithdrawOrderBr,
+  type WithdrawActivityFlow,
+  type WithdrawActivityFlowCycle,
   type WithdrawOrderBr
 } from "@/api/withdrawOrderBr";
 import { type Ref, reactive, ref, onMounted, toRaw } from "vue";
-import { ElForm, ElFormItem, ElInput, ElTag } from "element-plus";
+import {
+  ElDescriptions,
+  ElDescriptionsItem,
+  ElEmpty,
+  ElForm,
+  ElFormItem,
+  ElInput,
+  ElProgress,
+  ElTable,
+  ElTableColumn,
+  ElTag
+} from "element-plus";
 
 const statusOptions = [
   { label: "待审核", value: 0 },
@@ -47,7 +61,102 @@ function formatMoneyWithCurrency(
   return `${formatMoney(value)} ${currency || ""}`.trim();
 }
 
-export function useWithdrawOrderBr(tableRef: Ref) {
+function formatDateTime(value?: string | null) {
+  return value ? dayjs(value).format("YYYY-MM-DD HH:mm:ss") : "-";
+}
+
+function getActivityTypeLabel(type: number) {
+  if (type === 1) return "首充";
+  if (type === 2) return "今日首充";
+  return "普通";
+}
+
+function getActivityStatusLabel(status: number) {
+  if (status === 1) return "进行中";
+  if (status === 2) return "已结束";
+  return "-";
+}
+
+function getActivityStatusType(status: number) {
+  return status === 1 ? "success" : "info";
+}
+
+function renderActivityOverview(data: WithdrawActivityFlow) {
+  const active = data.activeActivity;
+
+  return (
+    <div class="space-y-4">
+      <ElDescriptions border column={2} size="small">
+        <ElDescriptionsItem label="用户ID">{data.userId}</ElDescriptionsItem>
+        <ElDescriptionsItem label="账户余额">
+          {formatMoney(data.balance)}
+        </ElDescriptionsItem>
+        <ElDescriptionsItem label="累计流水">
+          {formatMoney(data.totalFlow)}
+        </ElDescriptionsItem>
+        <ElDescriptionsItem label="当前活动">
+          {data.hasActivity && active ? (
+            <ElTag type="success" effect="plain">
+              {active.activityCode || getActivityTypeLabel(active.activityType)}
+            </ElTag>
+          ) : (
+            <ElTag type="info" effect="plain">
+              无进行中活动
+            </ElTag>
+          )}
+        </ElDescriptionsItem>
+      </ElDescriptions>
+
+      {active ? (
+        <div class="rounded border border-[var(--el-border-color)] p-4">
+          <div class="mb-3 flex items-center justify-between">
+            <span class="text-sm font-medium text-[var(--el-text-color-primary)]">
+              当前活动流水进度
+            </span>
+            <ElTag type={getActivityStatusType(active.status)} effect="plain">
+              {getActivityStatusLabel(active.status)}
+            </ElTag>
+          </div>
+          <ElProgress
+            percentage={Math.min(100, Number(active.progressPercent || 0))}
+            strokeWidth={10}
+          />
+          <ElDescriptions class="mt-4" border column={3} size="small">
+            <ElDescriptionsItem label="活动类型">
+              {getActivityTypeLabel(active.activityType)}
+            </ElDescriptionsItem>
+            <ElDescriptionsItem label="流水倍数">
+              {formatMoney(active.multiplier)}
+            </ElDescriptionsItem>
+            <ElDescriptionsItem label="基础金额">
+              {formatMoney(active.baseAmount)}
+            </ElDescriptionsItem>
+            <ElDescriptionsItem label="要求流水">
+              {formatMoney(active.requiredFlow)}
+            </ElDescriptionsItem>
+            <ElDescriptionsItem label="当前流水">
+              {formatMoney(active.currentFlow)}
+            </ElDescriptionsItem>
+            <ElDescriptionsItem label="剩余流水">
+              {formatMoney(active.remainingFlow)}
+            </ElDescriptionsItem>
+          </ElDescriptions>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function activityTableRows(data: WithdrawActivityFlow) {
+  return (data.activities || []).map(item => ({
+    ...item,
+    activityName: item.activityCode || getActivityTypeLabel(item.activityType),
+    startedAtText: formatDateTime(item.startedAt),
+    endedAtText: formatDateTime(item.endedAt)
+  }));
+}
+
+export function useWithdrawOrderBr(_tableRef: Ref) {
   const form = reactive({
     userUid: "",
     orderNo: "",
@@ -57,7 +166,6 @@ export function useWithdrawOrderBr(tableRef: Ref) {
     channel: "",
     payMethod: ""
   });
-  const formRef = ref();
   const dataList = ref<WithdrawOrderBr[]>([]);
   const loading = ref(true);
   const pagination = reactive<PaginationProps>({
@@ -85,7 +193,7 @@ export function useWithdrawOrderBr(tableRef: Ref) {
       formatter: ({ userUid }) => userUid || "-"
     },
     {
-      label: "原始金额",
+      label: "提现金额",
       prop: "amount",
       minWidth: 140,
       formatter: ({ amount }) => formatMoney(amount)
@@ -141,7 +249,7 @@ export function useWithdrawOrderBr(tableRef: Ref) {
     {
       label: "操作",
       fixed: "right",
-      width: 180,
+      width: 260,
       slot: "operation"
     }
   ];
@@ -252,6 +360,130 @@ export function useWithdrawOrderBr(tableRef: Ref) {
     });
   }
 
+  async function showWithdrawActivityFlow(row: WithdrawOrderBr) {
+    if (!row.userId) {
+      message("该订单缺少用户ID", { type: "warning" });
+      return;
+    }
+
+    try {
+      const { data } = await getTgUserWithdrawActivityFlowTenant(row.userId);
+      const rows = activityTableRows(data);
+
+      addDialog({
+        title: `用户 ${row.userUid || row.userId} 活动流水`,
+        width: "860px",
+        draggable: true,
+        hideFooter: true,
+        contentRenderer: () => (
+          <div class="max-h-[70vh] overflow-auto pr-1">
+            {renderActivityOverview(data)}
+            <div class="mt-4">
+              {rows.length ? (
+                <ElTable data={rows} border size="small">
+                  <ElTableColumn
+                    prop="activityName"
+                    label="活动"
+                    minWidth={150}
+                    showOverflowTooltip={true}
+                  />
+                  <ElTableColumn
+                    label="状态"
+                    width={90}
+                    v-slots={{
+                      default: ({
+                        row: item
+                      }: {
+                        row: WithdrawActivityFlowCycle;
+                      }) => (
+                        <ElTag
+                          type={getActivityStatusType(item.status)}
+                          effect="plain"
+                        >
+                          {getActivityStatusLabel(item.status)}
+                        </ElTag>
+                      )
+                    }}
+                  />
+                  <ElTableColumn
+                    prop="requiredFlow"
+                    label="要求流水"
+                    width={110}
+                    v-slots={{
+                      default: ({
+                        row: item
+                      }: {
+                        row: WithdrawActivityFlowCycle;
+                      }) => formatMoney(item.requiredFlow)
+                    }}
+                  />
+                  <ElTableColumn
+                    prop="currentFlow"
+                    label="当前流水"
+                    width={110}
+                    v-slots={{
+                      default: ({
+                        row: item
+                      }: {
+                        row: WithdrawActivityFlowCycle;
+                      }) => formatMoney(item.currentFlow)
+                    }}
+                  />
+                  <ElTableColumn
+                    prop="remainingFlow"
+                    label="剩余流水"
+                    width={110}
+                    v-slots={{
+                      default: ({
+                        row: item
+                      }: {
+                        row: WithdrawActivityFlowCycle;
+                      }) => formatMoney(item.remainingFlow)
+                    }}
+                  />
+                  <ElTableColumn
+                    prop="progressPercent"
+                    label="进度"
+                    width={160}
+                    v-slots={{
+                      default: ({
+                        row: item
+                      }: {
+                        row: WithdrawActivityFlowCycle;
+                      }) => (
+                        <ElProgress
+                          percentage={Math.min(
+                            100,
+                            Number(item.progressPercent || 0)
+                          )}
+                        />
+                      )
+                    }}
+                  />
+                  <ElTableColumn
+                    prop="startedAtText"
+                    label="开始时间"
+                    minWidth={160}
+                  />
+                  <ElTableColumn
+                    prop="endedAtText"
+                    label="结束时间"
+                    minWidth={160}
+                  />
+                </ElTable>
+              ) : (
+                <ElEmpty description="暂无活动记录" />
+              )}
+            </div>
+          </div>
+        )
+      });
+    } catch (error) {
+      console.error("获取活动流水失败", error);
+      message("获取活动流水失败", { type: "error" });
+    }
+  }
+
   onMounted(() => {
     onSearch();
   });
@@ -269,6 +501,7 @@ export function useWithdrawOrderBr(tableRef: Ref) {
     handleCurrentChange,
     handleSelectionChange,
     approveOrder,
-    rejectOrder
+    rejectOrder,
+    showWithdrawActivityFlow
   };
 }

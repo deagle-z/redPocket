@@ -29,7 +29,8 @@ const {
   handleCurrentChange,
   handleSelectionChange,
   approveOrder,
-  rejectOrder
+  rejectOrder,
+  showWithdrawActivityFlow
 } = useWithdrawOrderBr(tableRef);
 </script>
 
@@ -112,7 +113,11 @@ const {
         </el-form-item>
       </el-form>
 
-      <PureTableBar title="提现记录（巴西）" :columns="columns" @refresh="onSearch">
+      <PureTableBar
+        title="提现记录（巴西）"
+        :columns="columns"
+        @refresh="onSearch"
+      >
         <template v-slot="{ size, dynamicColumns }">
           <pure-table
             ref="tableRef"
@@ -139,6 +144,16 @@ const {
             @selection-change="handleSelectionChange"
           >
             <template #operation="{ row }">
+              <el-button
+                class="reset-margin"
+                link
+                type="info"
+                :size="size"
+                :icon="useRenderIcon('ri:file-list-3-line')"
+                @click="showWithdrawActivityFlow(row)"
+              >
+                活动流水
+              </el-button>
               <el-button
                 v-if="row.status === 0"
                 class="reset-margin"

@@ -56,6 +56,11 @@ export type TgUserRebateRateSet = {
   rebateRate: number;
 };
 
+export type TgUserRebateAmountAdd = {
+  id: number;
+  amount: number;
+};
+
 export type TgUserRemarkSet = {
   id: number;
   remark: string;
@@ -170,6 +175,16 @@ export const setTgUserRebateRate = (data: TgUserRebateRateSet) => {
   return http.request<TgUserResult>("post", "/api/v1/admin/tgUser/rebateRate", {
     data
   });
+};
+
+export const addTgUserRebateAmount = (data: TgUserRebateAmountAdd) => {
+  return http.request<TgUserResult>(
+    "post",
+    "/api/v1/admin/tgUser/rebateAmount",
+    {
+      data
+    }
+  );
 };
 
 export const setTgUserRemark = (data: TgUserRemarkSet) => {

@@ -93,6 +93,45 @@ export type WithdrawOrderBrResult = {
   data?: WithdrawOrderBr;
 };
 
+export type WithdrawActivityFlowCycle = {
+  id: number;
+  createdAt: string;
+  updatedAt: string;
+  activityCode: string;
+  activityType: number;
+  status: number;
+  multiplier: number;
+  baseAmount: number;
+  requiredFlow: number;
+  flowStartValue: number;
+  flowConsumed: number;
+  currentFlow: number;
+  availableFlow: number;
+  remainingFlow: number;
+  progressPercent: number;
+  balanceThreshold: number;
+  lastRechargeNo: string;
+  endReason: string;
+  startedAt?: string | null;
+  endedAt?: string | null;
+};
+
+export type WithdrawActivityFlow = {
+  userId: number;
+  balance: number;
+  totalFlow: number;
+  hasActivity: boolean;
+  activeActivity?: WithdrawActivityFlowCycle | null;
+  activities: WithdrawActivityFlowCycle[];
+};
+
+export type WithdrawActivityFlowResult = {
+  code: number;
+  message: string;
+  success: boolean;
+  data: WithdrawActivityFlow;
+};
+
 export const getWithdrawOrderBrListAdmin = (data: WithdrawOrderBrSearch) => {
   return http.request<WithdrawOrderBrListResult>(
     "post",
@@ -106,5 +145,12 @@ export const setWithdrawOrderBr = (data: WithdrawOrderBrSet) => {
     "post",
     "/api/v1/admin/withdrawOrderBr",
     { data }
+  );
+};
+
+export const getTgUserWithdrawActivityFlowAdmin = (userId: number) => {
+  return http.request<WithdrawActivityFlowResult>(
+    "get",
+    `/api/v1/admin/tgUser/${userId}/withdrawActivityFlow`
   );
 };
