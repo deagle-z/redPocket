@@ -788,12 +788,18 @@ func deductWithdrawAmount(tx *gorm.DB, order *pojo.WithdrawOrderBr) error {
 	if err := ReserveWithdrawLimitForOrder(tx, user, order); err != nil {
 		return err
 	}
+	remainingBalance := utils.Truncate2(user.Balance - order.Amount)
+	updates := map[string]any{
+		"balance": gorm.Expr("balance - ?", order.Amount),
+	}
+	if user.GiftAmount > 0 || order.GiftRestrictedAmount > 0 {
+		updates["gift_amount"] = withdrawGiftAmountAfterDeduct(user.GiftAmount, order.GiftRestrictedAmount, remainingBalance)
+	}
 	if err := tx.Model(&pojo.TgUser{}).
 		Where("id = ?", user.ID).
-		Update("balance", gorm.Expr("balance - ?", order.Amount)).Error; err != nil {
+		Updates(updates).Error; err != nil {
 		return err
 	}
-	remainingBalance := utils.Truncate2(user.Balance - order.Amount)
 	if hasActiveCycle {
 		endReason := pojo.WithdrawActivityCycleEndReasonWithdraw
 		restrictRemaining := true
@@ -898,9 +904,16 @@ func refundWithdrawAmount(tx *gorm.DB, order pojo.WithdrawOrderBr) error {
 	if err := RefundWithdrawLimitForOrder(tx, user, order); err != nil {
 		return err
 	}
+	refundedBalance := utils.Truncate2(user.Balance + order.Amount)
+	updates := map[string]any{
+		"balance": gorm.Expr("balance + ?", order.Amount),
+	}
+	if user.GiftAmount > 0 || order.GiftRestrictedAmount > 0 {
+		updates["gift_amount"] = withdrawGiftAmountAfterRefund(user.GiftAmount, order.GiftRestrictedAmount, refundedBalance)
+	}
 	if err := tx.Model(&pojo.TgUser{}).
 		Where("id = ?", user.ID).
-		Update("balance", gorm.Expr("balance + ?", order.Amount)).Error; err != nil {
+		Updates(updates).Error; err != nil {
 		return err
 	}
 	cashHistory := pojo.CashHistory{
@@ -933,4 +946,12 @@ func isRebateWithdrawOrder(order pojo.WithdrawOrderBr) bool {
 		}
 	}
 	return false
+}
+
+func withdrawGiftAmountAfterDeduct(currentGiftAmount float64, giftDeduct float64, balanceAfterDeduct float64) float64 {
+	return minFloat(clampNonNegative(currentGiftAmount-giftDeduct), clampNonNegative(balanceAfterDeduct))
+}
+
+func withdrawGiftAmountAfterRefund(currentGiftAmount float64, giftRefund float64, balanceAfterRefund float64) float64 {
+	return minFloat(clampNonNegative(currentGiftAmount+giftRefund), clampNonNegative(balanceAfterRefund))
 }

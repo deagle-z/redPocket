@@ -80,44 +80,26 @@ func GetUserWithdrawSummary(db *gorm.DB, userID int64) (pojo.TgWithdrawSummaryBa
 		return result, err
 	}
 
-	giftRestricted := clampNonNegative(state.GiftRestrictedBalance)
-	rechargeRestricted := clampNonNegative(state.RechargeRestrictedBalance)
-	unrestricted := clampNonNegative(user.Balance - giftRestricted - rechargeRestricted)
-	if giftRestricted <= 0 && rechargeRestricted <= 0 {
-		return pojo.TgWithdrawSummaryBack{
-			Balance:               utils.Truncate2(user.Balance),
-			NonWithdrawableAmount: 0,
-			TodayWithdrawCount:    todayWithdrawCount,
-		}, nil
-	}
-
 	totalFlow, err := GetUserTotalFlow(db, user.ID)
 	if err != nil {
 		return result, err
 	}
 
-	multipliers := loadWithdrawLimitMultipliers(db, "withdraw_gift_limit", "withdraw_limit")
-	giftMultiplier := multipliers["withdraw_gift_limit"]
-	rechargeMultiplier := multipliers["withdraw_limit"]
+	giftMultiplier := loadWithdrawLimitMultiplier(db, "withdraw_gift_limit")
 	availableFlow := clampNonNegative(totalFlow - state.GiftFlowConsumed - state.RechargeFlowConsumed)
-
-	withdrawableGift := giftRestricted
 	if giftMultiplier > 0 {
-		withdrawableGift = minFloat(giftRestricted, availableFlow/giftMultiplier)
+		totalWithdrawable := minFloat(clampNonNegative(user.Balance), availableFlow/giftMultiplier)
+		nonWithdrawable := clampNonNegative(user.Balance - totalWithdrawable)
+		return pojo.TgWithdrawSummaryBack{
+			Balance:               utils.Truncate2(user.Balance),
+			NonWithdrawableAmount: nonWithdrawable,
+			TodayWithdrawCount:    todayWithdrawCount,
+		}, nil
 	}
-	remainingFlow := clampNonNegative(availableFlow - utils.Truncate2(withdrawableGift*giftMultiplier))
-
-	withdrawableRecharge := rechargeRestricted
-	if rechargeMultiplier > 0 {
-		withdrawableRecharge = minFloat(rechargeRestricted, remainingFlow/rechargeMultiplier)
-	}
-
-	totalWithdrawable := clampNonNegative(unrestricted + withdrawableGift + withdrawableRecharge)
-	nonWithdrawable := clampNonNegative(user.Balance - totalWithdrawable)
 
 	result = pojo.TgWithdrawSummaryBack{
 		Balance:               utils.Truncate2(user.Balance),
-		NonWithdrawableAmount: nonWithdrawable,
+		NonWithdrawableAmount: 0,
 		TodayWithdrawCount:    todayWithdrawCount,
 	}
 	return result, nil
@@ -212,7 +194,6 @@ func ReserveWithdrawLimitForOrder(tx *gorm.DB, user pojo.TgUser, order *pojo.Wit
 	}
 
 	giftMultiplier := loadWithdrawLimitMultiplier(tx, "withdraw_gift_limit")
-	rechargeMultiplier := loadWithdrawLimitMultiplier(tx, "withdraw_limit")
 
 	giftRestricted := clampNonNegative(state.GiftRestrictedBalance)
 	rechargeRestricted := clampNonNegative(state.RechargeRestrictedBalance)
@@ -224,8 +205,8 @@ func ReserveWithdrawLimitForOrder(tx *gorm.DB, user pojo.TgUser, order *pojo.Wit
 	remainingAmount = clampNonNegative(remainingAmount - giftRestrictedAmount)
 	rechargeRestrictedAmount := minFloat(remainingAmount, rechargeRestricted)
 
-	giftFlowRequired := utils.Truncate2(giftRestrictedAmount * giftMultiplier)
-	rechargeFlowRequired := utils.Truncate2(rechargeRestrictedAmount * rechargeMultiplier)
+	giftFlowRequired := calculateWithdrawAmountFlowRequired(order.Amount, giftMultiplier)
+	rechargeFlowRequired := 0.0
 
 	totalFlow, err := GetUserTotalFlow(tx, user.ID)
 	if err != nil {
@@ -542,6 +523,13 @@ func defaultWithdrawLimitDesc(key string) string {
 	default:
 		return "提现所需流水倍数"
 	}
+}
+
+func calculateWithdrawAmountFlowRequired(amount float64, multiplier float64) float64 {
+	if amount <= 0 || multiplier <= 0 {
+		return 0
+	}
+	return utils.Truncate2(amount * multiplier)
 }
 
 func clampNonNegative(value float64) float64 {

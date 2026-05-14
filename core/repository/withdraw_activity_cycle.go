@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	withdrawActivityLimitConfigKey            = "withdraw_activity_limit"
+	withdrawActivityLimitConfigKey            = "withdraw_gift_limit"
 	withdrawActivityBalanceThresholdConfigKey = "withdraw_activity_balance_threshold"
 )
 
