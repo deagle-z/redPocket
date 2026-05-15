@@ -670,6 +670,9 @@
     "badRequest": "Parameter permintaan tidak valid",
     "networkError": "Kesalahan jaringan, coba lagi nanti",
     "authFailed": "Verifikasi otorisasi gagal",
+    "apiErrors": {
+      "tg_channel_member_not_found": "Kami belum mendeteksi Anda bergabung ke channel Telegram. Gabung ke channel terlebih dulu, lalu tautkan Telegram."
+    },
     "noRemind": "Jangan ingatkan lagi",
     "ok": "OK"
   },

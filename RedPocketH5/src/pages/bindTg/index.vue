@@ -42,8 +42,8 @@ async function handleBind() {
     tgName.value = res.data.tgName
     showToast(t('bindTgPage.toastBindSuccess', { count: res.data.awardedCount || 0 }))
   }
-  catch (err: any) {
-    showToast(err?.message || t('bindTgPage.toastBindFailed'))
+  catch {
+    // Request errors are surfaced by the axios interceptor.
   }
   finally {
     submitting.value = false

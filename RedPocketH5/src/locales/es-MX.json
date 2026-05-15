@@ -670,6 +670,9 @@
     "badRequest": "Parámetros de solicitud no válidos",
     "networkError": "Error de red, inténtelo de nuevo más tarde",
     "authFailed": "Error en la verificación de autorización",
+    "apiErrors": {
+      "tg_channel_member_not_found": "No pudimos detectar que te uniste al canal de Telegram. Primero unete al canal y luego vincula Telegram."
+    },
     "noRemind": "no me lo recuerdes",
     "ok": "DE ACUERDO"
   },

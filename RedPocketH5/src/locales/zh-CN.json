@@ -672,6 +672,9 @@
     "badRequest": "请求参数错误",
     "networkError": "网络异常，请稍后重试",
     "authFailed": "登录状态失效",
+    "apiErrors": {
+      "tg_channel_member_not_found": "未检测到你已加入 Telegram 频道，请先加入频道后再绑定"
+    },
     "noRemind": "不再提醒",
     "ok": "我知道了"
   },

@@ -1,6 +1,7 @@
 {
   "data_error": "kesalahan data",
   "bind_failed": "Gagal menautkan",
+  "tg_channel_member_not_found": "Gagal menautkan",
   "device_unique": "satu perangkat hanya dapat mendaftar satu akun",
   "password_format_error": "format kata sandi salah",
   "phone_format_error": "format nomor telepon salah",

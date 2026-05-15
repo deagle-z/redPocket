@@ -672,6 +672,9 @@
     "badRequest": "Invalid request parameters",
     "networkError": "Network error, please try again later",
     "authFailed": "Authorization verification failed",
+    "apiErrors": {
+      "tg_channel_member_not_found": "We could not detect that you joined the Telegram channel. Please join the channel first, then bind Telegram."
+    },
     "noRemind": "Don't remind me",
     "ok": "OK"
   },

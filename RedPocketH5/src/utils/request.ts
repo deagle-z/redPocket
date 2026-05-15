@@ -33,7 +33,12 @@ function tr(key: string, fallback: string) {
 }
 
 function getErrorMessage(payload?: Record<string, any>, fallback = tr('common.requestFailed', 'Request failed')) {
-  return payload?.message || payload?.msg || payload?.errorMessage || fallback
+  const rawMessage = payload?.message || payload?.msg || payload?.errorMessage
+  if (!rawMessage)
+    return fallback
+
+  const mappedMessage = tr(`common.apiErrors.${rawMessage}`, rawMessage)
+  return mappedMessage || rawMessage
 }
 
 function normalizeErrorPayload(payload: unknown): Record<string, any> {

@@ -1,6 +1,7 @@
 {
   "data_error": "erro de dados",
   "bind_failed": "Falha na vinculação",
+  "tg_channel_member_not_found": "Falha na vinculação",
   "device_unique": "um dispositivo só pode registrar uma conta",
   "password_format_error": "formato de senha inválido",
   "phone_format_error": "formato de telefone inválido",

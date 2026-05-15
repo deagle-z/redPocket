@@ -1,6 +1,7 @@
 {
   "data_error": "data error",
   "bind_failed": "Bind failed",
+  "tg_channel_member_not_found": "Bind failed",
   "device_unique": "one device can only register an account",
   "password_format_error": "password format error",
   "phone_format_error": "phone format error",
