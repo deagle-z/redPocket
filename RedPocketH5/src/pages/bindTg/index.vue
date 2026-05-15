@@ -6,6 +6,7 @@ import { safeBack } from '@/utils/navigation'
 
 const tgName = ref('')
 const submitting = ref(false)
+const currentStep = ref<'channel' | 'bind'>('channel')
 const { t } = useI18n()
 const router = useRouter()
 const CHANNEL_URL = 'https://t.me/LuckyCoinsMX'
@@ -18,7 +19,15 @@ function normalizeTgName(value: string) {
 }
 
 function goBack() {
+  if (currentStep.value === 'bind') {
+    currentStep.value = 'channel'
+    return
+  }
   safeBack(router)
+}
+
+function goBindStep() {
+  currentStep.value = 'bind'
 }
 
 async function handleBind() {
@@ -66,7 +75,38 @@ async function handleBind() {
       </div>
     </section>
 
-    <van-form class="bind-form" @submit="handleBind">
+    <section class="step-track">
+      <div class="step-track__item" :class="{ 'step-track__item--active': currentStep === 'channel' }">
+        <span>1</span>
+        <p>{{ t('bindTgPage.stepJoinChannel') }}</p>
+      </div>
+      <div class="step-track__line" />
+      <div class="step-track__item" :class="{ 'step-track__item--active': currentStep === 'bind' }">
+        <span>2</span>
+        <p>{{ t('bindTgPage.stepBindTelegram') }}</p>
+      </div>
+    </section>
+
+    <section v-if="currentStep === 'channel'" class="channel-confirm">
+      <div class="channel-confirm__badge">
+        <van-icon name="guide-o" />
+      </div>
+      <h3>{{ t('bindTgPage.channelStepTitle') }}</h3>
+      <p class="channel-confirm__desc">
+        <span>{{ t('bindTgPage.channelStepDescBefore') }}</span>
+        <a class="channel-link" :href="CHANNEL_URL" target="_blank" rel="noopener noreferrer">
+          <van-icon name="guide-o" />
+          <span>{{ CHANNEL_URL }}</span>
+        </a>
+        <span>{{ t('bindTgPage.channelStepDescAfter') }}</span>
+      </p>
+      <button type="button" class="bind-submit-btn channel-next-btn" @click="goBindStep">
+        <van-icon name="success" />
+        <span>{{ t('bindTgPage.channelJoinedNext') }}</span>
+      </button>
+    </section>
+
+    <van-form v-else class="bind-form" @submit="handleBind">
       <section class="bind-card">
         <label class="field-label" for="tgName">{{ t('bindTgPage.tgNameLabel') }}</label>
         <van-field
@@ -243,6 +283,107 @@ async function handleBind() {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.step-track {
+  margin-top: 14px;
+  padding: 0 4px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.step-track__item {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: rgba(255, 229, 186, 0.52);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.step-track__item span {
+  width: 24px;
+  height: 24px;
+  border: 1px solid rgba(255, 229, 186, 0.28);
+  border-radius: 999px;
+  background: rgba(255, 248, 214, 0.08);
+  color: rgba(255, 229, 186, 0.68);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.step-track__item p {
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.step-track__item--active {
+  color: #ffd98b;
+}
+
+.step-track__item--active span {
+  border-color: rgba(255, 236, 157, 0.58);
+  background: linear-gradient(180deg, #fff4ba 0%, #ffd14b 100%);
+  color: #7a2100;
+}
+
+.step-track__line {
+  flex: 1;
+  height: 1px;
+  min-width: 18px;
+  background: linear-gradient(90deg, rgba(255, 229, 186, 0.24), rgba(255, 229, 186, 0.08));
+}
+
+.channel-confirm {
+  margin-top: 14px;
+  padding: 18px 16px;
+  border: 1px solid rgba(212, 175, 55, 0.4);
+  border-radius: 18px;
+  background: linear-gradient(170deg, rgba(72, 0, 0, 0.94), rgba(34, 0, 0, 0.96));
+  box-shadow:
+    0 12px 24px rgba(0, 0, 0, 0.26),
+    inset 0 0 0 1px rgba(255, 248, 214, 0.07);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.channel-confirm__badge {
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  background: rgba(255, 248, 214, 0.1);
+  color: #ffd98b;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+}
+
+.channel-confirm h3 {
+  margin: 0;
+  color: #fff0c9;
+  font-size: 18px;
+  line-height: 1.25;
+  font-weight: 900;
+}
+
+.channel-confirm__desc {
+  margin: 0;
+  color: rgba(255, 229, 186, 0.72);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.channel-next-btn {
+  margin-top: 4px;
 }
 
 .bind-form {

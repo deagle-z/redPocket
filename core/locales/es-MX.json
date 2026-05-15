@@ -1,5 +1,6 @@
 {
   "data_error": "error de datos",
+  "bind_failed": "Error de enlace",
   "device_unique": "un dispositivo solo puede registrar una cuenta",
   "password_format_error": "formato de contraseña inválido",
   "phone_format_error": "formato de teléfono inválido",

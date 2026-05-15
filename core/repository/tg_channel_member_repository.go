@@ -97,7 +97,7 @@ func UpsertTgChannelMember(db *gorm.DB, snapshot TgChannelMemberSnapshot) error 
 	}).Create(&member).Error
 }
 
-func BindCurrentTgChannelName(ctx context.Context, db *gorm.DB, tablePrefix string, userID int64, tgName string) (pojo.TgBindChannelNameBack, error) {
+func BindCurrentTgChannelName(_ context.Context, db *gorm.DB, tablePrefix string, userID int64, tgName string) (pojo.TgBindChannelNameBack, error) {
 	start := time.Now()
 	rawTgName := strings.TrimSpace(tgName)
 	log.Printf("[tg-channel-bind] start prefix=%q user_id=%d raw_tg_name=%q", tablePrefix, userID, rawTgName)
@@ -138,13 +138,8 @@ func BindCurrentTgChannelName(ctx context.Context, db *gorm.DB, tablePrefix stri
 			log.Printf("[tg-channel-bind] member query failed prefix=%q user_id=%d channel_id=%q normalized_tg_name=%q err=%v", tablePrefix, userID, channelID, normalizedName, err)
 			return pojo.TgBindChannelNameBack{}, err
 		}
-		log.Printf("[tg-channel-bind] member cache miss prefix=%q user_id=%d channel_id=%q normalized_tg_name=%q user_tg_id=%d fallback=true", tablePrefix, userID, channelID, normalizedName, current.TgID)
-		member, err = fallbackCheckAndStoreTgChannelMember(ctx, db, current, channelID, normalizedName)
-		if err != nil {
-			log.Printf("[tg-channel-bind] fallback failed prefix=%q user_id=%d channel_id=%q normalized_tg_name=%q user_tg_id=%d err=%v", tablePrefix, userID, channelID, normalizedName, current.TgID, err)
-			return pojo.TgBindChannelNameBack{}, err
-		}
-		log.Printf("[tg-channel-bind] fallback stored member prefix=%q user_id=%d channel_id=%q member_id=%d member_tg_id=%d member_tg_name=%q member_bind_user_id=%v", tablePrefix, userID, channelID, member.ID, member.TgID, member.TgName, member.BindUserID)
+		log.Printf("[tg-channel-bind] reject member not found prefix=%q user_id=%d channel_id=%q normalized_tg_name=%q", tablePrefix, userID, channelID, normalizedName)
+		return pojo.TgBindChannelNameBack{}, errors.New("bind_failed")
 	} else {
 		log.Printf("[tg-channel-bind] member cache hit prefix=%q user_id=%d channel_id=%q member_id=%d member_tg_id=%d member_tg_name=%q member_bind_user_id=%v", tablePrefix, userID, channelID, member.ID, member.TgID, member.TgName, member.BindUserID)
 	}
@@ -157,17 +152,6 @@ func BindCurrentTgChannelName(ctx context.Context, db *gorm.DB, tablePrefix stri
 	var result pojo.TgBindChannelNameBack
 	err = db.Transaction(func(tx *gorm.DB) error {
 		log.Printf("[tg-channel-bind] tx start prefix=%q user_id=%d channel_id=%q member_id=%d normalized_tg_name=%q", tablePrefix, userID, channelID, member.ID, normalizedName)
-		var exists pojo.TgUser
-		queryErr := tx.Where("tg_name = ? AND id <> ? AND status <> ?", normalizedName, userID, -1).First(&exists).Error
-		if queryErr == nil && exists.ID > 0 {
-			log.Printf("[tg-channel-bind] tx reject tg_name already used prefix=%q user_id=%d channel_id=%q normalized_tg_name=%q exists_user_id=%d", tablePrefix, userID, channelID, normalizedName, exists.ID)
-			return errors.New("tg_name_already_bound")
-		}
-		if queryErr != nil && !errors.Is(queryErr, gorm.ErrRecordNotFound) {
-			log.Printf("[tg-channel-bind] tx tg_name uniqueness query failed prefix=%q user_id=%d channel_id=%q normalized_tg_name=%q err=%v", tablePrefix, userID, channelID, normalizedName, queryErr)
-			return queryErr
-		}
-
 		var lockedUser pojo.TgUser
 		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ? AND status = ?", userID, 1).First(&lockedUser).Error; err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
