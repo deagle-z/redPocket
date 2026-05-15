@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/go-redis/redis/v8"
 	"gorm.io/gorm"
 	"log"
 	"math/rand/v2"
@@ -24,14 +25,13 @@ func GetInt64Cache(preFix string, key string, defaultValue int64) (result int64)
 	if data != nil && data.Err() == nil {
 		dataStr = data.Val()
 	}
-	newData := false
 	if dataStr == "" {
 		db := NewPrefixDb(preFix)
 		var sysConfig pojo.SysConfig
 		db.Where("config_key = ?", key).First(&sysConfig)
 		if sysConfig.ID != 0 {
 			dataStr = sysConfig.ConfigValue
-			newData = true
+			RD.SetEX(context.Background(), redisKey, dataStr, GetRandomRangeSecond(20*60, 40*60))
 		}
 	}
 	if dataStr != "" {
@@ -39,9 +39,6 @@ func GetInt64Cache(preFix string, key string, defaultValue int64) (result int64)
 		if err == nil {
 			return num
 		}
-	}
-	if newData {
-		FlushInt64Cache(preFix, key, defaultValue)
 	}
 	return defaultValue
 }
@@ -72,14 +69,15 @@ func GetStringCache(preFix string, key string, defaultValue *string) (result *st
 		log.Printf("[config-cache] string cache hit prefix=%q key=%s redisKey=%s value=%q", preFix, key, redisKey, dataStr)
 		return &dataStr
 	}
-	if data != nil && data.Err() != nil {
-		log.Printf("[config-cache] string cache miss prefix=%q key=%s redisKey=%s err=%v", preFix, key, redisKey, data.Err())
+	if data != nil && data.Err() != nil && !errors.Is(data.Err(), redis.Nil) {
+		log.Printf("[config-cache] string cache error prefix=%q key=%s redisKey=%s err=%v", preFix, key, redisKey, data.Err())
 	}
 	db := NewPrefixDb(preFix)
 	var sysConfig pojo.SysConfig
 	db.Where("config_key = ?", key).First(&sysConfig)
 	if sysConfig.ID != 0 {
 		log.Printf("[config-cache] string db hit prefix=%q key=%s configID=%d value=%q", preFix, key, sysConfig.ID, sysConfig.ConfigValue)
+		RD.SetEX(context.Background(), redisKey, sysConfig.ConfigValue, GetRandomRangeSecond(20*60, 40*60))
 		return &sysConfig.ConfigValue
 	}
 	log.Printf("[config-cache] string default used prefix=%q key=%s default=%q", preFix, key, *defaultValue)

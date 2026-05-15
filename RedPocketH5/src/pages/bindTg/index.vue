@@ -8,6 +8,7 @@ const tgName = ref('')
 const submitting = ref(false)
 const { t } = useI18n()
 const router = useRouter()
+const CHANNEL_URL = 'https://t.me/LuckyCoinsMX'
 
 function normalizeTgName(value: string) {
   const trimmed = value.trim()
@@ -54,7 +55,14 @@ async function handleBind() {
           {{ t('bindTgPage.activityEyebrow') }}
         </p>
         <h2>{{ t('bindTgPage.activityTitle') }}</h2>
-        <p>{{ t('bindTgPage.activityDesc') }}</p>
+        <p class="bind-hero__desc">
+          <span>{{ t('bindTgPage.activityDescBefore') }}</span>
+          <a class="channel-link" :href="CHANNEL_URL" target="_blank" rel="noopener noreferrer">
+            <van-icon name="guide-o" />
+            <span>{{ CHANNEL_URL }}</span>
+          </a>
+          <span>{{ t('bindTgPage.activityDescAfter') }}</span>
+        </p>
       </div>
     </section>
 
@@ -160,11 +168,81 @@ async function handleBind() {
   font-weight: 900;
 }
 
-.bind-hero p:last-child {
+.bind-hero__desc {
   margin: 8px 0 0;
   color: rgba(255, 229, 186, 0.76);
   font-size: 13px;
   line-height: 1.5;
+}
+
+.channel-link {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  margin: 4px 4px 2px 0;
+  padding: 4px 9px;
+  border: 1px solid rgba(255, 236, 157, 0.58);
+  border-radius: 999px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.28), transparent 48%),
+    linear-gradient(135deg, #ffec9c 0%, #ffbb00 48%, #d27900 100%);
+  box-shadow:
+    0 6px 14px rgba(0, 0, 0, 0.26),
+    0 0 14px rgba(255, 187, 0, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  color: #4a0c00;
+  font-size: 12px;
+  line-height: 1.2;
+  font-weight: 900;
+  text-decoration: none;
+  vertical-align: middle;
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease,
+    filter 160ms ease;
+}
+
+.channel-link::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: inherit;
+  border: 1px solid rgba(255, 236, 157, 0.2);
+  opacity: 0;
+  transform: scale(0.96);
+  transition:
+    opacity 160ms ease,
+    transform 160ms ease;
+  pointer-events: none;
+}
+
+.channel-link:active {
+  transform: translateY(1px) scale(0.98);
+  filter: saturate(1.08);
+  box-shadow:
+    0 3px 8px rgba(0, 0, 0, 0.24),
+    0 0 10px rgba(255, 187, 0, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.42);
+}
+
+.channel-link:hover::after,
+.channel-link:focus-visible::after {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.channel-link :deep(.van-icon) {
+  flex: 0 0 auto;
+  margin-right: 5px;
+  font-size: 13px;
+}
+
+.channel-link span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .bind-form {

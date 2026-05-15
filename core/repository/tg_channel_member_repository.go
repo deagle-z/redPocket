@@ -17,7 +17,7 @@ import (
 
 const (
 	TgRequiredChannelIDConfigKey    = "tg_required_channel_id"
-	TgBindFreeLotteryCountConfigKey = "tg_bind_free_lottery_count"
+	TgBindFreeLotteryCountConfigKey = "register_free_lottery_count"
 	defaultBindFreeLotteryCount     = 1
 	tgChannelMemberStatusInChannel  = int8(1)
 	tgChannelMemberStatusOutChannel = int8(0)
