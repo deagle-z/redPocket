@@ -28,6 +28,9 @@ func GetTgUsers(db *gorm.DB, search pojo.TgUserSearch) (result pojo.TgUserAdminR
 	if search.Username != "" {
 		query = query.Where("username like ?", "%"+search.Username+"%")
 	}
+	if search.TgName != "" {
+		query = query.Where("tg_name like ?", "%"+strings.TrimSpace(search.TgName)+"%")
+	}
 	if search.FirstName != "" {
 		query = query.Where("first_name like ?", "%"+search.FirstName+"%")
 	}
@@ -115,6 +118,7 @@ func SetTgUser(db *gorm.DB, req pojo.TgUserSet) (result pojo.TgUserAdminBack, er
 func buildTgUserUpdateMap(req pojo.TgUserSet) map[string]any {
 	updates := map[string]any{
 		"username":            req.Username,
+		"tg_name":             req.TgName,
 		"first_name":          req.FirstName,
 		"avatar":              req.Avatar,
 		"phone":               req.Phone,

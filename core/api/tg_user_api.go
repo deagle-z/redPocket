@@ -623,6 +623,35 @@ func BindCurrentTgPhone(ctx *gin.Context) {
 	})
 }
 
+// BindCurrentTgChannelName 绑定已加入指定频道的 Telegram @用户名。
+func BindCurrentTgChannelName(ctx *gin.Context) {
+	userIDRaw, ok := ctx.Get("userId")
+	if !ok {
+		utils.UnauthorizedBack(ctx, "token_invalid")
+		return
+	}
+	userID, ok := userIDRaw.(int64)
+	if !ok || userID <= 0 {
+		utils.UnauthorizedBack(ctx, "token_invalid")
+		return
+	}
+
+	var req pojo.TgBindChannelNameReq
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		utils.ErrorBack(ctx, "invalid_params")
+		return
+	}
+
+	db := ctx.MustGet("db").(*gorm.DB)
+	hostInfo := ctx.MustGet("hostInfo").(pojo.HostInfo)
+	data, err := repository.BindCurrentTgChannelName(ctx.Request.Context(), db, hostInfo.TablePrefix, userID, req.TgName)
+	if err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	utils.SuccessObjBack(ctx, data)
+}
+
 // GetCurrentTgUserInfo 获取当前TG用户信息
 func GetCurrentTgUserInfo(ctx *gin.Context) {
 	authHeader := strings.TrimSpace(ctx.GetHeader("Authorization"))
@@ -891,18 +920,18 @@ func GetCurrentTgInviteRuleConfig(ctx *gin.Context) {
 
 		parts := strings.Split(raw, "|")
 		if len(parts) != 2 {
-			return 100, 5000
+			return 10, 5000
 		}
 
 		minValue, errMin := strconv.ParseFloat(strings.TrimSpace(parts[0]), 64)
 		maxValue, errMax := strconv.ParseFloat(strings.TrimSpace(parts[1]), 64)
 		if errMin != nil || errMax != nil || minValue <= 0 || maxValue <= 0 || minValue > maxValue {
-			return 100, 5000
+			return 10, 5000
 		}
 		return utils.Truncate2(minValue), utils.Truncate2(maxValue)
 	}
 
-	sendMinAmount, sendMaxAmount := parseSendMinMax("100|5000")
+	sendMinAmount, sendMaxAmount := parseSendMinMax("10|5000")
 	inviteLuckyRebateRate := parseConfigFloat("invite_lucky_rebate_rate", "40")
 	var user pojo.TgUser
 	if err := db.Select("id", "rebate_rate").Where("id = ?", userID).First(&user).Error; err == nil && user.RebateRate > 0 {

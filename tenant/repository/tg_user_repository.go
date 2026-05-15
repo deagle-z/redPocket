@@ -22,6 +22,9 @@ func GetTgUsers(db *gorm.DB, tenantID int64, search pojo.TgUserSearch) (result p
 	if search.Username != "" {
 		query = query.Where("username like ?", "%"+search.Username+"%")
 	}
+	if search.TgName != "" {
+		query = query.Where("tg_name like ?", "%"+strings.TrimSpace(search.TgName)+"%")
+	}
 	if search.FirstName != "" {
 		query = query.Where("first_name like ?", "%"+search.FirstName+"%")
 	}
@@ -109,6 +112,7 @@ func SetTgUser(db *gorm.DB, tenantID int64, req pojo.TgUserSet) (result pojo.TgU
 func buildTenantTgUserUpdateMap(req pojo.TgUserSet) map[string]any {
 	updates := map[string]any{
 		"username":            req.Username,
+		"tg_name":             req.TgName,
 		"first_name":          req.FirstName,
 		"avatar":              req.Avatar,
 		"phone":               req.Phone,
@@ -205,6 +209,7 @@ type TgUserWithSubStats struct {
 	pojo.TgUserBack
 	SubRechargeAmount float64 `json:"subRechargeAmount"`
 	SubFlowAmount     float64 `json:"subFlowAmount"`
+	SubProfitAmount   float64 `json:"subProfitAmount"`
 	SubWithdrawAmount float64 `json:"subWithdrawAmount"`
 }
 
@@ -215,6 +220,7 @@ type TgUserWithSubStatsResp struct {
 type TgUsersSubStatsSummary struct {
 	SubRechargeAmount float64 `json:"subRechargeAmount"`
 	SubFlowAmount     float64 `json:"subFlowAmount"`
+	SubProfitAmount   float64 `json:"subProfitAmount"`
 	SubWithdrawAmount float64 `json:"subWithdrawAmount"`
 }
 
@@ -226,10 +232,15 @@ type tgUserMetricRow struct {
 type tgUserTreeAmount struct {
 	Recharge float64
 	Flow     float64
+	Profit   float64
 	Withdraw float64
 }
 
-// GetTgUsersWithSubStats 列表并返回所有下级（不限层级）的充值/流水/提现聚合金额
+func luckyHistoryProfitSQL() string {
+	return "sum(case when is_thunder = 0 then coalesce(nullif(actual_amount, 0), amount) else -lose_money end)"
+}
+
+// GetTgUsersWithSubStats 列表并返回所有下级（不限层级）的充值/流水/盈利/提现聚合金额
 func GetTgUsersWithSubStats(db *gorm.DB, tenantID int64, search pojo.TgUserSearch) (result TgUserWithSubStatsResp) {
 	if search.ParentID == nil && search.ParentUid != "" {
 		parentUid := strings.TrimSpace(search.ParentUid)
@@ -296,6 +307,9 @@ func GetTgUsersWithSubStats(db *gorm.DB, tenantID int64, search pojo.TgUserSearc
 	if search.Username != "" {
 		query = query.Where("username like ?", "%"+search.Username+"%")
 	}
+	if search.TgName != "" {
+		query = query.Where("tg_name like ?", "%"+strings.TrimSpace(search.TgName)+"%")
+	}
 	if search.FirstName != "" {
 		query = query.Where("first_name like ?", "%"+search.FirstName+"%")
 	}
@@ -319,6 +333,7 @@ func GetTgUsersWithSubStats(db *gorm.DB, tenantID int64, search pojo.TgUserSearc
 	rechargeOwn := make(map[int64]float64)
 	withdrawOwn := make(map[int64]float64)
 	flowOwn := make(map[int64]float64)
+	profitOwn := make(map[int64]float64)
 
 	var rechargeSums []tgUserMetricRow
 	rechargeQuery := db.Model(&pojo.RechargeOrder{})
@@ -362,6 +377,19 @@ func GetTgUsersWithSubStats(db *gorm.DB, tenantID int64, search pojo.TgUserSearc
 		flowOwn[item.UserId] = item.Amount
 	}
 
+	var profitSums []tgUserMetricRow
+	profitQuery := db.Model(&pojo.LuckyHistory{})
+	if tenantID > 0 {
+		profitQuery = profitQuery.Where("tenant_id = ?", tenantID)
+	}
+	_ = profitQuery.
+		Select("user_id as user_id, " + luckyHistoryProfitSQL() + " as amount").
+		Group("user_id").
+		Scan(&profitSums).Error
+	for _, item := range profitSums {
+		profitOwn[item.UserId] = item.Amount
+	}
+
 	// DFS 计算每个节点“包含自身+全部后代”的金额
 	memo := make(map[int64]tgUserTreeAmount)
 	visiting := make(map[int64]bool)
@@ -377,12 +405,14 @@ func GetTgUsersWithSubStats(db *gorm.DB, tenantID int64, search pojo.TgUserSearc
 		total := tgUserTreeAmount{
 			Recharge: rechargeOwn[userID],
 			Flow:     flowOwn[userID],
+			Profit:   profitOwn[userID],
 			Withdraw: withdrawOwn[userID],
 		}
 		for _, childID := range childrenMap[userID] {
 			childTotal := calcTotal(childID)
 			total.Recharge += childTotal.Recharge
 			total.Flow += childTotal.Flow
+			total.Profit += childTotal.Profit
 			total.Withdraw += childTotal.Withdraw
 		}
 		visiting[userID] = false
@@ -396,6 +426,7 @@ func GetTgUsersWithSubStats(db *gorm.DB, tenantID int64, search pojo.TgUserSearc
 		total := calcTotal(user.ID)
 		temp.SubRechargeAmount = total.Recharge - rechargeOwn[user.ID]
 		temp.SubFlowAmount = total.Flow - flowOwn[user.ID]
+		temp.SubProfitAmount = total.Profit - profitOwn[user.ID]
 		temp.SubWithdrawAmount = total.Withdraw - withdrawOwn[user.ID]
 		result.List = append(result.List, temp)
 	}
@@ -473,7 +504,7 @@ func getTenantParentUIDMap(db *gorm.DB, tenantID int64, users []pojo.TgUserBack)
 	return parentUIDMap
 }
 
-// GetTgUsersWithSubStatsSummary 返回下级（不限层级）的充值金额之和、流水之和、提现金额之和
+// GetTgUsersWithSubStatsSummary 返回下级（不限层级）的充值金额之和、流水之和、盈利之和、提现金额之和
 // parentID 为空：口径为全量 parent_id 非空的用户集合
 // parentID 非空：口径为该 parentID 的所有后代（不含自身）
 func GetTgUsersWithSubStatsSummary(db *gorm.DB, tenantID int64, search pojo.TgUserSearch) (result TgUsersSubStatsSummary) {
@@ -506,6 +537,15 @@ func GetTgUsersWithSubStatsSummary(db *gorm.DB, tenantID int64, search pojo.TgUs
 			Select("coalesce(sum(amount), 0)").
 			Where("user_id in (?)", subUsersQuery).
 			Scan(&result.SubFlowAmount).Error
+
+		profitQuery := db.Model(&pojo.LuckyHistory{})
+		if tenantID > 0 {
+			profitQuery = profitQuery.Where("tenant_id = ?", tenantID)
+		}
+		_ = profitQuery.
+			Select("coalesce("+luckyHistoryProfitSQL()+", 0)").
+			Where("user_id in (?)", subUsersQuery).
+			Scan(&result.SubProfitAmount).Error
 
 		withdrawQuery := db.Model(&pojo.WithdrawOrderBr{})
 		if tenantID > 0 {
@@ -567,6 +607,15 @@ func GetTgUsersWithSubStatsSummary(db *gorm.DB, tenantID int64, search pojo.TgUs
 		Select("coalesce(sum(amount), 0)").
 		Where("user_id in (?)", descendantIDs).
 		Scan(&result.SubFlowAmount).Error
+
+	profitQuery := db.Model(&pojo.LuckyHistory{})
+	if tenantID > 0 {
+		profitQuery = profitQuery.Where("tenant_id = ?", tenantID)
+	}
+	_ = profitQuery.
+		Select("coalesce("+luckyHistoryProfitSQL()+", 0)").
+		Where("user_id in (?)", descendantIDs).
+		Scan(&result.SubProfitAmount).Error
 
 	withdrawQuery := db.Model(&pojo.WithdrawOrderBr{})
 	if tenantID > 0 {

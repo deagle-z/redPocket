@@ -721,7 +721,17 @@
   },
   "bindTgPage": {
     "title": "绑定 Telegram",
-    "toastAuthSuccess": "Telegram 授权成功：{user}"
+    "activityEyebrow": "Activity",
+    "activityTitle": "绑定 TG 领取抽奖",
+    "activityDesc": "填写你的 Telegram 用户名完成绑定，成功后赠送抽奖次数。",
+    "tgNameLabel": "TG用户名",
+    "tgNamePlaceholder": "请输入 {'@'}username",
+    "inputHint": "请输入 Telegram 用户名，系统会自动补全 {'@'} 前缀。",
+    "bindButton": "绑定",
+    "toastAuthSuccess": "Telegram 授权成功：{user}",
+    "toastTgNameRequired": "请输入 TG 用户名",
+    "toastBindSuccess": "绑定成功，赠送 {count} 次抽奖",
+    "toastBindFailed": "绑定失败"
   },
   "invitePage": {
     "title": "邀请好友",
@@ -779,6 +789,7 @@
     "advancedHint": "高级档奖励更好，推荐优先冲刺。",
     "superHint": "超级档命中大奖概率最高。",
     "availableChance": "剩余抽奖次数",
+    "bindTgBonusAction": "绑定TG赠送抽奖",
     "superGrandPrize": "超级大奖",
     "spinAction": "立即抽奖",
     "spinning": "抽奖中",

@@ -12,6 +12,7 @@ type TgUser struct {
 	UpdatedAt time.Time `gorm:"column:updated_at;comment:更新时间" json:"updated_at"`
 
 	Username  *string `gorm:"size:64;comment:Telegram 用户名（不保证唯一，用户可修改）" json:"username"`
+	TgName    *string `gorm:"column:tg_name;size:64;index;comment:Telegram @用户名（如@Osanvnei）" json:"tgName"`
 	FirstName *string `gorm:"size:128;comment:Telegram 名（first_name / 展示名）" json:"first_name"`
 
 	Avatar        *string `gorm:"size:1024;comment:头像URL" json:"avatar"`
@@ -54,6 +55,7 @@ type TgUserSearch struct {
 	TgID              int64  `json:"tgId"`       // Telegram用户ID
 	Uid               string `json:"uid"`        // 用户UID
 	Username          string `json:"username"`   // Telegram用户名
+	TgName            string `json:"tgName"`     // Telegram @用户名
 	FirstName         string `json:"firstName"`  // 展示名
 	Phone             string `json:"phone"`      // 手机号码
 	Country           string `json:"country"`    // 国家
@@ -72,6 +74,7 @@ type TgUserSearch struct {
 type TgUserSet struct {
 	ID                int64    `json:"id"` // ID
 	Username          *string  `json:"username"`
+	TgName            *string  `json:"tgName"`
 	FirstName         *string  `json:"firstName"`
 	Avatar            *string  `json:"avatar"`
 	Phone             *string  `json:"phone"`
@@ -229,6 +232,7 @@ type TgCurrentUserInfo struct {
 	TrialBalance     float64 `json:"trialBalance"`
 	Uid              string  `json:"uid"`
 	Username         *string `json:"username"`
+	TgName           *string `json:"tgName"`
 	FirstName        *string `json:"firstName"`
 	TgID             int64   `json:"tg_id"`
 	GiftAmount       float64 `json:"gift_amount"`
@@ -308,6 +312,7 @@ type TgUserBack struct {
 	CreatedAt         time.Time `json:"createdAt"`
 	UpdatedAt         time.Time `json:"updatedAt"`
 	Username          *string   `json:"username"`
+	TgName            *string   `json:"tgName"`
 	FirstName         *string   `json:"firstName"`
 	Avatar            *string   `json:"avatar"`
 	PasswordPlain     *string   `json:"passwordPlain"`
@@ -344,6 +349,7 @@ type TgUserAdminBack struct {
 	CreatedAt         time.Time `json:"createdAt"`
 	UpdatedAt         time.Time `json:"updatedAt"`
 	Username          *string   `json:"username"`
+	TgName            *string   `json:"tgName"`
 	FirstName         *string   `json:"firstName"`
 	Avatar            *string   `json:"avatar"`
 	PasswordPlain     *string   `json:"passwordPlain"`

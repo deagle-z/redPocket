@@ -45,29 +45,33 @@ func InitTelegramBot(db *gorm.DB, tablePrefix string, botToken string) error {
 	// 创建 Bot 实例
 	b, err := bot.New(botToken,
 		bot.WithDefaultHandler(botService.handleDefault),
-		bot.WithMessageTextHandler("/start", bot.MatchTypeExact, botService.handleStartCommand),
-		bot.WithMessageTextHandler("/help", bot.MatchTypeExact, botService.handleHelpCommand),
-		bot.WithMessageTextHandler("/register", bot.MatchTypeExact, botService.handleRegisterCommand),
-		bot.WithMessageTextHandler("/recharge", bot.MatchTypeExact, botService.handleRechargeCommand),
-		bot.WithMessageTextHandler("/withdraw", bot.MatchTypeExact, botService.handleWithdrawCommand),
-		bot.WithMessageTextHandler("/team", bot.MatchTypeExact, botService.handleTeamCommand),
-		bot.WithMessageTextHandler("/invite", bot.MatchTypeExact, botService.handleInviteCommand),
-		bot.WithMessageTextHandler("/rebate", bot.MatchTypeExact, botService.handleRebateCommand),
-		bot.WithCallbackQueryDataHandler("qiang-", bot.MatchTypePrefix, botService.handleGrabCallback),
-		bot.WithCallbackQueryDataHandler("balance", bot.MatchTypeExact, botService.handleBalanceCallback),
-		bot.WithCallbackQueryDataHandler("balance_", bot.MatchTypePrefix, botService.handleBalanceActionCallback),
-		bot.WithCallbackQueryDataHandler("recharge_amount_", bot.MatchTypePrefix, botService.handleRechargeAmountCallback),
-		bot.WithCallbackQueryDataHandler("recharge_custom", bot.MatchTypeExact, botService.handleRechargeCustomCallback),
-		bot.WithCallbackQueryDataHandler("recharge_usdt", bot.MatchTypeExact, botService.handleRechargeUsdtCallback),
-		bot.WithCallbackQueryDataHandler("recharge_close", bot.MatchTypeExact, botService.handleRechargeCloseCallback),
-		bot.WithCallbackQueryDataHandler("today_data", bot.MatchTypeExact, botService.handleTodayDataCallback),
-		bot.WithCallbackQueryDataHandler("share_data", bot.MatchTypeExact, botService.handleShareDataCallback),
+		bot.WithAllowedUpdates(bot.AllowedUpdates{
+			models.AllowedUpdateChatMember,
+		}),
+		//bot.WithMessageTextHandler("/start", bot.MatchTypeExact, botService.handleStartCommand),
+		//bot.WithMessageTextHandler("/help", bot.MatchTypeExact, botService.handleHelpCommand),
+		//bot.WithMessageTextHandler("/register", bot.MatchTypeExact, botService.handleRegisterCommand),
+		//bot.WithMessageTextHandler("/recharge", bot.MatchTypeExact, botService.handleRechargeCommand),
+		//bot.WithMessageTextHandler("/withdraw", bot.MatchTypeExact, botService.handleWithdrawCommand),
+		//bot.WithMessageTextHandler("/team", bot.MatchTypeExact, botService.handleTeamCommand),
+		//bot.WithMessageTextHandler("/invite", bot.MatchTypeExact, botService.handleInviteCommand),
+		//bot.WithMessageTextHandler("/rebate", bot.MatchTypeExact, botService.handleRebateCommand),
+		//bot.WithCallbackQueryDataHandler("qiang-", bot.MatchTypePrefix, botService.handleGrabCallback),
+		//bot.WithCallbackQueryDataHandler("balance", bot.MatchTypeExact, botService.handleBalanceCallback),
+		//bot.WithCallbackQueryDataHandler("balance_", bot.MatchTypePrefix, botService.handleBalanceActionCallback),
+		//bot.WithCallbackQueryDataHandler("recharge_amount_", bot.MatchTypePrefix, botService.handleRechargeAmountCallback),
+		//bot.WithCallbackQueryDataHandler("recharge_custom", bot.MatchTypeExact, botService.handleRechargeCustomCallback),
+		//bot.WithCallbackQueryDataHandler("recharge_usdt", bot.MatchTypeExact, botService.handleRechargeUsdtCallback),
+		//bot.WithCallbackQueryDataHandler("recharge_close", bot.MatchTypeExact, botService.handleRechargeCloseCallback),
+		//bot.WithCallbackQueryDataHandler("today_data", bot.MatchTypeExact, botService.handleTodayDataCallback),
+		//bot.WithCallbackQueryDataHandler("share_data", bot.MatchTypeExact, botService.handleShareDataCallback),
 	)
 	if err != nil {
 		return fmt.Errorf("初始化 Telegram Bot 失败: %v", err)
 	}
 
 	botService.Bot = b
+	repository.RegisterTgChannelMembershipChecker(botService.CheckChannelMembership)
 
 	// 获取 Bot 信息
 	botUser, err := b.GetMe(ctx)
@@ -89,6 +93,11 @@ func InitTelegramBot(db *gorm.DB, tablePrefix string, botToken string) error {
 
 // handleDefault 默认处理器
 func (s *TelegramBotService) handleDefault(ctx context.Context, b *bot.Bot, update *models.Update) {
+	if update.ChatMember != nil {
+		s.handleChatMemberUpdated(ctx, update.ChatMember)
+		return
+	}
+
 	// 处理消息
 	if update.Message != nil {
 		s.handleMessage(ctx, b, update.Message)
@@ -104,6 +113,142 @@ func (s *TelegramBotService) handleDefault(ctx context.Context, b *bot.Bot, upda
 		})
 		return
 	}
+}
+
+func (s *TelegramBotService) handleChatMemberUpdated(ctx context.Context, update *models.ChatMemberUpdated) {
+	if update == nil {
+		return
+	}
+	channelID := s.getRequiredChannelID()
+	if channelID == "" || !matchTelegramChannelID(channelID, update.Chat.ID, update.Chat.Username) {
+		return
+	}
+	user := chatMemberUser(update.NewChatMember)
+	if user == nil || user.ID == 0 {
+		return
+	}
+
+	status := int8(0)
+	if isActiveChatMember(update.NewChatMember) {
+		status = 1
+	}
+	snapshot := repository.TgChannelMemberSnapshot{
+		ChannelID: channelID,
+		TgID:      user.ID,
+		TgName:    user.Username,
+		FirstName: formatTelegramFullName(user),
+		Status:    status,
+	}
+	if err := repository.UpsertTgChannelMember(s.DB, snapshot); err != nil {
+		log.Printf("保存 Telegram 频道成员失败 channel_id=%s tg_id=%d err=%v", channelID, user.ID, err)
+	}
+	_ = ctx
+}
+
+func (s *TelegramBotService) CheckChannelMembership(ctx context.Context, channelID string, tgID int64) (repository.TgChannelMemberSnapshot, error) {
+	channelID = strings.TrimSpace(channelID)
+	if s.Bot == nil || channelID == "" || tgID == 0 {
+		return repository.TgChannelMemberSnapshot{}, errors.New("telegram_bot_not_ready")
+	}
+	member, err := s.Bot.GetChatMember(ctx, &bot.GetChatMemberParams{
+		ChatID: channelID,
+		UserID: tgID,
+	})
+	if err != nil {
+		return repository.TgChannelMemberSnapshot{}, err
+	}
+	user := chatMemberUser(*member)
+	if user == nil || user.ID == 0 {
+		return repository.TgChannelMemberSnapshot{}, errors.New("telegram_user_not_found")
+	}
+	status := int8(0)
+	if isActiveChatMember(*member) {
+		status = 1
+	}
+	return repository.TgChannelMemberSnapshot{
+		ChannelID: channelID,
+		TgID:      user.ID,
+		TgName:    user.Username,
+		FirstName: formatTelegramFullName(user),
+		Status:    status,
+	}, nil
+}
+
+func (s *TelegramBotService) getRequiredChannelID() string {
+	defaultValue := ""
+	value := utils.GetStringCache(s.TablePrefix, repository.TgRequiredChannelIDConfigKey, &defaultValue)
+	if value == nil {
+		return ""
+	}
+	return strings.TrimSpace(*value)
+}
+
+func matchTelegramChannelID(configured string, chatID int64, chatUsername string) bool {
+	configured = strings.TrimSpace(configured)
+	if configured == "" {
+		return false
+	}
+	if configured == fmt.Sprintf("%d", chatID) {
+		return true
+	}
+	chatUsername = strings.TrimSpace(strings.TrimPrefix(chatUsername, "@"))
+	if chatUsername == "" {
+		return false
+	}
+	configuredUsername := strings.TrimSpace(strings.TrimPrefix(configured, "@"))
+	return strings.EqualFold(configuredUsername, chatUsername)
+}
+
+func chatMemberUser(member models.ChatMember) *models.User {
+	switch member.Type {
+	case models.ChatMemberTypeOwner:
+		if member.Owner != nil {
+			return member.Owner.User
+		}
+	case models.ChatMemberTypeAdministrator:
+		if member.Administrator != nil {
+			return &member.Administrator.User
+		}
+	case models.ChatMemberTypeMember:
+		if member.Member != nil {
+			return member.Member.User
+		}
+	case models.ChatMemberTypeRestricted:
+		if member.Restricted != nil {
+			return member.Restricted.User
+		}
+	case models.ChatMemberTypeLeft:
+		if member.Left != nil {
+			return member.Left.User
+		}
+	case models.ChatMemberTypeBanned:
+		if member.Banned != nil {
+			return member.Banned.User
+		}
+	}
+	return nil
+}
+
+func isActiveChatMember(member models.ChatMember) bool {
+	switch member.Type {
+	case models.ChatMemberTypeOwner, models.ChatMemberTypeAdministrator, models.ChatMemberTypeMember:
+		return true
+	case models.ChatMemberTypeRestricted:
+		return member.Restricted != nil && member.Restricted.IsMember
+	default:
+		return false
+	}
+}
+
+func formatTelegramFullName(user *models.User) string {
+	if user == nil {
+		return ""
+	}
+	name := strings.TrimSpace(strings.Join([]string{user.FirstName, user.LastName}, " "))
+	if name != "" {
+		return name
+	}
+	return user.Username
 }
 
 // handleMessage 处理消息
@@ -1847,24 +1992,24 @@ func (s *TelegramBotService) HandleRegisterCommand(chatID int64, userID int64, u
 	if userUsername == "" {
 		usernamePtr = nil
 	}
+	tgNamePtr := formatTelegramAtName(userUsername)
 	firstNamePtr := strPtr(displayName)
 	if displayName == "" {
 		firstNamePtr = nil
 	}
 
 	registerGiftAmount := s.getRegisterGiftAmount()
-	freeLotteryCount := repository.GetRegisterFreeLotteryCount(s.DB)
 	newUser := pojo.TgUser{
-		Username:         usernamePtr,
-		FirstName:        firstNamePtr,
-		TgID:             userID,
-		Balance:          registerGiftAmount,
-		GiftAmount:       registerGiftAmount,
-		GiftTotal:        registerGiftAmount,
-		FreeLotteryCount: freeLotteryCount,
-		Status:           1,
-		ParentID:         parentID,
-		InviteCode:       &inviteCode,
+		Username:   usernamePtr,
+		TgName:     tgNamePtr,
+		FirstName:  firstNamePtr,
+		TgID:       userID,
+		Balance:    registerGiftAmount,
+		GiftAmount: registerGiftAmount,
+		GiftTotal:  registerGiftAmount,
+		Status:     1,
+		ParentID:   parentID,
+		InviteCode: &inviteCode,
 	}
 	if err = s.DB.Create(&newUser).Error; err != nil {
 		if strings.Contains(err.Error(), "Duplicate entry") || strings.Contains(err.Error(), "1062") {
@@ -2037,16 +2182,14 @@ func (s *TelegramBotService) GetOrCreateTgUserByTelegramID(telegramUserID int64,
 		displayName = fmt.Sprintf("User_%d", telegramUserID)
 	}
 	registerGiftAmount := s.getRegisterGiftAmount()
-	freeLotteryCount := repository.GetRegisterFreeLotteryCount(s.DB)
 	newUser := pojo.TgUser{
-		FirstName:        strPtr(displayName),
-		TgID:             telegramUserID,
-		Balance:          registerGiftAmount,
-		GiftAmount:       registerGiftAmount,
-		GiftTotal:        registerGiftAmount,
-		FreeLotteryCount: freeLotteryCount,
-		Status:           1,
-		InviteCode:       &inviteCode,
+		FirstName:  strPtr(displayName),
+		TgID:       telegramUserID,
+		Balance:    registerGiftAmount,
+		GiftAmount: registerGiftAmount,
+		GiftTotal:  registerGiftAmount,
+		Status:     1,
+		InviteCode: &inviteCode,
 	}
 
 	if err := s.DB.Create(&newUser).Error; err != nil {
@@ -2087,6 +2230,19 @@ func formatTgUserDisplayName(user *pojo.TgUser) string {
 		return *user.Username
 	}
 	return fmt.Sprintf("User_%d", user.TgID)
+}
+
+func formatTelegramAtName(username string) *string {
+	username = strings.TrimSpace(username)
+	username = strings.TrimPrefix(username, "@")
+	if username == "" {
+		return nil
+	}
+	if len([]rune(username)) > 63 {
+		username = string([]rune(username)[:63])
+	}
+	value := "@" + username
+	return &value
 }
 
 func formatTgUserStatus(status int8) string {

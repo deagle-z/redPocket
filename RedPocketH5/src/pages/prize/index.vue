@@ -2,8 +2,8 @@
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { LuckyWheel } from '@lucky-canvas/vue'
 import { showToast } from 'vant'
-import type { PrizePoolOutRecordItem } from '@/api/user'
-import { drawLottery, getLotteryChances, getPrizePoolBalance, getPrizePoolOutRecords } from '@/api/user'
+import type { PrizePoolOutRecordItem, TgCurrentUserInfo } from '@/api/user'
+import { drawLottery, getCurrentTgUserInfo, getLotteryChances, getPrizePoolBalance, getPrizePoolOutRecords } from '@/api/user'
 import { truncate2 } from '@/utils/currency'
 import imgCoin from '@/assets/svg/coin.svg'
 
@@ -19,6 +19,7 @@ interface RecordItem {
 }
 
 const { t } = useI18n()
+const router = useRouter()
 const DEFAULT_REWARD_AMOUNTS = [2, 20, 30, 50, 180]
 
 function svgDataUri(svg: string) {
@@ -145,6 +146,8 @@ let recordScrollOffset = 0
 const spinning = ref(false)
 const availableSpins = ref(0)
 const lotteryAmounts = ref<number[]>([...DEFAULT_REWARD_AMOUNTS])
+const currentUserInfo = ref<TgCurrentUserInfo | null>(null)
+const currentUserInfoLoaded = ref(false)
 
 const scrollingRecordList = computed(() => {
   const records = state.pageData.recordList
@@ -159,8 +162,10 @@ const canvasWidth = computed(() => {
 
 const wheelDefaultConfig = ref({
   speed: 15,
-  decelerationTime: 2500,
+  decelerationTime: 1600,
 })
+
+const showBindTgActivity = computed(() => currentUserInfoLoaded.value && !String(currentUserInfo.value?.tgName || '').trim())
 
 // ── Jackpot counter ───────────────────────────────────────────────
 const jackpotValue = ref(0)
@@ -355,18 +360,32 @@ function buildPrizeConfig() {
 }
 
 async function refreshPageState() {
-  const [chanceResult] = await Promise.all([
+  const [chanceResult, userInfoResult] = await Promise.allSettled([
     getLotteryChances(),
+    getCurrentTgUserInfo(),
     loadJackpotBalance(),
     loadLotteryHistory(),
   ])
-  const amounts = Array.isArray(chanceResult?.data?.amounts) ? chanceResult.data.amounts : DEFAULT_REWARD_AMOUNTS
+  const chanceData = chanceResult.status === 'fulfilled' ? chanceResult.value?.data : null
+  if (userInfoResult.status === 'fulfilled') {
+    currentUserInfoLoaded.value = true
+    currentUserInfo.value = userInfoResult.value?.data
+  }
+  else {
+    currentUserInfoLoaded.value = false
+    currentUserInfo.value = null
+  }
+  const amounts = Array.isArray(chanceData?.amounts) ? chanceData.amounts : DEFAULT_REWARD_AMOUNTS
   lotteryAmounts.value = amounts.length > 0 ? amounts : [...DEFAULT_REWARD_AMOUNTS]
-  availableSpins.value = Math.max(0, Number(chanceResult?.data?.availableCount ?? 0))
+  availableSpins.value = Math.max(0, Number(chanceData?.availableCount ?? 0))
   buildPrizeConfig()
   window.setTimeout(() => {
     wheelCanvas.value?.init?.()
   }, 80)
+}
+
+function goBindTg() {
+  router.push('/bindTg')
 }
 
 function addLatestRecord(reward: string) {
@@ -420,7 +439,7 @@ async function startCallback() {
     const reward = formatAwardText(awardAmount)
     const index = resolveRewardIndex(awardAmount, state.pageData.rewardList)
     state.reward = reward
-    const stopDelay = randomDelay(3, 5)
+    const stopDelay = randomDelay(1, 2)
     window.setTimeout(() => {
       wheelCanvas.value?.stop?.(index)
     }, stopDelay)
@@ -484,6 +503,14 @@ onBeforeUnmount(() => {
           <span class="jp-amount">{{ formatPlainAmount(jackpotDisplay) }}</span>
         </div>
       </div>
+
+      <button v-if="showBindTgActivity" type="button" class="bind-tg-activity-btn" @click="goBindTg">
+        <span class="bind-tg-activity-btn__icon">
+          <van-icon name="gift-o" />
+        </span>
+        <span class="bind-tg-activity-btn__text">{{ t('prizePage.bindTgBonusAction') }}</span>
+        <van-icon name="arrow" class="bind-tg-activity-btn__arrow" />
+      </button>
 
       <!-- 转盘系统 -->
       <div class="wheel-system" :style="{ '--ws': `${canvasWidth + 64}px`, '--wr': `${(canvasWidth + 64) / 2}px` }">
@@ -686,6 +713,56 @@ onBeforeUnmount(() => {
   -webkit-text-fill-color: transparent;
   filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.9));
   font-variant-numeric: tabular-nums;
+}
+
+.bind-tg-activity-btn {
+  width: 100%;
+  max-width: 360px;
+  min-height: 48px;
+  margin: 14px auto 0;
+  padding: 0 14px;
+  border: 1px solid rgba(255, 236, 157, 0.54);
+  border-radius: 999px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.24), transparent 44%),
+    linear-gradient(135deg, #ffec9c 0%, #ffbb00 48%, #d27900 100%);
+  box-shadow:
+    0 12px 24px rgba(0, 0, 0, 0.42),
+    inset 0 1px 0 rgba(255, 255, 255, 0.58);
+  color: #4a0c00;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.bind-tg-activity-btn__icon {
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #6a1200 0%, #2b0500 100%);
+  color: #ffd98b;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 17px;
+}
+
+.bind-tg-activity-btn__text {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+  line-height: 1.2;
+  font-weight: 900;
+}
+
+.bind-tg-activity-btn__arrow {
+  flex: 0 0 auto;
+  color: rgba(74, 12, 0, 0.72);
+  font-size: 17px;
 }
 
 /* ── 转盘系统 ── */

@@ -42,10 +42,14 @@ func TgAuthLogin(db *gorm.DB, hostInfo pojo.HostInfo, req pojo.TgAuthLoginReq, o
 
 		updates := map[string]any{}
 		username := nullableString(req.Username)
+		tgName := formatTelegramAtName(req.Username)
 		firstName := nullableString(req.FirstName)
 		avatar := nullableString(req.PhotoURL)
 		if !stringPtrEquals(dbUser.Username, username) {
 			updates["username"] = username
+		}
+		if !stringPtrEquals(dbUser.TgName, tgName) {
+			updates["tg_name"] = tgName
 		}
 		if !stringPtrEquals(dbUser.FirstName, firstName) {
 			updates["first_name"] = firstName
@@ -58,6 +62,7 @@ func TgAuthLogin(db *gorm.DB, hostInfo pojo.HostInfo, req pojo.TgAuthLoginReq, o
 				return err
 			}
 			dbUser.Username = username
+			dbUser.TgName = tgName
 			dbUser.FirstName = firstName
 			dbUser.Avatar = avatar
 		}
@@ -208,6 +213,7 @@ func createTgUserFromAuth(tx *gorm.DB, req pojo.TgAuthLoginReq, ip string, regio
 		displayName = fmt.Sprintf("User_%d", req.ID)
 	}
 	username := nullableString(req.Username)
+	tgName := formatTelegramAtName(req.Username)
 	firstName := nullableString(displayName)
 	avatar := nullableString(req.PhotoURL)
 	sourceChannelCode := FirstSourceChannelCode(req.SourceChannelCode, req.ChannelCode)
@@ -216,7 +222,6 @@ func createTgUserFromAuth(tx *gorm.DB, req pojo.TgAuthLoginReq, ip string, regio
 		return pojo.TgUser{}, err
 	}
 	defaultRebateRate := getDefaultInviteLuckyRebateRate(tx)
-	freeLotteryCount := GetRegisterFreeLotteryCount(tx)
 
 	for i := 0; i < 5; i++ {
 		inviteCode, err := generateInviteCode(tx)
@@ -230,6 +235,7 @@ func createTgUserFromAuth(tx *gorm.DB, req pojo.TgAuthLoginReq, ip string, regio
 		newUser := pojo.TgUser{
 			Uid:               uid,
 			Username:          username,
+			TgName:            tgName,
 			FirstName:         firstName,
 			Avatar:            avatar,
 			Ip:                nullableString(ip),
@@ -242,7 +248,6 @@ func createTgUserFromAuth(tx *gorm.DB, req pojo.TgAuthLoginReq, ip string, regio
 			SourceChannelCode: nil,
 			TenantId:          0,
 			RebateRate:        defaultRebateRate,
-			FreeLotteryCount:  freeLotteryCount,
 		}
 		if sourceChannel != nil {
 			newUser.SourceChannelID = &sourceChannel.ID
@@ -309,6 +314,16 @@ func nullableString(v string) *string {
 		return nil
 	}
 	return &v
+}
+
+func formatTelegramAtName(username string) *string {
+	username = strings.TrimSpace(username)
+	username = strings.TrimPrefix(username, "@")
+	if username == "" {
+		return nil
+	}
+	value := "@" + truncateRunes(username, 63)
+	return &value
 }
 
 func truncateRunes(v string, max int) string {
@@ -470,7 +485,6 @@ func RegisterTgByEmail(db *gorm.DB, email string, firstName string, password str
 			return err
 		}
 		defaultRebateRate := getDefaultInviteLuckyRebateRate(tx)
-		freeLotteryCount := GetRegisterFreeLotteryCount(tx)
 		for i := 0; i < 5; i++ {
 			//tgID := time.Now().UnixNano()/1e3 + int64(rand.IntN(1000))
 			ownInviteCode := fmt.Sprintf("%06d", rand.IntN(1000000))
@@ -497,7 +511,6 @@ func RegisterTgByEmail(db *gorm.DB, email string, firstName string, password str
 				SourceChannelCode: nil,
 				TenantId:          tenantID,
 				RebateRate:        defaultRebateRate,
-				FreeLotteryCount:  freeLotteryCount,
 			}
 			if sourceChannel != nil {
 				user.SourceChannelID = &sourceChannel.ID
@@ -575,7 +588,6 @@ func RegisterTgByPhone(db *gorm.DB, phone string, country string, firstName stri
 			return err
 		}
 		defaultRebateRate := getDefaultInviteLuckyRebateRate(tx)
-		freeLotteryCount := GetRegisterFreeLotteryCount(tx)
 		for i := 0; i < 5; i++ {
 			ownInviteCode := fmt.Sprintf("%06d", rand.IntN(1000000))
 			uid, uidErr := generateUniqueUID(tx)
@@ -600,7 +612,6 @@ func RegisterTgByPhone(db *gorm.DB, phone string, country string, firstName stri
 				SourceChannelCode: nil,
 				TenantId:          tenantID,
 				RebateRate:        defaultRebateRate,
-				FreeLotteryCount:  freeLotteryCount,
 			}
 			if sourceChannel != nil {
 				newUser.SourceChannelID = &sourceChannel.ID
@@ -854,6 +865,7 @@ func GetCurrentTgUserInfo(db *gorm.DB, accessSecret string, token string) (pojo.
 		TrialBalance:     utils.Truncate2(user.TrialBalance),
 		Uid:              user.Uid,
 		Username:         user.Username,
+		TgName:           user.TgName,
 		FirstName:        user.FirstName,
 		TgID:             user.TgID,
 		GiftAmount:       utils.Truncate2(user.GiftAmount),

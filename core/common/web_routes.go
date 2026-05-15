@@ -344,6 +344,7 @@ func InitGin() {
 		appAuthRouter.GET("/tg/withdrawActivityFlow", api.GetCurrentTgWithdrawActivityFlow)
 		appAuthRouter.POST("/tg/avatar", api.UpdateCurrentTgUserAvatar)
 		appAuthRouter.POST("/tg/name", api.UpdateCurrentTgUserName)
+		appAuthRouter.POST("/tg/channelName", api.BindCurrentTgChannelName)
 		appAuthRouter.POST("/tg/bindEmail", api.BindCurrentTgEmail)
 		appAuthRouter.POST("/tg/bindPhone", api.BindCurrentTgPhone)
 		appAuthRouter.POST("/tg/audioOpen", api.SetAudioOpen)

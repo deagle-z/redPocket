@@ -5,6 +5,7 @@ import { getSourceChannelCode } from '@/utils/source-channel'
 const VISITOR_ID_STORAGE_KEY = 'attribution_visitor_id'
 const SESSION_ID_STORAGE_KEY = 'attribution_session_id'
 const EVENT_SENT_STORAGE_PREFIX = 'attribution_event_sent_'
+const EVENT_SENT_RETENTION_MS = 7 * 24 * 60 * 60 * 1000
 const ATTRIBUTION_ENDPOINT = '/api/v1/app/attribution/event'
 
 export interface AttributionEventPayload {
@@ -55,8 +56,8 @@ function normalizeEventName(eventName: string) {
 }
 
 function createThirdPartyEventId(eventName: string, seed?: string | number) {
-  const normalizedEventName = normalizeEventName(eventName).replace(/[^A-Za-z0-9_.-]/g, '_') || 'event'
-  const normalizedSeed = String(seed ?? '').trim().replace(/[^A-Za-z0-9_.-]/g, '_')
+  const normalizedEventName = normalizeEventName(eventName).replace(/[^\w.-]/g, '_') || 'event'
+  const normalizedSeed = String(seed ?? '').trim().replace(/[^\w.-]/g, '_')
   if (normalizedSeed)
     return `${normalizedEventName}_${normalizedSeed}`.slice(0, 128)
   return createId(normalizedEventName).slice(0, 128)
@@ -77,15 +78,34 @@ function buildAttributionPayload(payload: AttributionEventPayload) {
   }
 }
 
+function isFreshSentMarker(value: string | null, now = Date.now()) {
+  const sentAt = Number(value || 0)
+  return Number.isFinite(sentAt) && sentAt > 0 && now - sentAt <= EVENT_SENT_RETENTION_MS
+}
+
+function cleanupExpiredSentMarkers(now = Date.now()) {
+  const expiredKeys: string[] = []
+  for (let index = 0; index < localStorage.length; index += 1) {
+    const key = localStorage.key(index)
+    if (!key?.startsWith(EVENT_SENT_STORAGE_PREFIX))
+      continue
+    if (!isFreshSentMarker(localStorage.getItem(key), now))
+      expiredKeys.push(key)
+  }
+  expiredKeys.forEach(key => localStorage.removeItem(key))
+}
+
 function trackAttributionEvent(payload: AttributionEventPayload) {
   const body = buildAttributionPayload(payload)
   if (!body.eventName)
     return
+  const now = Date.now()
+  cleanupExpiredSentMarkers(now)
   const sentStorageKey = body.thirdPartyEventId ? `${EVENT_SENT_STORAGE_PREFIX}${body.thirdPartyEventId}` : ''
-  if (sentStorageKey && localStorage.getItem(sentStorageKey) === '1')
+  if (sentStorageKey && isFreshSentMarker(localStorage.getItem(sentStorageKey), now))
     return
   if (sentStorageKey)
-    localStorage.setItem(sentStorageKey, '1')
+    localStorage.setItem(sentStorageKey, String(now))
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',

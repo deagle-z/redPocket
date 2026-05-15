@@ -721,7 +721,17 @@
   },
   "bindTgPage": {
     "title": "Bind Telegram",
-    "toastAuthSuccess": "Telegram authorized: {user}"
+    "activityEyebrow": "Activity",
+    "activityTitle": "Bind TG for bonus spins",
+    "activityDesc": "Enter your Telegram username to complete binding and receive bonus draw chances.",
+    "tgNameLabel": "TG username",
+    "tgNamePlaceholder": "Enter {'@'}username",
+    "inputHint": "Enter your Telegram username. The {'@'} prefix is added automatically when needed.",
+    "bindButton": "Bind",
+    "toastAuthSuccess": "Telegram authorized: {user}",
+    "toastTgNameRequired": "Please enter a TG username",
+    "toastBindSuccess": "Bound successfully. {count} draw chance(s) added",
+    "toastBindFailed": "Bind failed"
   },
   "invitePage": {
     "title": "Invite Friends",
@@ -779,6 +789,7 @@
     "advancedHint": "Advanced tier gives better rewards and is the recommended target.",
     "superHint": "Super tier offers the highest jackpot potential.",
     "availableChance": "Available Spins",
+    "bindTgBonusAction": "Bind TG to get bonus spins",
     "superGrandPrize": "Super Prize",
     "spinAction": "Spin Now",
     "spinning": "Spinning",

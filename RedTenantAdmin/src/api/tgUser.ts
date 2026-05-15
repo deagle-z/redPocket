@@ -12,10 +12,12 @@ export type TgUser = {
   tgId: number;
   uid?: string;
   balance: number;
+  trialBalance: number;
   giftAmount: number;
   giftTotal: number;
   subRechargeAmount?: number;
   subFlowAmount?: number;
+  subProfitAmount?: number;
   subWithdrawAmount?: number;
   rebateAmount: number;
   rebateTotalAmount: number;
@@ -103,6 +105,7 @@ export type TgUserSubStatsSummaryResult = {
   data: {
     subRechargeAmount: number;
     subFlowAmount: number;
+    subProfitAmount: number;
     subWithdrawAmount: number;
   };
 };

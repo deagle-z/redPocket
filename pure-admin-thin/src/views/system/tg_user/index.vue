@@ -46,6 +46,7 @@ const subStatsList = ref<TgUser[]>([]);
 const subStatsSummary = reactive({
   subRechargeAmount: 0,
   subFlowAmount: 0,
+  subProfitAmount: 0,
   subWithdrawAmount: 0
 });
 const rebateRateFormRef = ref();
@@ -204,6 +205,7 @@ async function loadSubStatsSummary() {
     });
     subStatsSummary.subRechargeAmount = Number(data?.subRechargeAmount ?? 0);
     subStatsSummary.subFlowAmount = Number(data?.subFlowAmount ?? 0);
+    subStatsSummary.subProfitAmount = Number(data?.subProfitAmount ?? 0);
     subStatsSummary.subWithdrawAmount = Number(data?.subWithdrawAmount ?? 0);
   } catch (error) {
     console.error("获取下级汇总失败", error);
@@ -430,7 +432,7 @@ function handleSubStatsCurrentChange(page: number) {
     >
       <el-skeleton :loading="subStatsSummaryLoading" animated :rows="2">
         <el-row :gutter="12" class="mb-3">
-          <el-col :span="8">
+          <el-col :span="6">
             <el-card shadow="hover">
               <div class="stat-title">充值金额之和</div>
               <div class="stat-value">
@@ -438,7 +440,7 @@ function handleSubStatsCurrentChange(page: number) {
               </div>
             </el-card>
           </el-col>
-          <el-col :span="8">
+          <el-col :span="6">
             <el-card shadow="hover">
               <div class="stat-title">流水之和</div>
               <div class="stat-value">
@@ -446,7 +448,15 @@ function handleSubStatsCurrentChange(page: number) {
               </div>
             </el-card>
           </el-col>
-          <el-col :span="8">
+          <el-col :span="6">
+            <el-card shadow="hover">
+              <div class="stat-title">盈利之和</div>
+              <div class="stat-value">
+                {{ formatMoney(subStatsSummary.subProfitAmount) }}
+              </div>
+            </el-card>
+          </el-col>
+          <el-col :span="6">
             <el-card shadow="hover">
               <div class="stat-title">提现金额之和</div>
               <div class="stat-value">
@@ -475,6 +485,11 @@ function handleSubStatsCurrentChange(page: number) {
         <el-table-column prop="subFlowAmount" label="下级流水" min-width="120">
           <template #default="{ row }">
             {{ formatMoney(row.subFlowAmount) }}
+          </template>
+        </el-table-column>
+        <el-table-column prop="subProfitAmount" label="下级盈利" min-width="120">
+          <template #default="{ row }">
+            {{ formatMoney(row.subProfitAmount) }}
           </template>
         </el-table-column>
         <el-table-column

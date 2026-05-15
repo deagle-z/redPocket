@@ -7,6 +7,7 @@ import LuckyActionGrid from '@/components/LuckyActionGrid.vue'
 import LuckyGrabModal from '@/components/LuckyGrabModal.vue'
 import ParityChoiceDialog from '@/components/ParityChoiceDialog.vue'
 import SendPacketForm from '@/components/SendPacketForm.vue'
+import AppConfirmDialog from '@/components/AppConfirmDialog.vue'
 import { isLogin } from '@/utils/auth'
 import { formatCurrency, truncate2 } from '@/utils/currency'
 import { formatLuckyActionLabel } from '@/utils/lucky-actions'
@@ -26,12 +27,14 @@ const route = useRoute()
 const router = useRouter()
 
 const DEFAULT_AVATAR = imgAvatarPlaceholder
+const PACKET_ENTRY_TIP_HIDDEN_KEY_PREFIX = 'home_packet_entry_tip_hidden_'
 const currentMode = ref<0 | 1>(0)
 const packetList = ref<any[]>([])
 const packetLoading = ref(false)
 const grabModalVisible = ref(false)
 const parityChoiceVisible = ref(false)
 const sendPacketModalVisible = ref(false)
+const entryGuideVisible = ref(false)
 const rulePopupVisible = ref(false)
 const pendingGrabTarget = ref<{ packet: any, action: any, choice?: ParityChoice | null } | null>(null)
 const pendingParityTarget = ref<{ packet: any, action: any } | null>(null)
@@ -112,6 +115,23 @@ function openRulePopup() {
 
 function closeRulePopup() {
   rulePopupVisible.value = false
+}
+
+function isPacketEntryTipHidden() {
+  return localStorage.getItem(`${PACKET_ENTRY_TIP_HIDDEN_KEY_PREFIX}${currentMode.value}`) === '1'
+}
+
+function hidePacketEntryTip() {
+  localStorage.setItem(`${PACKET_ENTRY_TIP_HIDDEN_KEY_PREFIX}${currentMode.value}`, '1')
+}
+
+function openEntryGuide() {
+  if (!isPacketEntryTipHidden())
+    entryGuideVisible.value = true
+}
+
+function dismissEntryGuide() {
+  hidePacketEntryTip()
 }
 
 function openSendPacketDialog() {
@@ -558,6 +578,7 @@ watch(() => route.query.mode, async () => {
 
 onMounted(() => {
   initAudio()
+  openEntryGuide()
   countdownTimer = window.setInterval(refreshPacketCountdowns, 1000)
   wsClient.on('lucky_sent', applyLuckySent)
   wsClient.on('lucky_grabbed', applyLuckyBroadcast)
@@ -708,6 +729,17 @@ onBeforeUnmount(() => {
       :sender-name="pendingParityTarget?.packet?.username || t('grabModal.defaultSender')"
       @confirm="handleParityChoiceConfirm"
     />
+
+    <AppConfirmDialog
+      v-model:show="entryGuideVisible"
+      :title="t('homeLucky.entryTipTitle')"
+      :cancel-text="t('homeLucky.entryTipNeverShow')"
+      :confirm-text="t('common.confirm')"
+      :close-on-click-overlay="false"
+      @cancel="dismissEntryGuide"
+    >
+      {{ ruleContent }}
+    </AppConfirmDialog>
 
     <van-popup
       v-model:show="sendPacketModalVisible"

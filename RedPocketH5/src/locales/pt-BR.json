@@ -719,7 +719,17 @@
   },
   "bindTgPage": {
     "title": "Vincular Telegram",
-    "toastAuthSuccess": "Telegrama autorizado: {user}"
+    "activityEyebrow": "Atividade",
+    "activityTitle": "Vincule TG para ganhar giros",
+    "activityDesc": "Digite seu usuario do Telegram para concluir a vinculacao e receber chances extras.",
+    "tgNameLabel": "Usuario TG",
+    "tgNamePlaceholder": "Digite {'@'}username",
+    "inputHint": "Digite seu usuario do Telegram. O prefixo {'@'} sera adicionado quando necessario.",
+    "bindButton": "Vincular",
+    "toastAuthSuccess": "Telegrama autorizado: {user}",
+    "toastTgNameRequired": "Digite o usuario TG",
+    "toastBindSuccess": "Vinculado com sucesso. {count} chance(s) de sorteio adicionada(s)",
+    "toastBindFailed": "Falha na vinculacao"
   },
   "invitePage": {
     "title": "Convide amigos",
@@ -777,6 +787,7 @@
     "advancedHint": "O nível avançado oferece melhores recompensas e é o alvo recomendado.",
     "superHint": "O super nível oferece o maior potencial de jackpot.",
     "availableChance": "Rodadas disponíveis",
+    "bindTgBonusAction": "Vincule TG para ganhar giros",
     "superGrandPrize": "Superprémio",
     "spinAction": "Gire agora",
     "spinning": "Fiação",

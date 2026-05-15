@@ -46,7 +46,7 @@ const selectedMine = ref<number | null>(0)
 const amountInput = ref('')
 const submitLoading = ref(false)
 const lastSubmitAt = ref(0)
-const amountMin = ref(100)
+const amountMin = ref(10)
 const amountMax = ref(5000)
 const SUBMIT_THROTTLE_MS = 1000
 

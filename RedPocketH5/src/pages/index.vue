@@ -3,7 +3,6 @@ import { showToast } from 'vant'
 import type { BannerItem, LuckyHistoryUserFlowItem } from '@/api/user'
 import { getBanners, getLuckyHistoryUserFlow } from '@/api/user'
 import { formatCurrency } from '@/utils/currency'
-import AppConfirmDialog from '@/components/AppConfirmDialog.vue'
 import imgAvatarPlaceholder from '@/assets/images/avatar-placeholder.png'
 import coinSvgUrl from '@/assets/svg/coin.svg'
 
@@ -11,7 +10,6 @@ const { t } = useI18n()
 const router = useRouter()
 
 const DISMISSED_KEY = 'dismissed_popup_banner_ids'
-const PACKET_ENTRY_TIP_HIDDEN_KEY_PREFIX = 'home_packet_entry_tip_hidden_'
 
 const DEFAULT_AVATAR = imgAvatarPlaceholder
 const activeIndex = ref(0)
@@ -20,8 +18,6 @@ const homeBanners = ref<BannerItem[]>([])
 const popupQueue = ref<BannerItem[]>([])
 const popupVisible = ref(false)
 const popupIndex = ref(0)
-const packetEntryTipVisible = ref(false)
-const packetEntryTipMode = ref<0 | 1>(0)
 
 const currentPopup = computed(() => popupQueue.value[popupIndex.value] ?? null)
 const recentWinnersLoading = ref(false)
@@ -40,7 +36,6 @@ const visibleWinners = computed(() => recentWinners.value)
 const showWinnerLoading = computed(() => recentWinnersLoading.value && visibleWinners.value.length === 0)
 const showWinnerEmpty = computed(() => visibleWinners.value.length === 0)
 const marqueeText = computed(() => getBannerTitle(homeBanners.value[activeIndex.value]))
-const packetEntryTipText = computed(() => getPacketEntryTip(packetEntryTipMode.value))
 
 function onSwipeChange(index: number) {
   activeIndex.value = index
@@ -57,35 +52,8 @@ function goPacketListDirectly(mode: 0 | 1) {
   })
 }
 
-function isPacketEntryTipHidden(mode: 0 | 1) {
-  return localStorage.getItem(`${PACKET_ENTRY_TIP_HIDDEN_KEY_PREFIX}${mode}`) === '1'
-}
-
-function hidePacketEntryTip(mode: 0 | 1) {
-  localStorage.setItem(`${PACKET_ENTRY_TIP_HIDDEN_KEY_PREFIX}${mode}`, '1')
-}
-
-function getPacketEntryTip(mode: 0 | 1) {
-  return mode === 1 ? t('homeLucky.playModeParityDesc') : t('homeLucky.playModeThunderDesc')
-}
-
 function goPacketList(mode: 0 | 1) {
-  if (isPacketEntryTipHidden(mode)) {
-    goPacketListDirectly(mode)
-    return
-  }
-
-  packetEntryTipMode.value = mode
-  packetEntryTipVisible.value = true
-}
-
-function confirmPacketEntryTip() {
-  goPacketListDirectly(packetEntryTipMode.value)
-}
-
-function dismissPacketEntryTip() {
-  hidePacketEntryTip(packetEntryTipMode.value)
-  goPacketListDirectly(packetEntryTipMode.value)
+  goPacketListDirectly(mode)
 }
 
 function goDemo(mode: 0 | 1) {
@@ -487,18 +455,6 @@ onBeforeUnmount(() => {
         </div>
       </div>
     </van-overlay>
-
-    <AppConfirmDialog
-      v-model:show="packetEntryTipVisible"
-      :title="t('homeLucky.entryTipTitle')"
-      :cancel-text="t('homeLucky.entryTipNeverShow')"
-      :confirm-text="t('common.confirm')"
-      :close-on-click-overlay="false"
-      @confirm="confirmPacketEntryTip"
-      @cancel="dismissPacketEntryTip"
-    >
-      {{ packetEntryTipText }}
-    </AppConfirmDialog>
   </div>
 </template>
 

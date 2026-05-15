@@ -51,12 +51,14 @@ export interface TgCurrentUserInfo {
   country?: string
   uid?: string
   username?: string
+  tgName?: string
   firstName?: string
   email?: string
   phone?: string
   tg_id?: number
   gift_amount?: number
   rebate_amount?: number
+  freeLotteryCount?: number
   vip_level?: number | null
   vip_level_name?: string | null
   audioOpen?: 0 | 1
@@ -572,6 +574,16 @@ export function updateCurrentTgAvatar(avatar: string) {
 
 export function updateCurrentTgName(username: string) {
   return request.post<ApiResult<{ username: string }>>('/api/v1/app/tg/name', { username })
+}
+
+export interface TgBindChannelNameResp {
+  tgName: string
+  freeLotteryCount: number
+  awardedCount: number
+}
+
+export function bindCurrentTgChannelName(tgName: string) {
+  return request.post<ApiResult<TgBindChannelNameResp>>('/api/v1/app/tg/channelName', { tgName })
 }
 
 export function tgLogout() {
