@@ -671,7 +671,8 @@
     "networkError": "Erro de rede, tente novamente mais tarde",
     "authFailed": "Falha na verificação da autorização",
     "apiErrors": {
-      "tg_channel_member_not_found": "Nao detectamos que voce entrou no canal Telegram. Entre no canal primeiro e depois vincule Telegram."
+      "tg_channel_member_not_found": "Nao detectamos que voce entrou no canal Telegram. Entre no canal primeiro e depois vincule Telegram.",
+      "tg_name_already_bound": "Este usuario do Telegram ja esta vinculado"
     },
     "noRemind": "Não me lembre",
     "ok": "OK"

@@ -29,7 +29,7 @@ export type RequestError = AxiosError<{
 
 function tr(key: string, fallback: string) {
   const value = i18n.global.t(key)
-  return typeof value === 'string' ? value : fallback
+  return typeof value === 'string' && value !== key ? value : fallback
 }
 
 function getErrorMessage(payload?: Record<string, any>, fallback = tr('common.requestFailed', 'Request failed')) {

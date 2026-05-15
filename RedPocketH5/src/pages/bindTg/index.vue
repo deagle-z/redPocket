@@ -41,6 +41,7 @@ async function handleBind() {
     const res = await bindCurrentTgChannelName(value)
     tgName.value = res.data.tgName
     showToast(t('bindTgPage.toastBindSuccess', { count: res.data.awardedCount || 0 }))
+    safeBack(router)
   }
   catch {
     // Request errors are surfaced by the axios interceptor.

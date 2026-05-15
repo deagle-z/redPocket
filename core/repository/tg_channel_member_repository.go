@@ -139,7 +139,7 @@ func BindCurrentTgChannelName(_ context.Context, db *gorm.DB, tablePrefix string
 			return pojo.TgBindChannelNameBack{}, err
 		}
 		log.Printf("[tg-channel-bind] reject member not found prefix=%q user_id=%d channel_id=%q normalized_tg_name=%q", tablePrefix, userID, channelID, normalizedName)
-		return pojo.TgBindChannelNameBack{}, errors.New("bind_failed")
+		return pojo.TgBindChannelNameBack{}, errors.New("tg_channel_member_not_found")
 	} else {
 		log.Printf("[tg-channel-bind] member cache hit prefix=%q user_id=%d channel_id=%q member_id=%d member_tg_id=%d member_tg_name=%q member_bind_user_id=%v", tablePrefix, userID, channelID, member.ID, member.TgID, member.TgName, member.BindUserID)
 	}

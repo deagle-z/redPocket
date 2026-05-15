@@ -36,6 +36,7 @@ export default ({ mode }: ConfigEnv): UserConfig => {
 
     build: {
       cssCodeSplit: false,
+      modulePreload: false,
       chunkSizeWarningLimit: 2048,
       outDir: env.VITE_APP_OUT_DIR || 'dist',
     },

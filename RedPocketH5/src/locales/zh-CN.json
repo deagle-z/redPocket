@@ -673,7 +673,8 @@
     "networkError": "网络异常，请稍后重试",
     "authFailed": "登录状态失效",
     "apiErrors": {
-      "tg_channel_member_not_found": "未检测到你已加入 Telegram 频道，请先加入频道后再绑定"
+      "tg_channel_member_not_found": "未检测到你已加入 Telegram 频道，请先加入频道后再绑定",
+      "tg_name_already_bound": "该 Telegram 用户名已绑定"
     },
     "noRemind": "不再提醒",
     "ok": "我知道了"
