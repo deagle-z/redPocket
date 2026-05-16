@@ -124,4 +124,5 @@ var sysConfigRedisKeyMap = map[string]string{
 	"lucky_send_pool_commission":     "bgu_auth_group_send_pool_commission",
 	"lucky_grabbing_pool_commission": "bgu_auth_group_grabbing_pool_commission",
 	"lucky_expire_time":              "bgu_lucky_expire_time",
+	"trial_user_win_rate":            "bgu_trial_user_win_rate",
 }

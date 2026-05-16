@@ -3,6 +3,7 @@ package services
 import (
 	"BaseGoUni/core/pojo"
 	"BaseGoUni/core/utils"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -18,6 +19,12 @@ import (
 )
 
 var trialAutoLuckyMaintainMu sync.Mutex
+
+const (
+	trialUserWinRateDefault = 0.80
+	trialUserWinRateConfig  = "trial_user_win_rate"
+	trialUserWinRateCache   = "bgu_trial_user_win_rate"
+)
 
 func GetTrialMe(db *gorm.DB, userID int64) (pojo.TrialMeResp, error) {
 	var user pojo.TgUser
@@ -176,7 +183,7 @@ func GrabTrialRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix st
 			return errors.New("trial_balance_insufficient")
 		}
 
-		item, err := pickTrialLuckyItem(tx, lucky.ID, grabIndex)
+		item, err := pickTrialLuckyItemForUser(tx, lucky, grabIndex, oddEvenGuess, trialTargetUserWin(tx))
 		if err != nil {
 			return err
 		}
@@ -889,6 +896,118 @@ func pickTrialLuckyItem(tx *gorm.DB, luckyID int64, grabIndex int) (pojo.TrialLu
 		return item, errors.New("lucky_empty")
 	}
 	return item, nil
+}
+
+type trialLuckyItemAmountSwap struct {
+	PrimaryID     uint
+	MatchID       uint
+	PrimaryAmount float64
+	MatchAmount   float64
+}
+
+func pickTrialLuckyItemForUser(tx *gorm.DB, lucky pojo.TrialLuckyMoney, grabIndex int, oddEvenGuess *int, targetWin bool) (pojo.TrialLuckyMoneyItem, error) {
+	var items []pojo.TrialLuckyMoneyItem
+	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+		Where("red_packet_id = ? AND is_grabbed = ?", lucky.ID, 0).
+		Order("seq_no asc").
+		Find(&items).Error; err != nil {
+		return pojo.TrialLuckyMoneyItem{}, err
+	}
+	item, swap, ok := pickTrialLuckyItemForUserTarget(items, lucky, grabIndex, oddEvenGuess, targetWin)
+	if !ok {
+		if grabIndex > 0 {
+			return pojo.TrialLuckyMoneyItem{}, errors.New("grab_index_unavailable")
+		}
+		return pojo.TrialLuckyMoneyItem{}, errors.New("lucky_empty")
+	}
+	if swap != nil {
+		if err := tx.Model(&pojo.TrialLuckyMoneyItem{}).Where("id = ?", swap.PrimaryID).Update("amount", swap.PrimaryAmount).Error; err != nil {
+			return pojo.TrialLuckyMoneyItem{}, err
+		}
+		if err := tx.Model(&pojo.TrialLuckyMoneyItem{}).Where("id = ?", swap.MatchID).Update("amount", swap.MatchAmount).Error; err != nil {
+			return pojo.TrialLuckyMoneyItem{}, err
+		}
+	}
+	return item, nil
+}
+
+func pickTrialLuckyItemForUserTarget(items []pojo.TrialLuckyMoneyItem, lucky pojo.TrialLuckyMoney, grabIndex int, oddEvenGuess *int, targetWin bool) (pojo.TrialLuckyMoneyItem, *trialLuckyItemAmountSwap, bool) {
+	if len(items) == 0 {
+		return pojo.TrialLuckyMoneyItem{}, nil, false
+	}
+	matchesTarget := func(item pojo.TrialLuckyMoneyItem) bool {
+		isThunder := trialIsThunder(lucky, item.Amount, oddEvenGuess)
+		return isThunder != targetWin
+	}
+	if grabIndex > 0 {
+		var fixed *pojo.TrialLuckyMoneyItem
+		for i := range items {
+			if int(items[i].SeqNo) == grabIndex {
+				fixed = &items[i]
+				break
+			}
+		}
+		if fixed == nil {
+			return pojo.TrialLuckyMoneyItem{}, nil, false
+		}
+		if matchesTarget(*fixed) {
+			return *fixed, nil, true
+		}
+		for _, item := range items {
+			if item.ID == fixed.ID {
+				continue
+			}
+			if matchesTarget(item) {
+				selected := *fixed
+				selected.Amount = item.Amount
+				return selected, &trialLuckyItemAmountSwap{
+					PrimaryID:     fixed.ID,
+					MatchID:       item.ID,
+					PrimaryAmount: item.Amount,
+					MatchAmount:   fixed.Amount,
+				}, true
+			}
+		}
+		return *fixed, nil, true
+	}
+	for _, item := range items {
+		if matchesTarget(item) {
+			return item, nil, true
+		}
+	}
+	return items[0], nil, true
+}
+
+func trialTargetUserWin(db *gorm.DB) bool {
+	return rand.Float64() < GetTrialUserWinRate(db)
+}
+
+func GetTrialUserWinRate(db *gorm.DB) float64 {
+	ctx := context.Background()
+	if utils.RD != nil {
+		if cachedValue, err := utils.RD.Get(ctx, trialUserWinRateCache).Result(); err == nil && cachedValue != "" {
+			return normalizeTrialUserWinRate(cachedValue)
+		}
+	}
+
+	defaultValue := strconv.FormatFloat(trialUserWinRateDefault, 'f', 2, 64)
+	configValue := getOrInitSysConfigValue(db, trialUserWinRateConfig, defaultValue, "试玩真实用户赢率")
+	result := normalizeTrialUserWinRate(configValue)
+	if result == trialUserWinRateDefault && strings.TrimSpace(configValue) != defaultValue {
+		_ = db.Model(&pojo.SysConfig{}).Where("config_key = ?", trialUserWinRateConfig).Update("config_value", defaultValue).Error
+	}
+	if utils.RD != nil {
+		utils.RD.SetEX(ctx, trialUserWinRateCache, strconv.FormatFloat(result, 'f', 2, 64), utils.GetRandomRangeSecond(20*60, 40*60))
+	}
+	return result
+}
+
+func normalizeTrialUserWinRate(raw string) float64 {
+	value, err := strconv.ParseFloat(strings.TrimSpace(raw), 64)
+	if err != nil || value < 0 || value > 1 {
+		return trialUserWinRateDefault
+	}
+	return value
 }
 
 func canTrialUserGrabSender(senderType string, senderID int64, userID int64) bool {

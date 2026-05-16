@@ -66,7 +66,6 @@ func GetStringCache(preFix string, key string, defaultValue *string) (result *st
 	data := RD.Get(context.Background(), redisKey)
 	if data != nil && data.Err() == nil {
 		dataStr = data.Val()
-		log.Printf("[config-cache] string cache hit prefix=%q key=%s redisKey=%s value=%q", preFix, key, redisKey, dataStr)
 		return &dataStr
 	}
 	if data != nil && data.Err() != nil && !errors.Is(data.Err(), redis.Nil) {

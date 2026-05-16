@@ -241,6 +241,13 @@ export function useWithdrawOrderBr(tableRef: Ref) {
       formatter: ({ payMethod }) => payMethod || "-"
     },
     {
+      label: "备注",
+      prop: "remark",
+      minWidth: 160,
+      showOverflowTooltip: true,
+      formatter: ({ remark }) => remark || "-"
+    },
+    {
       label: "状态",
       prop: "status",
       minWidth: 120,

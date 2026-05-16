@@ -920,18 +920,18 @@ func GetCurrentTgInviteRuleConfig(ctx *gin.Context) {
 
 		parts := strings.Split(raw, "|")
 		if len(parts) != 2 {
-			return 10, 5000
+			return 5, 5000
 		}
 
 		minValue, errMin := strconv.ParseFloat(strings.TrimSpace(parts[0]), 64)
 		maxValue, errMax := strconv.ParseFloat(strings.TrimSpace(parts[1]), 64)
 		if errMin != nil || errMax != nil || minValue <= 0 || maxValue <= 0 || minValue > maxValue {
-			return 10, 5000
+			return 5, 5000
 		}
 		return utils.Truncate2(minValue), utils.Truncate2(maxValue)
 	}
 
-	sendMinAmount, sendMaxAmount := parseSendMinMax("10|5000")
+	sendMinAmount, sendMaxAmount := parseSendMinMax("5|5000")
 	inviteLuckyRebateRate := parseConfigFloat("invite_lucky_rebate_rate", "40")
 	var user pojo.TgUser
 	if err := db.Select("id", "rebate_rate").Where("id = ?", userID).First(&user).Error; err == nil && user.RebateRate > 0 {

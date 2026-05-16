@@ -38,7 +38,7 @@ const emit = defineEmits<{
 
 const { t } = useI18n()
 
-const amountPresets = [10, 20, 50, 100, 500, 1000]
+const amountPresets = [5, 10, 20, 50, 100, 500]
 const mineOptions = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
 const selectedPlayType = ref<LuckyPlayType>(props.defaultPlayType)
 const selectedAmountPreset = ref<number | null>(null)
@@ -46,7 +46,7 @@ const selectedMine = ref<number | null>(0)
 const amountInput = ref('')
 const submitLoading = ref(false)
 const lastSubmitAt = ref(0)
-const amountMin = ref(10)
+const amountMin = ref(5)
 const amountMax = ref(5000)
 const SUBMIT_THROTTLE_MS = 1000
 

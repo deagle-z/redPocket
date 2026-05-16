@@ -175,14 +175,15 @@ async function submitGrab(): Promise<boolean> {
     isThunderHit.value = data?.isThunder === 1 || data?.isThunder === '1'
     isAmountHidden.value = data?.isAmountHidden === 1 || data?.isAmountHidden === '1'
     const rawAmount = Number(data?.amount ?? data?.grabAmount ?? 0)
-    const rawActualAmount = Number(data?.actualAmount ?? rawAmount)
     const rawLoseMoney = Number(data?.loseMoney ?? 0)
+    const rawActualAmount = Number(data?.actualAmount ?? rawAmount)
+    const rawDisplayAmount = currentGameMode.value === 1 && isThunderHit.value ? rawAmount : rawActualAmount
     resultAmountValue.value = rawAmount
     resultAmountText.value = formatAmount(rawAmount)
-    actualAmountText.value = formatAmount(rawActualAmount)
+    actualAmountText.value = formatAmount(rawDisplayAmount)
     loseMoneyText.value = formatAmount(rawLoseMoney)
     resultMessageText.value = resolveResultMessage(data)
-    resultToastText.value = resolveResultMessage(data, formatPlainAmount(rawActualAmount), formatPlainAmount(rawLoseMoney))
+    resultToastText.value = resolveResultMessage(data, formatPlainAmount(rawDisplayAmount), formatPlainAmount(rawLoseMoney))
     resultReady.value = true
     if (props.showResultToast)
       showToast(resultToastText.value || data?.message || t('grabModal.grabSuccess'))
