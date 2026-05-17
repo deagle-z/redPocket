@@ -27,6 +27,8 @@ type TelegramBotService struct {
 	Bot         *bot.Bot
 }
 
+const welcomeMessageDeleteDelay = 5 * time.Minute
+
 // InitTelegramBot 初始化 Telegram Bot
 func InitTelegramBot(db *gorm.DB, tablePrefix string, botToken string) error {
 	if botToken == "" {
@@ -149,13 +151,13 @@ func (s *TelegramBotService) handleChatMemberUpdated(ctx context.Context, b *bot
 		return
 	}
 
-	memberExists, err := s.tgChannelMemberExists(channelID, user.ID)
+	activeMemberExists, err := s.activeTgChannelMemberExists(channelID, user.ID)
 	if err != nil {
-		log.Printf("[tg-welcome] chat_member existing_check_failed channel_id=%q tg_id=%d err=%v", channelID, user.ID, err)
+		log.Printf("[tg-welcome] chat_member active_existing_check_failed channel_id=%q tg_id=%d err=%v", channelID, user.ID, err)
 		return
 	}
-	sendWelcome := shouldSendChatMemberWelcome(memberExists, oldActive, newActive)
-	log.Printf("[tg-welcome] chat_member user tg_id=%d username=%q first_name=%q last_name=%q old_active=%t new_active=%t member_exists=%t send_welcome=%t", user.ID, user.Username, user.FirstName, user.LastName, oldActive, newActive, memberExists, sendWelcome)
+	sendWelcome := shouldSendChatMemberWelcome(activeMemberExists, oldActive, newActive)
+	log.Printf("[tg-welcome] chat_member user tg_id=%d username=%q first_name=%q last_name=%q old_active=%t new_active=%t active_member_exists=%t send_welcome=%t", user.ID, user.Username, user.FirstName, user.LastName, oldActive, newActive, activeMemberExists, sendWelcome)
 
 	status := int8(0)
 	if isActiveChatMember(update.NewChatMember) {
@@ -195,13 +197,14 @@ func (s *TelegramBotService) handleChatMemberUpdated(ctx context.Context, b *bot
 			sentID = sent.ID
 		}
 		log.Printf("[tg-welcome] chat_member welcome sent chat_id=%d channel_id=%q tg_id=%d sent_message_id=%d text=%q", update.Chat.ID, channelID, user.ID, sentID, text)
+		s.scheduleDeleteWelcomeMessage(b, update.Chat.ID, sentID)
 	}
 	_ = ctx
 }
 
-func (s *TelegramBotService) tgChannelMemberExists(channelID string, tgID int64) (bool, error) {
+func (s *TelegramBotService) activeTgChannelMemberExists(channelID string, tgID int64) (bool, error) {
 	var member pojo.TgChannelMember
-	err := s.DB.Select("id").Where("channel_id = ? AND tg_id = ?", channelID, tgID).First(&member).Error
+	err := s.DB.Select("id").Where("channel_id = ? AND tg_id = ? AND status = ?", channelID, tgID, int8(1)).First(&member).Error
 	if err == nil {
 		return true, nil
 	}
@@ -211,8 +214,8 @@ func (s *TelegramBotService) tgChannelMemberExists(channelID string, tgID int64)
 	return false, err
 }
 
-func shouldSendChatMemberWelcome(memberExists bool, oldActive bool, newActive bool) bool {
-	return !memberExists && !oldActive && newActive
+func shouldSendChatMemberWelcome(activeMemberExists bool, oldActive bool, newActive bool) bool {
+	return !activeMemberExists && !oldActive && newActive
 }
 
 func (s *TelegramBotService) CheckChannelMembership(ctx context.Context, channelID string, tgID int64) (repository.TgChannelMemberSnapshot, error) {
@@ -406,10 +409,6 @@ func (s *TelegramBotService) handleMessage(ctx context.Context, b *bot.Bot, mess
 
 	// 检查群组授权
 	if !s.CheckGroupAuth(chatID) {
-		_, _ = b.SendMessage(ctx, &bot.SendMessageParams{
-			ChatID: chatID,
-			Text:   "未授权",
-		})
 		return
 	}
 
@@ -492,8 +491,28 @@ func (s *TelegramBotService) handleRequiredChannelWelcome(ctx context.Context, b
 			sentID = sent.ID
 		}
 		log.Printf("[tg-welcome] message welcome sent chat_id=%d index=%d sent_message_id=%d text=%q", message.Chat.ID, index, sentID, text)
+		s.scheduleDeleteWelcomeMessage(b, message.Chat.ID, sentID)
 	}
 	return true
+}
+
+func (s *TelegramBotService) scheduleDeleteWelcomeMessage(b *bot.Bot, chatID int64, messageID int) {
+	if b == nil || chatID == 0 || messageID == 0 {
+		log.Printf("[tg-welcome] welcome delete skip reason=invalid_params chat_id=%d message_id=%d", chatID, messageID)
+		return
+	}
+	time.AfterFunc(welcomeMessageDeleteDelay, func() {
+		_, err := b.DeleteMessage(context.Background(), &bot.DeleteMessageParams{
+			ChatID:    chatID,
+			MessageID: messageID,
+		})
+		if err != nil {
+			log.Printf("[tg-welcome] welcome delete_failed chat_id=%d message_id=%d delay=%s err=%v", chatID, messageID, welcomeMessageDeleteDelay, err)
+			return
+		}
+		log.Printf("[tg-welcome] welcome deleted chat_id=%d message_id=%d delay=%s", chatID, messageID, welcomeMessageDeleteDelay)
+	})
+	log.Printf("[tg-welcome] welcome delete_scheduled chat_id=%d message_id=%d delay=%s", chatID, messageID, welcomeMessageDeleteDelay)
 }
 
 func buildRequiredChannelWelcomeMessages(requiredChannelID string, message *models.Message) []string {
@@ -614,10 +633,6 @@ func (s *TelegramBotService) handleRegisterCommand(ctx context.Context, b *bot.B
 
 	if message.Chat.Type == "group" || message.Chat.Type == "supergroup" {
 		if !s.CheckGroupAuth(chatID) {
-			_, _ = b.SendMessage(ctx, &bot.SendMessageParams{
-				ChatID: chatID,
-				Text:   "未授权",
-			})
 			return
 		}
 	}
@@ -847,10 +862,6 @@ func (s *TelegramBotService) handleBalanceGroupMessage(ctx context.Context, b *b
 
 	// 检查群组授权
 	if !s.CheckGroupAuth(chatID) {
-		_, _ = b.SendMessage(ctx, &bot.SendMessageParams{
-			ChatID: chatID,
-			Text:   "未授权",
-		})
 		return
 	}
 
@@ -879,10 +890,6 @@ func (s *TelegramBotService) handleTeamMessage(ctx context.Context, b *bot.Bot, 
 	chatID := message.Chat.ID
 	if message.Chat.Type == "group" || message.Chat.Type == "supergroup" {
 		if !s.CheckGroupAuth(chatID) {
-			_, _ = b.SendMessage(ctx, &bot.SendMessageParams{
-				ChatID: chatID,
-				Text:   "未授权",
-			})
 			return
 		}
 	}

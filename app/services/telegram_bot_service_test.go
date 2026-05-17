@@ -2,6 +2,7 @@ package services
 
 import (
 	"testing"
+	"time"
 
 	"github.com/go-telegram/bot/models"
 )
@@ -55,23 +56,30 @@ func TestBuildRequiredChannelWelcomeMessagesSkipsOtherChats(t *testing.T) {
 func TestShouldSendChatMemberWelcome(t *testing.T) {
 	tests := []struct {
 		name         string
-		memberExists bool
+		activeExists bool
 		oldActive    bool
 		newActive    bool
 		want         bool
 	}{
-		{name: "new active member not in database", memberExists: false, oldActive: false, newActive: true, want: true},
-		{name: "existing member", memberExists: true, oldActive: false, newActive: true, want: false},
-		{name: "new inactive member", memberExists: false, oldActive: false, newActive: false, want: false},
-		{name: "already active transition", memberExists: false, oldActive: true, newActive: true, want: false},
+		{name: "new active member not active in database", activeExists: false, oldActive: false, newActive: true, want: true},
+		{name: "previously left member rejoins", activeExists: false, oldActive: false, newActive: true, want: true},
+		{name: "active member already in database", activeExists: true, oldActive: false, newActive: true, want: false},
+		{name: "new inactive member", activeExists: false, oldActive: false, newActive: false, want: false},
+		{name: "already active transition", activeExists: false, oldActive: true, newActive: true, want: false},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := shouldSendChatMemberWelcome(tt.memberExists, tt.oldActive, tt.newActive)
+			got := shouldSendChatMemberWelcome(tt.activeExists, tt.oldActive, tt.newActive)
 			if got != tt.want {
 				t.Fatalf("shouldSendChatMemberWelcome() = %t, want %t", got, tt.want)
 			}
 		})
+	}
+}
+
+func TestWelcomeMessageDeleteDelay(t *testing.T) {
+	if welcomeMessageDeleteDelay != 5*time.Minute {
+		t.Fatalf("welcomeMessageDeleteDelay = %v, want %v", welcomeMessageDeleteDelay, 5*time.Minute)
 	}
 }
