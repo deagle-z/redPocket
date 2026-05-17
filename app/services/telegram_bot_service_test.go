@@ -2,7 +2,6 @@ package services
 
 import (
 	"testing"
-	"time"
 
 	"github.com/go-telegram/bot/models"
 )
@@ -75,11 +74,5 @@ func TestShouldSendChatMemberWelcome(t *testing.T) {
 				t.Fatalf("shouldSendChatMemberWelcome() = %t, want %t", got, tt.want)
 			}
 		})
-	}
-}
-
-func TestWelcomeMessageDeleteDelay(t *testing.T) {
-	if welcomeMessageDeleteDelay != 5*time.Minute {
-		t.Fatalf("welcomeMessageDeleteDelay = %v, want %v", welcomeMessageDeleteDelay, 5*time.Minute)
 	}
 }

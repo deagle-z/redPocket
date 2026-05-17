@@ -27,8 +27,6 @@ type TelegramBotService struct {
 	Bot         *bot.Bot
 }
 
-const welcomeMessageDeleteDelay = 5 * time.Minute
-
 // InitTelegramBot 初始化 Telegram Bot
 func InitTelegramBot(db *gorm.DB, tablePrefix string, botToken string) error {
 	if botToken == "" {
@@ -106,7 +104,7 @@ func (s *TelegramBotService) handleDefault(ctx context.Context, b *bot.Bot, upda
 	}
 	log.Printf("[tg-welcome] update received update_id=%d has_message=%t has_chat_member=%t has_callback=%t", update.ID, update.Message != nil, update.ChatMember != nil, update.CallbackQuery != nil)
 	if update.ChatMember != nil {
-		s.handleChatMemberUpdated(ctx, b, update.ChatMember)
+		s.handleChatMemberUpdated(ctx, update.ChatMember)
 		return
 	}
 
@@ -127,7 +125,7 @@ func (s *TelegramBotService) handleDefault(ctx context.Context, b *bot.Bot, upda
 	}
 }
 
-func (s *TelegramBotService) handleChatMemberUpdated(ctx context.Context, b *bot.Bot, update *models.ChatMemberUpdated) {
+func (s *TelegramBotService) handleChatMemberUpdated(ctx context.Context, update *models.ChatMemberUpdated) {
 	if update == nil {
 		log.Printf("[tg-welcome] chat_member update nil")
 		return
@@ -179,25 +177,16 @@ func (s *TelegramBotService) handleChatMemberUpdated(ctx context.Context, b *bot
 	}
 
 	if sendWelcome {
-		text := buildWelcomeText(formatTelegramWelcomeName(*user))
-		if text == "" {
-			log.Printf("[tg-welcome] chat_member welcome skip reason=empty_welcome_text channel_id=%q tg_id=%d", channelID, user.ID)
+		name := formatTelegramWelcomeName(*user)
+		if strings.TrimSpace(name) == "" {
+			log.Printf("[tg-welcome] chat_member welcome skip reason=empty_welcome_name channel_id=%q tg_id=%d", channelID, user.ID)
 			return
 		}
-		sent, err := b.SendMessage(ctx, &bot.SendMessageParams{
-			ChatID: update.Chat.ID,
-			Text:   text,
-		})
-		if err != nil {
-			log.Printf("[tg-welcome] chat_member welcome send_failed chat_id=%d channel_id=%q tg_id=%d text=%q err=%v", update.Chat.ID, channelID, user.ID, text, err)
+		if err := services.EnqueueTelegramWelcomeMessageTask(update.Chat.ID, name); err != nil {
+			log.Printf("[tg-welcome] chat_member welcome enqueue_failed chat_id=%d channel_id=%q tg_id=%d name=%q err=%v", update.Chat.ID, channelID, user.ID, name, err)
 			return
 		}
-		sentID := 0
-		if sent != nil {
-			sentID = sent.ID
-		}
-		log.Printf("[tg-welcome] chat_member welcome sent chat_id=%d channel_id=%q tg_id=%d sent_message_id=%d text=%q", update.Chat.ID, channelID, user.ID, sentID, text)
-		s.scheduleDeleteWelcomeMessage(b, update.Chat.ID, sentID)
+		log.Printf("[tg-welcome] chat_member welcome enqueued chat_id=%d channel_id=%q tg_id=%d name=%q", update.Chat.ID, channelID, user.ID, name)
 	}
 	_ = ctx
 }
@@ -472,72 +461,27 @@ func (s *TelegramBotService) handleRequiredChannelWelcome(ctx context.Context, b
 		return false
 	}
 
-	messages := buildRequiredChannelWelcomeMessages(requiredChannelID, message)
-	if len(messages) == 0 {
+	names := buildRequiredChannelWelcomeNames(requiredChannelID, message)
+	if len(names) == 0 {
 		log.Printf("[tg-welcome] message welcome skip reason=no_rendered_welcome_messages chat_id=%d new_chat_members=%d", message.Chat.ID, len(message.NewChatMembers))
 		return false
 	}
-	for index, text := range messages {
-		sent, err := b.SendMessage(ctx, &bot.SendMessageParams{
-			ChatID: message.Chat.ID,
-			Text:   text,
-		})
-		if err != nil {
-			log.Printf("[tg-welcome] message welcome send_failed chat_id=%d index=%d text=%q err=%v", message.Chat.ID, index, text, err)
+	for index, name := range names {
+		if err := services.EnqueueTelegramWelcomeMessageTask(message.Chat.ID, name); err != nil {
+			log.Printf("[tg-welcome] message welcome enqueue_failed chat_id=%d index=%d name=%q err=%v", message.Chat.ID, index, name, err)
 			continue
 		}
-		sentID := 0
-		if sent != nil {
-			sentID = sent.ID
-		}
-		log.Printf("[tg-welcome] message welcome sent chat_id=%d index=%d sent_message_id=%d text=%q", message.Chat.ID, index, sentID, text)
-		s.scheduleDeleteWelcomeMessage(b, message.Chat.ID, sentID)
+		log.Printf("[tg-welcome] message welcome enqueued chat_id=%d index=%d name=%q", message.Chat.ID, index, name)
 	}
+	_ = b
+	_ = ctx
 	return true
 }
 
-func (s *TelegramBotService) scheduleDeleteWelcomeMessage(b *bot.Bot, chatID int64, messageID int) {
-	scheduledAt := time.Now()
-	deleteAt := scheduledAt.Add(welcomeMessageDeleteDelay)
-	if b == nil || chatID == 0 || messageID == 0 {
-		log.Printf("[tg-welcome] welcome delete skip reason=invalid_params chat_id=%d message_id=%d scheduled_at=%s delete_at=%s delay=%s bot_nil=%t", chatID, messageID, scheduledAt.Format(time.RFC3339), deleteAt.Format(time.RFC3339), welcomeMessageDeleteDelay, b == nil)
-		return
-	}
-	if err := services.EnqueueTelegramDeleteMessageTask(chatID, messageID, welcomeMessageDeleteDelay); err == nil {
-		log.Printf("[tg-welcome] welcome delete_scheduled mode=asynq chat_id=%d message_id=%d scheduled_at=%s delete_at=%s delay=%s", chatID, messageID, scheduledAt.Format(time.RFC3339), deleteAt.Format(time.RFC3339), welcomeMessageDeleteDelay)
-		return
-	} else {
-		log.Printf("[tg-welcome] welcome delete_scheduled mode=memory_fallback reason=asynq_enqueue_failed chat_id=%d message_id=%d scheduled_at=%s delete_at=%s delay=%s err=%v", chatID, messageID, scheduledAt.Format(time.RFC3339), deleteAt.Format(time.RFC3339), welcomeMessageDeleteDelay, err)
-	}
-	time.AfterFunc(welcomeMessageDeleteDelay, func() {
-		startedAt := time.Now()
-		log.Printf("[tg-welcome] welcome delete_started chat_id=%d message_id=%d scheduled_at=%s planned_delete_at=%s started_at=%s delay=%s", chatID, messageID, scheduledAt.Format(time.RFC3339), deleteAt.Format(time.RFC3339), startedAt.Format(time.RFC3339), welcomeMessageDeleteDelay)
-		_, err := b.DeleteMessage(context.Background(), &bot.DeleteMessageParams{
-			ChatID:    chatID,
-			MessageID: messageID,
-		})
-		if err != nil {
-			log.Printf("[tg-welcome] welcome delete_failed chat_id=%d message_id=%d scheduled_at=%s planned_delete_at=%s started_at=%s delay=%s err=%v", chatID, messageID, scheduledAt.Format(time.RFC3339), deleteAt.Format(time.RFC3339), startedAt.Format(time.RFC3339), welcomeMessageDeleteDelay, err)
-			return
-		}
-		log.Printf("[tg-welcome] welcome deleted chat_id=%d message_id=%d scheduled_at=%s planned_delete_at=%s started_at=%s deleted_at=%s delay=%s", chatID, messageID, scheduledAt.Format(time.RFC3339), deleteAt.Format(time.RFC3339), startedAt.Format(time.RFC3339), time.Now().Format(time.RFC3339), welcomeMessageDeleteDelay)
-	})
-	log.Printf("[tg-welcome] welcome delete_scheduled chat_id=%d message_id=%d scheduled_at=%s delete_at=%s delay=%s", chatID, messageID, scheduledAt.Format(time.RFC3339), deleteAt.Format(time.RFC3339), welcomeMessageDeleteDelay)
-}
-
 func buildRequiredChannelWelcomeMessages(requiredChannelID string, message *models.Message) []string {
-	if message == nil || len(message.NewChatMembers) == 0 {
-		return nil
-	}
-	if requiredChannelID == "" || !matchTelegramChannelID(requiredChannelID, message.Chat.ID, message.Chat.Username) {
-		return nil
-	}
-	messages := make([]string, 0, len(message.NewChatMembers))
-	for _, member := range message.NewChatMembers {
-		name := formatTelegramWelcomeName(member)
-		if name == "" {
-			continue
-		}
+	names := buildRequiredChannelWelcomeNames(requiredChannelID, message)
+	messages := make([]string, 0, len(names))
+	for _, name := range names {
 		text := buildWelcomeText(name)
 		if text == "" {
 			continue
@@ -545,6 +489,24 @@ func buildRequiredChannelWelcomeMessages(requiredChannelID string, message *mode
 		messages = append(messages, text)
 	}
 	return messages
+}
+
+func buildRequiredChannelWelcomeNames(requiredChannelID string, message *models.Message) []string {
+	if message == nil || len(message.NewChatMembers) == 0 {
+		return nil
+	}
+	if requiredChannelID == "" || !matchTelegramChannelID(requiredChannelID, message.Chat.ID, message.Chat.Username) {
+		return nil
+	}
+	names := make([]string, 0, len(message.NewChatMembers))
+	for _, member := range message.NewChatMembers {
+		name := formatTelegramWelcomeName(member)
+		if name == "" {
+			continue
+		}
+		names = append(names, name)
+	}
+	return names
 }
 
 func buildWelcomeText(name string) string {
