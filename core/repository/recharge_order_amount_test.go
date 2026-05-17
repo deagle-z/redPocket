@@ -22,3 +22,24 @@ func TestFloorRechargeAmount(t *testing.T) {
 		})
 	}
 }
+
+func TestCalculateRechargeProviderAmount(t *testing.T) {
+	tests := []struct {
+		name   string
+		amount float64
+		rate   float64
+		want   float64
+	}{
+		{name: "floors converted provider amount", amount: 10, rate: 5.06, want: 50},
+		{name: "keeps integer converted provider amount", amount: 10, rate: 5, want: 50},
+		{name: "uses original amount when rate is missing", amount: 50.6, rate: 0, want: 50.6},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := calculateRechargeProviderAmount(tt.amount, tt.rate); got != tt.want {
+				t.Fatalf("calculateRechargeProviderAmount(%v, %v) = %v, want %v", tt.amount, tt.rate, got, tt.want)
+			}
+		})
+	}
+}

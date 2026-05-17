@@ -344,7 +344,7 @@ func AppCreateRechargeOrder(db *gorm.DB, userID int64, req pojo.RechargeOrderApp
 	}
 	providerAmount := req.Amount
 	if country.ID > 0 && country.Rate > 0 {
-		providerAmount = ceilProviderAmount(req.Amount * country.Rate)
+		providerAmount = calculateRechargeProviderAmount(req.Amount, country.Rate)
 	}
 
 	var tgUser pojo.TgUser
@@ -471,6 +471,13 @@ func ceilProviderAmount(amount float64) float64 {
 		return 0
 	}
 	return math.Ceil(amount)
+}
+
+func calculateRechargeProviderAmount(amount float64, rate float64) float64 {
+	if rate <= 0 {
+		return amount
+	}
+	return floorRechargeAmount(amount * rate)
 }
 
 func floorRechargeAmount(amount float64) float64 {
