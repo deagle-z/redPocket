@@ -22,7 +22,7 @@ func TestBuildRequiredChannelWelcomeMessages(t *testing.T) {
 
 	want := []string{
 		"¡Bienvenido @alice a unirte al canal oficial de LuckyCoins!",
-		"¡Bienvenido Bob Smith a unirte al canal oficial de LuckyCoins!",
+		"¡Bienvenido Bob a unirte al canal oficial de LuckyCoins!",
 	}
 	if len(messages) != len(want) {
 		t.Fatalf("welcome messages len = %d, want %d (%v)", len(messages), len(want), messages)
@@ -49,5 +49,29 @@ func TestBuildRequiredChannelWelcomeMessagesSkipsOtherChats(t *testing.T) {
 
 	if len(messages) != 0 {
 		t.Fatalf("welcome messages len = %d, want 0 (%v)", len(messages), messages)
+	}
+}
+
+func TestShouldSendChatMemberWelcome(t *testing.T) {
+	tests := []struct {
+		name         string
+		memberExists bool
+		oldActive    bool
+		newActive    bool
+		want         bool
+	}{
+		{name: "new active member not in database", memberExists: false, oldActive: false, newActive: true, want: true},
+		{name: "existing member", memberExists: true, oldActive: false, newActive: true, want: false},
+		{name: "new inactive member", memberExists: false, oldActive: false, newActive: false, want: false},
+		{name: "already active transition", memberExists: false, oldActive: true, newActive: true, want: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := shouldSendChatMemberWelcome(tt.memberExists, tt.oldActive, tt.newActive)
+			if got != tt.want {
+				t.Fatalf("shouldSendChatMemberWelcome() = %t, want %t", got, tt.want)
+			}
+		})
 	}
 }

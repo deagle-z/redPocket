@@ -70,6 +70,10 @@ func InitTelegramBot(db *gorm.DB, tablePrefix string, botToken string) error {
 	if err != nil {
 		return fmt.Errorf("初始化 Telegram Bot 失败: %v", err)
 	}
+	log.Printf("[tg-welcome] bot allowed_updates=%v table_prefix=%q", bot.AllowedUpdates{
+		models.AllowedUpdateMessage,
+		models.AllowedUpdateChatMember,
+	}, tablePrefix)
 
 	botService.Bot = b
 	repository.RegisterTgChannelMembershipChecker(botService.CheckChannelMembership)
@@ -94,8 +98,13 @@ func InitTelegramBot(db *gorm.DB, tablePrefix string, botToken string) error {
 
 // handleDefault 默认处理器
 func (s *TelegramBotService) handleDefault(ctx context.Context, b *bot.Bot, update *models.Update) {
+	if update == nil {
+		log.Printf("[tg-welcome] update received nil")
+		return
+	}
+	log.Printf("[tg-welcome] update received update_id=%d has_message=%t has_chat_member=%t has_callback=%t", update.ID, update.Message != nil, update.ChatMember != nil, update.CallbackQuery != nil)
 	if update.ChatMember != nil {
-		s.handleChatMemberUpdated(ctx, update.ChatMember)
+		s.handleChatMemberUpdated(ctx, b, update.ChatMember)
 		return
 	}
 
@@ -116,18 +125,37 @@ func (s *TelegramBotService) handleDefault(ctx context.Context, b *bot.Bot, upda
 	}
 }
 
-func (s *TelegramBotService) handleChatMemberUpdated(ctx context.Context, update *models.ChatMemberUpdated) {
+func (s *TelegramBotService) handleChatMemberUpdated(ctx context.Context, b *bot.Bot, update *models.ChatMemberUpdated) {
 	if update == nil {
+		log.Printf("[tg-welcome] chat_member update nil")
 		return
 	}
 	channelID := s.getRequiredChannelID()
-	if channelID == "" || !matchTelegramChannelID(channelID, update.Chat.ID, update.Chat.Username) {
+	matched := channelID != "" && matchTelegramChannelID(channelID, update.Chat.ID, update.Chat.Username)
+	oldActive := isActiveChatMember(update.OldChatMember)
+	newActive := isActiveChatMember(update.NewChatMember)
+	log.Printf("[tg-welcome] chat_member received required_channel_id=%q matched=%t chat_id=%d chat_username=%q chat_type=%q old_status=%q old_active=%t new_status=%q new_active=%t", channelID, matched, update.Chat.ID, update.Chat.Username, update.Chat.Type, update.OldChatMember.Type, oldActive, update.NewChatMember.Type, newActive)
+	if channelID == "" {
+		log.Printf("[tg-welcome] chat_member skip reason=empty_required_channel_id chat_id=%d", update.Chat.ID)
+		return
+	}
+	if !matched {
+		log.Printf("[tg-welcome] chat_member skip reason=required_channel_mismatch required_channel_id=%q chat_id=%d chat_username=%q", channelID, update.Chat.ID, update.Chat.Username)
 		return
 	}
 	user := chatMemberUser(update.NewChatMember)
 	if user == nil || user.ID == 0 {
+		log.Printf("[tg-welcome] chat_member skip reason=empty_new_member_user chat_id=%d new_status=%q", update.Chat.ID, update.NewChatMember.Type)
 		return
 	}
+
+	memberExists, err := s.tgChannelMemberExists(channelID, user.ID)
+	if err != nil {
+		log.Printf("[tg-welcome] chat_member existing_check_failed channel_id=%q tg_id=%d err=%v", channelID, user.ID, err)
+		return
+	}
+	sendWelcome := shouldSendChatMemberWelcome(memberExists, oldActive, newActive)
+	log.Printf("[tg-welcome] chat_member user tg_id=%d username=%q first_name=%q last_name=%q old_active=%t new_active=%t member_exists=%t send_welcome=%t", user.ID, user.Username, user.FirstName, user.LastName, oldActive, newActive, memberExists, sendWelcome)
 
 	status := int8(0)
 	if isActiveChatMember(update.NewChatMember) {
@@ -142,8 +170,49 @@ func (s *TelegramBotService) handleChatMemberUpdated(ctx context.Context, update
 	}
 	if err := repository.UpsertTgChannelMember(s.DB, snapshot); err != nil {
 		log.Printf("保存 Telegram 频道成员失败 channel_id=%s tg_id=%d err=%v", channelID, user.ID, err)
+		log.Printf("[tg-welcome] chat_member snapshot_save_failed channel_id=%q tg_id=%d err=%v", channelID, user.ID, err)
+		return
+	} else {
+		log.Printf("[tg-welcome] chat_member snapshot_saved channel_id=%q tg_id=%d status=%d", channelID, user.ID, status)
+	}
+
+	if sendWelcome {
+		text := buildWelcomeText(formatTelegramWelcomeName(*user))
+		if text == "" {
+			log.Printf("[tg-welcome] chat_member welcome skip reason=empty_welcome_text channel_id=%q tg_id=%d", channelID, user.ID)
+			return
+		}
+		sent, err := b.SendMessage(ctx, &bot.SendMessageParams{
+			ChatID: update.Chat.ID,
+			Text:   text,
+		})
+		if err != nil {
+			log.Printf("[tg-welcome] chat_member welcome send_failed chat_id=%d channel_id=%q tg_id=%d text=%q err=%v", update.Chat.ID, channelID, user.ID, text, err)
+			return
+		}
+		sentID := 0
+		if sent != nil {
+			sentID = sent.ID
+		}
+		log.Printf("[tg-welcome] chat_member welcome sent chat_id=%d channel_id=%q tg_id=%d sent_message_id=%d text=%q", update.Chat.ID, channelID, user.ID, sentID, text)
 	}
 	_ = ctx
+}
+
+func (s *TelegramBotService) tgChannelMemberExists(channelID string, tgID int64) (bool, error) {
+	var member pojo.TgChannelMember
+	err := s.DB.Select("id").Where("channel_id = ? AND tg_id = ?", channelID, tgID).First(&member).Error
+	if err == nil {
+		return true, nil
+	}
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return false, nil
+	}
+	return false, err
+}
+
+func shouldSendChatMemberWelcome(memberExists bool, oldActive bool, newActive bool) bool {
+	return !memberExists && !oldActive && newActive
 }
 
 func (s *TelegramBotService) CheckChannelMembership(ctx context.Context, channelID string, tgID int64) (repository.TgChannelMemberSnapshot, error) {
@@ -255,6 +324,7 @@ func formatTelegramFullName(user *models.User) string {
 // handleMessage 处理消息
 func (s *TelegramBotService) handleMessage(ctx context.Context, b *bot.Bot, message *models.Message) {
 	chatID := message.Chat.ID
+	log.Printf("[tg-welcome] message received message_id=%d chat_id=%d chat_username=%q chat_type=%q text_empty=%t new_chat_members=%d", message.ID, chatID, message.Chat.Username, message.Chat.Type, message.Text == "", len(message.NewChatMembers))
 	if s.handleRequiredChannelWelcome(ctx, b, message) {
 		return
 	}
@@ -379,15 +449,49 @@ func (s *TelegramBotService) handleMessage(ctx context.Context, b *bot.Bot, mess
 }
 
 func (s *TelegramBotService) handleRequiredChannelWelcome(ctx context.Context, b *bot.Bot, message *models.Message) bool {
-	messages := buildRequiredChannelWelcomeMessages(s.getRequiredChannelID(), message)
-	if len(messages) == 0 {
+	requiredChannelID := s.getRequiredChannelID()
+	newMemberCount := 0
+	if message != nil {
+		newMemberCount = len(message.NewChatMembers)
+	}
+	if message == nil {
+		log.Printf("[tg-welcome] message welcome skip reason=nil_message required_channel_id=%q", requiredChannelID)
 		return false
 	}
-	for _, text := range messages {
-		_, _ = b.SendMessage(ctx, &bot.SendMessageParams{
+	matched := requiredChannelID != "" && matchTelegramChannelID(requiredChannelID, message.Chat.ID, message.Chat.Username)
+	log.Printf("[tg-welcome] message welcome check required_channel_id=%q matched=%t chat_id=%d chat_username=%q chat_type=%q new_chat_members=%d", requiredChannelID, matched, message.Chat.ID, message.Chat.Username, message.Chat.Type, newMemberCount)
+	if requiredChannelID == "" {
+		log.Printf("[tg-welcome] message welcome skip reason=empty_required_channel_id chat_id=%d", message.Chat.ID)
+		return false
+	}
+	if !matched {
+		log.Printf("[tg-welcome] message welcome skip reason=required_channel_mismatch required_channel_id=%q chat_id=%d chat_username=%q", requiredChannelID, message.Chat.ID, message.Chat.Username)
+		return false
+	}
+	if len(message.NewChatMembers) == 0 {
+		log.Printf("[tg-welcome] message welcome skip reason=no_new_chat_members chat_id=%d text_empty=%t", message.Chat.ID, message.Text == "")
+		return false
+	}
+
+	messages := buildRequiredChannelWelcomeMessages(requiredChannelID, message)
+	if len(messages) == 0 {
+		log.Printf("[tg-welcome] message welcome skip reason=no_rendered_welcome_messages chat_id=%d new_chat_members=%d", message.Chat.ID, len(message.NewChatMembers))
+		return false
+	}
+	for index, text := range messages {
+		sent, err := b.SendMessage(ctx, &bot.SendMessageParams{
 			ChatID: message.Chat.ID,
 			Text:   text,
 		})
+		if err != nil {
+			log.Printf("[tg-welcome] message welcome send_failed chat_id=%d index=%d text=%q err=%v", message.Chat.ID, index, text, err)
+			continue
+		}
+		sentID := 0
+		if sent != nil {
+			sentID = sent.ID
+		}
+		log.Printf("[tg-welcome] message welcome sent chat_id=%d index=%d sent_message_id=%d text=%q", message.Chat.ID, index, sentID, text)
 	}
 	return true
 }
@@ -405,14 +509,29 @@ func buildRequiredChannelWelcomeMessages(requiredChannelID string, message *mode
 		if name == "" {
 			continue
 		}
-		messages = append(messages, fmt.Sprintf("¡Bienvenido %s a unirte al canal oficial de LuckyCoins!", name))
+		text := buildWelcomeText(name)
+		if text == "" {
+			continue
+		}
+		messages = append(messages, text)
 	}
 	return messages
+}
+
+func buildWelcomeText(name string) string {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return ""
+	}
+	return fmt.Sprintf("¡Bienvenido %s a unirte al canal oficial de LuckyCoins!", name)
 }
 
 func formatTelegramWelcomeName(user models.User) string {
 	if strings.TrimSpace(user.Username) != "" {
 		return "@" + strings.TrimSpace(user.Username)
+	}
+	if strings.TrimSpace(user.FirstName) != "" {
+		return strings.TrimSpace(user.FirstName)
 	}
 	return formatTelegramFullName(&user)
 }
