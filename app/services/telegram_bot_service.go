@@ -503,6 +503,12 @@ func (s *TelegramBotService) scheduleDeleteWelcomeMessage(b *bot.Bot, chatID int
 		log.Printf("[tg-welcome] welcome delete skip reason=invalid_params chat_id=%d message_id=%d scheduled_at=%s delete_at=%s delay=%s bot_nil=%t", chatID, messageID, scheduledAt.Format(time.RFC3339), deleteAt.Format(time.RFC3339), welcomeMessageDeleteDelay, b == nil)
 		return
 	}
+	if err := services.EnqueueTelegramDeleteMessageTask(chatID, messageID, welcomeMessageDeleteDelay); err == nil {
+		log.Printf("[tg-welcome] welcome delete_scheduled mode=asynq chat_id=%d message_id=%d scheduled_at=%s delete_at=%s delay=%s", chatID, messageID, scheduledAt.Format(time.RFC3339), deleteAt.Format(time.RFC3339), welcomeMessageDeleteDelay)
+		return
+	} else {
+		log.Printf("[tg-welcome] welcome delete_scheduled mode=memory_fallback reason=asynq_enqueue_failed chat_id=%d message_id=%d scheduled_at=%s delete_at=%s delay=%s err=%v", chatID, messageID, scheduledAt.Format(time.RFC3339), deleteAt.Format(time.RFC3339), welcomeMessageDeleteDelay, err)
+	}
 	time.AfterFunc(welcomeMessageDeleteDelay, func() {
 		startedAt := time.Now()
 		log.Printf("[tg-welcome] welcome delete_started chat_id=%d message_id=%d scheduled_at=%s planned_delete_at=%s started_at=%s delay=%s", chatID, messageID, scheduledAt.Format(time.RFC3339), deleteAt.Format(time.RFC3339), startedAt.Format(time.RFC3339), welcomeMessageDeleteDelay)
