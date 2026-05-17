@@ -497,22 +497,26 @@ func (s *TelegramBotService) handleRequiredChannelWelcome(ctx context.Context, b
 }
 
 func (s *TelegramBotService) scheduleDeleteWelcomeMessage(b *bot.Bot, chatID int64, messageID int) {
+	scheduledAt := time.Now()
+	deleteAt := scheduledAt.Add(welcomeMessageDeleteDelay)
 	if b == nil || chatID == 0 || messageID == 0 {
-		log.Printf("[tg-welcome] welcome delete skip reason=invalid_params chat_id=%d message_id=%d", chatID, messageID)
+		log.Printf("[tg-welcome] welcome delete skip reason=invalid_params chat_id=%d message_id=%d scheduled_at=%s delete_at=%s delay=%s bot_nil=%t", chatID, messageID, scheduledAt.Format(time.RFC3339), deleteAt.Format(time.RFC3339), welcomeMessageDeleteDelay, b == nil)
 		return
 	}
 	time.AfterFunc(welcomeMessageDeleteDelay, func() {
+		startedAt := time.Now()
+		log.Printf("[tg-welcome] welcome delete_started chat_id=%d message_id=%d scheduled_at=%s planned_delete_at=%s started_at=%s delay=%s", chatID, messageID, scheduledAt.Format(time.RFC3339), deleteAt.Format(time.RFC3339), startedAt.Format(time.RFC3339), welcomeMessageDeleteDelay)
 		_, err := b.DeleteMessage(context.Background(), &bot.DeleteMessageParams{
 			ChatID:    chatID,
 			MessageID: messageID,
 		})
 		if err != nil {
-			log.Printf("[tg-welcome] welcome delete_failed chat_id=%d message_id=%d delay=%s err=%v", chatID, messageID, welcomeMessageDeleteDelay, err)
+			log.Printf("[tg-welcome] welcome delete_failed chat_id=%d message_id=%d scheduled_at=%s planned_delete_at=%s started_at=%s delay=%s err=%v", chatID, messageID, scheduledAt.Format(time.RFC3339), deleteAt.Format(time.RFC3339), startedAt.Format(time.RFC3339), welcomeMessageDeleteDelay, err)
 			return
 		}
-		log.Printf("[tg-welcome] welcome deleted chat_id=%d message_id=%d delay=%s", chatID, messageID, welcomeMessageDeleteDelay)
+		log.Printf("[tg-welcome] welcome deleted chat_id=%d message_id=%d scheduled_at=%s planned_delete_at=%s started_at=%s deleted_at=%s delay=%s", chatID, messageID, scheduledAt.Format(time.RFC3339), deleteAt.Format(time.RFC3339), startedAt.Format(time.RFC3339), time.Now().Format(time.RFC3339), welcomeMessageDeleteDelay)
 	})
-	log.Printf("[tg-welcome] welcome delete_scheduled chat_id=%d message_id=%d delay=%s", chatID, messageID, welcomeMessageDeleteDelay)
+	log.Printf("[tg-welcome] welcome delete_scheduled chat_id=%d message_id=%d scheduled_at=%s delete_at=%s delay=%s", chatID, messageID, scheduledAt.Format(time.RFC3339), deleteAt.Format(time.RFC3339), welcomeMessageDeleteDelay)
 }
 
 func buildRequiredChannelWelcomeMessages(requiredChannelID string, message *models.Message) []string {
