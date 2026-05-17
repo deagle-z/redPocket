@@ -73,6 +73,10 @@ async function handleBind() {
           </a>
           <span>{{ t('bindTgPage.activityDescAfter') }}</span>
         </p>
+        <a class="hero-channel-btn" :href="CHANNEL_URL" target="_blank" rel="noopener noreferrer">
+          <van-icon name="guide-o" />
+          <span>{{ t('bindTgPage.subscribeChannelButton') }}</span>
+        </a>
       </div>
     </section>
 
@@ -94,12 +98,7 @@ async function handleBind() {
       </div>
       <h3>{{ t('bindTgPage.channelStepTitle') }}</h3>
       <p class="channel-confirm__desc">
-        <span>{{ t('bindTgPage.channelStepDescBefore') }}</span>
-        <a class="channel-link" :href="CHANNEL_URL" target="_blank" rel="noopener noreferrer">
-          <van-icon name="guide-o" />
-          <span>{{ CHANNEL_URL }}</span>
-        </a>
-        <span>{{ t('bindTgPage.channelStepDescAfter') }}</span>
+        {{ t('bindTgPage.channelStepDesc') }}
       </p>
       <button type="button" class="bind-submit-btn channel-next-btn" @click="goBindStep">
         <van-icon name="success" />
@@ -214,6 +213,44 @@ async function handleBind() {
   color: rgba(255, 229, 186, 0.76);
   font-size: 13px;
   line-height: 1.5;
+}
+
+.hero-channel-btn {
+  width: fit-content;
+  max-width: 100%;
+  min-height: 36px;
+  margin-top: 12px;
+  padding: 0 14px;
+  border: 1px solid rgba(255, 236, 157, 0.54);
+  border-radius: 999px;
+  background: linear-gradient(180deg, #fff9d0 0%, #ffd358 48%, #bf780c 100%);
+  box-shadow:
+    0 8px 16px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.52);
+  color: #7c2200;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 900;
+  line-height: 1.2;
+  text-decoration: none;
+  transition:
+    transform 160ms ease,
+    filter 160ms ease;
+}
+
+.hero-channel-btn:active {
+  transform: translateY(1px) scale(0.98);
+  filter: saturate(1.08);
+}
+
+.hero-channel-btn span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .channel-link {

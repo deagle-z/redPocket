@@ -46,6 +46,7 @@ func InitTelegramBot(db *gorm.DB, tablePrefix string, botToken string) error {
 	b, err := bot.New(botToken,
 		bot.WithDefaultHandler(botService.handleDefault),
 		bot.WithAllowedUpdates(bot.AllowedUpdates{
+			models.AllowedUpdateMessage,
 			models.AllowedUpdateChatMember,
 		}),
 		//bot.WithMessageTextHandler("/start", bot.MatchTypeExact, botService.handleStartCommand),
@@ -254,6 +255,10 @@ func formatTelegramFullName(user *models.User) string {
 // handleMessage 处理消息
 func (s *TelegramBotService) handleMessage(ctx context.Context, b *bot.Bot, message *models.Message) {
 	chatID := message.Chat.ID
+	if s.handleRequiredChannelWelcome(ctx, b, message) {
+		return
+	}
+
 	text := message.Text
 	if text == "" {
 		return
@@ -371,6 +376,45 @@ func (s *TelegramBotService) handleMessage(ctx context.Context, b *bot.Bot, mess
 			}
 		}
 	}
+}
+
+func (s *TelegramBotService) handleRequiredChannelWelcome(ctx context.Context, b *bot.Bot, message *models.Message) bool {
+	messages := buildRequiredChannelWelcomeMessages(s.getRequiredChannelID(), message)
+	if len(messages) == 0 {
+		return false
+	}
+	for _, text := range messages {
+		_, _ = b.SendMessage(ctx, &bot.SendMessageParams{
+			ChatID: message.Chat.ID,
+			Text:   text,
+		})
+	}
+	return true
+}
+
+func buildRequiredChannelWelcomeMessages(requiredChannelID string, message *models.Message) []string {
+	if message == nil || len(message.NewChatMembers) == 0 {
+		return nil
+	}
+	if requiredChannelID == "" || !matchTelegramChannelID(requiredChannelID, message.Chat.ID, message.Chat.Username) {
+		return nil
+	}
+	messages := make([]string, 0, len(message.NewChatMembers))
+	for _, member := range message.NewChatMembers {
+		name := formatTelegramWelcomeName(member)
+		if name == "" {
+			continue
+		}
+		messages = append(messages, fmt.Sprintf("¡Bienvenido %s a unirte al canal oficial de LuckyCoins!", name))
+	}
+	return messages
+}
+
+func formatTelegramWelcomeName(user models.User) string {
+	if strings.TrimSpace(user.Username) != "" {
+		return "@" + strings.TrimSpace(user.Username)
+	}
+	return formatTelegramFullName(&user)
 }
 
 func isWhiteId(whiteIds string, userID string) bool {
