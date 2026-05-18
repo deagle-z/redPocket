@@ -14,8 +14,8 @@ import (
 )
 
 const (
-	appWithdrawMinAmount      = 5.0
-	appWithdrawFreeDailyCount = int64(3)
+	appWithdrawMinAmount      = 20.0
+	appWithdrawFreeDailyCount = int64(1)
 	appWithdrawFeeRate        = 0.05
 	appWithdrawSourceRebate   = "rebate"
 )
@@ -266,7 +266,7 @@ func AppCreateRebateWithdrawOrder(ctx *gin.Context) {
 		return
 	}
 	req.Amount = utils.Truncate2(req.Amount)
-	if req.Amount <= 0 {
+	if req.Amount < appWithdrawMinAmount {
 		utils.ErrorBack(ctx, "invalid_withdraw_amount")
 		return
 	}

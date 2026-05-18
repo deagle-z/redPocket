@@ -19,7 +19,7 @@ const { t } = useI18n()
 const router = useRouter()
 const userStore = useUserStore()
 
-const MIN_REBATE_WITHDRAW_AMOUNT = 5
+const MIN_REBATE_WITHDRAW_AMOUNT = 20
 const rebateBalance = ref(0)
 const currentUserCountry = ref('')
 const hideCountrySelector = ref(false)
@@ -32,7 +32,7 @@ const fieldValues = ref<Record<string, string>>({})
 const fieldsLoading = ref(false)
 const boundAccounts = ref<WithdrawAccountItem[]>([])
 const selectedAccountId = ref<number | undefined>(undefined)
-const amountOptions = [5, 10, 100, 200, 500, 1000, 5000, 10000, 20000, 50000, 'custom']
+const amountOptions = [20, 100, 200, 500, 1000, 5000, 10000, 20000, 50000, 'custom']
 const selectedAmount = ref<number | 'custom'>(amountOptions[0] as number)
 const customAmount = ref('')
 const submitLoading = ref(false)

@@ -20,8 +20,8 @@ const { t } = useI18n()
 const router = useRouter()
 const userStore = useUserStore()
 
-const MIN_WITHDRAW_AMOUNT = 5
-const FREE_WITHDRAW_COUNT = 3
+const MIN_WITHDRAW_AMOUNT = 20
+const FREE_WITHDRAW_COUNT = 1
 const WITHDRAW_FEE_RATE = 0.05
 
 const balance = ref(0)
@@ -47,7 +47,7 @@ const boundAccounts = ref<WithdrawAccountItem[]>([])
 const selectedAccountId = ref<number | undefined>(undefined)
 
 // 金额
-const amountOptions = [5, 10, 100, 200, 500, 1000, 5000, 10000, 20000, 50000, 'custom']
+const amountOptions = [20, 100, 200, 500, 1000, 5000, 10000, 20000, 50000, 'custom']
 const selectedAmount = ref<number | 'custom'>(amountOptions[0] as number)
 const customAmount = ref('')
 const submitLoading = ref(false)
