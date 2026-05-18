@@ -216,6 +216,37 @@ func AppCreateWithdrawOrder(ctx *gin.Context) {
 	utils.SuccessObjBack(ctx, pojo.AppCreateWithdrawOrderResp{OrderNo: result.OrderNo, Fee: result.Fee})
 }
 
+// GetAppWithdrawOrderHistory godoc
+//
+//	@Summary		app端提现记录
+//	@Tags			巴西提现订单
+//	@Accept			json
+//	@Produce		json
+//	@Param			data body		pojo.AppOrderHistorySearch	true	"分页参数"
+//	@Success		200	{object}		pojo.AppOrderHistoryResp
+//	@Router			/api/v1/app/withdraw/list [post]
+func GetAppWithdrawOrderHistory(ctx *gin.Context) {
+	userIDRaw, ok := ctx.Get("userId")
+	if !ok {
+		utils.UnauthorizedBack(ctx, "token_invalid")
+		return
+	}
+	userID, ok := userIDRaw.(int64)
+	if !ok || userID <= 0 {
+		utils.UnauthorizedBack(ctx, "token_invalid")
+		return
+	}
+
+	var search pojo.AppOrderHistorySearch
+	search.SetPageDefaults()
+	if err := ctx.ShouldBindJSON(&search); err != nil {
+		utils.ErrorBack(ctx, "参数格式错误")
+		return
+	}
+	db := ctx.MustGet("db").(*gorm.DB)
+	utils.SuccessObjBack(ctx, repository.GetAppWithdrawOrderHistory(db, userID, search))
+}
+
 // AppCreateRebateWithdrawOrder App端创建佣金提现订单，佣金直接提现不需要流水要求
 func AppCreateRebateWithdrawOrder(ctx *gin.Context) {
 	userIDRaw, ok := ctx.Get("userId")

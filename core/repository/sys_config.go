@@ -111,18 +111,33 @@ func clearSysConfigCache(configKey string) {
 	if redisKey, ok := sysConfigRedisKeyMap[configKey]; ok {
 		_ = utils.RD.Del(context.Background(), redisKey).Err()
 	}
+	clearPrefixedSysConfigCache(configKey)
+}
+
+func clearPrefixedSysConfigCache(configKey string) {
+	ctx := context.Background()
+	pattern := "bgu_ct_*_" + configKey
+	iter := utils.RD.Scan(ctx, 0, pattern, 100).Iterator()
+	for iter.Next(ctx) {
+		_ = utils.RD.Del(ctx, iter.Val()).Err()
+	}
+	if err := iter.Err(); err != nil {
+		// Cache cleanup failure must not block config persistence.
+		return
+	}
 }
 
 var sysConfigRedisKeyMap = map[string]string{
-	"lucky_lose_rate":                "bgu_auth_group_lose_rate",
-	"lucky_game2_lose_rate":          "bgu_auth_group_game2_lose_rate",
-	"lucky_num_config":               "bgu_auth_group_num_config",
-	"lucky_nums":                     "bgu_lucky_nums",
-	"lucky_nums_amount":              "bgu_lucky_nums_amount",
-	"lucky_send_commission":          "bgu_auth_group_send_commission",
-	"lucky_grabbing_commission":      "bgu_auth_group_grabbing_commission",
-	"lucky_send_pool_commission":     "bgu_auth_group_send_pool_commission",
-	"lucky_grabbing_pool_commission": "bgu_auth_group_grabbing_pool_commission",
-	"lucky_expire_time":              "bgu_lucky_expire_time",
-	"trial_user_win_rate":            "bgu_trial_user_win_rate",
+	"lucky_lose_rate":                 "bgu_auth_group_lose_rate",
+	"lucky_game2_lose_rate":           "bgu_auth_group_game2_lose_rate",
+	"lucky_num_config":                "bgu_auth_group_num_config",
+	"lucky_nums":                      "bgu_lucky_nums",
+	"lucky_nums_amount":               "bgu_lucky_nums_amount",
+	"lucky_send_commission":           "bgu_auth_group_send_commission",
+	"lucky_grabbing_commission":       "bgu_auth_group_grabbing_commission",
+	"lucky_send_pool_commission":      "bgu_auth_group_send_pool_commission",
+	"lucky_grabbing_pool_commission":  "bgu_auth_group_grabbing_pool_commission",
+	"lucky_expire_time":               "bgu_lucky_expire_time",
+	"trial_user_win_rate":             "bgu_trial_user_win_rate",
+	"trial_lucky_flow_lottery_reward": "bgu_trial_lucky_flow_lottery_reward",
 }

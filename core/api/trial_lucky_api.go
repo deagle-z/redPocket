@@ -85,6 +85,18 @@ func GrabTrialLuckyApp(ctx *gin.Context) {
 	utils.SuccessObjBack(ctx, result)
 }
 
+func GetTrialLuckyFlowLotteryRewardApp(ctx *gin.Context) {
+	userID := ctx.MustGet("userId").(int64)
+	db := ctx.MustGet("db").(*gorm.DB)
+	hostInfo := ctx.MustGet("hostInfo").(pojo.HostInfo)
+	result, err := services.GetTrialLuckyFlowLotteryRewardProgress(db, userID, hostInfo.TablePrefix)
+	if err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	utils.SuccessObjBack(ctx, result)
+}
+
 func GetTrialLuckyHistoryApp(ctx *gin.Context) {
 	var search pojo.TrialCashHistorySearch
 	search.SetPageDefaults()

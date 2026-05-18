@@ -212,6 +212,31 @@ export interface RechargeSuccessNotification {
   frontendNotifyAckAt?: string | null
 }
 
+export interface AppOrderHistoryReq {
+  currentPage: number
+  pageSize: number
+}
+
+export interface AppOrderHistoryItem {
+  orderNo: string
+  amount: number
+  netAmount: number
+  bonusAmount?: number
+  fee?: number
+  rejectReason?: string
+  currency: string
+  currencySymbol: string
+  time: string
+  status: number
+}
+
+export interface AppOrderHistoryResp {
+  list: AppOrderHistoryItem[]
+  total: number
+  pageSize: number
+  currentPage: number
+}
+
 export interface LuckyMoneySendReq {
   amount: number
   gameMode: 0 | 1
@@ -626,6 +651,10 @@ export function createRechargeOrder(data: RechargeOrderAppReq) {
   return request.post<ApiResult<RechargeOrderAppBack>>('/api/v1/app/rechargeOrder', data)
 }
 
+export function getRechargeOrderHistory(data: AppOrderHistoryReq) {
+  return request.post<ApiResult<AppOrderHistoryResp>>('/api/v1/app/rechargeOrder/list', data)
+}
+
 export function getPendingRechargeNotifications() {
   return request.get<ApiResult<RechargeSuccessNotification[]>>('/api/v1/app/rechargeOrder/pendingNotifications')
 }
@@ -883,6 +912,10 @@ export interface CreateWithdrawOrderReq {
 
 export function createWithdrawOrder(data: CreateWithdrawOrderReq) {
   return request.post<ApiResult<{ orderNo: string, fee?: number }>>('/api/v1/app/withdraw', data)
+}
+
+export function getWithdrawOrderHistory(data: AppOrderHistoryReq) {
+  return request.post<ApiResult<AppOrderHistoryResp>>('/api/v1/app/withdraw/list', data)
 }
 
 export function createRebateWithdrawOrder(data: CreateWithdrawOrderReq) {

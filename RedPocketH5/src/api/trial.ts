@@ -80,6 +80,8 @@ export interface TrialLuckyGrabResp {
   openNum: number
   balance: number
   message: string
+  lotteryRewardCount?: number
+  trialFlowLotteryRewarded?: boolean
 }
 
 export interface TrialCashHistoryReq {
@@ -108,6 +110,20 @@ export interface TrialCashHistoryResp {
   currentPage: number
 }
 
+export interface TrialLuckyFlowLotteryRewardProgress {
+  enabled: boolean
+  thresholdAmount: number
+  rewardCount: number
+  totalFlow: number
+  remainingFlow: number
+  progressPercent: number
+  rewarded: boolean
+  canReward: boolean
+  availableRewardCount: number
+  drawn: boolean
+  freeLotteryCount: number
+}
+
 export function getTrialMe() {
   return request.get<ApiResult<TrialMeResp>>('/api/v1/app/trial/me')
 }
@@ -126,4 +142,8 @@ export function grabTrialLucky(data: TrialLuckyGrabReq) {
 
 export function getTrialLuckyHistory(data: TrialCashHistoryReq) {
   return request.post<ApiResult<TrialCashHistoryResp>>('/api/v1/app/trial/lucky/history', data)
+}
+
+export function getTrialLuckyFlowLotteryReward() {
+  return request.get<ApiResult<TrialLuckyFlowLotteryRewardProgress>>('/api/v1/app/trial/lucky/flowLotteryReward')
 }

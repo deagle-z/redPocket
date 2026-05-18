@@ -43,6 +43,14 @@ function goWithdraw() {
   router.push('/withdraw')
 }
 
+function goRechargeRecord() {
+  router.push('/rechargeRecord')
+}
+
+function goWithdrawRecord() {
+  router.push('/withdrawRecord')
+}
+
 function goTransform() {
   router.push('/transform')
 }
@@ -185,6 +193,17 @@ onMounted(() => {
             <van-icon name="exchange" />
           </span>
           <span>{{ t('walletPage.transfer') }}</span>
+        </button>
+      </div>
+
+      <div class="record-row">
+        <button type="button" class="record-action" @click="goRechargeRecord">
+          <van-icon name="orders-o" />
+          <span>{{ t('profilePage.accountRechargeRecord') }}</span>
+        </button>
+        <button type="button" class="record-action" @click="goWithdrawRecord">
+          <van-icon name="records-o" />
+          <span>{{ t('profilePage.accountWithdrawRecord') }}</span>
         </button>
       </div>
     </section>
@@ -354,6 +373,45 @@ onMounted(() => {
 
 .asset-action.transfer .action-icon {
   background: linear-gradient(180deg, rgba(255, 248, 214, 0.18), rgba(94, 10, 0, 0.28));
+}
+
+.record-row {
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.record-action {
+  min-height: 42px;
+  padding: 0 12px;
+  border: 1px solid rgba(212, 175, 55, 0.2);
+  border-radius: 14px;
+  background: rgba(255, 248, 214, 0.06);
+  color: #ffe7b4;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.record-action:active {
+  transform: translateY(1px);
+}
+
+.record-action :deep(.van-icon) {
+  flex: 0 0 auto;
+  color: #ffd87f;
+  font-size: 16px;
+}
+
+.record-action span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .list-card {

@@ -19,6 +19,7 @@ const { t } = useI18n()
 const router = useRouter()
 const userStore = useUserStore()
 
+const MIN_REBATE_WITHDRAW_AMOUNT = 5
 const rebateBalance = ref(0)
 const currentUserCountry = ref('')
 const hideCountrySelector = ref(false)
@@ -31,7 +32,7 @@ const fieldValues = ref<Record<string, string>>({})
 const fieldsLoading = ref(false)
 const boundAccounts = ref<WithdrawAccountItem[]>([])
 const selectedAccountId = ref<number | undefined>(undefined)
-const amountOptions = [100, 200, 500, 1000, 5000, 10000, 20000, 50000, 'custom']
+const amountOptions = [5, 10, 100, 200, 500, 1000, 5000, 10000, 20000, 50000, 'custom']
 const selectedAmount = ref<number | 'custom'>(amountOptions[0] as number)
 const customAmount = ref('')
 const submitLoading = ref(false)
@@ -50,8 +51,8 @@ const localAmount = computed(() => {
 const localCurrencySymbol = computed(() => selectedCountry.value?.currencySymbol || '')
 
 const canSubmit = computed(() =>
-  Number(displayAmount.value) > 0
-  && Number(displayAmount.value) <= rebateBalance.value
+  truncate2(Number(displayAmount.value)) >= MIN_REBATE_WITHDRAW_AMOUNT
+  && truncate2(Number(displayAmount.value)) <= rebateBalance.value
   && !submitLoading.value
   && !!selectedCountry.value
   && !fieldsLoading.value,
@@ -235,7 +236,7 @@ async function handleSubmitWithdraw() {
   if (!canSubmit.value)
     return
   const amount = truncate2(Number(displayAmount.value))
-  if (!amount || amount <= 0) {
+  if (!amount || amount < MIN_REBATE_WITHDRAW_AMOUNT) {
     showCenterToast(t('withdrawPage.invalidAmount'))
     return
   }
@@ -440,6 +441,7 @@ onMounted(() => {
           {{ t('withdrawPage.tipsTitle') }}
         </h2>
         <ol>
+          <li>{{ t('withdrawPage.tips1', { amount: MIN_REBATE_WITHDRAW_AMOUNT }) }}</li>
           <li>{{ t('transformPage.rebateWithdrawNoFlow') }}</li>
           <li>{{ t('withdrawPage.tips4') }}</li>
           <li>{{ t('withdrawPage.tips5') }}</li>

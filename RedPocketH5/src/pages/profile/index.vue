@@ -78,6 +78,7 @@ const promoMenus = computed<MenuItem[]>(() => [
 const activityMenus = computed<MenuItem[]>(() => [
   { key: 'first-deposit', label: t('rechargePage.firstRechargeTitle'), icon: normalizeInlineSvg(downIcon) },
   { key: 'lucky-wheel', label: t('activityPage.luckyWheel'), icon: normalizeInlineSvg(gamesIcon) },
+  { key: 'trial-flow-lottery', label: t('trialFlowLotteryPage.title'), icon: normalizeInlineSvg(gamesIcon) },
   { key: 'referral-commission', label: t('activityPage.referralCommission'), icon: normalizeInlineSvg(shareIcon) },
   { key: 'vip-activity', label: t('profilePage.vipTitle'), icon: normalizeInlineSvg(gamesIcon) },
   { key: 'spin', label: t('profilePage.activitySpin'), icon: normalizeInlineSvg(gamesIcon) },
@@ -297,8 +298,14 @@ function onMenuClick(item: MenuItem) {
     case 'recharge':
       goByPath('/recharge')
       break
+    case 'recharge-record':
+      goByPath('/rechargeRecord')
+      break
     case 'withdraw':
       goByPath('/withdraw')
+      break
+    case 'withdraw-record':
+      goByPath('/withdrawRecord')
       break
     case 'withdraw-account':
       goByPath('/withdrawAccount')
@@ -317,6 +324,9 @@ function onMenuClick(item: MenuItem) {
       break
     case 'lucky-wheel':
       goByPath('/luckyWheel')
+      break
+    case 'trial-flow-lottery':
+      goByPath('/trialFlowLottery')
       break
     case 'referral-commission':
       goByPath('/referralCommission')

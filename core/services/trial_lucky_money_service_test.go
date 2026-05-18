@@ -153,3 +153,117 @@ func TestNormalizeTrialUserWinRate(t *testing.T) {
 		})
 	}
 }
+
+func TestParseTrialLuckyFlowLotteryRewardConfig(t *testing.T) {
+	tests := []struct {
+		name          string
+		raw           string
+		wantThreshold float64
+		wantCount     int
+		wantEnabled   bool
+	}{
+		{name: "empty disabled", raw: "", wantEnabled: false},
+		{name: "invalid disabled", raw: "abc", wantEnabled: false},
+		{name: "missing reward disabled", raw: "1000", wantEnabled: false},
+		{name: "negative threshold disabled", raw: "-1000:1", wantEnabled: false},
+		{name: "zero threshold disabled", raw: "0:1", wantEnabled: false},
+		{name: "zero reward disabled", raw: "1000:0", wantEnabled: false},
+		{name: "negative reward disabled", raw: "1000:-1", wantEnabled: false},
+		{name: "valid", raw: "1000:1", wantThreshold: 1000, wantCount: 1, wantEnabled: true},
+		{name: "trims spaces", raw: " 500.5 : 2 ", wantThreshold: 500.5, wantCount: 2, wantEnabled: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			threshold, count, enabled := parseTrialLuckyFlowLotteryRewardConfig(tt.raw)
+			if threshold != tt.wantThreshold || count != tt.wantCount || enabled != tt.wantEnabled {
+				t.Fatalf("parseTrialLuckyFlowLotteryRewardConfig(%q) = (%.2f,%d,%v), want (%.2f,%d,%v)",
+					tt.raw, threshold, count, enabled, tt.wantThreshold, tt.wantCount, tt.wantEnabled)
+			}
+		})
+	}
+}
+
+func TestResolveTrialLuckyFlowLotteryRewardConfigUsesDBValue(t *testing.T) {
+	threshold, count, enabled := resolveTrialLuckyFlowLotteryRewardConfig("", "1000:1")
+
+	if threshold != 1000 || count != 1 || !enabled {
+		t.Fatalf("resolveTrialLuckyFlowLotteryRewardConfig() = (%.2f,%d,%v), want (1000,1,true)", threshold, count, enabled)
+	}
+}
+
+func TestResolveTrialLuckyFlowLotteryRewardConfigPrefersDBValueOverCacheValue(t *testing.T) {
+	threshold, count, enabled := resolveTrialLuckyFlowLotteryRewardConfig("500:2", "1000:1")
+
+	if threshold != 1000 || count != 1 || !enabled {
+		t.Fatalf("resolveTrialLuckyFlowLotteryRewardConfig() = (%.2f,%d,%v), want (1000,1,true)", threshold, count, enabled)
+	}
+}
+
+func TestResolveTrialLuckyFlowLotteryRewardConfigFallsBackToCacheValue(t *testing.T) {
+	threshold, count, enabled := resolveTrialLuckyFlowLotteryRewardConfig("500:2", "")
+
+	if threshold != 500 || count != 2 || !enabled {
+		t.Fatalf("resolveTrialLuckyFlowLotteryRewardConfig() = (%.2f,%d,%v), want (500,2,true)", threshold, count, enabled)
+	}
+}
+
+func TestCalculateTrialLuckyFlowLotteryReward(t *testing.T) {
+	tests := []struct {
+		name        string
+		totalFlow   float64
+		threshold   float64
+		rewardCount int
+		alreadySent bool
+		wantCount   int
+		wantAward   bool
+	}{
+		{name: "below threshold", totalFlow: 999.99, threshold: 1000, rewardCount: 1, wantCount: 0, wantAward: false},
+		{name: "reaches threshold", totalFlow: 1000, threshold: 1000, rewardCount: 1, wantCount: 1, wantAward: true},
+		{name: "above threshold still one time", totalFlow: 3000, threshold: 1000, rewardCount: 2, wantCount: 2, wantAward: true},
+		{name: "already sent skips", totalFlow: 3000, threshold: 1000, rewardCount: 2, alreadySent: true, wantCount: 0, wantAward: false},
+		{name: "disabled threshold", totalFlow: 3000, threshold: 0, rewardCount: 2, wantCount: 0, wantAward: false},
+		{name: "disabled reward", totalFlow: 3000, threshold: 1000, rewardCount: 0, wantCount: 0, wantAward: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			count, awarded := calculateTrialLuckyFlowLotteryReward(tt.totalFlow, tt.threshold, tt.rewardCount, tt.alreadySent)
+			if count != tt.wantCount || awarded != tt.wantAward {
+				t.Fatalf("calculateTrialLuckyFlowLotteryReward() = (%d,%v), want (%d,%v)",
+					count, awarded, tt.wantCount, tt.wantAward)
+			}
+		})
+	}
+}
+
+func TestBuildTrialLuckyFlowLotteryRewardProgress(t *testing.T) {
+	tests := []struct {
+		name            string
+		totalFlow       float64
+		threshold       float64
+		rewardCount     int
+		rewarded        bool
+		wantEnabled     bool
+		wantRemaining   float64
+		wantProgress    float64
+		wantCanReward   bool
+		wantRewardCount int
+	}{
+		{name: "disabled", totalFlow: 500, threshold: 0, rewardCount: 1, wantEnabled: false, wantRemaining: 0, wantProgress: 0, wantCanReward: false},
+		{name: "below threshold", totalFlow: 250, threshold: 1000, rewardCount: 1, wantEnabled: true, wantRemaining: 750, wantProgress: 25, wantCanReward: false},
+		{name: "reaches threshold", totalFlow: 1000, threshold: 1000, rewardCount: 1, wantEnabled: true, wantRemaining: 0, wantProgress: 100, wantCanReward: true, wantRewardCount: 1},
+		{name: "above threshold caps progress", totalFlow: 1500, threshold: 1000, rewardCount: 2, wantEnabled: true, wantRemaining: 0, wantProgress: 100, wantCanReward: true, wantRewardCount: 2},
+		{name: "rewarded cannot reward again", totalFlow: 1500, threshold: 1000, rewardCount: 2, rewarded: true, wantEnabled: true, wantRemaining: 0, wantProgress: 100, wantCanReward: false, wantRewardCount: 0},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			progress := buildTrialLuckyFlowLotteryRewardProgress(tt.totalFlow, tt.threshold, tt.rewardCount, tt.rewarded)
+			if progress.Enabled != tt.wantEnabled || progress.RemainingFlow != tt.wantRemaining || progress.ProgressPercent != tt.wantProgress || progress.CanReward != tt.wantCanReward || progress.AvailableRewardCount != tt.wantRewardCount {
+				t.Fatalf("buildTrialLuckyFlowLotteryRewardProgress() = %#v, want enabled=%v remaining=%.2f progress=%.2f canReward=%v rewardCount=%d",
+					progress, tt.wantEnabled, tt.wantRemaining, tt.wantProgress, tt.wantCanReward, tt.wantRewardCount)
+			}
+		})
+	}
+}

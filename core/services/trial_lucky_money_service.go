@@ -257,6 +257,10 @@ func GrabTrialRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix st
 		}); err != nil {
 			return err
 		}
+		lotteryRewardCount, trialFlowLotteryRewarded, err := awardTrialLuckyFlowLotteryIfNeeded(tx, user.ID, lucky.TenantId, lucky.ID, history.ID, tablePrefix)
+		if err != nil {
+			return err
+		}
 		if isThunder && loseMoney > 0 {
 			if err := addTrialSenderThunderIncome(tx, lucky, loseMoney); err != nil {
 				return err
@@ -274,18 +278,20 @@ func GrabTrialRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix st
 			finished = true
 		}
 		result = map[string]any{
-			"luckyId":      lucky.ID,
-			"actorType":    pojo.TrialActorUser,
-			"userId":       user.ID,
-			"firstName":    trialTgDisplayName(user),
-			"grabIndex":    item.SeqNo,
-			"amount":       utils.Truncate2(item.Amount),
-			"actualAmount": actualAmount,
-			"loseMoney":    loseMoney,
-			"isThunder":    int(thunderFlag),
-			"openNum":      openNum,
-			"balance":      endBalance,
-			"message":      "success",
+			"luckyId":                  lucky.ID,
+			"actorType":                pojo.TrialActorUser,
+			"userId":                   user.ID,
+			"firstName":                trialTgDisplayName(user),
+			"grabIndex":                item.SeqNo,
+			"amount":                   utils.Truncate2(item.Amount),
+			"actualAmount":             actualAmount,
+			"loseMoney":                loseMoney,
+			"isThunder":                int(thunderFlag),
+			"openNum":                  openNum,
+			"balance":                  endBalance,
+			"message":                  "success",
+			"lotteryRewardCount":       lotteryRewardCount,
+			"trialFlowLotteryRewarded": trialFlowLotteryRewarded,
 		}
 		return nil
 	})

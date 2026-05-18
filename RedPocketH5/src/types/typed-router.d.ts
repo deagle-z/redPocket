@@ -170,6 +170,13 @@ declare module 'vue-router/auto-routes' {
       Record<never, never>,
       | never
     >,
+    'RechargeRecord': RouteRecordInfo<
+      'RechargeRecord',
+      '/rechargeRecord',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
     'ReferralCommission': RouteRecordInfo<
       'ReferralCommission',
       '/referralCommission',
@@ -219,6 +226,13 @@ declare module 'vue-router/auto-routes' {
       Record<never, never>,
       | never
     >,
+    'TrialFlowLottery': RouteRecordInfo<
+      'TrialFlowLottery',
+      '/trialFlowLottery',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
     'VipActivity': RouteRecordInfo<
       'VipActivity',
       '/vipActivity',
@@ -243,6 +257,13 @@ declare module 'vue-router/auto-routes' {
     'WithdrawAccount': RouteRecordInfo<
       'WithdrawAccount',
       '/withdrawAccount',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
+    'WithdrawRecord': RouteRecordInfo<
+      'WithdrawRecord',
+      '/withdrawRecord',
       Record<never, never>,
       Record<never, never>,
       | never
@@ -386,6 +407,12 @@ declare module 'vue-router/auto-routes' {
       views:
         | never
     }
+    'src/pages/rechargeRecord/index.vue': {
+      routes:
+        | 'RechargeRecord'
+      views:
+        | never
+    }
     'src/pages/referralCommission/index.vue': {
       routes:
         | 'ReferralCommission'
@@ -428,6 +455,12 @@ declare module 'vue-router/auto-routes' {
       views:
         | never
     }
+    'src/pages/trialFlowLottery/index.vue': {
+      routes:
+        | 'TrialFlowLottery'
+      views:
+        | never
+    }
     'src/pages/vipActivity/index.vue': {
       routes:
         | 'VipActivity'
@@ -449,6 +482,12 @@ declare module 'vue-router/auto-routes' {
     'src/pages/withdrawAccount/index.vue': {
       routes:
         | 'WithdrawAccount'
+      views:
+        | never
+    }
+    'src/pages/withdrawRecord/index.vue': {
+      routes:
+        | 'WithdrawRecord'
       views:
         | never
     }

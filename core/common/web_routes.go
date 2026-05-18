@@ -328,12 +328,14 @@ func InitGin() {
 	appAuthRouter.Use(appAuthMiddle(true))
 	{
 		appAuthRouter.POST("/rechargeOrder", api.AppCreateRechargeOrder)
+		appAuthRouter.POST("/rechargeOrder/list", api.GetAppRechargeOrderHistory)
 		appAuthRouter.GET("/rechargeOrder/pendingNotifications", api.GetCurrentUserPendingRechargeNotifications)
 		appAuthRouter.POST("/rechargeOrder/notifyAck", api.AckRechargeFrontendNotification)
 		appAuthRouter.GET("/recharge/isFirst", api.CheckIsFirstRecharge)
 		appAuthRouter.POST("/lucky/send", api.SendRedPacketApp)
 		appAuthRouter.POST("/lucky/history", api.GetLuckyAppHistory)
 		appAuthRouter.GET("/trial/me", api.GetTrialMeApp)
+		appAuthRouter.GET("/trial/lucky/flowLotteryReward", api.GetTrialLuckyFlowLotteryRewardApp)
 		appRouter.POST("/trial/lucky/list", api.GetTrialLuckyListApp)
 		appAuthRouter.POST("/trial/lucky/send", api.SendTrialLuckyApp)
 		appAuthRouter.POST("/trial/lucky/grab", api.GrabTrialLuckyApp)
@@ -363,6 +365,7 @@ func InitGin() {
 		appAuthRouter.GET("/country/:code/withdrawFields", api.GetCountryWithdrawFields)        // App端获取国家提现字段配置
 		appAuthRouter.GET("/country/:code/rechargeFields", api.GetCountryRechargeFields)        // App端获取国家充值字段配置
 		appAuthRouter.POST("/withdraw", api.AppCreateWithdrawOrder)                             // App端创建提现订单
+		appAuthRouter.POST("/withdraw/list", api.GetAppWithdrawOrderHistory)                    // App端提现记录
 		appAuthRouter.GET("/withdrawAccount/list", api.GetAppWithdrawAccounts)                  // App端获取当前用户提现账户列表
 		appAuthRouter.POST("/withdrawAccount", api.AppAddWithdrawAccount)                       // App端新增提现账户
 		appAuthRouter.POST("/withdrawAccount/:id/update", api.AppUpdateWithdrawAccount)         // App端修改提现账户
