@@ -9,12 +9,24 @@ import (
 	"github.com/jinzhu/copier"
 	"gorm.io/gorm"
 	"io"
+	"time"
 )
 
 func GetTrialMeApp(ctx *gin.Context) {
 	userID := ctx.MustGet("userId").(int64)
 	db := ctx.MustGet("db").(*gorm.DB)
 	result, err := services.GetTrialMe(db, userID)
+	if err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	utils.SuccessObjBack(ctx, result)
+}
+
+func RefreshTrialBalanceApp(ctx *gin.Context) {
+	userID := ctx.MustGet("userId").(int64)
+	db := ctx.MustGet("db").(*gorm.DB)
+	result, err := services.RefreshTrialBalanceDaily(db, userID, time.Now())
 	if err != nil {
 		utils.ErrorBack(ctx, err.Error())
 		return

@@ -10,6 +10,7 @@ import { trackFirstRechargePurchase } from '@/utils/facebook-pixel'
 import AppTopHeader from '@/components/AppTopHeader.vue'
 import TabBar from '@/components/TabBar.vue'
 import AppConfirmDialog from '@/components/AppConfirmDialog.vue'
+import CheckInFloatingEntry from '@/components/CheckInFloatingEntry.vue'
 import { usePwaInstall } from '@/composables/usePwaInstall'
 
 const { t } = useI18n()
@@ -186,6 +187,7 @@ onUnmounted(() => {
           <component :is="Component" />
         </keep-alive>
         <TabBar />
+        <CheckInFloatingEntry />
       </section>
     </router-view>
   </van-config-provider>

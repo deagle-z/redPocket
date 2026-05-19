@@ -58,6 +58,13 @@ declare module 'vue-router/auto-routes' {
       Record<never, never>,
       | never
     >,
+    'CheckIn': RouteRecordInfo<
+      'CheckIn',
+      '/checkin',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
     '/cs/': RouteRecordInfo<
       '/cs/',
       '/cs',
@@ -219,6 +226,13 @@ declare module 'vue-router/auto-routes' {
       Record<never, never>,
       | never
     >,
+    'ThreeSpinBonus': RouteRecordInfo<
+      'ThreeSpinBonus',
+      '/threeSpinBonus',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
     'Transform': RouteRecordInfo<
       'Transform',
       '/transform',
@@ -308,6 +322,12 @@ declare module 'vue-router/auto-routes' {
     'src/pages/bindTg/index.vue': {
       routes:
         | '/bindTg/'
+      views:
+        | never
+    }
+    'src/pages/checkin/index.vue': {
+      routes:
+        | 'CheckIn'
       views:
         | never
     }
@@ -446,6 +466,12 @@ declare module 'vue-router/auto-routes' {
     'src/pages/team/index.vue': {
       routes:
         | 'Team'
+      views:
+        | never
+    }
+    'src/pages/threeSpinBonus/index.vue': {
+      routes:
+        | 'ThreeSpinBonus'
       views:
         | never
     }

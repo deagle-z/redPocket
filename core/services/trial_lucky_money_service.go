@@ -37,10 +37,86 @@ func GetTrialMe(db *gorm.DB, userID int64) (pojo.TrialMeResp, error) {
 	return pojo.TrialMeResp{TrialBalance: utils.Truncate2(user.TrialBalance)}, nil
 }
 
+func RefreshTrialBalanceDaily(db *gorm.DB, userID int64, now time.Time) (pojo.TrialBalanceRefreshResp, error) {
+	if now.IsZero() {
+		now = time.Now()
+	}
+	var result pojo.TrialBalanceRefreshResp
+	err := db.Transaction(func(tx *gorm.DB) error {
+		var user pojo.TgUser
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+			Select("id, trial_balance, trial_balance_refreshed_at, status").
+			Where("id = ?", userID).
+			First(&user).Error; err != nil {
+			return errors.New("user_not_found")
+		}
+		if user.Status != 1 {
+			return errors.New("user_disabled_contact_admin")
+		}
+
+		balance, refreshed, shouldMark := resolveTrialDailyBalanceRefresh(user.TrialBalance, user.TrialBalanceRefreshedAt, now)
+		updates := map[string]any{}
+		if shouldMark {
+			updates["trial_balance_refreshed_at"] = now
+		}
+		if balance != utils.Truncate2(user.TrialBalance) {
+			updates["trial_balance"] = balance
+		}
+		if len(updates) > 0 {
+			if err := tx.Model(&pojo.TgUser{}).Where("id = ?", user.ID).Updates(updates).Error; err != nil {
+				return err
+			}
+		}
+		result = pojo.TrialBalanceRefreshResp{
+			TrialBalance: balance,
+			Refreshed:    refreshed,
+		}
+		return nil
+	})
+	return result, err
+}
+
+func resolveTrialDailyBalanceRefresh(balance float64, refreshedAt *time.Time, now time.Time) (float64, bool, bool) {
+	currentBalance := utils.Truncate2(balance)
+	if refreshedAt != nil && sameTrialRefreshDay(*refreshedAt, now) {
+		return currentBalance, false, false
+	}
+	if currentBalance < pojo.TrialUserDefaultBalance {
+		return pojo.TrialUserDefaultBalance, true, true
+	}
+	return currentBalance, false, true
+}
+
+func sameTrialRefreshDay(a time.Time, b time.Time) bool {
+	if a.IsZero() || b.IsZero() {
+		return false
+	}
+	localA := a.In(b.Location())
+	return localA.Year() == b.Year() && localA.YearDay() == b.YearDay()
+}
+
+func validateTrialSendAmount(amount float64) error {
+	if amount < 5 {
+		return errors.New("amount_min_5")
+	}
+	if amount > pojo.TrialLuckySendMaxAmount {
+		return errors.New("amount_max_500")
+	}
+	return nil
+}
+
+func capTrialLuckySendAmount(amount float64) float64 {
+	amount = utils.Truncate2(amount)
+	if amount > pojo.TrialLuckySendMaxAmount {
+		return pojo.TrialLuckySendMaxAmount
+	}
+	return amount
+}
+
 func SendTrialRedPacket(db *gorm.DB, userID int64, req pojo.TrialLuckyMoneySend, tablePrefix string) (pojo.TrialLuckyMoney, error) {
 	req.Amount = utils.Truncate2(req.Amount)
-	if req.Amount < 5 {
-		return pojo.TrialLuckyMoney{}, errors.New("amount_min_5")
+	if err := validateTrialSendAmount(req.Amount); err != nil {
+		return pojo.TrialLuckyMoney{}, err
 	}
 	if req.Thunder < 0 || req.Thunder > 9 {
 		return pojo.TrialLuckyMoney{}, errors.New("thunder_range_0_9")
@@ -596,7 +672,7 @@ func pickRandomTrialSendBotUser(db *gorm.DB) (pojo.TrialBotUser, error) {
 
 func pickRandomTrialBotAmount(tablePrefix string) float64 {
 	amounts := getBotRandomSendAmounts(tablePrefix)
-	return amounts[rand.IntN(len(amounts))]
+	return capTrialLuckySendAmount(amounts[rand.IntN(len(amounts))])
 }
 
 func ensureTrialBotBalance(db *gorm.DB, bot *pojo.TrialBotUser, minBalance float64) error {
@@ -612,7 +688,7 @@ func ensureTrialBotBalance(db *gorm.DB, bot *pojo.TrialBotUser, minBalance float
 }
 
 func sendTrialRedPacketByBot(db *gorm.DB, bot pojo.TrialBotUser, amount float64, gameMode int, tablePrefix string) (pojo.TrialLuckyMoney, error) {
-	amount = utils.Truncate2(amount)
+	amount = capTrialLuckySendAmount(amount)
 	if amount < 5 {
 		amount = 5
 	}

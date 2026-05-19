@@ -13,6 +13,7 @@ export type WithdrawOrderBr = {
   orderNo: string;
   merchantOrderNo?: string | null;
   currency: string;
+  countryCode?: string;
   amount: number;
   fee: number;
   netAmount: number;
@@ -55,6 +56,7 @@ export type WithdrawOrderBrSearch = {
   orderNo?: string;
   merchantOrderNo?: string;
   providerPayoutNo?: string;
+  countryCode?: string;
   channel?: string;
   payMethod?: string;
   receiverDocumentType?: string;
@@ -64,6 +66,10 @@ export type WithdrawOrderBrSearch = {
 export type WithdrawOrderBrSet = {
   id: number;
   status?: number;
+  channel?: string;
+  payMethod?: string;
+  provider?: string;
+  countryCode?: string;
   failMsg?: string;
   reviewedAt?: string;
 };

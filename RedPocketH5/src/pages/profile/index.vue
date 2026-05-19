@@ -81,7 +81,7 @@ const activityMenus = computed<MenuItem[]>(() => [
   { key: 'trial-flow-lottery', label: t('trialFlowLotteryPage.title'), icon: normalizeInlineSvg(gamesIcon) },
   { key: 'referral-commission', label: t('activityPage.referralCommission'), icon: normalizeInlineSvg(shareIcon) },
   { key: 'vip-activity', label: t('profilePage.vipTitle'), icon: normalizeInlineSvg(gamesIcon) },
-  { key: 'spin', label: t('profilePage.activitySpin'), icon: normalizeInlineSvg(gamesIcon) },
+  // { key: 'spin', label: t('profilePage.activitySpin'), icon: normalizeInlineSvg(gamesIcon) },
 ])
 
 const otherMenus = computed<MenuItem[]>(() => [

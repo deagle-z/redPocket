@@ -5,6 +5,11 @@ export interface TrialMeResp {
   trialBalance: number
 }
 
+export interface TrialBalanceRefreshResp {
+  trialBalance: number
+  refreshed: boolean
+}
+
 export interface TrialLuckySendReq {
   amount: number
   gameMode: 0 | 1
@@ -126,6 +131,10 @@ export interface TrialLuckyFlowLotteryRewardProgress {
 
 export function getTrialMe() {
   return request.get<ApiResult<TrialMeResp>>('/api/v1/app/trial/me')
+}
+
+export function refreshTrialBalance() {
+  return request.post<ApiResult<TrialBalanceRefreshResp>>('/api/v1/app/trial/balance/refresh')
 }
 
 export function getTrialLuckyList(data: TrialLuckyListReq) {

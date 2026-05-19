@@ -28,15 +28,16 @@ type TgUser struct {
 
 	TgID int64 `gorm:"column:tg_id;index;comment:Telegram 用户ID（唯一且稳定）" json:"tg_id"`
 
-	Balance           float64 `gorm:"type:decimal(20,2);not null;default:0.00;comment:账户可用余额" json:"balance"`
-	TrialBalance      float64 `gorm:"column:trial_balance;type:decimal(20,2);not null;default:10000.00;comment:试玩额度" json:"trialBalance"`
-	GiftAmount        float64 `gorm:"type:decimal(20,2);not null;default:0.00;comment:赠送余额（可用）" json:"gift_amount"`
-	GiftTotal         float64 `gorm:"type:decimal(20,2);not null;default:0.00;comment:累计赠送金额" json:"gift_total"`
-	RechargeAmount    float64 `gorm:"type:decimal(20,2);not null;default:0.00;comment:累计充值金额" json:"recharge_amount"`
-	RebateAmount      float64 `gorm:"type:decimal(20,2);not null;default:0.00;comment:可用返水余额" json:"rebate_amount"`
-	RebateTotalAmount float64 `gorm:"type:decimal(20,2);not null;default:0.00;comment:累计返水金额" json:"rebate_total_amount"`
-	RebateRate        float64 `gorm:"column:rebate_rate;type:decimal(10,2);not null;default:40.00;comment:返水比例" json:"rebate_rate"`
-	FreeLotteryCount  int     `gorm:"column:free_lottery_count;type:int;not null;default:0;comment:免费转盘次数" json:"freeLotteryCount"`
+	Balance                 float64    `gorm:"type:decimal(20,2);not null;default:0.00;comment:账户可用余额" json:"balance"`
+	TrialBalance            float64    `gorm:"column:trial_balance;type:decimal(20,2);not null;default:1000.00;comment:试玩额度" json:"trialBalance"`
+	TrialBalanceRefreshedAt *time.Time `gorm:"column:trial_balance_refreshed_at;comment:试玩额度每日刷新时间" json:"trialBalanceRefreshedAt"`
+	GiftAmount              float64    `gorm:"type:decimal(20,2);not null;default:0.00;comment:赠送余额（可用）" json:"gift_amount"`
+	GiftTotal               float64    `gorm:"type:decimal(20,2);not null;default:0.00;comment:累计赠送金额" json:"gift_total"`
+	RechargeAmount          float64    `gorm:"type:decimal(20,2);not null;default:0.00;comment:累计充值金额" json:"recharge_amount"`
+	RebateAmount            float64    `gorm:"type:decimal(20,2);not null;default:0.00;comment:可用返水余额" json:"rebate_amount"`
+	RebateTotalAmount       float64    `gorm:"type:decimal(20,2);not null;default:0.00;comment:累计返水金额" json:"rebate_total_amount"`
+	RebateRate              float64    `gorm:"column:rebate_rate;type:decimal(10,2);not null;default:40.00;comment:返水比例" json:"rebate_rate"`
+	FreeLotteryCount        int        `gorm:"column:free_lottery_count;type:int;not null;default:0;comment:免费转盘次数" json:"freeLotteryCount"`
 
 	Status       int8    `gorm:"not null;default:1;index;comment:状态 1=正常 0=禁用 -1=删除" json:"status"`
 	VipLevel     *int    `gorm:"column:vip_level;default:null;comment:当前VIP等级（对应sys_vip_level.level）" json:"vip_level"`

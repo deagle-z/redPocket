@@ -21,6 +21,7 @@
     "History": "Logs",
     "Prize": "Spin",
     "Wallet": "Wallet",
+    "CheckIn": "Check-in",
     "Undefined": "🤷 Undefined title"
   },
   "tabbar": {
@@ -320,6 +321,7 @@
     "typeFirstRechargeGift": "First Recharge Bonus",
     "typeTodayFirstRechargeGift": "Daily First Recharge Bonus",
     "typeLuckyNumsGift": "Lucky Number Bonus",
+    "typeCheckInGift": "Check-in Bonus",
     "typeAccountChange": "Account Change"
   },
   "rechargePage": {
@@ -725,7 +727,10 @@
     "authFailed": "Authorization verification failed",
     "apiErrors": {
       "tg_channel_member_not_found": "We could not detect that you joined the Telegram channel. Please join the channel first, then bind Telegram.",
-      "tg_name_already_bound": "This Telegram username is already bound"
+      "tg_name_already_bound": "This Telegram username is already bound",
+      "checkin_already_today": "You have already checked in today",
+      "checkin_activity_completed": "Check-in activity completed",
+      "checkin_rewards_config_invalid": "Check-in rewards are not configured"
     },
     "noRemind": "Don't remind me",
     "ok": "OK"
@@ -978,7 +983,37 @@
   "activityPage": {
     "luckyWheel": "Lucky Wheel",
     "referralCommission": "Referral Commission",
-    "vip": "VIP Activity"
+    "vip": "VIP Activity",
+    "checkIn": "Daily Check-in"
+  },
+  "checkInPage": {
+    "title": "Daily Check-in",
+    "floatText": "Check",
+    "floatLabel": "Open daily check-in",
+    "eyebrow": "Daily Reward",
+    "heroTitle": "Check in for coins",
+    "heroSubtitle": "Claim a daily reward and unlock more coins through cumulative check-ins.",
+    "totalDays": "Total days",
+    "nextReward": "Next reward",
+    "timezone": "Activity timezone",
+    "signNow": "Check in now",
+    "checkedToday": "Checked in today",
+    "completed": "Activity completed",
+    "successToast": "Checked in successfully. You earned {amount}",
+    "rewardTitle": "Reward Calendar",
+    "rewardHint": "By cumulative count",
+    "dayLabel": "Day {day}",
+    "state": {
+      "claimed": "Claimed",
+      "current": "Available",
+      "locked": "Locked"
+    },
+    "recordTitle": "Check-in Records",
+    "recordHint": "Recent",
+    "recordSeq": "Check-in #{seq}",
+    "emptyRecords": "No check-in records yet",
+    "loadFailed": "Failed to load check-in data",
+    "retry": "Retry"
   },
   "pwaInstall": {
     "title": "Add to Home Screen",

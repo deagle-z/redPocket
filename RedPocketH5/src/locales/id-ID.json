@@ -21,6 +21,7 @@
     "History": "Riwayat",
     "Prize": "Spin",
     "Wallet": "Dompet",
+    "CheckIn": "Check-in",
     "Undefined": "🤷 Judul belum tersedia"
   },
   "tabbar": {
@@ -318,6 +319,7 @@
     "typeFirstRechargeGift": "Bonus isi ulang pertama",
     "typeTodayFirstRechargeGift": "Bonus isi ulang pertama hari ini",
     "typeLuckyNumsGift": "Bonus Lucky Number",
+    "typeCheckInGift": "Bonus check-in",
     "typeAccountChange": "Perubahan Akun"
   },
   "rechargePage": {
@@ -723,7 +725,10 @@
     "authFailed": "Verifikasi otorisasi gagal",
     "apiErrors": {
       "tg_channel_member_not_found": "Kami belum mendeteksi Anda bergabung ke channel Telegram. Gabung ke channel terlebih dulu, lalu tautkan Telegram.",
-      "tg_name_already_bound": "Username Telegram ini sudah ditautkan"
+      "tg_name_already_bound": "Username Telegram ini sudah ditautkan",
+      "checkin_already_today": "Anda sudah check-in hari ini",
+      "checkin_activity_completed": "Aktivitas check-in selesai",
+      "checkin_rewards_config_invalid": "Hadiah check-in belum dikonfigurasi"
     },
     "noRemind": "Jangan ingatkan lagi",
     "ok": "OK"
@@ -976,7 +981,37 @@
   "activityPage": {
     "luckyWheel": "Lucky Wheel",
     "referralCommission": "Komisi Referral",
-    "vip": "Aktivitas VIP"
+    "vip": "Aktivitas VIP",
+    "checkIn": "Check-in harian"
+  },
+  "checkInPage": {
+    "title": "Check-in harian",
+    "floatText": "Check",
+    "floatLabel": "Buka check-in harian",
+    "eyebrow": "Hadiah harian",
+    "heroTitle": "Check-in untuk koin",
+    "heroSubtitle": "Klaim hadiah harian dan buka lebih banyak koin melalui check-in kumulatif.",
+    "totalDays": "Total hari",
+    "nextReward": "Hadiah berikutnya",
+    "timezone": "Zona waktu",
+    "signNow": "Check-in sekarang",
+    "checkedToday": "Sudah check-in hari ini",
+    "completed": "Aktivitas selesai",
+    "successToast": "Check-in berhasil. Anda mendapat {amount}",
+    "rewardTitle": "Kalender hadiah",
+    "rewardHint": "Berdasarkan jumlah kumulatif",
+    "dayLabel": "Hari {day}",
+    "state": {
+      "claimed": "Diterima",
+      "current": "Tersedia",
+      "locked": "Terkunci"
+    },
+    "recordTitle": "Riwayat check-in",
+    "recordHint": "Terbaru",
+    "recordSeq": "Check-in #{seq}",
+    "emptyRecords": "Belum ada riwayat",
+    "loadFailed": "Gagal memuat check-in",
+    "retry": "Coba lagi"
   },
   "pwaInstall": {
     "title": "Tambahkan ke Layar Utama",

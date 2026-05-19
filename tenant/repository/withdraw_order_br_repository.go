@@ -2,6 +2,7 @@ package repository
 
 import (
 	"BaseGoUni/core/pojo"
+	coreRepo "BaseGoUni/core/repository"
 	"BaseGoUni/core/utils"
 	"encoding/json"
 	"errors"
@@ -13,6 +14,8 @@ import (
 	"strings"
 	"time"
 )
+
+var submitTenantWithdrawPayout = coreRepo.SubmitWithdrawPayout
 
 func GetWithdrawOrderBrs(db *gorm.DB, tenantID int64, search pojo.WithdrawOrderBrSearch) (result pojo.WithdrawOrderBrResp) {
 	var orders []pojo.WithdrawOrderBr
@@ -126,6 +129,9 @@ func SetWithdrawOrderBr(db *gorm.DB, tenantID int64, req pojo.WithdrawOrderBrSet
 			mergeTenantWithdrawOrderUpdate(&dbOrder, req)
 			ensureTenantWithdrawMerchantOrderNo(&dbOrder)
 			fillTenantWithdrawOrderNetAmount(tx, &dbOrder)
+			if err := applyTenantWithdrawStatusSideEffects(tx, oldStatus, &dbOrder); err != nil {
+				return err
+			}
 			if err := tx.Save(&dbOrder).Error; err != nil {
 				return err
 			}
@@ -147,6 +153,16 @@ func SetWithdrawOrderBr(db *gorm.DB, tenantID int64, req pojo.WithdrawOrderBrSet
 	}
 	_ = copier.Copy(&result, &dbOrder)
 	return result, nil
+}
+
+func applyTenantWithdrawStatusSideEffects(tx *gorm.DB, oldStatus int, order *pojo.WithdrawOrderBr) error {
+	if order == nil {
+		return nil
+	}
+	if oldStatus == 0 && order.Status == 1 {
+		return submitTenantWithdrawPayout(tx, order)
+	}
+	return nil
 }
 
 func mergeTenantWithdrawOrderUpdate(order *pojo.WithdrawOrderBr, req pojo.WithdrawOrderBrSet) {

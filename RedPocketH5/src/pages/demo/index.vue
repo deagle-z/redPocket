@@ -1,17 +1,18 @@
 <script setup lang="ts">
 import { showConfirmDialog, showToast } from 'vant'
 import type { LuckyPlayType, ParityChoice } from '@/utils/lucky-play'
-import { getTrialLuckyList, getTrialMe, grabTrialLucky, sendTrialLucky } from '@/api/trial'
+import { getTrialLuckyList, getTrialMe, grabTrialLucky, refreshTrialBalance, sendTrialLucky } from '@/api/trial'
 import AppPageHeader from '@/components/AppPageHeader.vue'
 import LuckyActionGrid from '@/components/LuckyActionGrid.vue'
 import LuckyGrabModal from '@/components/LuckyGrabModal.vue'
 import ParityChoiceDialog from '@/components/ParityChoiceDialog.vue'
 import SendPacketForm from '@/components/SendPacketForm.vue'
-import { isLogin } from '@/utils/auth'
+import { getToken, isLogin } from '@/utils/auth'
 import { formatCurrency } from '@/utils/currency'
 import { formatLuckyActionLabel } from '@/utils/lucky-actions'
 import { isParityPlayType, resolveLuckyPlayType } from '@/utils/lucky-play'
 import { safeBack } from '@/utils/navigation'
+import { useUserStore } from '@/stores'
 import wsClient from '@/plugins/websocket'
 import imgAvatarPlaceholder from '@/assets/images/avatar-placeholder.png'
 import imgRedpacketGif from '@/assets/images/redpacket.gif'
@@ -23,8 +24,10 @@ import winSoundUrl from '@/assets/video/win.mp3'
 const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
+const userStore = useUserStore()
 
 const DEFAULT_AVATAR = imgAvatarPlaceholder
+const TRIAL_BALANCE_REFRESH_DATE_KEY_PREFIX = 'trial_balance_refresh_date:'
 const currentMode = ref<0 | 1>(0)
 const packetList = ref<any[]>([])
 const packetLoading = ref(false)
@@ -35,6 +38,7 @@ const rulePopupVisible = ref(false)
 const pendingGrabTarget = ref<{ packet: any, action: any, choice?: ParityChoice | null } | null>(null)
 const pendingParityTarget = ref<{ packet: any, action: any } | null>(null)
 const currentUserBalance = ref(0)
+const currentUserBalanceLoading = ref(false)
 let countdownTimer: number | undefined
 
 // ── Audio ─────────────────────────────────────────────────────────
@@ -499,6 +503,49 @@ async function loadCurrentUserBalance() {
   }
 }
 
+function getLocalDateKey(date = new Date()) {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+function hashString(value: string) {
+  let hash = 0
+  for (let index = 0; index < value.length; index += 1)
+    hash = (hash * 31 + value.charCodeAt(index)) >>> 0
+  return hash.toString(36)
+}
+
+function getTrialBalanceRefreshStorageKey() {
+  const uid = Number(userStore.userInfo.uid || 0)
+  if (uid > 0)
+    return `${TRIAL_BALANCE_REFRESH_DATE_KEY_PREFIX}${uid}`
+
+  const token = getToken()
+  return `${TRIAL_BALANCE_REFRESH_DATE_KEY_PREFIX}${hashString(token || 'anonymous')}`
+}
+
+async function refreshCurrentUserTrialBalance() {
+  if (!isLogin())
+    return false
+
+  const today = getLocalDateKey()
+  const storageKey = getTrialBalanceRefreshStorageKey()
+  if (localStorage.getItem(storageKey) === today)
+    return false
+
+  try {
+    const { data } = await refreshTrialBalance()
+    currentUserBalance.value = Number(data?.trialBalance ?? 0)
+    localStorage.setItem(storageKey, today)
+    return true
+  }
+  catch {
+    return false
+  }
+}
+
 watch(() => route.query.mode, async () => {
   syncModeFromRoute()
   await loadPacketList()
@@ -510,7 +557,17 @@ onMounted(() => {
   wsClient.on('trial_lucky_sent', applyLuckySent)
   wsClient.on('trial_lucky_grabbed', applyLuckyBroadcast)
   wsClient.on('trial_lucky_finished', applyLuckyFinished)
-  loadCurrentUserBalance()
+  currentUserBalanceLoading.value = isLogin()
+  void (async () => {
+    try {
+      const refreshed = await refreshCurrentUserTrialBalance()
+      if (!refreshed)
+        await loadCurrentUserBalance()
+    }
+    finally {
+      currentUserBalanceLoading.value = false
+    }
+  })()
 })
 
 onBeforeUnmount(() => {
@@ -540,7 +597,8 @@ onBeforeUnmount(() => {
           <small>{{ pageTitle }}</small>
           <small class="send-entry-btn__balance">
             {{ t('appTopHeader.balance') }}
-            <CoinAmount :text="currentUserBalanceText" />
+            <van-loading v-if="currentUserBalanceLoading" size="13" color="#5a1b00" />
+            <CoinAmount v-else :text="currentUserBalanceText" />
           </small>
         </span>
       </span>
@@ -672,6 +730,7 @@ onBeforeUnmount(() => {
           :show-play-type="false"
           :show-tips="false"
           :default-play-type="modePlayType"
+          :default-max-amount="500"
           lock-play-type
           auto-reset
           :send-api="sendTrialLucky"

@@ -21,6 +21,7 @@
     "History": "HIST.",
     "Prize": "GIRO",
     "Wallet": "SALDO",
+    "CheckIn": "Check-in",
     "Undefined": "🤷 Título indefinido"
   },
   "tabbar": {
@@ -318,6 +319,7 @@
     "typeFirstRechargeGift": "Bônus de primeira recarga",
     "typeTodayFirstRechargeGift": "Bônus de primeira recarga diária",
     "typeLuckyNumsGift": "Bônus de número da sorte",
+    "typeCheckInGift": "Bônus de check-in",
     "typeAccountChange": "Mudança de conta"
   },
   "rechargePage": {
@@ -723,7 +725,10 @@
     "authFailed": "Falha na verificação da autorização",
     "apiErrors": {
       "tg_channel_member_not_found": "Nao detectamos que voce entrou no canal Telegram. Entre no canal primeiro e depois vincule Telegram.",
-      "tg_name_already_bound": "Este usuario do Telegram ja esta vinculado"
+      "tg_name_already_bound": "Este usuario do Telegram ja esta vinculado",
+      "checkin_already_today": "Voce ja fez check-in hoje",
+      "checkin_activity_completed": "Atividade de check-in concluida",
+      "checkin_rewards_config_invalid": "As recompensas de check-in nao estao configuradas"
     },
     "noRemind": "Não me lembre",
     "ok": "OK"
@@ -976,7 +981,37 @@
   "activityPage": {
     "luckyWheel": "Giro da Sorte",
     "referralCommission": "Comissão de Indicação",
-    "vip": "Atividade VIP"
+    "vip": "Atividade VIP",
+    "checkIn": "Check-in diario"
+  },
+  "checkInPage": {
+    "title": "Check-in diario",
+    "floatText": "Check",
+    "floatLabel": "Abrir check-in diario",
+    "eyebrow": "Recompensa diaria",
+    "heroTitle": "Faca check-in por moedas",
+    "heroSubtitle": "Receba uma recompensa diaria e desbloqueie mais moedas com check-ins acumulados.",
+    "totalDays": "Dias totais",
+    "nextReward": "Proxima recompensa",
+    "timezone": "Fuso horario",
+    "signNow": "Fazer check-in",
+    "checkedToday": "Check-in de hoje feito",
+    "completed": "Atividade concluida",
+    "successToast": "Check-in realizado. Voce ganhou {amount}",
+    "rewardTitle": "Calendario de recompensas",
+    "rewardHint": "Por contagem acumulada",
+    "dayLabel": "Dia {day}",
+    "state": {
+      "claimed": "Recebido",
+      "current": "Disponivel",
+      "locked": "Pendente"
+    },
+    "recordTitle": "Registros de check-in",
+    "recordHint": "Recentes",
+    "recordSeq": "Check-in #{seq}",
+    "emptyRecords": "Ainda nao ha registros",
+    "loadFailed": "Falha ao carregar check-in",
+    "retry": "Tentar novamente"
   },
   "pwaInstall": {
     "title": "Adicionar à tela inicial",

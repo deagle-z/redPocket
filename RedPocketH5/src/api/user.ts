@@ -757,6 +757,47 @@ export function getAppCashHistoryList(data: AppCashHistoryReq) {
   return request.post<ApiResult<AppCashHistoryResp>>('/api/v1/app/cashHistory/list', data)
 }
 
+export interface CheckInStatusResp {
+  todayChecked: boolean
+  totalCheckInDays: number
+  nextSeq: number
+  nextRewardAmount: number
+  rewards: number[]
+  completed: boolean
+  timezone: string
+}
+
+export interface CheckInResp {
+  recordId: number
+  checkInSeq: number
+  rewardAmount: number
+  balance: number
+  todayChecked: boolean
+  checkInDate: string
+}
+
+export interface CheckInRecordItem {
+  id: number
+  checkInDate: string
+  checkInSeq: number
+  rewardAmount: number
+  beforeBalance: number
+  afterBalance: number
+  createdAt: string
+}
+
+export function getCheckInStatus() {
+  return request.get<ApiResult<CheckInStatusResp>>('/api/v1/app/checkin/status')
+}
+
+export function doCheckIn() {
+  return request.post<ApiResult<CheckInResp>>('/api/v1/app/checkin', {})
+}
+
+export function getCheckInRecords(limit = 30) {
+  return request.get<ApiResult<CheckInRecordItem[]>>(`/api/v1/app/checkin/records?limit=${limit}`)
+}
+
 export function register(data: RegisterData): Promise<any> {
   const sourceChannelCode = getRequestSourceChannelCode(data.sourceChannelCode, data.channelCode)
   return request.post('/api/v1/app/tg/registerByPhone', {

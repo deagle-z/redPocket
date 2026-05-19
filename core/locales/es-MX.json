@@ -6,6 +6,7 @@
   "activity_unavailable": "la actividad no está disponible",
   "already_grabbed": "ya reclamado",
   "amount_min_5": "el monto debe ser al menos 5",
+  "amount_max_500": "el monto debe ser como máximo 500",
   "amount_too_small": "el monto es demasiado pequeño",
   "bind_domain_duplicate": "el dominio ya está vinculado",
   "bind_domain_nginx_conf_exists": "la configuración nginx de este dominio ya existe",

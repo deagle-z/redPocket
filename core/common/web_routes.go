@@ -170,6 +170,7 @@ func InitGin() {
 		adminGroup.GET("/prizePoolBalance/:poolCode", api.GetPrizePoolByCodeAdmin)     // 获取奖池余额
 		adminGroup.POST("/userLotteryRecord/list", api.GetUserLotteryRecords)          // 抽奖记录列表
 		adminGroup.GET("/userLotteryRecord/:id", api.GetUserLotteryRecordById)         // 抽奖记录详情
+		adminGroup.POST("/checkInRecord/list", api.GetCheckInRecordsAdmin)             // 签到记录列表
 		adminGroup.POST("/sysCustomField/list", api.GetSysCustomFields)
 		adminGroup.GET("/sysCustomField/:id", api.GetSysCustomFieldById)
 		adminGroup.POST("/platformProfitLedger/list", api.GetPlatformProfitLedgers)
@@ -289,6 +290,7 @@ func InitGin() {
 		tenantGroup.GET("/withdrawOrderBr/:id", tenantApi.GetWithdrawOrderBrById)
 		tenantGroup.POST("/withdrawOrderBr", tenantApi.SetWithdrawOrderBr)
 		tenantGroup.DELETE("/withdrawOrderBr/:id", tenantApi.DelWithdrawOrderBr)
+		tenantGroup.POST("/sysPayChannel/list", tenantApi.GetSysPayChannels)
 	}
 
 	// 支付回调（公开，三方主动调用，无 token）
@@ -335,6 +337,7 @@ func InitGin() {
 		appAuthRouter.POST("/lucky/send", api.SendRedPacketApp)
 		appAuthRouter.POST("/lucky/history", api.GetLuckyAppHistory)
 		appAuthRouter.GET("/trial/me", api.GetTrialMeApp)
+		appAuthRouter.POST("/trial/balance/refresh", api.RefreshTrialBalanceApp)
 		appAuthRouter.GET("/trial/lucky/flowLotteryReward", api.GetTrialLuckyFlowLotteryRewardApp)
 		appRouter.POST("/trial/lucky/list", api.GetTrialLuckyListApp)
 		appAuthRouter.POST("/trial/lucky/send", api.SendTrialLuckyApp)
@@ -356,6 +359,9 @@ func InitGin() {
 		appAuthRouter.POST("/tg/rebate/withdraw", api.AppCreateRebateWithdrawOrder)
 		appAuthRouter.POST("/tg/rebate/list", api.GetCurrentTgUserRebateRecords)
 		appAuthRouter.POST("/cashHistory/list", api.GetCurrentTgCashHistory)
+		appAuthRouter.GET("/checkin/status", api.GetCurrentCheckInStatus)
+		appAuthRouter.POST("/checkin", api.DoCurrentUserCheckIn)
+		appAuthRouter.GET("/checkin/records", api.GetCurrentUserCheckInRecords)
 		appAuthRouter.GET("/recharge/promotions", api.GetRechargePromotions)
 		appAuthRouter.POST("/upload", api.AppUpload)
 		appAuthRouter.POST("/lucky/grab", api.GrabRedPacketApp)

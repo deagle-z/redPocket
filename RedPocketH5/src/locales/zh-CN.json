@@ -21,6 +21,7 @@
     "History": "历史",
     "Prize": "抽奖",
     "Wallet": "钱包",
+    "CheckIn": "签到",
     "Undefined": "🤷 未定义标题"
   },
   "tabbar": {
@@ -320,6 +321,7 @@
     "typeFirstRechargeGift": "首充赠送",
     "typeTodayFirstRechargeGift": "今日首充赠送",
     "typeLuckyNumsGift": "幸运数字赠送",
+    "typeCheckInGift": "签到赠送",
     "typeAccountChange": "账户变动"
   },
   "rechargePage": {
@@ -725,7 +727,10 @@
     "authFailed": "登录状态失效",
     "apiErrors": {
       "tg_channel_member_not_found": "未检测到你已加入 Telegram 频道，请先加入频道后再绑定",
-      "tg_name_already_bound": "该 Telegram 用户名已绑定"
+      "tg_name_already_bound": "该 Telegram 用户名已绑定",
+      "checkin_already_today": "今日已签到",
+      "checkin_activity_completed": "签到活动已完成",
+      "checkin_rewards_config_invalid": "签到奖励配置无效"
     },
     "noRemind": "不再提醒",
     "ok": "我知道了"
@@ -978,7 +983,37 @@
   "activityPage": {
     "luckyWheel": "幸运转盘",
     "referralCommission": "邀请佣金",
-    "vip": "VIP 活动"
+    "vip": "VIP 活动",
+    "checkIn": "每日签到"
+  },
+  "checkInPage": {
+    "title": "每日签到",
+    "floatText": "签到",
+    "floatLabel": "进入每日签到",
+    "eyebrow": "每日福利",
+    "heroTitle": "签到领金币",
+    "heroSubtitle": "每天登录领取奖励，累计签到解锁更多金币。",
+    "totalDays": "累计签到",
+    "nextReward": "下次奖励",
+    "timezone": "活动时区",
+    "signNow": "立即签到",
+    "checkedToday": "今日已签到",
+    "completed": "活动已完成",
+    "successToast": "签到成功，获得 {amount}",
+    "rewardTitle": "奖励日历",
+    "rewardHint": "按累计次数发放",
+    "dayLabel": "第 {day} 天",
+    "state": {
+      "claimed": "已领取",
+      "current": "今日可领",
+      "locked": "待领取"
+    },
+    "recordTitle": "签到记录",
+    "recordHint": "最近记录",
+    "recordSeq": "第 {seq} 次签到",
+    "emptyRecords": "暂无签到记录",
+    "loadFailed": "签到信息加载失败",
+    "retry": "重试"
   },
   "pwaInstall": {
     "title": "添加到主屏幕",

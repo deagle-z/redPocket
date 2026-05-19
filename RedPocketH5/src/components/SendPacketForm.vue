@@ -20,6 +20,7 @@ const props = withDefaults(defineProps<{
   showTips?: boolean
   autoReset?: boolean
   defaultPlayType?: LuckyPlayType
+  defaultMaxAmount?: number
   lockPlayType?: boolean
   sendApi?: SendPacketApi
 }>(), {
@@ -29,6 +30,7 @@ const props = withDefaults(defineProps<{
   showTips: true,
   autoReset: false,
   defaultPlayType: 'thunder',
+  defaultMaxAmount: 5000,
   lockPlayType: false,
 })
 
@@ -47,7 +49,7 @@ const amountInput = ref('')
 const submitLoading = ref(false)
 const lastSubmitAt = ref(0)
 const amountMin = ref(5)
-const amountMax = ref(5000)
+const amountMax = ref(props.defaultMaxAmount)
 const SUBMIT_THROTTLE_MS = 1000
 
 const rootClass = computed(() => [
@@ -185,6 +187,10 @@ watch(() => props.defaultPlayType, (value) => {
     selectedMine.value = null
   else if (selectedMine.value === null)
     selectedMine.value = 0
+})
+
+watch(() => props.defaultMaxAmount, (value) => {
+  amountMax.value = value
 })
 </script>
 

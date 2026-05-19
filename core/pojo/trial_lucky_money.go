@@ -4,6 +4,8 @@ import "time"
 
 const TrialActorUser = "user"
 const TrialActorBot = "bot"
+const TrialUserDefaultBalance = 1000.0
+const TrialLuckySendMaxAmount = 500.0
 
 type TrialLuckyMoney struct {
 	BaseModel
@@ -116,6 +118,11 @@ type TrialLuckyMoneyAppResp struct {
 
 type TrialMeResp struct {
 	TrialBalance float64 `json:"trialBalance"`
+}
+
+type TrialBalanceRefreshResp struct {
+	TrialBalance float64 `json:"trialBalance"`
+	Refreshed    bool    `json:"refreshed"`
 }
 
 var TrialLuckyMoneyTableName = "trial_lucky_money"

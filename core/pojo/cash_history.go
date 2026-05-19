@@ -38,6 +38,7 @@ const (
 	CashHistoryTypeTodayFirstRechargeGift int8 = 17 // 今日首充赠送
 	CashHistoryTypeLuckyNumsGift          int8 = 18 // 幸运数字赠送
 	CashHistoryTypeAdminManualRebate      int8 = 19 // 后台手工加佣金
+	CashHistoryTypeCheckInGift            int8 = 20 // 签到活动赠送
 )
 
 type CashHistoryResp struct {

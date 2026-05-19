@@ -3,6 +3,7 @@ package services
 import (
 	"BaseGoUni/core/pojo"
 	"testing"
+	"time"
 )
 
 func TestCanTrialUserGrabSenderAllowsOwnUserPacket(t *testing.T) {
@@ -14,6 +15,61 @@ func TestCanTrialUserGrabSenderAllowsOwnUserPacket(t *testing.T) {
 func TestCanTrialBotGrabSenderRejectsOwnBotPacket(t *testing.T) {
 	if canTrialBotGrabSender(pojo.TrialActorBot, 10, 10) {
 		t.Fatalf("canTrialBotGrabSender() = true, want false")
+	}
+}
+
+func TestTrialUserDefaultBalanceIsOneThousand(t *testing.T) {
+	if pojo.TrialUserDefaultBalance != 1000 {
+		t.Fatalf("TrialUserDefaultBalance = %.2f, want 1000", pojo.TrialUserDefaultBalance)
+	}
+}
+
+func TestResolveTrialDailyBalanceRefreshTopsUpLowBalanceOncePerDay(t *testing.T) {
+	now := time.Date(2026, 5, 19, 10, 0, 0, 0, time.Local)
+
+	balance, refreshed, shouldMark := resolveTrialDailyBalanceRefresh(800, nil, now)
+
+	if balance != pojo.TrialUserDefaultBalance || !refreshed || !shouldMark {
+		t.Fatalf("resolveTrialDailyBalanceRefresh() = (%.2f,%v,%v), want (%.2f,true,true)", balance, refreshed, shouldMark, pojo.TrialUserDefaultBalance)
+	}
+}
+
+func TestResolveTrialDailyBalanceRefreshKeepsHighBalanceButMarksChecked(t *testing.T) {
+	now := time.Date(2026, 5, 19, 10, 0, 0, 0, time.Local)
+
+	balance, refreshed, shouldMark := resolveTrialDailyBalanceRefresh(1200, nil, now)
+
+	if balance != 1200 || refreshed || !shouldMark {
+		t.Fatalf("resolveTrialDailyBalanceRefresh() = (%.2f,%v,%v), want (1200,false,true)", balance, refreshed, shouldMark)
+	}
+}
+
+func TestResolveTrialDailyBalanceRefreshSkipsWhenAlreadyCheckedToday(t *testing.T) {
+	now := time.Date(2026, 5, 19, 10, 0, 0, 0, time.Local)
+	checkedAt := time.Date(2026, 5, 19, 1, 0, 0, 0, time.Local)
+
+	balance, refreshed, shouldMark := resolveTrialDailyBalanceRefresh(200, &checkedAt, now)
+
+	if balance != 200 || refreshed || shouldMark {
+		t.Fatalf("resolveTrialDailyBalanceRefresh() = (%.2f,%v,%v), want (200,false,false)", balance, refreshed, shouldMark)
+	}
+}
+
+func TestValidateTrialSendAmountRejectsAboveMax(t *testing.T) {
+	if err := validateTrialSendAmount(501); err == nil || err.Error() != "amount_max_500" {
+		t.Fatalf("validateTrialSendAmount(501) error = %v, want amount_max_500", err)
+	}
+}
+
+func TestValidateTrialSendAmountAllowsMax(t *testing.T) {
+	if err := validateTrialSendAmount(500); err != nil {
+		t.Fatalf("validateTrialSendAmount(500) error = %v, want nil", err)
+	}
+}
+
+func TestCapTrialLuckySendAmountLimitsRobotAmount(t *testing.T) {
+	if got := capTrialLuckySendAmount(1000); got != pojo.TrialLuckySendMaxAmount {
+		t.Fatalf("capTrialLuckySendAmount(1000) = %.2f, want %.2f", got, pojo.TrialLuckySendMaxAmount)
 	}
 }
 

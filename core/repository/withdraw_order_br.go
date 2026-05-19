@@ -487,6 +487,11 @@ func submitWithdrawPayout(db *gorm.DB, order *pojo.WithdrawOrderBr) error {
 	return nil
 }
 
+// SubmitWithdrawPayout submits a reviewed withdraw order to the configured payout provider.
+func SubmitWithdrawPayout(db *gorm.DB, order *pojo.WithdrawOrderBr) error {
+	return submitWithdrawPayout(db, order)
+}
+
 func withdrawOrderExtraFields(extra *string) map[string]string {
 	fields := map[string]string{}
 	if extra == nil || strings.TrimSpace(*extra) == "" {
