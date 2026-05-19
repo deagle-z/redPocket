@@ -71,6 +71,13 @@ type LuckyMoneyGrab struct {
 	OddEvenGuess *int  `json:"oddEvenGuess"`                    // 奇偶猜测 0=偶 1=奇（奇偶模式必填）
 }
 
+type LuckyMoneyManualGrab struct {
+	LuckyID      int64 `json:"luckyId" binding:"required,gt=0"`   // 红包ID
+	SeqNo        int   `json:"seqNo" binding:"required,gt=0"`     // 子红包序号
+	BotUserID    int64 `json:"botUserId" binding:"required,gt=0"` // 机器人用户ID
+	OddEvenGuess *int  `json:"oddEvenGuess"`                      // 奇偶猜测 0=偶 1=奇（奇偶模式必填）
+}
+
 type LuckyMoneyResp struct {
 	BasePageResponse[LuckyMoneyBack]
 }

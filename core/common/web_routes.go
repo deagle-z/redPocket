@@ -196,6 +196,7 @@ func InitGin() {
 		adminGroupLog.POST("/tgUser/rebateAmount", api.AddTgUserRebateAmount)
 		adminGroupLog.POST("/tgUser/remark", api.SetTgUserRemark) // 修改Telegram用户备注
 		adminGroupLog.DELETE("/tgUser/:id", api.DelTgUser)        // 删除Telegram用户
+		adminGroupLog.POST("/lucky/manualGrab", api.ManualGrabLuckyMoneyAdmin)
 		adminGroupLog.POST("/trialBot/batchCreate", api.BatchCreateTrialBotUsers)
 		adminGroupLog.POST("/trialBot/batchUpdate", api.BatchUpdateTrialBotUsers)
 		adminGroupLog.POST("/trialBot/status", api.SetTrialBotUserStatus)

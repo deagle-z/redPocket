@@ -43,6 +43,22 @@ func GetLuckyMoneyItems(db *gorm.DB, search pojo.LuckyMoneyItemSearch) (result p
 	return result
 }
 
+// GetLuckyMoneyItemsByLuckyID 获取单个红包的全部明细，按红包序号升序返回。
+func GetLuckyMoneyItemsByLuckyID(db *gorm.DB, luckyID int64) ([]pojo.LuckyMoneyItemBack, error) {
+	var items []pojo.LuckyMoneyItem
+	if err := db.Where("red_packet_id = ?", luckyID).Order("seq_no asc").Find(&items).Error; err != nil {
+		return nil, err
+	}
+
+	result := make([]pojo.LuckyMoneyItemBack, 0, len(items))
+	for _, item := range items {
+		var temp pojo.LuckyMoneyItemBack
+		_ = copier.Copy(&temp, &item)
+		result = append(result, temp)
+	}
+	return result, nil
+}
+
 // SetLuckyMoneyItem 创建或更新红包明细
 func SetLuckyMoneyItem(db *gorm.DB, req pojo.LuckyMoneyItemSet) (result pojo.LuckyMoneyItemBack, err error) {
 	var dbItem pojo.LuckyMoneyItem

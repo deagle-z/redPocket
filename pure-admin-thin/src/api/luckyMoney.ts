@@ -12,6 +12,7 @@ export type LuckyMoney = {
   number: number;
   lucky: number;
   thunder: number;
+  gameMode?: number;
   chatId: number;
   redList: string;
   loseRate: number;
@@ -30,6 +31,23 @@ export type LuckyHistory = {
   amount: number;
   actualAmount: number;
   loseMoney: number;
+};
+
+/** 红包明细 */
+export type LuckyMoneyItem = {
+  id: number;
+  createdAt: string;
+  updatedAt: string;
+  redPacketId: number;
+  seqNo: number;
+  amount: number;
+  thunderAmount: number;
+  thunderFee: number;
+  winFee: number;
+  isGrabbed: number;
+  thunder: number;
+  grabbedUid?: number | null;
+  grabbedAt?: string | null;
 };
 
 export type LuckyHistoryUserFlow = {
@@ -61,6 +79,14 @@ export type LuckyMoneyGrab = {
   luckyId: number;
 };
 
+/** 后台手动抢红包参数 */
+export type LuckyMoneyManualGrab = {
+  luckyId: number;
+  seqNo: number;
+  botUserId: number;
+  oddEvenGuess?: number;
+};
+
 /** 红包列表响应 */
 export type LuckyMoneyListResult = {
   code: number;
@@ -82,6 +108,7 @@ export type LuckyMoneyDetailResult = {
   data: {
     luckyMoney: LuckyMoney;
     history: LuckyHistory[];
+    items?: LuckyMoneyItem[];
   };
 };
 
@@ -138,7 +165,11 @@ export type LuckyMoneyStatusResult = {
 
 /** 发送红包 */
 export const sendRedPacket = (data: LuckyMoneySend) => {
-  return http.request<LuckyMoneyListResult>("post", "/api/v1/outside/lucky/send", { data });
+  return http.request<LuckyMoneyListResult>(
+    "post",
+    "/api/v1/outside/lucky/send",
+    { data }
+  );
 };
 
 /** 抢红包 */
@@ -148,40 +179,76 @@ export const grabRedPacket = (data: LuckyMoneyGrab) => {
 
 /** 获取红包列表（用户端） */
 export const getRedPacketList = (data: LuckyMoneySearch) => {
-  return http.request<LuckyMoneyListResult>("post", "/api/v1/outside/lucky/list", { data });
+  return http.request<LuckyMoneyListResult>(
+    "post",
+    "/api/v1/outside/lucky/list",
+    { data }
+  );
 };
 
 /** 获取红包详情 */
 export const getRedPacketDetail = (id: number) => {
-  return http.request<LuckyMoneyDetailResult>("get", `/api/v1/outside/lucky/${id}`);
+  return http.request<LuckyMoneyDetailResult>(
+    "get",
+    `/api/v1/outside/lucky/${id}`
+  );
 };
 
 /** 获取红包状态 */
 export const getRedPacketStatus = (id: number) => {
-  return http.request<LuckyMoneyStatusResult>("get", `/api/v1/outside/lucky/status/${id}`);
+  return http.request<LuckyMoneyStatusResult>(
+    "get",
+    `/api/v1/outside/lucky/status/${id}`
+  );
 };
 
 /** 检查抢包余额 */
 export const checkGrabBalance = (data: LuckyMoneyGrab) => {
-  return http.request<any>("post", "/api/v1/outside/lucky/checkBalance", { data });
+  return http.request<any>("post", "/api/v1/outside/lucky/checkBalance", {
+    data
+  });
 };
 
 /** 管理员 - 获取红包列表 */
 export const getLuckyMoneyListAdmin = (data: LuckyMoneySearch) => {
-  return http.request<LuckyMoneyListResult>("post", "/api/v1/admin/lucky/list", { data });
+  return http.request<LuckyMoneyListResult>(
+    "post",
+    "/api/v1/admin/lucky/list",
+    { data }
+  );
 };
 
 /** 管理员 - 获取领取历史 */
 export const getLuckyHistoryListAdmin = (data: LuckyHistorySearch) => {
-  return http.request<LuckyHistoryListResult>("post", "/api/v1/admin/lucky/history", { data });
+  return http.request<LuckyHistoryListResult>(
+    "post",
+    "/api/v1/admin/lucky/history",
+    { data }
+  );
 };
 
 /** 管理员 - 获取按用户汇总流水 */
-export const getLuckyHistoryUserFlowListAdmin = (data: LuckyHistoryUserFlowSearch) => {
-  return http.request<LuckyHistoryUserFlowListResult>("post", "/api/v1/admin/lucky/historyUserFlow", { data });
+export const getLuckyHistoryUserFlowListAdmin = (
+  data: LuckyHistoryUserFlowSearch
+) => {
+  return http.request<LuckyHistoryUserFlowListResult>(
+    "post",
+    "/api/v1/admin/lucky/historyUserFlow",
+    { data }
+  );
 };
 
 /** 管理员 - 获取红包详情 */
 export const getLuckyMoneyDetailAdmin = (id: number) => {
-  return http.request<LuckyMoneyDetailResult>("get", `/api/v1/admin/lucky/${id}`);
+  return http.request<LuckyMoneyDetailResult>(
+    "get",
+    `/api/v1/admin/lucky/${id}`
+  );
+};
+
+/** 管理员 - 指定机器人手动抢红包 */
+export const manualGrabLuckyMoneyAdmin = (data: LuckyMoneyManualGrab) => {
+  return http.request<any>("post", "/api/v1/admin/lucky/manualGrab", {
+    data
+  });
 };

@@ -3,7 +3,10 @@ package api
 import (
 	"BaseGoUni/core/pojo"
 	"BaseGoUni/core/repository"
+	"BaseGoUni/core/services"
 	"BaseGoUni/core/utils"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -105,12 +108,96 @@ func GetLuckyMoneyDetailAdmin(ctx *gin.Context) {
 		return
 	}
 
+	items, err := repository.GetLuckyMoneyItemsByLuckyID(db, luckyID)
+	if err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	if luckyMoney.RedList == "" && len(items) > 0 {
+		redList := make([]float64, 0, len(items))
+		for _, item := range items {
+			redList = append(redList, item.Amount)
+		}
+		if redListJSON, marshalErr := json.Marshal(redList); marshalErr == nil {
+			luckyMoney.RedList = string(redListJSON)
+		}
+	}
+
 	result := map[string]interface{}{
 		"luckyMoney": luckyMoney,
 		"history":    historyList,
+		"items":      items,
 	}
 
 	utils.SuccessObjBack(ctx, result)
+}
+
+// ManualGrabLuckyMoneyAdmin 管理员指定机器人手动抢未领取红包
+// @Summary 管理员指定机器人手动抢未领取红包
+// @Tags 红包管理-管理员
+// @Accept json
+// @Produce json
+// @Param data body pojo.LuckyMoneyManualGrab true "手动抢红包"
+// @Success 200 {object} pojo.BaseResponse
+// @Router /api/v1/admin/lucky/manualGrab [post]
+func ManualGrabLuckyMoneyAdmin(ctx *gin.Context) {
+	var req pojo.LuckyMoneyManualGrab
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+
+	db := ctx.MustGet("db").(*gorm.DB)
+	hostInfo := ctx.MustGet("hostInfo").(pojo.HostInfo)
+
+	botUser, err := repository.GetTgUserById(db, req.BotUserID)
+	if err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	if !botUser.IsBot {
+		utils.ErrorBack(ctx, "selected_user_not_bot")
+		return
+	}
+	if botUser.Status != 1 {
+		utils.ErrorBack(ctx, "bot_user_disabled")
+		return
+	}
+
+	if err := validateManualGrabItem(db, req.LuckyID, req.SeqNo); err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+
+	result, err := services.GrabRedPacket(db, req.LuckyID, req.BotUserID, hostInfo.TablePrefix, req.SeqNo, req.OddEvenGuess)
+	if err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+
+	utils.SuccessObjBack(ctx, result)
+}
+
+func validateManualGrabItem(db *gorm.DB, luckyID int64, seqNo int) error {
+	luckyMoney, err := repository.GetLuckyMoney(db, luckyID)
+	if err != nil {
+		return err
+	}
+	if luckyMoney.Status != 1 {
+		return errors.New("lucky_finished")
+	}
+	if seqNo > luckyMoney.Number {
+		return errors.New("invalid_lucky_seq_no")
+	}
+
+	var item pojo.LuckyMoneyItem
+	if err := db.Where("red_packet_id = ? AND seq_no = ?", luckyID, seqNo).First(&item).Error; err != nil {
+		return err
+	}
+	if item.IsGrabbed == 1 {
+		return errors.New("lucky_item_already_grabbed")
+	}
+	return nil
 }
 
 // GetCashHistoryListAdmin 管理员获取余额变动记录列表
