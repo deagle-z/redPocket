@@ -74,7 +74,7 @@ func GetLotteryChances(ctx *gin.Context) {
 	}
 	freeCount := user.FreeLotteryCount
 	availableCount := calculateLotteryAvailableCount(earnedCount, usedCount, freeCount)
-	currentFlow := utils.Truncate2(totalFlow - float64(usedCount)*peerAmount)
+	currentFlow := utils.Truncate2(totalFlow - float64(earnedCount)*peerAmount)
 	if currentFlow < 0 {
 		currentFlow = 0
 	}

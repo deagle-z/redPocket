@@ -77,6 +77,7 @@ const promoMenus = computed<MenuItem[]>(() => [
 
 const activityMenus = computed<MenuItem[]>(() => [
   { key: 'first-deposit', label: t('rechargePage.firstRechargeTitle'), icon: normalizeInlineSvg(downIcon) },
+  { key: 'check-in-activity', label: t('activityPage.checkIn'), icon: normalizeInlineSvg(gamesIcon) },
   { key: 'lucky-wheel', label: t('activityPage.luckyWheel'), icon: normalizeInlineSvg(gamesIcon) },
   { key: 'trial-flow-lottery', label: t('trialFlowLotteryPage.title'), icon: normalizeInlineSvg(gamesIcon) },
   { key: 'referral-commission', label: t('activityPage.referralCommission'), icon: normalizeInlineSvg(shareIcon) },
@@ -321,6 +322,9 @@ function onMenuClick(item: MenuItem) {
       break
     case 'first-deposit':
       goByPath('/firstDeposit')
+      break
+    case 'check-in-activity':
+      goByPath('/checkInActivity')
       break
     case 'lucky-wheel':
       goByPath('/luckyWheel')

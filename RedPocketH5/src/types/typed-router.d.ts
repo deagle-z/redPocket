@@ -65,6 +65,13 @@ declare module 'vue-router/auto-routes' {
       Record<never, never>,
       | never
     >,
+    'CheckInActivity': RouteRecordInfo<
+      'CheckInActivity',
+      '/checkInActivity',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
     '/cs/': RouteRecordInfo<
       '/cs/',
       '/cs',
@@ -328,6 +335,12 @@ declare module 'vue-router/auto-routes' {
     'src/pages/checkin/index.vue': {
       routes:
         | 'CheckIn'
+      views:
+        | never
+    }
+    'src/pages/checkInActivity/index.vue': {
+      routes:
+        | 'CheckInActivity'
       views:
         | never
     }
