@@ -874,6 +874,8 @@ func GetCurrentTgUserInfo(db *gorm.DB, accessSecret string, token string) (pojo.
 		FreeLotteryCount:          user.FreeLotteryCount,
 		FlowLotteryTotalCount:     user.FlowLotteryTotalCount,
 		FlowLotteryAvailableCount: user.FlowLotteryAvailableCount,
+		FlowLotteryBaseFlow:       utils.Truncate2(user.FlowLotteryBaseFlow),
+		FlowLotteryBaseRecordID:   user.FlowLotteryBaseRecordID,
 		Email:                     user.Email,
 		Phone:                     user.Phone,
 		Country:                   user.Country,

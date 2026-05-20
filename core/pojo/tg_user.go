@@ -40,6 +40,8 @@ type TgUser struct {
 	FreeLotteryCount          int        `gorm:"column:free_lottery_count;type:int;not null;default:0;comment:免费转盘次数" json:"freeLotteryCount"`
 	FlowLotteryTotalCount     int        `gorm:"column:flow_lottery_total_count;type:int;not null;default:0;comment:累计流水抽奖次数" json:"flowLotteryTotalCount"`
 	FlowLotteryAvailableCount int        `gorm:"column:flow_lottery_available_count;type:int;not null;default:0;comment:可用流水抽奖次数" json:"flowLotteryAvailableCount"`
+	FlowLotteryBaseFlow       float64    `gorm:"column:flow_lottery_base_flow;type:decimal(20,2);not null;default:0.00;comment:流水抽奖基准流水" json:"flowLotteryBaseFlow"`
+	FlowLotteryBaseRecordID   int64      `gorm:"column:flow_lottery_base_record_id;type:bigint;not null;default:0;comment:流水抽奖基准抽奖记录ID" json:"flowLotteryBaseRecordId"`
 
 	Status       int8    `gorm:"not null;default:1;index;comment:状态 1=正常 0=禁用 -1=删除" json:"status"`
 	VipLevel     *int    `gorm:"column:vip_level;default:null;comment:当前VIP等级（对应sys_vip_level.level）" json:"vip_level"`
@@ -244,6 +246,8 @@ type TgCurrentUserInfo struct {
 	FreeLotteryCount          int     `json:"freeLotteryCount"`
 	FlowLotteryTotalCount     int     `json:"flowLotteryTotalCount"`
 	FlowLotteryAvailableCount int     `json:"flowLotteryAvailableCount"`
+	FlowLotteryBaseFlow       float64 `json:"flowLotteryBaseFlow"`
+	FlowLotteryBaseRecordID   int64   `json:"flowLotteryBaseRecordId"`
 	Email                     string  `json:"email"`
 	Phone                     *string `json:"phone"`
 	Country                   *string `json:"country"`
@@ -337,6 +341,8 @@ type TgUserBack struct {
 	FreeLotteryCount          int       `json:"freeLotteryCount"`
 	FlowLotteryTotalCount     int       `json:"flowLotteryTotalCount"`
 	FlowLotteryAvailableCount int       `json:"flowLotteryAvailableCount"`
+	FlowLotteryBaseFlow       float64   `json:"flowLotteryBaseFlow"`
+	FlowLotteryBaseRecordID   int64     `json:"flowLotteryBaseRecordId"`
 	Status                    int8      `json:"status"`
 	ParentID                  *int64    `json:"parentId"`
 	ParentUid                 *string   `json:"parentUid"`
@@ -377,6 +383,8 @@ type TgUserAdminBack struct {
 	FreeLotteryCount          int       `json:"freeLotteryCount"`
 	FlowLotteryTotalCount     int       `json:"flowLotteryTotalCount"`
 	FlowLotteryAvailableCount int       `json:"flowLotteryAvailableCount"`
+	FlowLotteryBaseFlow       float64   `json:"flowLotteryBaseFlow"`
+	FlowLotteryBaseRecordID   int64     `json:"flowLotteryBaseRecordId"`
 	Status                    int8      `json:"status"`
 	ParentID                  *int64    `json:"parentId"`
 	ParentUid                 *string   `json:"parentUid"`

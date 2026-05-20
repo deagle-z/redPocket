@@ -199,10 +199,16 @@ func GetUserTotalFlow(db *gorm.DB, userID int64) (float64, error) {
 
 // GetUsedLotteryCount 查询用户已消耗抽奖次数（user_lottery_record 记录数）
 func GetUsedLotteryCount(db *gorm.DB, userID int64) (int64, error) {
+	return GetUsedLotteryCountAfter(db, userID, 0)
+}
+
+// GetUsedLotteryCountAfter 查询用户在基准记录之后已消耗的流水抽奖次数
+func GetUsedLotteryCountAfter(db *gorm.DB, userID int64, baseRecordID int64) (int64, error) {
 	var count int64
-	err := db.Model(&pojo.UserLotteryRecord{}).
+	query := db.Model(&pojo.UserLotteryRecord{}).
 		Where("user_id = ? AND peer_amount > 0", userID).
-		Count(&count).Error
+		Where("id > ?", baseRecordID)
+	err := query.Count(&count).Error
 	return count, err
 }
 

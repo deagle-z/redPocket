@@ -61,6 +61,8 @@ export interface TgCurrentUserInfo {
   freeLotteryCount?: number
   flowLotteryTotalCount?: number
   flowLotteryAvailableCount?: number
+  flowLotteryBaseFlow?: number
+  flowLotteryBaseRecordId?: number
   vip_level?: number | null
   vip_level_name?: string | null
   audioOpen?: 0 | 1

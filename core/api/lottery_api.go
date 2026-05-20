@@ -22,6 +22,7 @@ type lotteryConsumption struct {
 
 type flowLotterySyncResult struct {
 	TotalFlow                 float64
+	RawTotalFlow              float64
 	EarnedCount               int64
 	UsedCount                 int64
 	FlowLotteryTotalCount     int
@@ -55,7 +56,7 @@ func syncFlowLotteryCount(tx *gorm.DB, userID int64, peerAmount float64) (pojo.T
 		return user, flowLotterySyncResult{}, err
 	}
 
-	totalFlow, err := repository.GetUserTotalFlow(tx, userID)
+	rawTotalFlow, err := repository.GetUserTotalFlow(tx, userID)
 	if err != nil {
 		return user, flowLotterySyncResult{}, err
 	}
@@ -63,26 +64,20 @@ func syncFlowLotteryCount(tx *gorm.DB, userID int64, peerAmount float64) (pojo.T
 	if peerAmount <= 0 {
 		peerAmount = 1000
 	}
+	totalFlow := utils.Truncate2(rawTotalFlow - user.FlowLotteryBaseFlow)
+	if totalFlow < 0 {
+		totalFlow = 0
+	}
 	earnedCount := int64(math.Floor(totalFlow / peerAmount))
-	usedCount, err := repository.GetUsedLotteryCount(tx, userID)
+	usedCount, err := repository.GetUsedLotteryCountAfter(tx, userID, user.FlowLotteryBaseRecordID)
 	if err != nil {
 		return user, flowLotterySyncResult{}, err
 	}
 
 	oldTotal := user.FlowLotteryTotalCount
 	oldAvailable := user.FlowLotteryAvailableCount
-	baselineCount := int64(user.FlowLotteryTotalCount)
-	if usedCount > baselineCount {
-		baselineCount = usedCount
-	}
-
-	newTotal := int(baselineCount)
-	newAvailable := user.FlowLotteryAvailableCount
-	if earnedCount > baselineCount {
-		delta := int(earnedCount - baselineCount)
-		newTotal = int(earnedCount)
-		newAvailable += delta
-	}
+	newTotal := int(earnedCount)
+	newAvailable := int(earnedCount - usedCount)
 	if newAvailable < 0 {
 		newAvailable = 0
 	}
@@ -100,6 +95,7 @@ func syncFlowLotteryCount(tx *gorm.DB, userID int64, peerAmount float64) (pojo.T
 
 	return user, flowLotterySyncResult{
 		TotalFlow:                 totalFlow,
+		RawTotalFlow:              rawTotalFlow,
 		EarnedCount:               earnedCount,
 		UsedCount:                 usedCount,
 		FlowLotteryTotalCount:     user.FlowLotteryTotalCount,
