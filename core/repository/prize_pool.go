@@ -180,7 +180,7 @@ func DepositPrizePool(tx *gorm.DB, tenantId int64, poolCode string, userId int64
 }
 
 // GetUserTotalFlow 计算用户累计流水
-// 抢包流水：SUM(amount + lose_money) WHERE user_id=? AND grab_type=1
+// 抢包流水：SUM(amount + lose_money) WHERE user_id=? AND grab_type!=2
 // 发包流水：SUM(amount) WHERE sender_id=?
 func GetUserTotalFlow(db *gorm.DB, userID int64) (float64, error) {
 	var row struct {
@@ -188,7 +188,7 @@ func GetUserTotalFlow(db *gorm.DB, userID int64) (float64, error) {
 	}
 	if err := db.Raw(`
 		SELECT
-			COALESCE((SELECT SUM(amount + lose_money) FROM lucky_history WHERE user_id = ? AND grab_type = 1), 0) +
+			COALESCE((SELECT SUM(amount + lose_money) FROM lucky_history WHERE user_id = ? AND grab_type != 2), 0) +
 			COALESCE((SELECT SUM(amount) FROM lucky_money WHERE sender_id = ?), 0) AS flow
 	`, userID, userID).Scan(&row).Error; err != nil {
 		return 0, err

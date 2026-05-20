@@ -107,6 +107,13 @@ func syncFlowLotteryCount(tx *gorm.DB, userID int64, peerAmount float64) (pojo.T
 	}, nil
 }
 
+func calculateFlowLotteryConsumedCount(totalCount int, availableCount int) int {
+	if totalCount <= availableCount {
+		return 0
+	}
+	return totalCount - availableCount
+}
+
 // GetLotteryChances app端查询抽奖次数及奖池金额列表
 func GetLotteryChances(ctx *gin.Context) {
 	userID := ctx.MustGet("userId").(int64)
@@ -133,7 +140,8 @@ func GetLotteryChances(ctx *gin.Context) {
 	freeCount := user.FreeLotteryCount
 	flowAvailableCount := user.FlowLotteryAvailableCount
 	availableCount := calculateLotteryAvailableCount(flowAvailableCount, freeCount)
-	currentFlow := utils.Truncate2(syncResult.TotalFlow - float64(syncResult.FlowLotteryTotalCount)*peerAmount)
+	flowConsumedCount := calculateFlowLotteryConsumedCount(syncResult.FlowLotteryTotalCount, syncResult.FlowLotteryAvailableCount)
+	currentFlow := utils.Truncate2(syncResult.TotalFlow - float64(flowConsumedCount)*peerAmount)
 	if currentFlow < 0 {
 		currentFlow = 0
 	}
