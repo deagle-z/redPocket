@@ -64,6 +64,9 @@ type SysTenantPrizePoolOutRecordResp struct {
 // LotteryChancesResp 抽奖次数查询响应
 type LotteryChancesResp struct {
 	TotalFlow      float64   `json:"totalFlow"`      // 累计总流水
+	CurrentFlow    float64   `json:"currentFlow"`    // 当前轮流水进度
+	PeerAmount     float64   `json:"peerAmount"`     // 每次抽奖所需流水
+	RemainingFlow  float64   `json:"remainingFlow"`  // 距离下次免费次数所需流水
 	EarnedCount    int64     `json:"earnedCount"`    // 已获得次数 = floor(totalFlow/1000)
 	UsedCount      int64     `json:"usedCount"`      // 已使用次数
 	FreeCount      int       `json:"freeCount"`      // 免费转盘次数

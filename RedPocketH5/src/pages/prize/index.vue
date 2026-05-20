@@ -3,7 +3,13 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { LuckyWheel } from '@lucky-canvas/vue'
 import { showToast } from 'vant'
 import type { PrizePoolOutRecordItem, TgCurrentUserInfo } from '@/api/user'
-import { drawLottery, getCurrentTgUserInfo, getLotteryChances, getPrizePoolBalance, getPrizePoolOutRecords } from '@/api/user'
+import {
+  drawLottery,
+  getCurrentTgUserInfo,
+  getLotteryChances,
+  getPrizePoolBalance,
+  getPrizePoolOutRecords,
+} from '@/api/user'
 import { truncate2 } from '@/utils/currency'
 import imgCoin from '@/assets/svg/coin.svg'
 
@@ -26,8 +32,10 @@ function svgDataUri(svg: string) {
   return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`
 }
 
-const soundEffectUrl = 'https://pic.bofapic.com/static/_template_/maroon/media/turntable_sound.mp3'
-const prizeBg = 'https://pub-93b0b439f98b49c4ba1db81844583907.r2.dev/static/_template_/maroon/img/activity/turntable/prize.png'
+const soundEffectUrl
+  = 'https://pic.bofapic.com/static/_template_/maroon/media/turntable_sound.mp3'
+const prizeBg
+  = 'https://pub-93b0b439f98b49c4ba1db81844583907.r2.dev/static/_template_/maroon/img/activity/turntable/prize.png'
 const lightBg1 = svgDataUri(`
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600">
   <defs>
@@ -112,8 +120,30 @@ const superPrizeImg = {
 }
 const SUPER_PRIZE_TOKEN = '__SUPER_PRIZE__'
 
-const rewardCatalog = ['8', '18', '28', '38', '58', '88', '128', '188', '588', 'Random']
-const mockUserNames = ['Alex', 'Maria', 'Diego', 'Nina', 'Leo', 'Maya', 'Ravi', 'Lina', 'Omar', 'Sara']
+const rewardCatalog = [
+  '8',
+  '18',
+  '28',
+  '38',
+  '58',
+  '88',
+  '128',
+  '188',
+  '588',
+  'Random',
+]
+const mockUserNames = [
+  'Alex',
+  'Maria',
+  'Diego',
+  'Nina',
+  'Leo',
+  'Maya',
+  'Ravi',
+  'Lina',
+  'Omar',
+  'Sara',
+]
 
 const state = reactive({
   winningShow: false,
@@ -127,11 +157,13 @@ const state = reactive({
 const blocks = ref([
   {
     padding: '20px',
-    imgs: [{
-      src: prizeBg,
-      width: '100%',
-      height: '100%',
-    }],
+    imgs: [
+      {
+        src: prizeBg,
+        width: '100%',
+        height: '100%',
+      },
+    ],
   },
 ])
 
@@ -148,6 +180,15 @@ const availableSpins = ref(0)
 const lotteryAmounts = ref<number[]>([...DEFAULT_REWARD_AMOUNTS])
 const currentUserInfo = ref<TgCurrentUserInfo | null>(null)
 const currentUserInfoLoaded = ref(false)
+const flowPopupShow = ref(false)
+const flowProgress = reactive({
+  totalFlow: 0,
+  currentFlow: 0,
+  peerAmount: 1000,
+  remainingFlow: 0,
+  freeCount: 0,
+  availableCount: 0,
+})
 
 const scrollingRecordList = computed(() => {
   const records = state.pageData.recordList
@@ -165,7 +206,19 @@ const wheelDefaultConfig = ref({
   decelerationTime: 1600,
 })
 
-const showBindTgActivity = computed(() => currentUserInfoLoaded.value && !String(currentUserInfo.value?.tgName || '').trim())
+const showBindTgActivity = computed(
+  () =>
+    currentUserInfoLoaded.value
+    && !String(currentUserInfo.value?.tgName || '').trim(),
+)
+const flowProgressPercent = computed(() => {
+  if (flowProgress.peerAmount <= 0)
+    return 0
+  return Math.min(
+    100,
+    Math.max(0, (flowProgress.currentFlow / flowProgress.peerAmount) * 100),
+  )
+})
 
 // ── Jackpot counter ───────────────────────────────────────────────
 const jackpotValue = ref(0)
@@ -274,7 +327,8 @@ async function loadLotteryHistory(limit = 10) {
     const nextRecords = list
       .map(item => ({
         uid: formatRecordUid(item?.userId),
-        userName: resolveRecordUserName(item) || formatFallbackUserName(item?.userId),
+        userName:
+          resolveRecordUserName(item) || formatFallbackUserName(item?.userId),
         reward: formatAwardText(resolveRecordRewardAmount(item)),
       }))
       .filter(item => Number(item.reward) > 0)
@@ -299,7 +353,10 @@ function formatAwardText(value: number) {
 }
 
 function formatPlainAmount(value: number) {
-  return truncate2(Number(value || 0)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  return truncate2(Number(value || 0)).toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })
 }
 
 function buildRewardSlots(amounts: number[]) {
@@ -311,8 +368,7 @@ function buildRewardSlots(amounts: number[]) {
     .slice(0, 10)
     .map(value => formatAwardText(value))
 
-  while (slots.length < 10)
-    slots.push('0')
+  while (slots.length < 10) slots.push('0')
 
   return slots
 }
@@ -325,38 +381,55 @@ function resolveRewardIndex(awardAmount: number, rewards: string[]) {
   const zeroIndex = rewards.findIndex(reward => reward === '0')
   if (zeroIndex >= 0)
     return zeroIndex
-  const fallbackIndex = rewards.findIndex(reward => reward !== SUPER_PRIZE_TOKEN)
+  const fallbackIndex = rewards.findIndex(
+    reward => reward !== SUPER_PRIZE_TOKEN,
+  )
   return fallbackIndex >= 0 ? fallbackIndex : 0
 }
 
 function buildPrizeConfig() {
   const texts = buildRewardSlots(lotteryAmounts.value)
   const displayRewards = [SUPER_PRIZE_TOKEN, ...texts]
-  const prizeImgs = [prizeImg1, prizeImg2, prizeImg3, prizeImg2, prizeImg3, prizeImg4, prizeImg1, prizeImg2, prizeImg1, prizeImg2]
+  const prizeImgs = [
+    prizeImg1,
+    prizeImg2,
+    prizeImg3,
+    prizeImg2,
+    prizeImg3,
+    prizeImg4,
+    prizeImg1,
+    prizeImg2,
+    prizeImg1,
+    prizeImg2,
+  ]
   state.pageData.rewardList = displayRewards
   prizes.value = displayRewards.map((text, index) => {
     const isSuperPrize = text === SUPER_PRIZE_TOKEN
     const isRed = index % 2 === 0
 
     return {
-      background: isSuperPrize ? '#5d0b0b' : (isRed ? '#8b0000' : '#1a1a1a'),
+      background: isSuperPrize ? '#5d0b0b' : isRed ? '#8b0000' : '#1a1a1a',
       imgs: [isSuperPrize ? superPrizeImg : prizeImgs[index - 1]],
-      fonts: [{
-        text: isSuperPrize ? t('prizePage.superGrandPrize') : text,
-        top: isSuperPrize ? '18%' : '20%',
-        fontColor: isSuperPrize ? '#fff1ad' : (isRed ? '#ffe59a' : '#ffbb00'),
-        fontSize: isSuperPrize ? '11px' : '13px',
-        fontWeight: '700',
-      }],
+      fonts: [
+        {
+          text: isSuperPrize ? t('prizePage.superGrandPrize') : text,
+          top: isSuperPrize ? '18%' : '20%',
+          fontColor: isSuperPrize ? '#fff1ad' : isRed ? '#ffe59a' : '#ffbb00',
+          fontSize: isSuperPrize ? '11px' : '13px',
+          fontWeight: '700',
+        },
+      ],
     }
   })
 
-  buttons.value = [{
-    radius: '30%',
-    background: 'rgba(0,0,0,0)',
-    pointer: false,
-    fonts: [],
-  }]
+  buttons.value = [
+    {
+      radius: '30%',
+      background: 'rgba(0,0,0,0)',
+      pointer: false,
+      fonts: [],
+    },
+  ]
 }
 
 async function refreshPageState() {
@@ -366,7 +439,8 @@ async function refreshPageState() {
     loadJackpotBalance(),
     loadLotteryHistory(),
   ])
-  const chanceData = chanceResult.status === 'fulfilled' ? chanceResult.value?.data : null
+  const chanceData
+    = chanceResult.status === 'fulfilled' ? chanceResult.value?.data : null
   if (userInfoResult.status === 'fulfilled') {
     currentUserInfoLoaded.value = true
     currentUserInfo.value = userInfoResult.value?.data
@@ -375,13 +449,32 @@ async function refreshPageState() {
     currentUserInfoLoaded.value = false
     currentUserInfo.value = null
   }
-  const amounts = Array.isArray(chanceData?.amounts) ? chanceData.amounts : DEFAULT_REWARD_AMOUNTS
-  lotteryAmounts.value = amounts.length > 0 ? amounts : [...DEFAULT_REWARD_AMOUNTS]
+  const amounts = Array.isArray(chanceData?.amounts)
+    ? chanceData.amounts
+    : DEFAULT_REWARD_AMOUNTS
+  lotteryAmounts.value
+    = amounts.length > 0 ? amounts : [...DEFAULT_REWARD_AMOUNTS]
   availableSpins.value = Math.max(0, Number(chanceData?.availableCount ?? 0))
+  flowProgress.totalFlow = truncate2(Number(chanceData?.totalFlow ?? 0))
+  flowProgress.currentFlow = truncate2(Number(chanceData?.currentFlow ?? 0))
+  flowProgress.peerAmount = truncate2(Number(chanceData?.peerAmount ?? 1000))
+  flowProgress.remainingFlow = truncate2(
+    Number(chanceData?.remainingFlow ?? 0),
+  )
+  flowProgress.freeCount = Number(chanceData?.freeCount ?? 0)
+  flowProgress.availableCount = Math.max(
+    0,
+    Number(chanceData?.availableCount ?? 0),
+  )
   buildPrizeConfig()
   window.setTimeout(() => {
     wheelCanvas.value?.init?.()
   }, 80)
+}
+
+async function openFlowProgress() {
+  flowPopupShow.value = true
+  await refreshPageState()
 }
 
 function goBindTg() {
@@ -389,7 +482,11 @@ function goBindTg() {
 }
 
 function addLatestRecord(reward: string) {
-  state.pageData.recordList.unshift({ uid: 'ME***', userName: 'ME***', reward })
+  state.pageData.recordList.unshift({
+    uid: 'ME***',
+    userName: 'ME***',
+    reward,
+  })
   state.pageData.recordList = state.pageData.recordList.slice(0, 12)
 }
 
@@ -504,16 +601,29 @@ onBeforeUnmount(() => {
         </div>
       </div>
 
-      <button v-if="showBindTgActivity" type="button" class="bind-tg-activity-btn" @click="goBindTg">
+      <button
+        v-if="showBindTgActivity"
+        type="button"
+        class="bind-tg-activity-btn"
+        @click="goBindTg"
+      >
         <span class="bind-tg-activity-btn__icon">
           <van-icon name="gift-o" />
         </span>
-        <span class="bind-tg-activity-btn__text">{{ t('prizePage.bindTgBonusAction') }}</span>
+        <span class="bind-tg-activity-btn__text">{{
+          t("prizePage.bindTgBonusAction")
+        }}</span>
         <van-icon name="arrow" class="bind-tg-activity-btn__arrow" />
       </button>
 
       <!-- 转盘系统 -->
-      <div class="wheel-system" :style="{ '--ws': `${canvasWidth + 64}px`, '--wr': `${(canvasWidth + 64) / 2}px` }">
+      <div
+        class="wheel-system"
+        :style="{
+          '--ws': `${canvasWidth + 64}px`,
+          '--wr': `${(canvasWidth + 64) / 2}px`,
+        }"
+      >
         <!-- 3D 机械外框 -->
         <div class="outer-frame" />
 
@@ -523,7 +633,10 @@ onBeforeUnmount(() => {
             v-for="(bulb, i) in ledBulbs"
             :key="i"
             class="led-bulb"
-            :style="{ transform: `rotate(${bulb.angle}deg)`, animationDelay: bulb.delay }"
+            :style="{
+              transform: `rotate(${bulb.angle}deg)`,
+              animationDelay: bulb.delay,
+            }"
           />
         </div>
 
@@ -566,15 +679,25 @@ onBeforeUnmount(() => {
       </div>
 
       <!-- 邀请按钮 -->
-      <button type="button" class="invite-btn" :disabled="spinning || availableSpins <= 0" @click="startCallback">
-        {{ t('prizePage.spinAction') }}
+      <button
+        type="button"
+        class="invite-btn"
+        :disabled="spinning || availableSpins <= 0"
+        @click="startCallback"
+      >
+        {{ t("prizePage.spinAction") }}
+      </button>
+
+      <button type="button" class="flow-progress-btn" @click="openFlowProgress">
+        <span>{{ t("prizePage.flowProgressAction") }}</span>
+        <van-icon name="chart-trending-o" />
       </button>
 
       <!-- 中奖记录 -->
       <div class="winning">
         <div class="winning-report">
-          <span class="active">{{ t('prizePage.recordUser') }}</span>
-          <span>{{ t('prizePage.recordReward') }}</span>
+          <span class="active">{{ t("prizePage.recordUser") }}</span>
+          <span>{{ t("prizePage.recordReward") }}</span>
         </div>
         <div ref="listContainer" class="winning-list">
           <div ref="listWrapper" class="scroll-up">
@@ -583,7 +706,9 @@ onBeforeUnmount(() => {
               :key="`${item.uid}-${item.userName}-${item.reward}-${index}`"
               class="winning-item"
             >
-              <span class="winning-item__cell winning-item__name">{{ item.userName || item.uid }}</span>
+              <span class="winning-item__cell winning-item__name">{{
+                item.userName || item.uid
+              }}</span>
               <span class="winning-item__cell winning-item__reward">
                 <CoinAmount :text="item.reward" />
               </span>
@@ -593,17 +718,24 @@ onBeforeUnmount(() => {
       </div>
 
       <!-- 中奖弹窗 -->
-      <van-overlay :show="state.winningShow" class="winning-overlay" @click.self="closeWinning">
+      <van-overlay
+        :show="state.winningShow"
+        class="winning-overlay"
+        @click.self="closeWinning"
+      >
         <div class="win-modal">
           <!-- 光晕背景层 -->
           <img class="win-glow-outer" :src="lightBg3" alt="">
           <img class="win-glow-inner" :src="lightBg2" alt="">
           <!-- 内容卡片 -->
-          <div class="win-card" :style="{ backgroundImage: `url(${lightBg1})` }">
+          <div
+            class="win-card"
+            :style="{ backgroundImage: `url(${lightBg1})` }"
+          >
             <img class="win-close" :src="closeWhite" @click="closeWinning">
             <div class="win-body">
               <h1 class="win-title">
-                {{ t('prizePage.resultTitle') }}
+                {{ t("prizePage.resultTitle") }}
               </h1>
               <img class="win-prize-img" :src="winPrize">
               <div class="win-amount">
@@ -611,11 +743,72 @@ onBeforeUnmount(() => {
               </div>
             </div>
             <button type="button" class="win-btn" @click="closeWinning">
-              {{ t('prizePage.claimAction') }}
+              {{ t("prizePage.claimAction") }}
             </button>
           </div>
         </div>
       </van-overlay>
+
+      <van-popup
+        v-model:show="flowPopupShow"
+        round
+        position="bottom"
+        class="flow-popup"
+      >
+        <section class="flow-panel">
+          <div class="flow-panel__header">
+            <div>
+              <p class="flow-panel__eyebrow">
+                {{ t("prizePage.flowProgressEyebrow") }}
+              </p>
+              <h2>{{ t("prizePage.flowProgressTitle") }}</h2>
+            </div>
+            <button
+              type="button"
+              class="flow-panel__close"
+              @click="flowPopupShow = false"
+            >
+              <van-icon name="cross" />
+            </button>
+          </div>
+
+          <div class="flow-meter">
+            <div class="flow-meter__track">
+              <div
+                class="flow-meter__bar"
+                :style="{ width: `${flowProgressPercent}%` }"
+              />
+            </div>
+            <div class="flow-meter__labels">
+              <span>{{ formatPlainAmount(flowProgress.currentFlow) }}</span>
+              <span>{{ formatPlainAmount(flowProgress.peerAmount) }}</span>
+            </div>
+          </div>
+
+          <p class="flow-panel__remaining">
+            {{
+              t("prizePage.flowRemainingText", {
+                amount: formatPlainAmount(flowProgress.remainingFlow),
+              })
+            }}
+          </p>
+
+          <div class="flow-stats">
+            <div class="flow-stat">
+              <span>{{ t("prizePage.flowTotal") }}</span>
+              <strong>{{ formatPlainAmount(flowProgress.totalFlow) }}</strong>
+            </div>
+            <div class="flow-stat">
+              <span>{{ t("prizePage.flowAvailableSpins") }}</span>
+              <strong>{{ flowProgress.availableCount }}</strong>
+            </div>
+          </div>
+
+          <p class="flow-panel__hint">
+            {{ t("prizePage.flowAutoResetHint") }}
+          </p>
+        </section>
+      </van-popup>
     </div>
   </div>
 </template>
@@ -918,6 +1111,26 @@ onBeforeUnmount(() => {
   color: #efefef;
 }
 
+.flow-progress-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  max-width: 360px;
+  min-height: 42px;
+  margin: 12px auto 0;
+  border: 1px solid rgba(255, 230, 132, 0.34);
+  border-radius: 999px;
+  background: rgba(42, 0, 0, 0.72);
+  color: #ffe59a;
+  font-size: 13px;
+  font-weight: 800;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 8px 18px rgba(0, 0, 0, 0.28);
+}
+
 /* ── 中奖记录 ── */
 .winning {
   margin: 24px auto 0;
@@ -1091,6 +1304,126 @@ onBeforeUnmount(() => {
   height: 1.1em;
 }
 
+:global(.flow-popup.van-popup) {
+  overflow: hidden;
+  border-radius: 22px 22px 0 0;
+  background: linear-gradient(180deg, #390406 0%, #120000 100%);
+  color: #fff;
+}
+
+.flow-panel {
+  padding: 18px 18px calc(112px + env(safe-area-inset-bottom));
+}
+
+.flow-panel__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.flow-panel__eyebrow {
+  margin: 0 0 4px;
+  color: rgba(255, 229, 154, 0.72);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.flow-panel__header h2 {
+  margin: 0;
+  color: #fff4bf;
+  font-size: 20px;
+  line-height: 1.2;
+}
+
+.flow-panel__close {
+  width: 32px;
+  height: 32px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.86);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.flow-meter {
+  margin-top: 20px;
+}
+
+.flow-meter__track {
+  height: 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+  box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.32);
+}
+
+.flow-meter__bar {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #ff7a1a 0%, #ffd84a 58%, #fff4b5 100%);
+  box-shadow: 0 0 14px rgba(255, 206, 72, 0.42);
+  transition: width 0.24s ease;
+}
+
+.flow-meter__labels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 8px;
+  color: rgba(255, 255, 255, 0.64);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.flow-panel__remaining {
+  margin: 16px 0 0;
+  padding: 13px 14px;
+  border: 1px solid rgba(255, 216, 74, 0.28);
+  border-radius: 14px;
+  background: rgba(255, 216, 74, 0.1);
+  color: #fff5c8;
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1.45;
+}
+
+.flow-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.flow-stat {
+  padding: 12px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.flow-stat span,
+.flow-panel__hint {
+  color: rgba(255, 255, 255, 0.64);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.flow-stat strong {
+  display: block;
+  margin-top: 5px;
+  color: #ffdd63;
+  font-size: 18px;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.flow-panel__hint {
+  margin: 14px 0 0;
+}
+
 @keyframes scaleFloat {
   0%,
   100% {
@@ -1105,6 +1438,6 @@ onBeforeUnmount(() => {
 
 <route lang="json5">
 {
-  name: 'Prize',
+  name: "Prize",
 }
 </route>

@@ -1,6 +1,11 @@
 package pojo
 
-import "time"
+import (
+	"encoding/json"
+	"strconv"
+	"strings"
+	"time"
+)
 
 type CashHistory struct { // 积分变动记录
 	BaseModel
@@ -44,6 +49,7 @@ const (
 type CashHistoryResp struct {
 	CreatedAt       time.Time `json:"createdAt"`
 	UserId          int64     `json:"userId"`
+	Uid             string    `json:"uid"`
 	Amount          float64   `json:"amount"`
 	StartAmount     float64   `json:"startAmount"`
 	EndAmount       float64   `json:"endAmount"`
@@ -58,7 +64,54 @@ type CashHistoryResp struct {
 type CashHistorySearch struct {
 	PageInfo
 	UserId   int64  `json:"userId"`   // 用户ID，0表示查询所有用户（管理端）
+	Uid      string `json:"uid"`      // 用户UID
 	CashMark string `json:"cashMark"` // 余额备注，可选
+}
+
+func (s *CashHistorySearch) UnmarshalJSON(data []byte) error {
+	var raw struct {
+		CurrentPage int             `json:"currentPage"`
+		PageSize    int             `json:"pageSize"`
+		UserId      json.RawMessage `json:"userId"`
+		Uid         string          `json:"uid"`
+		CashMark    string          `json:"cashMark"`
+	}
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+
+	userID, err := parseOptionalInt64(raw.UserId)
+	if err != nil {
+		return err
+	}
+
+	s.CurrentPage = raw.CurrentPage
+	s.PageSize = raw.PageSize
+	s.UserId = userID
+	s.Uid = raw.Uid
+	s.CashMark = raw.CashMark
+	return nil
+}
+
+func parseOptionalInt64(raw json.RawMessage) (int64, error) {
+	if len(raw) == 0 || string(raw) == "null" {
+		return 0, nil
+	}
+
+	var value int64
+	if err := json.Unmarshal(raw, &value); err == nil {
+		return value, nil
+	}
+
+	var text string
+	if err := json.Unmarshal(raw, &text); err != nil {
+		return 0, err
+	}
+	text = strings.TrimSpace(text)
+	if text == "" {
+		return 0, nil
+	}
+	return strconv.ParseInt(text, 10, 64)
 }
 
 type CashHistoryPage struct {

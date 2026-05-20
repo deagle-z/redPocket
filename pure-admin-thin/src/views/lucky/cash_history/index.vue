@@ -45,6 +45,14 @@ const {
             class="!w-[180px]"
           />
         </el-form-item>
+        <el-form-item label="用户UID：" prop="uid">
+          <el-input
+            v-model="form.uid"
+            placeholder="请输入用户UID"
+            clearable
+            class="!w-[180px]"
+          />
+        </el-form-item>
         <el-form-item label="余额备注：" prop="cashMark">
           <el-input
             v-model="form.cashMark"

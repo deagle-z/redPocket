@@ -289,6 +289,14 @@ function handleSubStatsCurrentChange(page: number) {
             class="!w-[180px]"
           />
         </el-form-item>
+        <el-form-item label="手机号：" prop="phone">
+          <el-input
+            v-model="form.phone"
+            placeholder="请输入手机号"
+            clearable
+            class="!w-[180px]"
+          />
+        </el-form-item>
         <el-form-item label="上级UID：" prop="parentUid">
           <el-input
             v-model="form.parentUid"
@@ -487,7 +495,11 @@ function handleSubStatsCurrentChange(page: number) {
             {{ formatMoney(row.subFlowAmount) }}
           </template>
         </el-table-column>
-        <el-table-column prop="subProfitAmount" label="下级盈利" min-width="120">
+        <el-table-column
+          prop="subProfitAmount"
+          label="下级盈利"
+          min-width="120"
+        >
           <template #default="{ row }">
             {{ formatMoney(row.subProfitAmount) }}
           </template>

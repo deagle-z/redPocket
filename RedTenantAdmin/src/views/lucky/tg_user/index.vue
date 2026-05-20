@@ -73,11 +73,16 @@ const subStatsPagination = reactive({
 });
 
 function formatMoney(val?: number | null) {
-  if (val === null || val === undefined || Number.isNaN(Number(val))) return "0";
+  if (val === null || val === undefined || Number.isNaN(Number(val)))
+    return "0";
   return String(val);
 }
 
-function formatName(row: { id?: number; username?: string | null; firstName?: string | null }) {
+function formatName(row: {
+  id?: number;
+  username?: string | null;
+  firstName?: string | null;
+}) {
   return row.firstName || row.username || `ID:${row.id || "-"}`;
 }
 
@@ -239,6 +244,14 @@ function handleSubStatsCurrentChange(page: number) {
           <el-input
             v-model="form.firstName"
             placeholder="展示名"
+            clearable
+            class="!w-[180px]"
+          />
+        </el-form-item>
+        <el-form-item label="手机号：" prop="phone">
+          <el-input
+            v-model="form.phone"
+            placeholder="请输入手机号"
             clearable
             class="!w-[180px]"
           />
@@ -412,13 +425,17 @@ function handleSubStatsCurrentChange(page: number) {
         </el-row>
       </el-skeleton>
 
-      <el-table :data="subStatsList" border stripe v-loading="subStatsLoading">
+      <el-table v-loading="subStatsLoading" :data="subStatsList" border stripe>
         <el-table-column prop="id" label="ID" width="80" />
         <el-table-column prop="tgId" label="用户ID" min-width="140" />
         <el-table-column prop="uid" label="用户UID" min-width="120" />
         <el-table-column prop="username" label="用户名" min-width="120" />
         <el-table-column prop="firstName" label="昵称" min-width="120" />
-        <el-table-column prop="subRechargeAmount" label="下级充值" min-width="120">
+        <el-table-column
+          prop="subRechargeAmount"
+          label="下级充值"
+          min-width="120"
+        >
           <template #default="{ row }">
             {{ formatMoney(row.subRechargeAmount) }}
           </template>
@@ -428,12 +445,20 @@ function handleSubStatsCurrentChange(page: number) {
             {{ formatMoney(row.subFlowAmount) }}
           </template>
         </el-table-column>
-        <el-table-column prop="subProfitAmount" label="下级盈利" min-width="120">
+        <el-table-column
+          prop="subProfitAmount"
+          label="下级盈利"
+          min-width="120"
+        >
           <template #default="{ row }">
             {{ formatMoney(row.subProfitAmount) }}
           </template>
         </el-table-column>
-        <el-table-column prop="subWithdrawAmount" label="下级提现" min-width="120">
+        <el-table-column
+          prop="subWithdrawAmount"
+          label="下级提现"
+          min-width="120"
+        >
           <template #default="{ row }">
             {{ formatMoney(row.subWithdrawAmount) }}
           </template>

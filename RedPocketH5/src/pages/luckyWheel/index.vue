@@ -1,24 +1,11 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
 import AppPageHeader from '@/components/AppPageHeader.vue'
-import luckyWheelBrazilImage from '@/assets/images/long_image_brazil/lucky_wheel_short_brazil.png'
-import luckyWheelEnglishImage from '@/assets/images/long_image_english/lucky_wheel_short_english.png'
-import luckyWheelIndonesiaImage from '@/assets/images/long_image_indonesia/lucky_wheel_short_indonesia.png'
-import luckyWheelMexicoImage from '@/assets/images/long_image_mexico/lucky_wheel_short_mexico.png'
-import { locale } from '@/utils/i18n'
+import luckyWheelImage from '@/assets/images/long_image_mexico/rueda_dela_fortuna.jpg'
 import { safeBack } from '@/utils/navigation'
 
 const { t } = useI18n()
 const router = useRouter()
-
-const luckyWheelImageMap: Record<string, string> = {
-  'pt-BR': luckyWheelBrazilImage,
-  'en-US': luckyWheelEnglishImage,
-  'id-ID': luckyWheelIndonesiaImage,
-  'es-MX': luckyWheelMexicoImage,
-}
-
-const luckyWheelImage = computed(() => luckyWheelImageMap[locale.value] || luckyWheelEnglishImage)
 
 function goBack() {
   safeBack(router)

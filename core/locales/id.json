@@ -43,6 +43,7 @@
   "withdraw_order_no_empty": "nomor order penarikan tidak boleh kosong",
   "withdraw_order_not_found": "order penarikan tidak ditemukan",
   "withdraw_order_status_invalid_success": "status order penarikan tidak mendukung konfirmasi sukses",
+  "withdraw_account_already_bound": "Rekening bank dan nama ini sudah ditautkan oleh akun lain dan tidak dapat digunakan kembali.",
   "withdraw_payout_acc_name_required": "nama akun penarikan wajib diisi",
   "withdraw_payout_acc_no_required": "nomor akun penarikan wajib diisi",
   "withdraw_payout_amount_invalid": "jumlah pembayaran penarikan tidak valid",

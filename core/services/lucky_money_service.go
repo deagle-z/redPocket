@@ -846,64 +846,86 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 			return nil, fmt.Errorf("增加余额失败: %v", err)
 		}
 
-		// 记录余额变动（用户）
-		awardUniBase := fmt.Sprintf("lucky_grab_%d_%d_%d_%d", luckyID, userID, awardTs, int64(utils.ToMoney(loseMoney)))
-		runningBalance := utils.Truncate2(lockedUser.Balance)
-		cashHistoryGrab := pojo.CashHistory{
-			UserId:          userID,
-			AwardUni:        fmt.Sprintf("lucky_grab_thunder_win_%d_%d_%d_%s", luckyID, userID, redAmountMilli, utils.RandomString(6)),
-			Amount:          redAmount,
-			StartAmount:     runningBalance,
-			EndAmount:       utils.Truncate2(runningBalance + redAmount),
-			CashMark:        "抢红包",
-			CashDesc:        fmt.Sprintf("抢红包，获得%.2fU", redAmount),
-			Type:            pojo.CashHistoryTypeGrabRedPacketWin,
-			IsGift:          0,
-			FromUserId:      luckyMoney.SenderID,
-			SourceChannelID: user.SourceChannelID,
-		}
-		if err := tx.Create(&cashHistoryGrab).Error; err != nil {
-			tx.Rollback()
-			return nil, fmt.Errorf("记录余额变动失败: %v", err)
-		}
-		runningBalance = utils.Truncate2(runningBalance + redAmount)
-
-		if giftDeduct > 0 {
-			cashHistoryGift := pojo.CashHistory{
+		if !botVsBotPump {
+			// 记录余额变动（用户）
+			awardUniBase := fmt.Sprintf("lucky_grab_%d_%d_%d_%d", luckyID, userID, awardTs, int64(utils.ToMoney(loseMoney)))
+			runningBalance := utils.Truncate2(lockedUser.Balance)
+			cashHistoryGrab := pojo.CashHistory{
 				UserId:          userID,
-				AwardUni:        awardUniBase + "_gift",
-				Amount:          -giftDeduct,
+				AwardUni:        fmt.Sprintf("lucky_grab_thunder_win_%d_%d_%d_%s", luckyID, userID, redAmountMilli, utils.RandomString(6)),
+				Amount:          redAmount,
 				StartAmount:     runningBalance,
-				EndAmount:       utils.Truncate2(runningBalance - giftDeduct),
-				CashMark:        "抢红包中雷",
-				CashDesc:        fmt.Sprintf("抢红包中雷，损失%.2f（赠送金额%.2f）", loseMoney, giftDeduct),
-				Type:            pojo.CashHistoryTypeGrabRedPacketThunder,
-				IsGift:          1,
-				FromUserId:      luckyMoney.SenderID,
-				SourceChannelID: user.SourceChannelID,
-			}
-			if err := tx.Create(&cashHistoryGift).Error; err != nil {
-				tx.Rollback()
-				return nil, fmt.Errorf("记录余额变动失败: %v", err)
-			}
-			runningBalance = utils.Truncate2(runningBalance - giftDeduct)
-		}
-
-		if normalDeduct > 0 {
-			cashHistoryCash := pojo.CashHistory{
-				UserId:          userID,
-				AwardUni:        awardUniBase + "_cash",
-				Amount:          -normalDeduct,
-				StartAmount:     runningBalance,
-				EndAmount:       utils.Truncate2(runningBalance - normalDeduct),
-				CashMark:        "抢红包中雷",
-				CashDesc:        fmt.Sprintf("抢红包中雷，损失%.2fU（正常金额%.2fU）", loseMoney, normalDeduct),
-				Type:            pojo.CashHistoryTypeGrabRedPacketThunder,
+				EndAmount:       utils.Truncate2(runningBalance + redAmount),
+				CashMark:        "抢红包",
+				CashDesc:        fmt.Sprintf("抢红包，获得%.2fU", redAmount),
+				Type:            pojo.CashHistoryTypeGrabRedPacketWin,
 				IsGift:          0,
 				FromUserId:      luckyMoney.SenderID,
 				SourceChannelID: user.SourceChannelID,
 			}
-			if err := tx.Create(&cashHistoryCash).Error; err != nil {
+			if err := tx.Create(&cashHistoryGrab).Error; err != nil {
+				tx.Rollback()
+				return nil, fmt.Errorf("记录余额变动失败: %v", err)
+			}
+			runningBalance = utils.Truncate2(runningBalance + redAmount)
+
+			if giftDeduct > 0 {
+				cashHistoryGift := pojo.CashHistory{
+					UserId:          userID,
+					AwardUni:        awardUniBase + "_gift",
+					Amount:          -giftDeduct,
+					StartAmount:     runningBalance,
+					EndAmount:       utils.Truncate2(runningBalance - giftDeduct),
+					CashMark:        "抢红包中雷",
+					CashDesc:        fmt.Sprintf("抢红包中雷，损失%.2f（赠送金额%.2f）", loseMoney, giftDeduct),
+					Type:            pojo.CashHistoryTypeGrabRedPacketThunder,
+					IsGift:          1,
+					FromUserId:      luckyMoney.SenderID,
+					SourceChannelID: user.SourceChannelID,
+				}
+				if err := tx.Create(&cashHistoryGift).Error; err != nil {
+					tx.Rollback()
+					return nil, fmt.Errorf("记录余额变动失败: %v", err)
+				}
+				runningBalance = utils.Truncate2(runningBalance - giftDeduct)
+			}
+
+			if normalDeduct > 0 {
+				cashHistoryCash := pojo.CashHistory{
+					UserId:          userID,
+					AwardUni:        awardUniBase + "_cash",
+					Amount:          -normalDeduct,
+					StartAmount:     runningBalance,
+					EndAmount:       utils.Truncate2(runningBalance - normalDeduct),
+					CashMark:        "抢红包中雷",
+					CashDesc:        fmt.Sprintf("抢红包中雷，损失%.2fU（正常金额%.2fU）", loseMoney, normalDeduct),
+					Type:            pojo.CashHistoryTypeGrabRedPacketThunder,
+					IsGift:          0,
+					FromUserId:      luckyMoney.SenderID,
+					SourceChannelID: user.SourceChannelID,
+				}
+				if err := tx.Create(&cashHistoryCash).Error; err != nil {
+					tx.Rollback()
+					return nil, fmt.Errorf("记录余额变动失败: %v", err)
+				}
+			}
+
+			// 记录余额变动（发送者）- 抽成后金额（实际到账）
+			// 使用事务内锁定的 lockedSender（UPDATE 前的值，即准确的 StartAmount）
+			cashHistorySender := pojo.CashHistory{
+				UserId:          luckyMoney.SenderID,
+				AwardUni:        fmt.Sprintf("lucky_thunder_%d_%d_%d_%d", luckyID, userID, awardTs, int64(utils.ToMoney(actualLoseMoney))),
+				Amount:          actualLoseMoney,
+				StartAmount:     lockedSender.Balance,
+				EndAmount:       utils.Truncate2(lockedSender.Balance + actualLoseMoney), // 实际到账金额
+				CashMark:        "红包中雷收益",
+				CashDesc:        fmt.Sprintf("红包中雷收益，获得%.2f", actualLoseMoney),
+				Type:            pojo.CashHistoryTypeRedPacketThunderIncome,
+				IsGift:          0,
+				FromUserId:      userID,
+				SourceChannelID: luckyMoney.SourceChannelID,
+			}
+			if err := tx.Create(&cashHistorySender).Error; err != nil {
 				tx.Rollback()
 				return nil, fmt.Errorf("记录余额变动失败: %v", err)
 			}
@@ -918,26 +940,6 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 				tx.Rollback()
 				return nil, err
 			}
-		}
-
-		// 记录余额变动（发送者）- 抽成后金额（实际到账）
-		// 使用事务内锁定的 lockedSender（UPDATE 前的值，即准确的 StartAmount）
-		cashHistorySender := pojo.CashHistory{
-			UserId:          luckyMoney.SenderID,
-			AwardUni:        fmt.Sprintf("lucky_thunder_%d_%d_%d_%d", luckyID, userID, awardTs, int64(utils.ToMoney(actualLoseMoney))),
-			Amount:          actualLoseMoney,
-			StartAmount:     lockedSender.Balance,
-			EndAmount:       utils.Truncate2(lockedSender.Balance + actualLoseMoney), // 实际到账金额
-			CashMark:        "红包中雷收益",
-			CashDesc:        fmt.Sprintf("红包中雷收益，获得%.2f", actualLoseMoney),
-			Type:            pojo.CashHistoryTypeRedPacketThunderIncome,
-			IsGift:          0,
-			FromUserId:      userID,
-			SourceChannelID: luckyMoney.SourceChannelID,
-		}
-		if err := tx.Create(&cashHistorySender).Error; err != nil {
-			tx.Rollback()
-			return nil, fmt.Errorf("记录余额变动失败: %v", err)
 		}
 
 		// 记录余额变动（发送者）- 抽成金额
@@ -1020,23 +1022,25 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 			return nil, fmt.Errorf("增加余额失败: %v", err)
 		}
 
-		// 记录余额变动 - 抽成后金额（实际到账）
-		cashHistoryGrab := pojo.CashHistory{
-			UserId:          userID,
-			AwardUni:        fmt.Sprintf("lucky_grab_%d_%d_%d_%s", luckyID, userID, redAmountMilli, utils.RandomString(6)),
-			Amount:          actualAmount,
-			StartAmount:     lockedWinner.Balance,
-			EndAmount:       utils.Truncate2(lockedWinner.Balance + actualAmount), // 实际到账金额
-			CashMark:        "抢红包",
-			CashDesc:        fmt.Sprintf("抢红包，获得%.2fU", actualAmount),
-			Type:            pojo.CashHistoryTypeGrabRedPacketWin,
-			IsGift:          0,
-			FromUserId:      luckyMoney.SenderID,
-			SourceChannelID: user.SourceChannelID,
-		}
-		if err := tx.Create(&cashHistoryGrab).Error; err != nil {
-			tx.Rollback()
-			return nil, fmt.Errorf("记录余额变动失败: %v", err)
+		if !botVsBotPump {
+			// 记录余额变动 - 抽成后金额（实际到账）
+			cashHistoryGrab := pojo.CashHistory{
+				UserId:          userID,
+				AwardUni:        fmt.Sprintf("lucky_grab_%d_%d_%d_%s", luckyID, userID, redAmountMilli, utils.RandomString(6)),
+				Amount:          actualAmount,
+				StartAmount:     lockedWinner.Balance,
+				EndAmount:       utils.Truncate2(lockedWinner.Balance + actualAmount), // 实际到账金额
+				CashMark:        "抢红包",
+				CashDesc:        fmt.Sprintf("抢红包，获得%.2fU", actualAmount),
+				Type:            pojo.CashHistoryTypeGrabRedPacketWin,
+				IsGift:          0,
+				FromUserId:      luckyMoney.SenderID,
+				SourceChannelID: user.SourceChannelID,
+			}
+			if err := tx.Create(&cashHistoryGrab).Error; err != nil {
+				tx.Rollback()
+				return nil, fmt.Errorf("记录余额变动失败: %v", err)
+			}
 		}
 
 		if luckyNumsReward.Triggered && !user.IsBot {

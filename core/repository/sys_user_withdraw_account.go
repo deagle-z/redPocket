@@ -2,10 +2,15 @@ package repository
 
 import (
 	"BaseGoUni/core/pojo"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/jinzhu/copier"
 	"gorm.io/gorm"
+	"strings"
 )
+
+const withdrawAccountAlreadyBoundMessage = "withdraw_account_already_bound"
 
 // GetSysUserWithdrawAccounts 提现账户列表（分页，管理员用）
 func GetSysUserWithdrawAccounts(db *gorm.DB, search pojo.SysUserWithdrawAccountSearch) (result pojo.SysUserWithdrawAccountResp) {
@@ -59,9 +64,15 @@ func AdminSetSysUserWithdrawAccount(db *gorm.DB, req pojo.SysUserWithdrawAccount
 		if entity.ID == 0 {
 			return result, errors.New("record_not_found_update")
 		}
+		if err = validateWithdrawAccountUniqueBinding(db, req.ID, req.AccountData); err != nil {
+			return result, err
+		}
 		_ = copier.Copy(&entity, &req)
 		err = db.Save(&entity).Error
 	} else {
+		if err = validateWithdrawAccountUniqueBinding(db, 0, req.AccountData); err != nil {
+			return result, err
+		}
 		_ = copier.Copy(&entity, &req)
 		entity.TenantID = tenantID
 		entity.UserID = userID
@@ -120,6 +131,9 @@ func AppAddWithdrawAccount(db *gorm.DB, req pojo.SysUserWithdrawAccountSet, tena
 	if count == 0 {
 		entity.IsDefault = 1
 	}
+	if err = validateWithdrawAccountUniqueBinding(db, 0, entity.AccountData); err != nil {
+		return result, err
+	}
 	err = db.Create(&entity).Error
 	if err != nil {
 		return result, err
@@ -139,6 +153,9 @@ func AppUpdateWithdrawAccount(db *gorm.DB, id, userID int64, req pojo.SysUserWit
 	db.Where("id = ? AND user_id = ? AND status = 1", id, userID).First(&entity)
 	if entity.ID == 0 {
 		return result, errors.New("account_not_found")
+	}
+	if err = validateWithdrawAccountUniqueBinding(db, id, req.AccountData); err != nil {
+		return result, err
 	}
 	entity.AccountData = req.AccountData
 	if req.Remark != nil {
@@ -172,6 +189,97 @@ func AppDelWithdrawAccount(db *gorm.DB, id, userID int64) (result string, err er
 		}
 	}
 	return "success", nil
+}
+
+func validateWithdrawAccountUniqueBinding(db *gorm.DB, excludeID int64, accountData string) error {
+	identities := withdrawAccountBindingIdentities(accountData)
+	if len(identities) == 0 {
+		return nil
+	}
+
+	var accounts []pojo.SysUserWithdrawAccount
+	query := db.Model(&pojo.SysUserWithdrawAccount{}).
+		Select("id", "account_data")
+	if excludeID > 0 {
+		query = query.Where("id != ?", excludeID)
+	}
+	if err := query.Find(&accounts).Error; err != nil {
+		return err
+	}
+
+	for _, account := range accounts {
+		for identity := range withdrawAccountBindingIdentities(account.AccountData) {
+			if identities[identity] {
+				return errors.New(withdrawAccountAlreadyBoundMessage)
+			}
+		}
+	}
+	return nil
+}
+
+type withdrawAccountBindingIdentity struct {
+	AccountNo   string
+	AccountName string
+}
+
+func withdrawAccountBindingIdentities(accountData string) map[withdrawAccountBindingIdentity]bool {
+	var values map[string]any
+	if err := json.Unmarshal([]byte(accountData), &values); err != nil {
+		return map[withdrawAccountBindingIdentity]bool{}
+	}
+
+	fields := withdrawAccountBindingFields(values)
+	result := map[withdrawAccountBindingIdentity]bool{}
+	if fields.accNo != "" {
+		result[withdrawAccountBindingIdentity{AccountNo: fields.accNo}] = true
+	}
+	if fields.accNoBRLW != "" {
+		result[withdrawAccountBindingIdentity{AccountNo: fields.accNoBRLW, AccountName: fields.accNameBRLW}] = true
+	}
+	if fields.accNoMXNW != "" {
+		result[withdrawAccountBindingIdentity{AccountNo: fields.accNoMXNW, AccountName: fields.accNameMXNW}] = true
+	}
+	return result
+}
+
+type withdrawAccountBindingFieldsResult struct {
+	accNo       string
+	accNoBRLW   string
+	accNameBRLW string
+	accNoMXNW   string
+	accNameMXNW string
+}
+
+func withdrawAccountBindingFields(values map[string]any) withdrawAccountBindingFieldsResult {
+	var result withdrawAccountBindingFieldsResult
+	for key, raw := range values {
+		normalizedKey := normalizeWithdrawFieldKey(key)
+		value := strings.TrimSpace(rawString(raw))
+		switch normalizedKey {
+		case "accno":
+			result.accNo = value
+		case "accnobrlw":
+			result.accNoBRLW = value
+		case "accnamebrlw":
+			result.accNameBRLW = value
+		case "accnomxnw":
+			result.accNoMXNW = value
+		case "accnamemxnw":
+			result.accNameMXNW = value
+		}
+	}
+	return result
+}
+
+func rawString(value any) string {
+	switch v := value.(type) {
+	case nil:
+		return ""
+	case string:
+		return v
+	default:
+		return fmt.Sprint(v)
+	}
 }
 
 // AppSetDefaultWithdrawAccount App端设置默认提现账户

@@ -26,11 +26,18 @@ export const formRules = reactive<FormRules>({
           callback(new Error("至少需要配置一条多语言内容"));
           return;
         }
-        const invalid = value.find(
-          item => !item?.languageCode?.trim() || !item?.imageUrl?.trim()
-        );
+        const invalid = value.find(item => {
+          const hasText =
+            item?.title?.trim() ||
+            item?.subTitle?.trim() ||
+            item?.description?.trim() ||
+            item?.buttonText?.trim();
+          return (
+            !item?.languageCode?.trim() || (!item?.imageUrl?.trim() && !hasText)
+          );
+        });
         if (invalid) {
-          callback(new Error("多语言项必须填写语言编码和主图"));
+          callback(new Error("多语言项必须填写语言编码，以及主图或公告文案"));
           return;
         }
         callback();
@@ -41,13 +48,15 @@ export const formRules = reactive<FormRules>({
   countryList: [
     {
       validator: (_, value, callback) => {
-        if (!Array.isArray(value) || value.length === 0) {
-          callback(new Error("至少需要配置一个投放国家"));
+        if (!Array.isArray(value)) {
+          callback();
           return;
         }
-        const invalid = value.find(item => !item?.countryCode?.trim());
+        const invalid = value.find(
+          item => item?.remark?.trim() && !item?.countryCode?.trim()
+        );
         if (invalid) {
-          callback(new Error("投放国家不能为空"));
+          callback(new Error("填写投放国家配置时国家编码不能为空"));
           return;
         }
         callback();

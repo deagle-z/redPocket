@@ -3,14 +3,13 @@ import { message } from "@/utils/message";
 import type { PaginationProps } from "@pureadmin/table";
 import { getCashHistoryListAdmin, type CashHistory } from "@/api/cashHistory";
 import { type Ref, reactive, ref, onMounted, toRaw } from "vue";
-import { ElTag } from "element-plus";
 
-export function useCashHistory(tableRef: Ref) {
+export function useCashHistory(_tableRef: Ref) {
   const form = reactive({
     userId: undefined as number | undefined,
+    uid: undefined as string | undefined,
     cashMark: undefined as string | undefined
   });
-  const formRef = ref();
   const dataList = ref<CashHistory[]>([]);
   const loading = ref(true);
   const pagination = reactive<PaginationProps>({
@@ -26,6 +25,12 @@ export function useCashHistory(tableRef: Ref) {
       minWidth: 100
     },
     {
+      label: "用户UID",
+      prop: "uid",
+      minWidth: 120,
+      formatter: ({ uid }) => uid || "-"
+    },
+    {
       label: "变动金额",
       prop: "amount",
       minWidth: 120,
@@ -34,7 +39,8 @@ export function useCashHistory(tableRef: Ref) {
         const isPositive = amount >= 0;
         return (
           <span class={isPositive ? "text-green-500" : "text-red-500"}>
-            {isPositive ? "+" : ""}{amount.toFixed(3)} U
+            {isPositive ? "+" : ""}
+            {amount.toFixed(3)} U
           </span>
         );
       }
@@ -73,7 +79,8 @@ export function useCashHistory(tableRef: Ref) {
       label: "变动时间",
       prop: "createdAt",
       minWidth: 160,
-      formatter: ({ createdAt }) => dayjs(createdAt).format("YYYY-MM-DD HH:mm:ss")
+      formatter: ({ createdAt }) =>
+        dayjs(createdAt).format("YYYY-MM-DD HH:mm:ss")
     }
   ];
 

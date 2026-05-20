@@ -28,7 +28,8 @@ function formatNullable(val?: string | null) {
 }
 
 function formatMoney(val?: number | null) {
-  if (val === null || val === undefined || Number.isNaN(Number(val))) return "0";
+  if (val === null || val === undefined || Number.isNaN(Number(val)))
+    return "0";
   return String(val);
 }
 
@@ -42,6 +43,7 @@ export function useTgUser(_tableRef: Ref) {
     uid: "",
     username: "",
     firstName: "",
+    phone: "",
     parentUid: "",
     inviteCode: "",
     status: undefined as number | undefined

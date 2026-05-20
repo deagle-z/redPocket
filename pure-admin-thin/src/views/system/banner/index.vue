@@ -27,6 +27,7 @@ const {
   handleSizeChange,
   handleCurrentChange,
   openDialog,
+  openAnnouncementDialog,
   handleDelete
 } = useSysBanner(tableRef);
 </script>
@@ -39,10 +40,10 @@ const {
       :model="form"
       class="search-form bg-bg_color w-[99/100] pl-8 pt-[12px] overflow-auto"
     >
-      <el-form-item label="轮播图名称：" prop="bannerName">
+      <el-form-item label="名称：" prop="bannerName">
         <el-input
           v-model="form.bannerName"
-          placeholder="请输入轮播图名称"
+          placeholder="请输入Banner/公告名称"
           clearable
           class="!w-[180px]"
         />
@@ -163,14 +164,25 @@ const {
       </el-form-item>
     </el-form>
 
-    <PureTableBar title="轮播图管理" :columns="columns" @refresh="onSearch">
+    <PureTableBar
+      title="Banner/公告管理"
+      :columns="columns"
+      @refresh="onSearch"
+    >
       <template #buttons>
+        <el-button
+          type="success"
+          :icon="useRenderIcon(AddFill)"
+          @click="openAnnouncementDialog()"
+        >
+          新增公告
+        </el-button>
         <el-button
           type="primary"
           :icon="useRenderIcon(AddFill)"
           @click="openDialog()"
         >
-          新增轮播图
+          新增Banner
         </el-button>
       </template>
       <template v-slot="{ size, dynamicColumns }">
@@ -206,7 +218,7 @@ const {
               修改
             </el-button>
             <el-popconfirm
-              :title="`是否确认删除轮播图 ${row.bannerName}?`"
+              :title="`是否确认删除Banner/公告 ${row.bannerName}?`"
               @confirm="handleDelete(row)"
             >
               <template #reference>

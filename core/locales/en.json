@@ -43,6 +43,7 @@
   "withdraw_order_no_empty": "withdraw order number cannot be empty",
   "withdraw_order_not_found": "withdraw order does not exist",
   "withdraw_order_status_invalid_success": "withdraw order status does not support success callback",
+  "withdraw_account_already_bound": "This bank account and name have already been bound by another account and cannot be reused.",
   "withdraw_payout_acc_name_required": "withdraw account name is required",
   "withdraw_payout_acc_no_required": "withdraw account number is required",
   "withdraw_payout_amount_invalid": "withdraw payout amount is invalid",

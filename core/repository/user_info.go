@@ -11,6 +11,8 @@ import (
 	"github.com/pquerna/otp/totp"
 	"gorm.io/gorm"
 	"log"
+	"sort"
+	"strings"
 	"time"
 )
 
@@ -469,27 +471,45 @@ func UserAwardInfos(db *gorm.DB, search pojo.CashHistorySearch) (result pojo.Cas
 // 使用 all_cash_history 视图查询所有分表数据
 func GetCashHistoryListAdmin(db *gorm.DB, search pojo.CashHistorySearch) (result pojo.CashHistoryPage) {
 	var cashHistoryList []pojo.CashHistory
-	// 使用 all_cash_history 视图查询所有分表数据
-	query := db.Table(pojo.AllCashHistoryShardingName)
-
-	// 如果指定了用户ID，则按用户ID查询
-	if search.UserId > 0 {
-		query = query.Where("user_id = ?", search.UserId)
+	start := time.Now()
+	log.Printf("cashHistory admin list start userId=%d uid=%q cashMark=%q pageSize=%d currentPage=%d",
+		search.UserId, search.Uid, search.CashMark, search.PageSize, search.CurrentPage)
+	userIDs, userFiltered := resolveCashHistorySearchUserIDs(db, search)
+	log.Printf("cashHistory admin list resolve users cost=%s userFiltered=%v userIDs=%v",
+		time.Since(start), userFiltered, userIDs)
+	if userFiltered && len(userIDs) == 0 {
+		result.PageSize = search.PageSize
+		result.CurrentPage = search.CurrentPage
+		log.Printf("cashHistory admin list done cost=%s total=0 list=0 reason=no_user", time.Since(start))
+		return result
 	}
+	if len(userIDs) != 1 {
+		return getCashHistoryListAdminFromShards(db, search, userIDs, start)
+	}
+
+	queryStart := time.Now()
+	query := db.Model(&pojo.CashHistory{}).Where("user_id = ?", userIDs[0])
+	log.Printf("cashHistory admin list use sharding table userId=%d", userIDs[0])
 
 	// 如果指定了余额备注，则按备注查询
 	if search.CashMark != "" {
 		query = query.Where("cash_mark LIKE ?", "%"+search.CashMark+"%")
 	}
+	log.Printf("cashHistory admin list build query cost=%s", time.Since(queryStart))
 
 	// 统计总数
+	countStart := time.Now()
 	query.Count(&result.Total)
+	log.Printf("cashHistory admin list count cost=%s total=%d", time.Since(countStart), result.Total)
 
 	// 分页查询
+	findStart := time.Now()
 	query = query.Order("id desc").Limit(search.PageSize).Offset(search.PageSize * search.CurrentPage)
 	query.Find(&cashHistoryList)
+	log.Printf("cashHistory admin list find cost=%s rows=%d", time.Since(findStart), len(cashHistoryList))
 
 	// 转换为响应格式
+	copyStart := time.Now()
 	for _, history := range cashHistoryList {
 		var tempResp pojo.CashHistoryResp
 		_ = copier.Copy(&tempResp, &history)
@@ -498,11 +518,150 @@ func GetCashHistoryListAdmin(db *gorm.DB, search pojo.CashHistorySearch) (result
 		tempResp.EndAmount = utils.Truncate2(tempResp.EndAmount)
 		result.List = append(result.List, tempResp)
 	}
+	log.Printf("cashHistory admin list copy cost=%s rows=%d", time.Since(copyStart), len(result.List))
+	uidStart := time.Now()
+	fillCashHistoryUIDs(db, result.List)
+	log.Printf("cashHistory admin list fill uid cost=%s rows=%d", time.Since(uidStart), len(result.List))
 
 	result.PageSize = search.PageSize
 	result.CurrentPage = search.CurrentPage
+	log.Printf("cashHistory admin list done cost=%s total=%d list=%d", time.Since(start), result.Total, len(result.List))
 
 	return result
+}
+
+func getCashHistoryListAdminFromShards(db *gorm.DB, search pojo.CashHistorySearch, userIDs []int64, start time.Time) (result pojo.CashHistoryPage) {
+	var cashHistoryList []pojo.CashHistory
+	log.Printf("cashHistory admin list use shard merge userIDsLen=%d", len(userIDs))
+
+	countStart := time.Now()
+	for i := 0; i < pojo.CashHistoryShards; i++ {
+		var shardTotal int64
+		query := applyCashHistoryAdminFilters(db.Table(cashHistoryShardTableName(i)), search, userIDs)
+		query.Count(&shardTotal)
+		result.Total += shardTotal
+	}
+	log.Printf("cashHistory admin list shard count cost=%s total=%d", time.Since(countStart), result.Total)
+
+	findStart := time.Now()
+	pageSize := search.PageSize
+	if pageSize <= 0 {
+		pageSize = 10
+	}
+	offset := search.PageSize * search.CurrentPage
+	if offset < 0 {
+		offset = 0
+	}
+	shardLimit := offset + pageSize
+	if shardLimit <= 0 {
+		shardLimit = pageSize
+	}
+
+	for i := 0; i < pojo.CashHistoryShards; i++ {
+		var shardList []pojo.CashHistory
+		query := applyCashHistoryAdminFilters(db.Table(cashHistoryShardTableName(i)), search, userIDs)
+		query.Order("id desc").Limit(shardLimit).Find(&shardList)
+		cashHistoryList = append(cashHistoryList, shardList...)
+	}
+	sort.Slice(cashHistoryList, func(i, j int) bool {
+		return cashHistoryList[i].ID > cashHistoryList[j].ID
+	})
+	if offset < len(cashHistoryList) {
+		end := offset + pageSize
+		if end > len(cashHistoryList) {
+			end = len(cashHistoryList)
+		}
+		cashHistoryList = cashHistoryList[offset:end]
+	} else {
+		cashHistoryList = nil
+	}
+	log.Printf("cashHistory admin list shard find cost=%s rows=%d", time.Since(findStart), len(cashHistoryList))
+
+	copyStart := time.Now()
+	for _, history := range cashHistoryList {
+		var tempResp pojo.CashHistoryResp
+		_ = copier.Copy(&tempResp, &history)
+		tempResp.Amount = utils.Truncate2(tempResp.Amount)
+		tempResp.StartAmount = utils.Truncate2(tempResp.StartAmount)
+		tempResp.EndAmount = utils.Truncate2(tempResp.EndAmount)
+		result.List = append(result.List, tempResp)
+	}
+	log.Printf("cashHistory admin list copy cost=%s rows=%d", time.Since(copyStart), len(result.List))
+	uidStart := time.Now()
+	fillCashHistoryUIDs(db, result.List)
+	log.Printf("cashHistory admin list fill uid cost=%s rows=%d", time.Since(uidStart), len(result.List))
+
+	result.PageSize = search.PageSize
+	result.CurrentPage = search.CurrentPage
+	log.Printf("cashHistory admin list done cost=%s total=%d list=%d", time.Since(start), result.Total, len(result.List))
+	return result
+}
+
+func applyCashHistoryAdminFilters(query *gorm.DB, search pojo.CashHistorySearch, userIDs []int64) *gorm.DB {
+	if len(userIDs) > 0 {
+		query = query.Where("user_id IN ?", userIDs)
+	}
+	if search.CashMark != "" {
+		query = query.Where("cash_mark LIKE ?", "%"+search.CashMark+"%")
+	}
+	return query
+}
+
+func cashHistoryShardTableName(index int) string {
+	return fmt.Sprintf("%s_%d", pojo.CashHistoryTableName, index)
+}
+
+func resolveCashHistorySearchUserIDs(db *gorm.DB, search pojo.CashHistorySearch) ([]int64, bool) {
+	uid := strings.TrimSpace(search.Uid)
+	start := time.Now()
+	if search.UserId > 0 && uid == "" {
+		log.Printf("cashHistory admin resolve users direct userId cost=%s", time.Since(start))
+		return []int64{search.UserId}, true
+	}
+	if uid == "" {
+		log.Printf("cashHistory admin resolve users no filter cost=%s", time.Since(start))
+		return nil, false
+	}
+
+	var userIDs []int64
+	err := db.Model(&pojo.TgUser{}).Where("uid = ?", uid).Pluck("id", &userIDs).Error
+	log.Printf("cashHistory admin resolve users uid lookup cost=%s uid=%q userIDs=%v err=%v",
+		time.Since(start), uid, userIDs, err)
+	if search.UserId <= 0 {
+		return userIDs, true
+	}
+
+	for _, userID := range userIDs {
+		if userID == search.UserId {
+			return []int64{search.UserId}, true
+		}
+	}
+	return nil, true
+}
+
+func fillCashHistoryUIDs(db *gorm.DB, list []pojo.CashHistoryResp) {
+	userIDs := make([]int64, 0, len(list))
+	seen := make(map[int64]bool, len(list))
+	for _, item := range list {
+		if item.UserId <= 0 || seen[item.UserId] {
+			continue
+		}
+		seen[item.UserId] = true
+		userIDs = append(userIDs, item.UserId)
+	}
+	if len(userIDs) == 0 {
+		return
+	}
+
+	var users []pojo.TgUser
+	_ = db.Model(&pojo.TgUser{}).Select("id, uid").Where("id IN ?", userIDs).Find(&users).Error
+	uidMap := make(map[int64]string, len(users))
+	for _, user := range users {
+		uidMap[user.ID] = user.Uid
+	}
+	for i := range list {
+		list[i].Uid = uidMap[list[i].UserId]
+	}
 }
 
 // GetCashHistoryListApp 当前TG用户流水列表（分页，排除抽成）

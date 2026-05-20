@@ -134,6 +134,34 @@ function mapCountryItem(item: BannerCountryFormItem, tenantId: number) {
   };
 }
 
+function isPopupAnnouncement(
+  data: Pick<FormItemProps, "position" | "bannerType" | "displayType">
+) {
+  return (
+    data.position === "popup" ||
+    data.bannerType === "popup" ||
+    data.displayType === "popup"
+  );
+}
+
+function hasI18nText(item: BannerI18nFormItem) {
+  return Boolean(
+    item.title?.trim() ||
+      item.subTitle?.trim() ||
+      item.description?.trim() ||
+      item.buttonText?.trim()
+  );
+}
+
+function shouldPersistI18nItem(
+  item: BannerI18nFormItem,
+  popupAnnouncement: boolean
+) {
+  if (!item.languageCode.trim()) return false;
+  if (item.imageUrl.trim()) return true;
+  return popupAnnouncement && hasI18nText(item);
+}
+
 function mapRowToForm(row?: SysBanner): FormItemProps {
   return {
     title: row ? "修改" : "新增",
@@ -365,15 +393,29 @@ export function useSysBanner(tableRef: Ref) {
 
   async function handleDelete(row: SysBanner) {
     await delSysBanner(row.id);
-    message(`已删除Banner ${row.bannerName}`, { type: "success" });
+    message(`已删除Banner/公告 ${row.bannerName}`, { type: "success" });
     onSearch();
   }
 
-  async function openDialog(title = "新增", row?: SysBanner) {
+  async function openDialog(
+    title = "新增",
+    row?: SysBanner,
+    announcement = false
+  ) {
+    const formData = mapRowToForm(row);
+    if (!row && announcement) {
+      formData.bannerName = "";
+      formData.position = "popup";
+      formData.platform = "h5";
+      formData.bannerType = "popup";
+      formData.displayType = "popup";
+      formData.openMode = "current";
+      formData.countryList = [];
+    }
     addDialog({
-      title: `${title}Banner`,
+      title: `${title}${announcement || isPopupAnnouncement(formData) ? "公告" : "Banner"}`,
       props: {
-        formInline: mapRowToForm(row)
+        formInline: formData
       },
       width: "75%",
       draggable: true,
@@ -389,6 +431,16 @@ export function useSysBanner(tableRef: Ref) {
           if (!valid) return;
           try {
             const tenantId = Number(curData.tenantId || 0);
+            const popupAnnouncement = isPopupAnnouncement(curData);
+            if (
+              !popupAnnouncement &&
+              curData.i18nList.some(
+                item => item.languageCode.trim() && !item.imageUrl.trim()
+              )
+            ) {
+              message("非弹窗Banner必须填写主图URL", { type: "warning" });
+              return;
+            }
             await setSysBanner({
               id: curData.id || undefined,
               tenantId,
@@ -409,15 +461,13 @@ export function useSysBanner(tableRef: Ref) {
               version: Number(curData.version || 1),
               remark: normalizeOptional(curData.remark),
               i18nList: curData.i18nList
-                .filter(
-                  item => item.languageCode.trim() && item.imageUrl.trim()
-                )
+                .filter(item => shouldPersistI18nItem(item, popupAnnouncement))
                 .map(item => mapI18nItem(item, tenantId)),
               countryList: curData.countryList
                 .filter(item => item.countryCode.trim())
                 .map(item => mapCountryItem(item, tenantId))
             });
-            message(`您${title}了Banner ${curData.bannerName}`, {
+            message(`您${title}了Banner/公告 ${curData.bannerName}`, {
               type: "success"
             });
             done();
@@ -445,6 +495,7 @@ export function useSysBanner(tableRef: Ref) {
     handleSizeChange,
     handleCurrentChange,
     openDialog,
+    openAnnouncementDialog: () => openDialog("新增", undefined, true),
     handleDelete
   };
 }

@@ -43,6 +43,7 @@ export function useTgUser(_tableRef: Ref) {
     uid: "",
     username: "",
     firstName: "",
+    phone: "",
     parentUid: "",
     inviteCode: "",
     status: undefined as number | undefined

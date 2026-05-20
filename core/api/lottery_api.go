@@ -74,6 +74,17 @@ func GetLotteryChances(ctx *gin.Context) {
 	}
 	freeCount := user.FreeLotteryCount
 	availableCount := calculateLotteryAvailableCount(earnedCount, usedCount, freeCount)
+	currentFlow := utils.Truncate2(totalFlow - float64(usedCount)*peerAmount)
+	if currentFlow < 0 {
+		currentFlow = 0
+	}
+	remainingFlow := utils.Truncate2(peerAmount - currentFlow)
+	if earnedCount > usedCount {
+		currentFlow = peerAmount
+		remainingFlow = 0
+	} else if remainingFlow < 0 {
+		remainingFlow = 0
+	}
 
 	// 获取奖池金额列表
 	var amounts []float64
@@ -83,6 +94,9 @@ func GetLotteryChances(ctx *gin.Context) {
 
 	utils.SuccessObjBack(ctx, pojo.LotteryChancesResp{
 		TotalFlow:      totalFlow,
+		CurrentFlow:    currentFlow,
+		PeerAmount:     peerAmount,
+		RemainingFlow:  remainingFlow,
 		EarnedCount:    earnedCount,
 		UsedCount:      usedCount,
 		FreeCount:      freeCount,

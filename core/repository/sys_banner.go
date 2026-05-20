@@ -123,7 +123,7 @@ func SetSysBanner(db *gorm.DB, req pojo.SysBannerSet) (result pojo.SysBannerBack
 				}
 			}
 			i18n.ImageURL = strings.TrimSpace(i18n.ImageURL)
-			if i18n.ImageURL == "" {
+			if !shouldPersistBannerI18n(entity, i18n) {
 				continue
 			}
 			if err = tx.Create(&i18n).Error; err != nil {
@@ -209,11 +209,14 @@ func GetSysBannersGroupedByPosition(db *gorm.DB, req pojo.SysBannerAppReq) pojo.
 		query = query.Where("position = ?", strings.TrimSpace(req.Position))
 	}
 	if req.CountryCode != "" {
-		query = query.Where("id IN (?)",
-			db.Model(&pojo.SysBannerCountryRel{}).
-				Select("banner_id").
-				Where("status = ?", 1).
-				Where("country_code = ?", strings.TrimSpace(req.CountryCode)),
+		countryCode := strings.TrimSpace(req.CountryCode)
+		matchedCountryRel := db.Model(&pojo.SysBannerCountryRel{}).
+			Select("banner_id").
+			Where("status = ?", 1).
+			Where("country_code = ?", countryCode)
+		anyCountryRel := db.Model(&pojo.SysBannerCountryRel{}).Select("banner_id")
+		query = query.Where(
+			db.Where("id IN (?)", matchedCountryRel).Or("id NOT IN (?)", anyCountryRel),
 		)
 	}
 
@@ -386,6 +389,29 @@ func pickAppI18n(list []pojo.SysBannerI18nBack, languageCode, countryCode string
 		}
 	}
 	return &list[0]
+}
+
+func shouldPersistBannerI18n(banner pojo.SysBanner, item pojo.SysBannerI18n) bool {
+	if strings.TrimSpace(item.LanguageCode) == "" {
+		return false
+	}
+	if strings.TrimSpace(item.ImageURL) != "" {
+		return true
+	}
+	if !isPopupAnnouncement(banner) {
+		return false
+	}
+	return hasText(item.Title) || hasText(item.SubTitle) || hasText(item.Description) || hasText(item.ButtonText)
+}
+
+func isPopupAnnouncement(banner pojo.SysBanner) bool {
+	return strings.TrimSpace(banner.Position) == "popup" ||
+		strings.TrimSpace(banner.BannerType) == "popup" ||
+		strings.TrimSpace(banner.DisplayType) == "popup"
+}
+
+func hasText(value *string) bool {
+	return value != nil && strings.TrimSpace(*value) != ""
 }
 
 func unixToTimePtr(ts *int64) *time.Time {

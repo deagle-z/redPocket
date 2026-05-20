@@ -3,13 +3,14 @@ import { showToast } from 'vant'
 import type { BannerItem, LuckyHistoryUserFlowItem } from '@/api/user'
 import { getBanners, getLuckyHistoryUserFlow } from '@/api/user'
 import { formatCurrency } from '@/utils/currency'
+import { getTokenUserId, isLogin } from '@/utils/auth'
 import imgAvatarPlaceholder from '@/assets/images/avatar-placeholder.png'
 import coinSvgUrl from '@/assets/svg/coin.svg'
 
 const { t } = useI18n()
 const router = useRouter()
 
-const DISMISSED_KEY = 'dismissed_popup_banner_ids'
+const ANNOUNCEMENT_SEEN_PREFIX = 'announcement_popup_seen'
 
 const DEFAULT_AVATAR = imgAvatarPlaceholder
 const activeIndex = ref(0)
@@ -226,30 +227,47 @@ async function loadRecentWinners() {
   }
 }
 
-function getDismissedIds(): number[] {
+function getTodayKey() {
+  const now = new Date()
+  const yyyy = now.getFullYear()
+  const mm = String(now.getMonth() + 1).padStart(2, '0')
+  const dd = String(now.getDate()).padStart(2, '0')
+  return `${yyyy}-${mm}-${dd}`
+}
+
+function getSeenStorageKey() {
+  return `${ANNOUNCEMENT_SEEN_PREFIX}:${getTokenUserId() || 0}:${getTodayKey()}`
+}
+
+function getSeenIds(): number[] {
   try {
-    return JSON.parse(localStorage.getItem(DISMISSED_KEY) || '[]')
+    return JSON.parse(localStorage.getItem(getSeenStorageKey()) || '[]')
   }
   catch {
     return []
   }
 }
 
-function addDismissedId(id: number) {
-  const ids = getDismissedIds()
+function markPopupSeen(id: number) {
+  const ids = getSeenIds()
   if (!ids.includes(id)) {
     ids.push(id)
-    localStorage.setItem(DISMISSED_KEY, JSON.stringify(ids))
+    localStorage.setItem(getSeenStorageKey(), JSON.stringify(ids))
   }
 }
 
 async function loadBanners() {
   try {
     const { data } = await getBanners()
-    homeBanners.value = (data?.home ?? []).filter(b => b.status === 1)
-    const dismissed = getDismissedIds()
+    homeBanners.value = (data?.home ?? []).filter(b => b.status === 1 && b.imageUrl)
+    if (!isLogin()) {
+      popupQueue.value = []
+      popupVisible.value = false
+      return
+    }
+    const seen = getSeenIds()
     popupQueue.value = (data?.popup ?? [])
-      .filter(b => b.status === 1 && !dismissed.includes(b.id))
+      .filter(b => b.status === 1 && !seen.includes(b.id))
       .sort((a, b) => a.sort - b.sort)
     if (popupQueue.value.length > 0) {
       popupIndex.value = 0
@@ -273,6 +291,9 @@ function onBannerClick(banner: BannerItem) {
 }
 
 function onPopupOk() {
+  const item = currentPopup.value
+  if (item)
+    markPopupSeen(item.id)
   if (popupIndex.value + 1 < popupQueue.value.length) {
     popupIndex.value++
   }
@@ -284,7 +305,7 @@ function onPopupOk() {
 function onPopupDismiss() {
   const item = currentPopup.value
   if (item)
-    addDismissedId(item.id)
+    markPopupSeen(item.id)
   popupQueue.value.splice(popupIndex.value, 1)
   if (popupQueue.value.length === 0) {
     popupVisible.value = false
@@ -440,17 +461,25 @@ onBeforeUnmount(() => {
     <van-overlay :show="popupVisible" class="banner-popup-overlay" @click.self="onPopupOk">
       <div class="banner-popup">
         <img
-          v-if="currentPopup"
+          v-if="currentPopup?.imageUrl"
           :src="currentPopup.imageUrl"
           class="banner-popup__img"
           :alt="getBannerTitle(currentPopup)"
         >
+        <div v-if="currentPopup" class="banner-popup__content">
+          <h3 v-if="getBannerTitle(currentPopup)" class="banner-popup__title">
+            {{ getBannerTitle(currentPopup) }}
+          </h3>
+          <p v-if="currentPopup.description" class="banner-popup__desc">
+            {{ currentPopup.description }}
+          </p>
+        </div>
         <div class="banner-popup__actions">
           <button type="button" class="popup-btn popup-btn--dismiss" @click="onPopupDismiss">
             {{ t('common.noRemind') }}
           </button>
           <button type="button" class="popup-btn popup-btn--ok" @click="onPopupOk">
-            {{ t('common.ok') }}
+            {{ currentPopup?.buttonText || t('common.ok') }}
           </button>
         </div>
       </div>
@@ -1076,8 +1105,34 @@ onBeforeUnmount(() => {
   width: 100%;
   flex: 1;
   min-height: 0;
+  max-height: 48vh;
   object-fit: cover;
   display: block;
+}
+
+.banner-popup__content {
+  padding: 22px 20px 20px;
+  color: #ffe9bc;
+  text-align: center;
+}
+
+.banner-popup__title {
+  margin: 0;
+  color: #fff4d9;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.banner-popup__desc {
+  max-height: 30vh;
+  margin: 12px 0 0;
+  overflow: auto;
+  color: rgba(255, 233, 188, 0.78);
+  font-size: 15px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  text-align: left;
 }
 
 .banner-popup__actions {

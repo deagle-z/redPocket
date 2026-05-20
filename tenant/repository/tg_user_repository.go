@@ -28,6 +28,9 @@ func GetTgUsers(db *gorm.DB, tenantID int64, search pojo.TgUserSearch) (result p
 	if search.FirstName != "" {
 		query = query.Where("first_name like ?", "%"+search.FirstName+"%")
 	}
+	if phone := strings.TrimSpace(search.Phone); phone != "" {
+		query = query.Where("phone like ?", "%"+phone+"%")
+	}
 	if search.IsBot != nil {
 		query = query.Where("is_bot = ?", *search.IsBot)
 	}
@@ -312,6 +315,9 @@ func GetTgUsersWithSubStats(db *gorm.DB, tenantID int64, search pojo.TgUserSearc
 	}
 	if search.FirstName != "" {
 		query = query.Where("first_name like ?", "%"+search.FirstName+"%")
+	}
+	if phone := strings.TrimSpace(search.Phone); phone != "" {
+		query = query.Where("phone like ?", "%"+phone+"%")
 	}
 	if search.IsBot != nil {
 		query = query.Where("is_bot = ?", *search.IsBot)

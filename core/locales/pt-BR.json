@@ -43,6 +43,7 @@
   "withdraw_order_no_empty": "número da ordem de saque não pode estar vazio",
   "withdraw_order_not_found": "ordem de saque não existe",
   "withdraw_order_status_invalid_success": "status da ordem de saque não permite confirmação de sucesso",
+  "withdraw_account_already_bound": "Esta conta bancária e nome já foram vinculados por outra conta e não podem ser reutilizados.",
   "withdraw_payout_acc_name_required": "nome da conta de saque é obrigatório",
   "withdraw_payout_acc_no_required": "número da conta de saque é obrigatório",
   "withdraw_payout_amount_invalid": "valor do pagamento de saque inválido",

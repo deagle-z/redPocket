@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { computed, ref } from "vue";
 import Segmented from "@/components/ReSegmented";
 import { formRules } from "./utils/rule";
 import type {
@@ -68,6 +68,12 @@ const props = withDefaults(defineProps<FormProps>(), {
 
 const ruleFormRef = ref();
 const newFormInline = ref(props.formInline);
+const isPopupAnnouncement = computed(
+  () =>
+    newFormInline.value.position === "popup" ||
+    newFormInline.value.bannerType === "popup" ||
+    newFormInline.value.displayType === "popup"
+);
 
 const uploadUrl = `${import.meta.env.VITE_BASE_URL}/api/v1/admin/upload`;
 
@@ -159,11 +165,15 @@ function addCountryItem() {
 }
 
 function removeCountryItem(index: number) {
-  if (newFormInline.value.countryList.length <= 1) {
-    message("至少保留一个投放国家", { type: "warning" });
-    return;
-  }
   newFormInline.value.countryList.splice(index, 1);
+}
+
+function applyPopupDefaults() {
+  if (newFormInline.value.position === "popup") {
+    newFormInline.value.bannerType = "popup";
+    newFormInline.value.displayType = "popup";
+    newFormInline.value.platform = "h5";
+  }
 }
 
 const statusOptions = [
@@ -229,11 +239,16 @@ defineExpose({ getRef });
   >
     <el-row :gutter="18">
       <el-col :span="12">
-        <el-form-item label="Banner名称" prop="bannerName">
+        <el-form-item
+          :label="isPopupAnnouncement ? '公告名称' : 'Banner名称'"
+          prop="bannerName"
+        >
           <el-input
             v-model="newFormInline.bannerName"
             clearable
-            placeholder="请输入Banner名称"
+            :placeholder="
+              isPopupAnnouncement ? '请输入公告名称' : '请输入Banner名称'
+            "
           />
         </el-form-item>
       </el-col>
@@ -252,6 +267,7 @@ defineExpose({ getRef });
             v-model="newFormInline.position"
             class="!w-full"
             placeholder="请选择位置"
+            @change="applyPopupDefaults"
           >
             <el-option
               v-for="item in positionOptions"
@@ -409,7 +425,9 @@ defineExpose({ getRef });
       </el-col>
     </el-row>
 
-    <el-divider content-position="left">多语言内容</el-divider>
+    <el-divider content-position="left">
+      {{ isPopupAnnouncement ? "公告内容" : "多语言内容" }}
+    </el-divider>
     <el-form-item prop="i18nList">
       <div class="w-full flex flex-col gap-4">
         <el-card
@@ -505,11 +523,17 @@ defineExpose({ getRef });
               </el-form-item>
             </el-col>
             <el-col :span="24">
-              <el-form-item label="主图URL">
+              <el-form-item
+                :label="isPopupAnnouncement ? '公告图片URL' : '主图URL'"
+              >
                 <el-input
                   v-model="item.imageUrl"
                   clearable
-                  placeholder="请输入主图URL"
+                  :placeholder="
+                    isPopupAnnouncement
+                      ? '可选，纯文本公告可不填'
+                      : '请输入主图URL'
+                  "
                 />
                 <el-upload
                   class="mt-2"
@@ -523,7 +547,9 @@ defineExpose({ getRef });
                   "
                   :on-error="handleUploadError"
                 >
-                  <el-button type="primary">上传主图</el-button>
+                  <el-button type="primary">
+                    {{ isPopupAnnouncement ? "上传公告图片" : "上传主图" }}
+                  </el-button>
                 </el-upload>
                 <el-image
                   v-if="item.imageUrl"
@@ -654,8 +680,24 @@ defineExpose({ getRef });
     </el-form-item>
 
     <el-divider content-position="left">投放国家</el-divider>
+    <el-alert
+      class="mb-3"
+      type="info"
+      :closable="false"
+      show-icon
+      title="投放国家为空时，对所有用户展示。"
+    />
     <el-form-item prop="countryList">
       <div class="w-full flex flex-col gap-4">
+        <el-button
+          v-if="newFormInline.countryList.length === 0"
+          class="w-fit"
+          type="primary"
+          plain
+          @click="addCountryItem"
+        >
+          添加国家限制
+        </el-button>
         <el-card
           v-for="(item, index) in newFormInline.countryList"
           :key="item.id || `country-${index}`"

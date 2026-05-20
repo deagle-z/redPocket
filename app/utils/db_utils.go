@@ -10,6 +10,7 @@ import (
 	"gorm.io/plugin/dbresolver"
 	"log"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -26,6 +27,7 @@ func InitDb() (firstInit bool, err error) {
 		},
 	)
 	noSchemataMaster := fmt.Sprintf(utils.GlobalConfig.Mysql.Master, "")
+	log.Print("init mysql: open base connection...\n")
 	utils.Db, err = gorm.Open(mysql.Open(noSchemataMaster), &gorm.Config{
 		Logger: newLogger,
 	})
@@ -34,6 +36,8 @@ func InitDb() (firstInit bool, err error) {
 		panic(err)
 		return
 	}
+	log.Print("init mysql: base connection opened\n")
+	log.Print("init mysql: create database if not exists...\n")
 	err = utils.Db.Exec(fmt.Sprintf("CREATE DATABASE IF NOT EXISTS `%s` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci",
 		utils.CsConfig.DefaultHost.TablePrefix)).Error
 	if err != nil {
@@ -41,8 +45,10 @@ func InitDb() (firstInit bool, err error) {
 		panic(err)
 		return
 	}
+	log.Print("init mysql: database ready\n")
 	masterStr := fmt.Sprintf(utils.GlobalConfig.Mysql.Master, utils.CsConfig.DefaultHost.TablePrefix)
 	slaveStr := fmt.Sprintf(utils.GlobalConfig.Mysql.Slave, utils.CsConfig.DefaultHost.TablePrefix)
+	log.Print("init mysql: register resolver...\n")
 	err = utils.Db.Use(dbresolver.Register(dbresolver.Config{
 		Sources:  []gorm.Dialector{mysql.Open(masterStr)}, // 主库，写操作
 		Replicas: []gorm.Dialector{mysql.Open(slaveStr)},  // 从库，读操作
@@ -60,21 +66,38 @@ func InitDb() (firstInit bool, err error) {
 	sqlDB.SetMaxOpenConns(5)
 	sqlDB.SetConnMaxLifetime(5 * time.Minute)
 	sqlDB.SetConnMaxIdleTime(30 * time.Second)
+	log.Print("init mysql: init tables...\n")
 	firstInit, err = InitTables(utils.CsConfig.DefaultHost.TablePrefix)
-	_ = utils.Db.AutoMigrate(&pojo.HostInfo{})
+	if shouldSkipAutoMigrate() {
+		log.Print("init mysql: skip host_info automigrate by BGU_SKIP_AUTO_MIGRATE\n")
+	} else {
+		log.Print("init mysql: automigrate host_info...\n")
+		_ = utils.Db.AutoMigrate(&pojo.HostInfo{})
+	}
+	log.Print("init mysql: done\n")
 	return firstInit, nil
 }
 
 func InitTables(prefix string) (firstInit bool, err error) {
 	db := utils.NewPrefixDb(prefix)
+	if shouldSkipAutoMigrate() {
+		log.Print("init tables: skip automigrate by BGU_SKIP_AUTO_MIGRATE\n")
+		InitShardingHook(db)
+		return false, nil
+	}
+	log.Print("init tables: check first init...\n")
 	if !db.Migrator().HasTable(&pojo.SysUser{}) {
 		firstInit = true
+		log.Print("init tables: first init automigrate...\n")
 		err = db.AutoMigrate(
 			&pojo.SysUser{},
 			&pojo.SysRole{},
 			&pojo.SysMenu{},
 			&pojo.ManageLog{},
 			&pojo.SysSourceChannel{},
+			&pojo.SysBanner{},
+			&pojo.SysBannerI18n{},
+			&pojo.SysBannerCountryRel{},
 			&pojo.SysTenant{},
 			&pojo.SysTenantUser{},
 			&pojo.AttributionEvent{},
@@ -105,71 +128,31 @@ func InitTables(prefix string) (firstInit bool, err error) {
 		if err != nil {
 			panic(err)
 		}
+		log.Print("init tables: first init automigrate done\n")
 	}
+	log.Print("init tables: init sharding hook...\n")
 	InitShardingHook(db)
-	// 兼容历史数据：lucky_money_item.thunder 由可空升级为 not null 时，
-	// 先将旧数据中的 NULL 回填为 0，避免 ALTER TABLE 报错 1138。
-	if db.Migrator().HasTable(&pojo.LuckyMoneyItem{}) && db.Migrator().HasColumn(&pojo.LuckyMoneyItem{}, "thunder") {
-		_ = db.Exec("UPDATE `lucky_money_item` SET `thunder` = 0 WHERE `thunder` IS NULL").Error
-	}
-	// 兼容历史数据：金额/手续费字段升级为 decimal(18,2) not null 时，先归一旧脏值，避免 1265。
-	if db.Migrator().HasTable(&pojo.LuckyMoneyItem{}) {
-		if db.Migrator().HasColumn(&pojo.LuckyMoneyItem{}, "thunder_amount") {
-			_ = db.Exec("UPDATE `lucky_money_item` SET `thunder_amount` = 0").Error
+	if !db.Migrator().HasTable(pojo.CashHistoryTableName + "_0") {
+		log.Print("init tables: init cash_history sharding tables...\n")
+		err = InitShardingDataBase(db, pojo.CashHistory{}, pojo.CashHistoryTableName, pojo.CashHistoryShards)
+		if err != nil {
+			panic(fmt.Sprintf("Failed to init table: %v", err))
 		}
-		if db.Migrator().HasColumn(&pojo.LuckyMoneyItem{}, "thunder_fee") {
-			_ = db.Exec("UPDATE `lucky_money_item` SET `thunder_fee` = 0").Error
-		}
-		if db.Migrator().HasColumn(&pojo.LuckyMoneyItem{}, "win_fee") {
-			_ = db.Exec("UPDATE `lucky_money_item` SET `win_fee` = 0").Error
-		}
-	}
-	// 修复 is_bot 列可能存在的 NULL 值，避免 AutoMigrate NOT NULL 报错
-	if db.Migrator().HasColumn(&pojo.TgUser{}, "is_bot") {
-		_ = db.Exec("UPDATE `tg_user` SET `is_bot` = false WHERE `is_bot` IS NULL").Error
-	}
-	// 兼容历史/半迁移数据：免费转盘次数只允许非负整数，避免 AutoMigrate 改列类型时报 1265。
-	if db.Migrator().HasColumn(&pojo.TgUser{}, "free_lottery_count") {
-		_ = db.Exec("UPDATE `tg_user` SET `free_lottery_count` = 0 WHERE `free_lottery_count` IS NULL OR TRIM(CAST(`free_lottery_count` AS CHAR)) = '' OR TRIM(CAST(`free_lottery_count` AS CHAR)) NOT REGEXP '^[0-9]+$'").Error
-	}
-	// 兼容增量字段/新表变更
-	if err = db.AutoMigrate(
-		&pojo.SysSourceChannel{},
-		&pojo.SysTenant{},
-		&pojo.SysTenantUser{},
-		&pojo.AttributionEvent{},
-		&pojo.TgUser{},
-		&pojo.TgChannelMember{},
-		&pojo.TgUserWithdrawLimitState{},
-		&pojo.TgUserWithdrawActivityCycle{},
-		&pojo.TgUserCheckInRecord{},
-		&pojo.RechargeOrder{},
-		&pojo.WithdrawOrderBr{},
-		&pojo.LuckyMoney{},
-		&pojo.LuckyHistory{},
-		&pojo.LuckyMoneyItem{},
-		&pojo.TrialLuckyMoney{},
-		&pojo.TrialLuckyMoneyItem{},
-		&pojo.TrialLuckyHistory{},
-		&pojo.TrialLuckyFlowLotteryReward{},
-		&pojo.TrialBotUser{},
-		&pojo.TrialCashHistory{},
-		&pojo.TgUserRebateRecord{},
-		&pojo.PlatformProfitLedger{},
-		&pojo.SysTenantPrizePool{},
-		&pojo.SysTenantPrizePoolRecord{},
-		&pojo.SysTenantPrizePoolConfig{},
-		&pojo.UserLotteryRecord{},
-	); err != nil {
-		panic(err)
-	}
-	err = InitShardingDataBase(db, pojo.CashHistory{}, pojo.CashHistoryTableName, pojo.CashHistoryShards)
-	if err != nil {
-		panic(fmt.Sprintf("Failed to init table: %v", err))
+		log.Print("init tables: init cash_history sharding tables done\n")
+	} else {
+		log.Print("init tables: cash_history sharding tables exist, skip init\n")
 	}
 	if !db.Migrator().HasTable(pojo.AllCashHistoryShardingName) {
-		log.Printf("Init cash history success...\n")
+		log.Print("init tables: create all_cash_history view...\n")
+		CreateView(uint(pojo.CashHistoryShards), pojo.AllCashHistoryShardingName, pojo.CashHistoryTableName)
+	} else {
+		log.Print("init tables: all_cash_history view exists, skip create\n")
 	}
-	CreateView(uint(pojo.CashHistoryShards), pojo.AllCashHistoryShardingName, pojo.CashHistoryTableName)
+	log.Print("init tables: done\n")
 	return firstInit, nil
+}
+
+func shouldSkipAutoMigrate() bool {
+	value := strings.TrimSpace(os.Getenv("BGU_SKIP_AUTO_MIGRATE"))
+	return value == "1" || strings.EqualFold(value, "true")
 }

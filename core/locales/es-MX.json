@@ -43,6 +43,7 @@
   "withdraw_order_no_empty": "el número de orden de retiro no puede estar vacío",
   "withdraw_order_not_found": "la orden de retiro no existe",
   "withdraw_order_status_invalid_success": "el estado de la orden de retiro no permite confirmación exitosa",
+  "withdraw_account_already_bound": "Esta cuenta bancaria y nombre ya fueron vinculados por otra cuenta y no se pueden reutilizar.",
   "withdraw_payout_acc_name_required": "el nombre de la cuenta de retiro es obligatorio",
   "withdraw_payout_acc_no_required": "el número de cuenta de retiro es obligatorio",
   "withdraw_payout_amount_invalid": "el monto de pago de retiro es inválido",

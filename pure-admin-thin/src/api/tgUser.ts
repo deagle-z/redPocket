@@ -41,6 +41,7 @@ export type TgUserSearch = {
   uid?: string;
   username?: string;
   firstName?: string;
+  phone?: string;
   isBot?: boolean;
   status?: number;
   parentId?: number;

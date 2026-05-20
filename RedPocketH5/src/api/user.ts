@@ -725,8 +725,12 @@ export function getPrizePoolOutRecords(currentPage = 0, pageSize = 10) {
 
 export interface LotteryChancesResp {
   totalFlow: number
+  currentFlow: number
+  peerAmount: number
+  remainingFlow: number
   earnedCount: number
   usedCount: number
+  freeCount: number
   availableCount: number
   amounts: number[]
 }
@@ -977,7 +981,7 @@ export interface BannerItem {
   subTitle?: string
   description?: string
   buttonText?: string
-  imageUrl: string
+  imageUrl?: string
   thumbUrl?: string
   bgImageUrl?: string
   iconUrl?: string
