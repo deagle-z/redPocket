@@ -28,16 +28,18 @@ type TgUser struct {
 
 	TgID int64 `gorm:"column:tg_id;index;comment:Telegram 用户ID（唯一且稳定）" json:"tg_id"`
 
-	Balance                 float64    `gorm:"type:decimal(20,2);not null;default:0.00;comment:账户可用余额" json:"balance"`
-	TrialBalance            float64    `gorm:"column:trial_balance;type:decimal(20,2);not null;default:1000.00;comment:试玩额度" json:"trialBalance"`
-	TrialBalanceRefreshedAt *time.Time `gorm:"column:trial_balance_refreshed_at;comment:试玩额度每日刷新时间" json:"trialBalanceRefreshedAt"`
-	GiftAmount              float64    `gorm:"type:decimal(20,2);not null;default:0.00;comment:赠送余额（可用）" json:"gift_amount"`
-	GiftTotal               float64    `gorm:"type:decimal(20,2);not null;default:0.00;comment:累计赠送金额" json:"gift_total"`
-	RechargeAmount          float64    `gorm:"type:decimal(20,2);not null;default:0.00;comment:累计充值金额" json:"recharge_amount"`
-	RebateAmount            float64    `gorm:"type:decimal(20,2);not null;default:0.00;comment:可用返水余额" json:"rebate_amount"`
-	RebateTotalAmount       float64    `gorm:"type:decimal(20,2);not null;default:0.00;comment:累计返水金额" json:"rebate_total_amount"`
-	RebateRate              float64    `gorm:"column:rebate_rate;type:decimal(10,2);not null;default:40.00;comment:返水比例" json:"rebate_rate"`
-	FreeLotteryCount        int        `gorm:"column:free_lottery_count;type:int;not null;default:0;comment:免费转盘次数" json:"freeLotteryCount"`
+	Balance                   float64    `gorm:"type:decimal(20,2);not null;default:0.00;comment:账户可用余额" json:"balance"`
+	TrialBalance              float64    `gorm:"column:trial_balance;type:decimal(20,2);not null;default:1000.00;comment:试玩额度" json:"trialBalance"`
+	TrialBalanceRefreshedAt   *time.Time `gorm:"column:trial_balance_refreshed_at;comment:试玩额度每日刷新时间" json:"trialBalanceRefreshedAt"`
+	GiftAmount                float64    `gorm:"type:decimal(20,2);not null;default:0.00;comment:赠送余额（可用）" json:"gift_amount"`
+	GiftTotal                 float64    `gorm:"type:decimal(20,2);not null;default:0.00;comment:累计赠送金额" json:"gift_total"`
+	RechargeAmount            float64    `gorm:"type:decimal(20,2);not null;default:0.00;comment:累计充值金额" json:"recharge_amount"`
+	RebateAmount              float64    `gorm:"type:decimal(20,2);not null;default:0.00;comment:可用返水余额" json:"rebate_amount"`
+	RebateTotalAmount         float64    `gorm:"type:decimal(20,2);not null;default:0.00;comment:累计返水金额" json:"rebate_total_amount"`
+	RebateRate                float64    `gorm:"column:rebate_rate;type:decimal(10,2);not null;default:40.00;comment:返水比例" json:"rebate_rate"`
+	FreeLotteryCount          int        `gorm:"column:free_lottery_count;type:int;not null;default:0;comment:免费转盘次数" json:"freeLotteryCount"`
+	FlowLotteryTotalCount     int        `gorm:"column:flow_lottery_total_count;type:int;not null;default:0;comment:累计流水抽奖次数" json:"flowLotteryTotalCount"`
+	FlowLotteryAvailableCount int        `gorm:"column:flow_lottery_available_count;type:int;not null;default:0;comment:可用流水抽奖次数" json:"flowLotteryAvailableCount"`
 
 	Status       int8    `gorm:"not null;default:1;index;comment:状态 1=正常 0=禁用 -1=删除" json:"status"`
 	VipLevel     *int    `gorm:"column:vip_level;default:null;comment:当前VIP等级（对应sys_vip_level.level）" json:"vip_level"`
@@ -227,25 +229,27 @@ type TgRebateTransferReq struct {
 }
 
 type TgCurrentUserInfo struct {
-	Avatar           *string `json:"avatar"`
-	TenantId         int64   `json:"tenantId"`
-	Balance          float64 `json:"balance"`
-	TrialBalance     float64 `json:"trialBalance"`
-	Uid              string  `json:"uid"`
-	Username         *string `json:"username"`
-	TgName           *string `json:"tgName"`
-	FirstName        *string `json:"firstName"`
-	TgID             int64   `json:"tg_id"`
-	GiftAmount       float64 `json:"gift_amount"`
-	RebateAmount     float64 `json:"rebate_amount"`
-	RebateRate       float64 `json:"rebate_rate"`
-	FreeLotteryCount int     `json:"freeLotteryCount"`
-	Email            string  `json:"email"`
-	Phone            *string `json:"phone"`
-	Country          *string `json:"country"`
-	VipLevel         *int    `json:"vip_level"`
-	VipLevelName     *string `json:"vip_level_name"`
-	AudioOpen        int8    `json:"audio_open"`
+	Avatar                    *string `json:"avatar"`
+	TenantId                  int64   `json:"tenantId"`
+	Balance                   float64 `json:"balance"`
+	TrialBalance              float64 `json:"trialBalance"`
+	Uid                       string  `json:"uid"`
+	Username                  *string `json:"username"`
+	TgName                    *string `json:"tgName"`
+	FirstName                 *string `json:"firstName"`
+	TgID                      int64   `json:"tg_id"`
+	GiftAmount                float64 `json:"gift_amount"`
+	RebateAmount              float64 `json:"rebate_amount"`
+	RebateRate                float64 `json:"rebate_rate"`
+	FreeLotteryCount          int     `json:"freeLotteryCount"`
+	FlowLotteryTotalCount     int     `json:"flowLotteryTotalCount"`
+	FlowLotteryAvailableCount int     `json:"flowLotteryAvailableCount"`
+	Email                     string  `json:"email"`
+	Phone                     *string `json:"phone"`
+	Country                   *string `json:"country"`
+	VipLevel                  *int    `json:"vip_level"`
+	VipLevelName              *string `json:"vip_level_name"`
+	AudioOpen                 int8    `json:"audio_open"`
 }
 
 type TgWithdrawSummaryBack struct {
@@ -308,36 +312,38 @@ type TgInviteRuleConfigBack struct {
 }
 
 type TgUserBack struct {
-	ID                int64     `json:"id"`
-	Uid               string    `json:"uid"`
-	CreatedAt         time.Time `json:"createdAt"`
-	UpdatedAt         time.Time `json:"updatedAt"`
-	Username          *string   `json:"username"`
-	TgName            *string   `json:"tgName"`
-	FirstName         *string   `json:"firstName"`
-	Avatar            *string   `json:"avatar"`
-	PasswordPlain     *string   `json:"passwordPlain"`
-	Phone             *string   `json:"phone"`
-	Country           *string   `json:"country"`
-	Ip                *string   `json:"ip"`
-	Region            *string   `json:"region"`
-	Remark            *string   `json:"remark"`
-	TgID              int64     `json:"tgId"`
-	Balance           float64   `json:"balance"`
-	TrialBalance      float64   `json:"trialBalance"`
-	GiftAmount        float64   `json:"giftAmount"`
-	GiftTotal         float64   `json:"giftTotal"`
-	RebateAmount      float64   `json:"rebateAmount"`
-	RebateTotalAmount float64   `json:"rebateTotalAmount"`
-	RebateRate        float64   `json:"rebateRate"`
-	FreeLotteryCount  int       `json:"freeLotteryCount"`
-	Status            int8      `json:"status"`
-	ParentID          *int64    `json:"parentId"`
-	ParentUid         *string   `json:"parentUid"`
-	InviteCode        *string   `json:"inviteCode"`
-	SourceChannelID   *int64    `json:"sourceChannelId"`
-	SourceChannelCode *string   `json:"sourceChannelCode"`
-	TenantId          int64     `json:"tenantId"`
+	ID                        int64     `json:"id"`
+	Uid                       string    `json:"uid"`
+	CreatedAt                 time.Time `json:"createdAt"`
+	UpdatedAt                 time.Time `json:"updatedAt"`
+	Username                  *string   `json:"username"`
+	TgName                    *string   `json:"tgName"`
+	FirstName                 *string   `json:"firstName"`
+	Avatar                    *string   `json:"avatar"`
+	PasswordPlain             *string   `json:"passwordPlain"`
+	Phone                     *string   `json:"phone"`
+	Country                   *string   `json:"country"`
+	Ip                        *string   `json:"ip"`
+	Region                    *string   `json:"region"`
+	Remark                    *string   `json:"remark"`
+	TgID                      int64     `json:"tgId"`
+	Balance                   float64   `json:"balance"`
+	TrialBalance              float64   `json:"trialBalance"`
+	GiftAmount                float64   `json:"giftAmount"`
+	GiftTotal                 float64   `json:"giftTotal"`
+	RebateAmount              float64   `json:"rebateAmount"`
+	RebateTotalAmount         float64   `json:"rebateTotalAmount"`
+	RebateRate                float64   `json:"rebateRate"`
+	FreeLotteryCount          int       `json:"freeLotteryCount"`
+	FlowLotteryTotalCount     int       `json:"flowLotteryTotalCount"`
+	FlowLotteryAvailableCount int       `json:"flowLotteryAvailableCount"`
+	Status                    int8      `json:"status"`
+	ParentID                  *int64    `json:"parentId"`
+	ParentUid                 *string   `json:"parentUid"`
+	InviteCode                *string   `json:"inviteCode"`
+	SourceChannelID           *int64    `json:"sourceChannelId"`
+	SourceChannelCode         *string   `json:"sourceChannelCode"`
+	TenantId                  int64     `json:"tenantId"`
 }
 
 type TgUserResp struct {
@@ -345,39 +351,41 @@ type TgUserResp struct {
 }
 
 type TgUserAdminBack struct {
-	ID                int64     `json:"id"`
-	Uid               string    `json:"uid"`
-	CreatedAt         time.Time `json:"createdAt"`
-	UpdatedAt         time.Time `json:"updatedAt"`
-	Username          *string   `json:"username"`
-	TgName            *string   `json:"tgName"`
-	FirstName         *string   `json:"firstName"`
-	Avatar            *string   `json:"avatar"`
-	PasswordPlain     *string   `json:"passwordPlain"`
-	Phone             *string   `json:"phone"`
-	Country           *string   `json:"country"`
-	Ip                *string   `json:"ip"`
-	Region            *string   `json:"region"`
-	Remark            *string   `json:"remark"`
-	IsBot             bool      `json:"isBot"`
-	TgID              int64     `json:"tgId"`
-	Balance           float64   `json:"balance"`
-	TrialBalance      float64   `json:"trialBalance"`
-	GiftAmount        float64   `json:"giftAmount"`
-	GiftTotal         float64   `json:"giftTotal"`
-	RebateAmount      float64   `json:"rebateAmount"`
-	RebateTotalAmount float64   `json:"rebateTotalAmount"`
-	RebateRate        float64   `json:"rebateRate"`
-	FreeLotteryCount  int       `json:"freeLotteryCount"`
-	Status            int8      `json:"status"`
-	ParentID          *int64    `json:"parentId"`
-	ParentUid         *string   `json:"parentUid"`
-	InviteCode        *string   `json:"inviteCode"`
-	SourceChannelID   *int64    `json:"sourceChannelId"`
-	SourceChannelCode *string   `json:"sourceChannelCode"`
-	TenantId          int64     `json:"tenantId"`
-	TenantName        *string   `json:"tenantName"`
-	AudioOpen         int8      `json:"audio_open"`
+	ID                        int64     `json:"id"`
+	Uid                       string    `json:"uid"`
+	CreatedAt                 time.Time `json:"createdAt"`
+	UpdatedAt                 time.Time `json:"updatedAt"`
+	Username                  *string   `json:"username"`
+	TgName                    *string   `json:"tgName"`
+	FirstName                 *string   `json:"firstName"`
+	Avatar                    *string   `json:"avatar"`
+	PasswordPlain             *string   `json:"passwordPlain"`
+	Phone                     *string   `json:"phone"`
+	Country                   *string   `json:"country"`
+	Ip                        *string   `json:"ip"`
+	Region                    *string   `json:"region"`
+	Remark                    *string   `json:"remark"`
+	IsBot                     bool      `json:"isBot"`
+	TgID                      int64     `json:"tgId"`
+	Balance                   float64   `json:"balance"`
+	TrialBalance              float64   `json:"trialBalance"`
+	GiftAmount                float64   `json:"giftAmount"`
+	GiftTotal                 float64   `json:"giftTotal"`
+	RebateAmount              float64   `json:"rebateAmount"`
+	RebateTotalAmount         float64   `json:"rebateTotalAmount"`
+	RebateRate                float64   `json:"rebateRate"`
+	FreeLotteryCount          int       `json:"freeLotteryCount"`
+	FlowLotteryTotalCount     int       `json:"flowLotteryTotalCount"`
+	FlowLotteryAvailableCount int       `json:"flowLotteryAvailableCount"`
+	Status                    int8      `json:"status"`
+	ParentID                  *int64    `json:"parentId"`
+	ParentUid                 *string   `json:"parentUid"`
+	InviteCode                *string   `json:"inviteCode"`
+	SourceChannelID           *int64    `json:"sourceChannelId"`
+	SourceChannelCode         *string   `json:"sourceChannelCode"`
+	TenantId                  int64     `json:"tenantId"`
+	TenantName                *string   `json:"tenantName"`
+	AudioOpen                 int8      `json:"audio_open"`
 }
 
 type TgUserAdminResp struct {

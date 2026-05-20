@@ -187,6 +187,8 @@ const flowProgress = reactive({
   peerAmount: 1000,
   remainingFlow: 0,
   freeCount: 0,
+  flowLotteryTotalCount: 0,
+  flowLotteryAvailableCount: 0,
   availableCount: 0,
 })
 
@@ -462,6 +464,14 @@ async function refreshPageState() {
     Number(chanceData?.remainingFlow ?? 0),
   )
   flowProgress.freeCount = Number(chanceData?.freeCount ?? 0)
+  flowProgress.flowLotteryTotalCount = Math.max(
+    0,
+    Number(chanceData?.flowLotteryTotalCount ?? 0),
+  )
+  flowProgress.flowLotteryAvailableCount = Math.max(
+    0,
+    Number(chanceData?.flowLotteryAvailableCount ?? 0),
+  )
   flowProgress.availableCount = Math.max(
     0,
     Number(chanceData?.availableCount ?? 0),
@@ -800,7 +810,7 @@ onBeforeUnmount(() => {
             </div>
             <div class="flow-stat">
               <span>{{ t("prizePage.flowAvailableSpins") }}</span>
-              <strong>{{ flowProgress.availableCount }}</strong>
+              <strong>{{ flowProgress.flowLotteryAvailableCount }}</strong>
             </div>
           </div>
 

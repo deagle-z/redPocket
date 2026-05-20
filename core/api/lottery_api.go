@@ -20,25 +20,91 @@ type lotteryConsumption struct {
 	PeerAmount float64
 }
 
-func calculateLotteryAvailableCount(earnedCount int64, usedCount int64, freeCount int) int64 {
-	flowAvailable := earnedCount - usedCount
-	if flowAvailable < 0 {
-		flowAvailable = 0
+type flowLotterySyncResult struct {
+	TotalFlow                 float64
+	EarnedCount               int64
+	UsedCount                 int64
+	FlowLotteryTotalCount     int
+	FlowLotteryAvailableCount int
+}
+
+func calculateLotteryAvailableCount(flowAvailableCount int, freeCount int) int64 {
+	if flowAvailableCount < 0 {
+		flowAvailableCount = 0
 	}
 	if freeCount < 0 {
 		freeCount = 0
 	}
-	return flowAvailable + int64(freeCount)
+	return int64(flowAvailableCount + freeCount)
 }
 
-func selectLotteryConsumption(freeCount int, earnedCount int64, usedCount int64, peerAmount float64) (lotteryConsumption, bool) {
+func selectLotteryConsumption(freeCount int, flowAvailableCount int, peerAmount float64) (lotteryConsumption, bool) {
 	if freeCount > 0 {
 		return lotteryConsumption{UseFree: true, PeerAmount: 0}, true
 	}
-	if earnedCount-usedCount <= 0 {
+	if flowAvailableCount <= 0 {
 		return lotteryConsumption{}, false
 	}
 	return lotteryConsumption{PeerAmount: peerAmount}, true
+}
+
+func syncFlowLotteryCount(tx *gorm.DB, userID int64, peerAmount float64) (pojo.TgUser, flowLotterySyncResult, error) {
+	var user pojo.TgUser
+	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+		Where("id = ?", userID).First(&user).Error; err != nil {
+		return user, flowLotterySyncResult{}, err
+	}
+
+	totalFlow, err := repository.GetUserTotalFlow(tx, userID)
+	if err != nil {
+		return user, flowLotterySyncResult{}, err
+	}
+
+	if peerAmount <= 0 {
+		peerAmount = 1000
+	}
+	earnedCount := int64(math.Floor(totalFlow / peerAmount))
+	usedCount, err := repository.GetUsedLotteryCount(tx, userID)
+	if err != nil {
+		return user, flowLotterySyncResult{}, err
+	}
+
+	oldTotal := user.FlowLotteryTotalCount
+	oldAvailable := user.FlowLotteryAvailableCount
+	baselineCount := int64(user.FlowLotteryTotalCount)
+	if usedCount > baselineCount {
+		baselineCount = usedCount
+	}
+
+	newTotal := int(baselineCount)
+	newAvailable := user.FlowLotteryAvailableCount
+	if earnedCount > baselineCount {
+		delta := int(earnedCount - baselineCount)
+		newTotal = int(earnedCount)
+		newAvailable += delta
+	}
+	if newAvailable < 0 {
+		newAvailable = 0
+	}
+
+	if newTotal != oldTotal || newAvailable != oldAvailable {
+		if err := tx.Model(&pojo.TgUser{}).Where("id = ?", userID).Updates(map[string]any{
+			"flow_lottery_total_count":     newTotal,
+			"flow_lottery_available_count": newAvailable,
+		}).Error; err != nil {
+			return user, flowLotterySyncResult{}, err
+		}
+		user.FlowLotteryTotalCount = newTotal
+		user.FlowLotteryAvailableCount = newAvailable
+	}
+
+	return user, flowLotterySyncResult{
+		TotalFlow:                 totalFlow,
+		EarnedCount:               earnedCount,
+		UsedCount:                 usedCount,
+		FlowLotteryTotalCount:     user.FlowLotteryTotalCount,
+		FlowLotteryAvailableCount: user.FlowLotteryAvailableCount,
+	}, nil
 }
 
 // GetLotteryChances app端查询抽奖次数及奖池金额列表
@@ -53,33 +119,26 @@ func GetLotteryChances(ctx *gin.Context) {
 		peerAmount = config.PeerAmount
 	}
 
-	totalFlow, err := repository.GetUserTotalFlow(db, userID)
-	if err != nil {
-		utils.ErrorBack(ctx, err.Error())
-		return
-	}
-
-	earnedCount := int64(math.Floor(totalFlow / peerAmount))
-
-	usedCount, err := repository.GetUsedLotteryCount(db, userID)
-	if err != nil {
-		utils.ErrorBack(ctx, err.Error())
-		return
-	}
-
 	var user pojo.TgUser
-	if err := db.Select("id", "free_lottery_count").Where("id = ?", userID).First(&user).Error; err != nil {
+	var syncResult flowLotterySyncResult
+	if err := db.Transaction(func(tx *gorm.DB) error {
+		var syncErr error
+		user, syncResult, syncErr = syncFlowLotteryCount(tx, userID, peerAmount)
+		return syncErr
+	}); err != nil {
 		utils.ErrorBack(ctx, err.Error())
 		return
 	}
+
 	freeCount := user.FreeLotteryCount
-	availableCount := calculateLotteryAvailableCount(earnedCount, usedCount, freeCount)
-	currentFlow := utils.Truncate2(totalFlow - float64(earnedCount)*peerAmount)
+	flowAvailableCount := user.FlowLotteryAvailableCount
+	availableCount := calculateLotteryAvailableCount(flowAvailableCount, freeCount)
+	currentFlow := utils.Truncate2(syncResult.TotalFlow - float64(syncResult.FlowLotteryTotalCount)*peerAmount)
 	if currentFlow < 0 {
 		currentFlow = 0
 	}
 	remainingFlow := utils.Truncate2(peerAmount - currentFlow)
-	if earnedCount > usedCount {
+	if flowAvailableCount > 0 {
 		currentFlow = peerAmount
 		remainingFlow = 0
 	} else if remainingFlow < 0 {
@@ -93,15 +152,17 @@ func GetLotteryChances(ctx *gin.Context) {
 	}
 
 	utils.SuccessObjBack(ctx, pojo.LotteryChancesResp{
-		TotalFlow:      totalFlow,
-		CurrentFlow:    currentFlow,
-		PeerAmount:     peerAmount,
-		RemainingFlow:  remainingFlow,
-		EarnedCount:    earnedCount,
-		UsedCount:      usedCount,
-		FreeCount:      freeCount,
-		AvailableCount: availableCount,
-		Amounts:        amounts,
+		TotalFlow:                 syncResult.TotalFlow,
+		CurrentFlow:               currentFlow,
+		PeerAmount:                peerAmount,
+		RemainingFlow:             remainingFlow,
+		EarnedCount:               syncResult.EarnedCount,
+		UsedCount:                 syncResult.UsedCount,
+		FreeCount:                 freeCount,
+		FlowLotteryTotalCount:     syncResult.FlowLotteryTotalCount,
+		FlowLotteryAvailableCount: syncResult.FlowLotteryAvailableCount,
+		AvailableCount:            availableCount,
+		Amounts:                   amounts,
 	})
 }
 
@@ -159,47 +220,23 @@ func DrawLottery(ctx *gin.Context) {
 		}
 	}(lockKey)
 
-	// 3. 锁内二次校验可用次数，优先消耗免费转盘次数
-	var chanceUser pojo.TgUser
-	if err := db.Select("id", "free_lottery_count").Where("id = ?", userID).First(&chanceUser).Error; err != nil {
-		utils.ErrorBack(ctx, err.Error())
-		return
-	}
-	earnedCount := int64(0)
-	usedCount := int64(0)
-	if chanceUser.FreeLotteryCount <= 0 {
-		totalFlow, err := repository.GetUserTotalFlow(db, userID)
-		if err != nil {
-			utils.ErrorBack(ctx, err.Error())
-			return
-		}
-		earnedCount = int64(math.Floor(totalFlow / peerAmount))
-
-		usedCount, err = repository.GetUsedLotteryCount(db, userID)
-		if err != nil {
-			utils.ErrorBack(ctx, err.Error())
-			return
-		}
-	}
-	consumption, ok := selectLotteryConsumption(chanceUser.FreeLotteryCount, earnedCount, usedCount, peerAmount)
-	if !ok {
-		utils.ErrorBack(ctx, "暂无可用抽奖次数")
-		return
-	}
-
-	// 4. 从 Redis 批次池弹出本次奖励
+	// 3. 准备 Redis 批次池，本次奖励在事务内确认有次数后再弹出
 	probMap := config.GetAmountProbMap()
 	poolKey := fmt.Sprintf("lottery_pool:%d:%d", tenantId, config.ID)
-	awardAmount := utils.Truncate2(services.PopOrRefillLotteryPool(poolKey, config, probMap))
 
-	// 5. 事务：写记录 + 发奖
+	// 4. 事务：同步流水次数 + 扣次数 + 写记录 + 发奖
 	var recordID int64
+	var awardAmount float64
 	txErr := db.Transaction(func(tx *gorm.DB) error {
-		var user pojo.TgUser
-		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
-			Where("id = ?", userID).First(&user).Error; err != nil {
+		user, _, err := syncFlowLotteryCount(tx, userID, peerAmount)
+		if err != nil {
 			return err
 		}
+		consumption, ok := selectLotteryConsumption(user.FreeLotteryCount, user.FlowLotteryAvailableCount, peerAmount)
+		if !ok {
+			return fmt.Errorf("暂无可用抽奖次数")
+		}
+
 		if consumption.UseFree {
 			if user.FreeLotteryCount <= 0 {
 				return fmt.Errorf("暂无可用抽奖次数")
@@ -213,7 +250,19 @@ func DrawLottery(ctx *gin.Context) {
 			if result.RowsAffected == 0 {
 				return fmt.Errorf("暂无可用抽奖次数")
 			}
+		} else {
+			result := tx.Model(&pojo.TgUser{}).
+				Where("id = ? AND flow_lottery_available_count > 0", userID).
+				Update("flow_lottery_available_count", gorm.Expr("flow_lottery_available_count - 1"))
+			if result.Error != nil {
+				return result.Error
+			}
+			if result.RowsAffected == 0 {
+				return fmt.Errorf("暂无可用抽奖次数")
+			}
 		}
+
+		awardAmount = utils.Truncate2(services.PopOrRefillLotteryPool(poolKey, config, probMap))
 
 		// 写抽奖记录
 		status := pojo.LotteryStatusNoAward

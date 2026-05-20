@@ -59,6 +59,8 @@ export interface TgCurrentUserInfo {
   gift_amount?: number
   rebate_amount?: number
   freeLotteryCount?: number
+  flowLotteryTotalCount?: number
+  flowLotteryAvailableCount?: number
   vip_level?: number | null
   vip_level_name?: string | null
   audioOpen?: 0 | 1
@@ -731,6 +733,8 @@ export interface LotteryChancesResp {
   earnedCount: number
   usedCount: number
   freeCount: number
+  flowLotteryTotalCount: number
+  flowLotteryAvailableCount: number
   availableCount: number
   amounts: number[]
 }
