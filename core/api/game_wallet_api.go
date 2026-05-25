@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -32,6 +33,7 @@ import (
 func GetGameCash(ctx *gin.Context) {
 	body, err := ctx.GetRawData()
 	if err != nil {
+		log.Printf("[game_wallet] Cash/Get read body failed ip=%s err=%v", utils.GetIPAddress(ctx), err)
 		gameErrorBack(ctx, game.GameCodeInvalidMerchantCode, "")
 		return
 	}
@@ -41,11 +43,17 @@ func GetGameCash(ctx *gin.Context) {
 
 	var req pojo.GameCashGetReq
 	if err := json.Unmarshal(body, &req); err != nil {
+		log.Printf("[game_wallet] Cash/Get json invalid requestId=%s appId=%s ip=%s err=%v body=%s",
+			ctx.GetHeader(game.HeaderRequestID), ctx.GetHeader(game.HeaderAppID), utils.GetIPAddress(ctx), err, string(body))
 		gameErrorBack(ctx, game.GameCodeInvalidMerchantCode, "")
 		return
 	}
 	userID := strings.TrimSpace(req.UserID)
+	log.Printf("[game_wallet] Cash/Get begin requestId=%s appId=%s userid=%s ip=%s",
+		ctx.GetHeader(game.HeaderRequestID), ctx.GetHeader(game.HeaderAppID), userID, utils.GetIPAddress(ctx))
 	if userID == "" {
+		log.Printf("[game_wallet] Cash/Get empty userid requestId=%s appId=%s ip=%s",
+			ctx.GetHeader(game.HeaderRequestID), ctx.GetHeader(game.HeaderAppID), utils.GetIPAddress(ctx))
 		gameErrorBack(ctx, game.GameCodeEmptyUserID, "")
 		return
 	}
@@ -58,17 +66,25 @@ func GetGameCash(ctx *gin.Context) {
 		First(&user).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
+			log.Printf("[game_wallet] Cash/Get user not found requestId=%s userid=%s",
+				ctx.GetHeader(game.HeaderRequestID), userID)
 			gameErrorBack(ctx, game.GameCodePlayerNotFound, "")
 			return
 		}
+		log.Printf("[game_wallet] Cash/Get db error requestId=%s userid=%s err=%v",
+			ctx.GetHeader(game.HeaderRequestID), userID, err)
 		gameErrorBack(ctx, game.GameCodeInvalidMerchantCode, "")
 		return
 	}
 	if user.Status != 1 {
+		log.Printf("[game_wallet] Cash/Get user disabled requestId=%s userid=%s status=%d",
+			ctx.GetHeader(game.HeaderRequestID), userID, user.Status)
 		gameErrorBack(ctx, game.GameCodePlayerDisabled, "")
 		return
 	}
 
+	log.Printf("[game_wallet] Cash/Get success requestId=%s userid=%s userId=%d balance=%.2f",
+		ctx.GetHeader(game.HeaderRequestID), userID, user.ID, utils.Truncate2(user.Balance))
 	gameSuccessBack(ctx, pojo.GameCashGetData{
 		Balance: utils.Truncate2(user.Balance),
 	})
@@ -89,6 +105,7 @@ func GetGameCash(ctx *gin.Context) {
 func TransferGameCashInOut(ctx *gin.Context) {
 	body, err := ctx.GetRawData()
 	if err != nil {
+		log.Printf("[game_wallet] TransferInOut read body failed ip=%s err=%v", utils.GetIPAddress(ctx), err)
 		gameErrorBack(ctx, game.GameCodeInvalidMerchantCode, "")
 		return
 	}
@@ -98,10 +115,17 @@ func TransferGameCashInOut(ctx *gin.Context) {
 
 	var req pojo.GameCashTransferInOutReq
 	if err := json.Unmarshal(body, &req); err != nil {
+		log.Printf("[game_wallet] TransferInOut json invalid requestId=%s appId=%s ip=%s err=%v body=%s",
+			ctx.GetHeader(game.HeaderRequestID), ctx.GetHeader(game.HeaderAppID), utils.GetIPAddress(ctx), err, string(body))
 		gameErrorBack(ctx, game.GameCodeInvalidMerchantCode, "")
 		return
 	}
+	log.Printf("[game_wallet] TransferInOut begin requestId=%s appId=%s userid=%s tid=%s roundid=%s gameid=%s reason=%s amount=%.2f bet=%.2f isEnd=%t isBuy=%t ip=%s",
+		ctx.GetHeader(game.HeaderRequestID), ctx.GetHeader(game.HeaderAppID), strings.TrimSpace(req.UserID), strings.TrimSpace(req.TID),
+		strings.TrimSpace(req.RoundID), strings.TrimSpace(req.GameID), strings.TrimSpace(req.Reason), req.Amount, req.Bet, req.IsEnd, req.IsBuy, utils.GetIPAddress(ctx))
 	if code, msg := validateGameCashTransferReq(req); code != game.GameCodeSuccess {
+		log.Printf("[game_wallet] TransferInOut validate failed requestId=%s userid=%s tid=%s code=%d msg=%s",
+			ctx.GetHeader(game.HeaderRequestID), strings.TrimSpace(req.UserID), strings.TrimSpace(req.TID), code, msg)
 		gameErrorBack(ctx, code, msg)
 		return
 	}
@@ -109,10 +133,14 @@ func TransferGameCashInOut(ctx *gin.Context) {
 	lockKey := fmt.Sprintf("bgu_game_cash_transfer_%s", utils.MD5(strings.TrimSpace(req.UserID)))
 	acquired, lockErr := utils.AcquireLock(lockKey, 20*time.Second)
 	if lockErr != nil {
+		log.Printf("[game_wallet] TransferInOut lock error requestId=%s userid=%s tid=%s err=%v",
+			ctx.GetHeader(game.HeaderRequestID), strings.TrimSpace(req.UserID), strings.TrimSpace(req.TID), lockErr)
 		gameErrorBack(ctx, game.GameCodeTooFrequent, "request too frequent")
 		return
 	}
 	if !acquired {
+		log.Printf("[game_wallet] TransferInOut lock busy requestId=%s userid=%s tid=%s",
+			ctx.GetHeader(game.HeaderRequestID), strings.TrimSpace(req.UserID), strings.TrimSpace(req.TID))
 		gameErrorBack(ctx, game.GameCodeTooFrequent, game.ErrorMessage(game.GameCodeTooFrequent))
 		return
 	}
@@ -121,9 +149,13 @@ func TransferGameCashInOut(ctx *gin.Context) {
 	db := ctx.MustGet("db").(*gorm.DB)
 	balance, err := handleGameCashTransfer(db, req)
 	if err != nil {
+		log.Printf("[game_wallet] TransferInOut failed requestId=%s userid=%s tid=%s err=%v",
+			ctx.GetHeader(game.HeaderRequestID), strings.TrimSpace(req.UserID), strings.TrimSpace(req.TID), err)
 		writeGameCashTransferError(ctx, err)
 		return
 	}
+	log.Printf("[game_wallet] TransferInOut success requestId=%s userid=%s tid=%s balance=%.2f",
+		ctx.GetHeader(game.HeaderRequestID), strings.TrimSpace(req.UserID), strings.TrimSpace(req.TID), balance)
 	gameSuccessBack(ctx, pojo.GameCashGetData{Balance: balance})
 }
 
@@ -133,10 +165,14 @@ func verifyGameRequest(ctx *gin.Context, body []byte) bool {
 	requestID := strings.TrimSpace(ctx.GetHeader(game.HeaderRequestID))
 	sign := strings.TrimSpace(ctx.GetHeader(game.HeaderSign))
 	if cfg.AppID == "" || cfg.AppSecret == "" || appID == "" || appID != cfg.AppID {
+		log.Printf("[game_wallet] verify failed invalid appid path=%s requestId=%s appId=%s configuredAppId=%s ip=%s",
+			ctx.Request.URL.Path, requestID, appID, cfg.AppID, utils.GetIPAddress(ctx))
 		gameErrorBack(ctx, game.GameCodeInvalidAppID, "")
 		return false
 	}
 	if requestID == "" || sign == "" || !game.VerifySign(requestID, body, cfg.AppSecret, sign) {
+		log.Printf("[game_wallet] verify failed invalid sign path=%s requestId=%s appId=%s hasSign=%t body=%s ip=%s",
+			ctx.Request.URL.Path, requestID, appID, sign != "", string(body), utils.GetIPAddress(ctx))
 		gameErrorBack(ctx, game.GameCodeInvalidMerchantCode, "")
 		return false
 	}
@@ -205,6 +241,8 @@ func handleGameCashTransfer(db *gorm.DB, req pojo.GameCashTransferInOutReq) (flo
 		err := tx.Where("award_uni = ?", awardUni).First(&history).Error
 		if err == nil {
 			balance = utils.Truncate2(history.EndAmount)
+			log.Printf("[game_wallet] TransferInOut idempotent hit userid=%s tid=%s balance=%.2f historyId=%d",
+				userID, tid, balance, history.ID)
 			return nil
 		}
 		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
@@ -217,16 +255,21 @@ func handleGameCashTransfer(db *gorm.DB, req pojo.GameCashTransferInOutReq) (flo
 			First(&user).Error
 		if err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
+				log.Printf("[game_wallet] TransferInOut user not found userid=%s tid=%s", userID, tid)
 				return newGameCashTransferError(game.GameCodePlayerNotFound, "")
 			}
 			return err
 		}
 		if user.Status != 1 {
+			log.Printf("[game_wallet] TransferInOut user disabled userid=%s tid=%s userId=%d status=%d",
+				userID, tid, user.ID, user.Status)
 			return newGameCashTransferError(game.GameCodePlayerDisabled, "")
 		}
 
 		amount := utils.Truncate2(req.Amount)
 		if amount < 0 && utils.Truncate2(user.Balance+amount) < 0 {
+			log.Printf("[game_wallet] TransferInOut insufficient balance userid=%s tid=%s userId=%d balance=%.2f amount=%.2f",
+				userID, tid, user.ID, utils.Truncate2(user.Balance), amount)
 			return newGameCashTransferError(game.GameCodeInsufficientBalance, game.ErrorMessage(game.GameCodeInsufficientBalance))
 		}
 
@@ -255,6 +298,8 @@ func handleGameCashTransfer(db *gorm.DB, req pojo.GameCashTransferInOutReq) (flo
 		}
 
 		balance = endBalance
+		log.Printf("[game_wallet] TransferInOut persisted userid=%s tid=%s userId=%d reason=%s amount=%.2f before=%.2f after=%.2f",
+			userID, tid, user.ID, strings.TrimSpace(req.Reason), amount, startBalance, endBalance)
 		return nil
 	})
 	if err != nil {

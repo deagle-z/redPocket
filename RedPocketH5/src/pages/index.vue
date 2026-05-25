@@ -5,6 +5,8 @@ import { getAppGameHome, getBanners, getLuckyHistoryUserFlow } from '@/api/user'
 import { formatCurrency } from '@/utils/currency'
 import { getTokenUserId, isLogin } from '@/utils/auth'
 import imgAvatarPlaceholder from '@/assets/images/avatar-placeholder.png'
+import imgRedpacketGif from '@/assets/images/redpacket.gif'
+import imgRedpacketJpg from '@/assets/images/redpacket.jpg'
 import slotsTabIcon from '@/assets/images/game_tabs/slots.webp'
 import casinoTabIcon from '@/assets/images/game_tabs/vivo.webp'
 import blockchainTabIcon from '@/assets/images/game_tabs/blockchain.webp'
@@ -25,15 +27,16 @@ const packetSectionVisibleCounts = ref<Record<string, number>>({})
 const activePacketSectionKey = ref('')
 const packetGamesLoading = ref(false)
 
-type PacketGameAction = 'game'
+type PacketGameAction = 'game' | 'packet'
 
 interface PacketGameCard {
   title: string
   subtitle: string
   brand: string
   cover?: string
-  variant: 'game'
+  variant: 'game' | 'packet'
   action: PacketGameAction
+  packetMode?: 0 | 1
   rawGame?: AppHomeGameItem
 }
 
@@ -59,6 +62,27 @@ const packetSectionMeta = [
   { label: 'Lottery', code: 'lottery', icon: lotteryTabIcon, moreAction: 'lottery' as const },
 ]
 
+const defaultHotPacketGames = computed<PacketGameCard[]>(() => [
+  {
+    title: t('homeLucky.playTypeThunder'),
+    subtitle: t('homeLucky.game'),
+    brand: t('sendPacketPage.playTypeThunderEyebrow'),
+    cover: imgRedpacketGif,
+    variant: 'packet',
+    action: 'packet',
+    packetMode: 0,
+  },
+  {
+    title: t('homeLucky.playTypeParity'),
+    subtitle: t('homeLucky.game'),
+    brand: t('sendPacketPage.playTypeParityEyebrow'),
+    cover: imgRedpacketJpg,
+    variant: 'packet',
+    action: 'packet',
+    packetMode: 1,
+  },
+])
+
 function mapHomeGame(game: AppHomeGameItem): PacketGameCard {
   return {
     title: game.gameName,
@@ -77,7 +101,10 @@ const packetGameSections = computed<PacketGameSection[]>(() => [
     icon: section.icon,
     iconText: section.iconText,
     moreAction: section.moreAction,
-    games: (packetGameHomeData.value[section.code] || []).map(mapHomeGame),
+    games: [
+      ...(section.code === 'hot' ? defaultHotPacketGames.value : []),
+      ...(packetGameHomeData.value[section.code] || []).map(mapHomeGame),
+    ],
   })),
 ].filter(section => section.games.length > 0))
 
@@ -174,6 +201,11 @@ function scrollToPacketSection(section: PacketGameSection) {
 }
 
 function playPacketGame(game: PacketGameCard) {
+  if (game.action === 'packet') {
+    goPacketList(game.packetMode ?? 0)
+    return
+  }
+
   const gameId = game.rawGame?.gameId
   if (!gameId)
     return
@@ -858,10 +890,23 @@ onMounted(async () => {
   background: linear-gradient(165deg, #7f1b10 0%, #320000 100%);
 }
 
+.packet-game-card--packet {
+  border-color: rgba(255, 225, 128, 0.58);
+  background:
+    radial-gradient(circle at 50% 20%, rgba(255, 231, 150, 0.22), transparent 34%),
+    linear-gradient(165deg, #9a1e10 0%, #4a0000 100%);
+}
+
 .packet-game-card--game::before {
   background:
     linear-gradient(180deg, rgba(0, 0, 0, 0) 38%, rgba(49, 0, 0, 0.72) 100%),
     radial-gradient(circle at 50% 8%, rgba(255, 226, 151, 0.2), transparent 36%);
+}
+
+.packet-game-card--packet::before {
+  background:
+    radial-gradient(circle at 50% 22%, rgba(255, 244, 186, 0.38), transparent 32%),
+    linear-gradient(180deg, rgba(0, 0, 0, 0) 42%, rgba(67, 0, 0, 0.78) 100%);
 }
 
 .packet-game-card__brand {
