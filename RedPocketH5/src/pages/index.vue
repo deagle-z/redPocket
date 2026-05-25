@@ -1,19 +1,119 @@
 <script setup lang="ts">
 import { showToast } from 'vant'
-import type { BannerItem, LuckyHistoryUserFlowItem } from '@/api/user'
-import { getBanners, getLuckyHistoryUserFlow } from '@/api/user'
+import type { AppHomeGameData, AppHomeGameItem, BannerItem, LuckyHistoryUserFlowItem } from '@/api/user'
+import { getAppGameHome, getBanners, getLuckyHistoryUserFlow } from '@/api/user'
 import { formatCurrency } from '@/utils/currency'
 import { getTokenUserId, isLogin } from '@/utils/auth'
 import imgAvatarPlaceholder from '@/assets/images/avatar-placeholder.png'
-import coinSvgUrl from '@/assets/svg/coin.svg'
+import slotsTabIcon from '@/assets/images/game_tabs/slots.webp'
+import casinoTabIcon from '@/assets/images/game_tabs/vivo.webp'
+import blockchainTabIcon from '@/assets/images/game_tabs/blockchain.webp'
+import fishingTabIcon from '@/assets/images/game_tabs/fishing.webp'
+import sportsTabIcon from '@/assets/images/game_tabs/sports.webp'
+import miniTabIcon from '@/assets/images/game_tabs/mini.webp'
+import lotteryTabIcon from '@/assets/images/game_tabs/lottery.webp'
 
 const { t } = useI18n()
 const router = useRouter()
 
 const ANNOUNCEMENT_SEEN_PREFIX = 'announcement_popup_seen'
+const PACKET_GAME_PAGE_SIZE = 20
 
 const DEFAULT_AVATAR = imgAvatarPlaceholder
 const activeIndex = ref(0)
+const packetSectionVisibleCounts = ref<Record<string, number>>({})
+const activePacketSectionKey = ref('')
+const packetGamesLoading = ref(false)
+
+type PacketGameAction = 'game'
+
+interface PacketGameCard {
+  title: string
+  subtitle: string
+  brand: string
+  cover?: string
+  variant: 'game'
+  action: PacketGameAction
+  rawGame?: AppHomeGameItem
+}
+
+interface PacketGameSection {
+  label: string
+  icon?: string
+  iconText?: string
+  moreAction: 'packet' | 'lottery'
+  games: PacketGameCard[]
+}
+
+const packetGameHomeData = ref<AppHomeGameData>({})
+
+const packetSectionMeta = [
+  { label: 'Popular', code: 'hot', iconText: '🔥', moreAction: 'packet' as const },
+  { label: 'Slots', code: 'slots', icon: slotsTabIcon, moreAction: 'packet' as const },
+  { label: 'Casino', code: 'casino', icon: casinoTabIcon, moreAction: 'packet' as const },
+  { label: 'Blockchain', code: 'blockchain', icon: blockchainTabIcon, moreAction: 'packet' as const },
+  { label: 'Fishing', code: 'fishing', icon: fishingTabIcon, moreAction: 'packet' as const },
+  { label: 'Rummy', code: 'rummy', iconText: '🎲', moreAction: 'packet' as const },
+  { label: 'Sports', code: 'sports', icon: sportsTabIcon, moreAction: 'packet' as const },
+  { label: 'mini', code: 'mini', icon: miniTabIcon, moreAction: 'packet' as const },
+  { label: 'Lottery', code: 'lottery', icon: lotteryTabIcon, moreAction: 'lottery' as const },
+]
+
+function mapHomeGame(game: AppHomeGameItem): PacketGameCard {
+  return {
+    title: game.gameName,
+    subtitle: game.manufacturer?.toUpperCase() || game.categoryCode,
+    brand: game.manufacturer?.toUpperCase() || game.categoryCode?.toUpperCase() || 'GAME',
+    cover: game.gameIcon || game.horizontalImage,
+    variant: 'game',
+    action: 'game',
+    rawGame: game,
+  }
+}
+
+const packetGameSections = computed<PacketGameSection[]>(() => [
+  ...packetSectionMeta.map(section => ({
+    label: section.label,
+    icon: section.icon,
+    iconText: section.iconText,
+    moreAction: section.moreAction,
+    games: (packetGameHomeData.value[section.code] || []).map(mapHomeGame),
+  })),
+].filter(section => section.games.length > 0))
+
+const displayPacketGameSections = computed<PacketGameSection[]>(() => {
+  return packetGameSections.value
+})
+
+function getPacketSectionKey(section: PacketGameSection) {
+  return section.label
+}
+
+function getPacketSectionDomId(section: PacketGameSection) {
+  return `packet-game-section-${getPacketSectionKey(section).replace(/\s+/g, '-').toLowerCase()}`
+}
+
+function getPacketSectionVisibleCount(section: PacketGameSection) {
+  const key = getPacketSectionKey(section)
+  return packetSectionVisibleCounts.value[key] ?? PACKET_GAME_PAGE_SIZE
+}
+
+function visiblePacketGames(section: PacketGameSection) {
+  return section.games.slice(0, getPacketSectionVisibleCount(section))
+}
+
+function hasMorePacketGames(section: PacketGameSection) {
+  return getPacketSectionVisibleCount(section) < section.games.length
+}
+
+function loadMorePacketGames(section: PacketGameSection) {
+  const key = getPacketSectionKey(section)
+  const nextCount = Math.min(getPacketSectionVisibleCount(section) + PACKET_GAME_PAGE_SIZE, section.games.length)
+  packetSectionVisibleCounts.value = {
+    ...packetSectionVisibleCounts.value,
+    [key]: nextCount,
+  }
+}
 
 const homeBanners = ref<BannerItem[]>([])
 const popupQueue = ref<BannerItem[]>([])
@@ -23,15 +123,6 @@ const popupIndex = ref(0)
 const currentPopup = computed(() => popupQueue.value[popupIndex.value] ?? null)
 const recentWinnersLoading = ref(false)
 const recentWinners = ref<any[]>([])
-const thunderCanvasRef = ref<HTMLCanvasElement | null>(null)
-const parityCanvasRef = ref<HTMLCanvasElement | null>(null)
-
-interface CoinAnimationController {
-  stop: () => void
-}
-
-let coinAnimationControllers: CoinAnimationController[] = []
-let coinImagePromise: Promise<HTMLImageElement> | null = null
 
 const visibleWinners = computed(() => recentWinners.value)
 const showWinnerLoading = computed(() => recentWinnersLoading.value && visibleWinners.value.length === 0)
@@ -57,149 +148,59 @@ function goPacketList(mode: 0 | 1) {
   goPacketListDirectly(mode)
 }
 
-function goDemo(mode: 0 | 1) {
+function goPrize() {
+  router.push('/prize')
+}
+
+function goPacketSection(section: PacketGameSection) {
+  if (section.moreAction === 'lottery') {
+    goPrize()
+    return
+  }
+  goPacketList(0)
+}
+
+function scrollToPacketSection(section: PacketGameSection) {
+  const key = getPacketSectionKey(section)
+  activePacketSectionKey.value = key
+  const target = document.getElementById(getPacketSectionDomId(section))
+  if (!target)
+    return
+  const top = target.getBoundingClientRect().top + window.scrollY - 72
+  window.scrollTo({
+    top,
+    behavior: 'smooth',
+  })
+}
+
+function playPacketGame(game: PacketGameCard) {
+  const gameId = game.rawGame?.gameId
+  if (!gameId)
+    return
   router.push({
-    path: '/demo',
-    query: { mode: String(mode) },
+    path: '/gamePlay',
+    query: {
+      gameId: String(gameId),
+      title: game.title,
+    },
   })
 }
 
-function ensureCoinImage() {
-  if (coinImagePromise)
-    return coinImagePromise
-
-  coinImagePromise = new Promise((resolve, reject) => {
-    const image = new Image()
-    image.onload = () => resolve(image)
-    image.onerror = reject
-    image.src = coinSvgUrl
-  })
-
-  return coinImagePromise
-}
-
-class CoinParticle {
-  ctx: CanvasRenderingContext2D
-  image: HTMLImageElement
-  width: number
-  height: number
-  radius = 3
-  x = 0
-  y = 0
-  vx = 0
-  vy = 0
-  gravity = 0.12
-  bounce = 0.4
-  rotation = 0
-  rotationSpeed = 0
-
-  constructor(context: CanvasRenderingContext2D, image: HTMLImageElement, width: number, height: number) {
-    this.ctx = context
-    this.image = image
-    this.width = width
-    this.height = height
-    this.init()
+async function loadAppGames() {
+  try {
+    packetGamesLoading.value = true
+    const { data } = await getAppGameHome()
+    packetGameHomeData.value = data || {}
+    const firstSection = displayPacketGameSections.value[0]
+    if (firstSection && !displayPacketGameSections.value.some(section => getPacketSectionKey(section) === activePacketSectionKey.value))
+      activePacketSectionKey.value = getPacketSectionKey(firstSection)
   }
-
-  init() {
-    this.radius = Math.random() > 0.72 ? 3 : 2
-    this.x = Math.random() * (this.width - this.radius * 2) + this.radius
-    this.y = -24 - Math.random() * 80
-    this.vx = (Math.random() - 0.5) * 2.2
-    this.vy = Math.random() * 1 + 0.45
-    this.gravity = 0.065
-    this.bounce = 0.5
-    this.rotation = Math.random() * 360
-    this.rotationSpeed = Math.random() * 4 - 2
+  catch {
+    packetGameHomeData.value = {}
   }
-
-  update() {
-    this.vy += this.gravity
-    this.x += this.vx
-    this.y += this.vy
-
-    if (this.y + this.radius > this.height - 18) {
-      this.y = this.height - 18 - this.radius
-      this.vy *= -this.bounce
-      this.vx *= 0.82
-    }
-
-    if (this.x + this.radius > this.width || this.x - this.radius < 0)
-      this.vx *= -1
-
-    this.rotation += this.rotationSpeed
+  finally {
+    packetGamesLoading.value = false
   }
-
-  draw() {
-    const ctx = this.ctx
-    const size = this.radius * 2.6
-    ctx.save()
-    ctx.translate(this.x, this.y)
-    ctx.rotate((this.rotation * Math.PI) / 180)
-    ctx.drawImage(this.image, -size / 2, -size / 2, size, size)
-    ctx.restore()
-  }
-}
-
-function setupCoinCanvas(canvas: HTMLCanvasElement, coinImage: HTMLImageElement) {
-  const reducedMotion = typeof window !== 'undefined'
-    ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    : false
-  const ratio = typeof window !== 'undefined' ? Math.min(window.devicePixelRatio || 1, 2) : 1
-  const rect = canvas.getBoundingClientRect()
-  const width = Math.max(1, Math.floor(rect.width))
-  const height = Math.max(1, Math.floor(rect.height))
-  const context = canvas.getContext('2d')
-  if (!context)
-    return { stop: () => {} }
-
-  canvas.width = Math.floor(width * ratio)
-  canvas.height = Math.floor(height * ratio)
-  context.setTransform(ratio, 0, 0, ratio, 0, 0)
-
-  if (reducedMotion) {
-    context.clearRect(0, 0, width, height)
-    return { stop: () => {} }
-  }
-
-  const particles: CoinParticle[] = []
-  const maxParticles = 10
-  let frameId = 0
-
-  const render = () => {
-    context.clearRect(0, 0, width, height)
-
-    if (particles.length < maxParticles && Math.random() < 0.035)
-      particles.push(new CoinParticle(context, coinImage, width, height))
-
-    for (const particle of particles) {
-      particle.update()
-      particle.draw()
-      if (Math.abs(particle.vy) < 0.08 && particle.y > height - 36)
-        particle.init()
-    }
-
-    frameId = window.requestAnimationFrame(render)
-  }
-
-  frameId = window.requestAnimationFrame(render)
-
-  return {
-    stop: () => window.cancelAnimationFrame(frameId),
-  }
-}
-
-async function initEntryCardAnimations() {
-  await nextTick()
-  coinAnimationControllers.forEach(controller => controller.stop())
-  coinAnimationControllers = []
-
-  const coinImage = await ensureCoinImage()
-
-  const canvases = [thunderCanvasRef.value, parityCanvasRef.value].filter(Boolean) as HTMLCanvasElement[]
-  canvases.forEach((canvas) => {
-    coinAnimationControllers.push(setupCoinCanvas(canvas, coinImage))
-  })
 }
 
 async function loadRecentWinners() {
@@ -316,14 +317,9 @@ function onPopupDismiss() {
 }
 
 onMounted(async () => {
+  void loadAppGames()
   void loadBanners()
   void loadRecentWinners()
-  await initEntryCardAnimations()
-})
-
-onBeforeUnmount(() => {
-  coinAnimationControllers.forEach(controller => controller.stop())
-  coinAnimationControllers = []
 })
 </script>
 
@@ -346,78 +342,102 @@ onBeforeUnmount(() => {
     </section>
 
     <section class="packet-entry-card">
-      <div class="packet-entry-grid">
-        <div class="packet-entry-option">
-          <button type="button" class="packet-entry-btn thunder" @click="goPacketList(0)">
-            <span class="packet-entry-btn__sunburst" aria-hidden="true" />
-            <span class="packet-entry-btn__tag">{{ t('homeLucky.playModeThunderEyebrow') }}</span>
-            <svg class="packet-entry-btn__kranok packet-entry-btn__kranok--tl" viewBox="0 0 100 100" aria-hidden="true">
-              <path d="M10 90 Q 10 10 90 10 L 70 30 Q 30 30 30 70 Z" />
-            </svg>
-            <svg class="packet-entry-btn__kranok packet-entry-btn__kranok--br" viewBox="0 0 100 100" aria-hidden="true">
-              <path d="M10 90 Q 10 10 90 10 L 70 30 Q 30 30 30 70 Z" />
-            </svg>
-            <canvas ref="thunderCanvasRef" class="packet-entry-btn__coins" aria-hidden="true" />
-
-            <span class="packet-entry-btn__visual packet-entry-btn__visual--bomb" aria-hidden="true">
-              <span class="bomb-wrapper">
-                <span class="bomb-fuse" />
-                <span class="bomb-spark">✦</span>
-                <span class="bomb-main" />
-                <span class="bomb-rim" />
-              </span>
-            </span>
-
-            <span class="packet-entry-btn__content">
-              <span class="packet-entry-btn__footer">
-                <strong class="packet-entry-btn__title">BOMB</strong>
-                <small class="packet-entry-btn__subtitle">{{ t('packetListPage.modeThunder') }}</small>
-              </span>
-            </span>
-          </button>
-          <button type="button" class="trial-entry-btn" @click="goDemo(0)">
-            <span class="trial-entry-btn__icon" aria-hidden="true">
-              <van-icon name="fire-o" />
-            </span>
-            <span class="trial-entry-btn__text">DEMO</span>
-            <van-icon class="trial-entry-btn__arrow" name="arrow" />
-          </button>
+      <div v-if="packetGamesLoading" class="packet-game-skeleton">
+        <div class="packet-game-skeleton__tabs">
+          <van-skeleton
+            v-for="item in 5"
+            :key="`packet-tab-skeleton-${item}`"
+            class="packet-game-skeleton__tab"
+            title
+            :row="0"
+          />
         </div>
-        <div class="packet-entry-option">
-          <button type="button" class="packet-entry-btn parity" @click="goPacketList(1)">
-            <span class="packet-entry-btn__sunburst" aria-hidden="true" />
-            <span class="packet-entry-btn__tag">{{ t('homeLucky.playModeParityEyebrow') }}</span>
-            <svg class="packet-entry-btn__kranok packet-entry-btn__kranok--tl" viewBox="0 0 100 100" aria-hidden="true">
-              <path d="M10 90 Q 10 10 90 10 L 70 30 Q 30 30 30 70 Z" />
-            </svg>
-            <svg class="packet-entry-btn__kranok packet-entry-btn__kranok--br" viewBox="0 0 100 100" aria-hidden="true">
-              <path d="M10 90 Q 10 10 90 10 L 70 30 Q 30 30 30 70 Z" />
-            </svg>
-            <canvas ref="parityCanvasRef" class="packet-entry-btn__coins" aria-hidden="true" />
-
-            <span class="packet-entry-btn__visual packet-entry-btn__visual--parity" aria-hidden="true">
-              <span class="pill-group">
-                <span class="pill odd">ODD</span>
-                <span class="pill even">EVEN</span>
-              </span>
-            </span>
-
-            <span class="packet-entry-btn__content">
-              <span class="packet-entry-btn__footer">
-                <strong class="packet-entry-btn__title">ODD/EVEN</strong>
-                <small class="packet-entry-btn__subtitle">{{ t('packetListPage.modeParity') }}</small>
-              </span>
-            </span>
-          </button>
-          <button type="button" class="trial-entry-btn" @click="goDemo(1)">
-            <span class="trial-entry-btn__icon" aria-hidden="true">
-              <van-icon name="fire-o" />
-            </span>
-            <span class="trial-entry-btn__text">DEMO</span>
-            <van-icon class="trial-entry-btn__arrow" name="arrow" />
-          </button>
+        <van-skeleton class="packet-game-skeleton__title" title :row="0" />
+        <div class="packet-game-skeleton__grid">
+          <van-skeleton
+            v-for="item in 8"
+            :key="`packet-game-skeleton-${item}`"
+            class="packet-game-skeleton__card"
+            title
+            :row="2"
+          />
         </div>
       </div>
+
+      <template v-else-if="displayPacketGameSections.length > 0">
+        <div class="packet-section-tabs" aria-label="Game categories">
+          <button
+            v-for="section in displayPacketGameSections"
+            :key="`tab-${section.label}`"
+            type="button"
+            class="packet-section-tab"
+            :class="{ 'packet-section-tab--active': activePacketSectionKey === getPacketSectionKey(section) }"
+            @click="scrollToPacketSection(section)"
+          >
+            <img
+              v-if="section.icon"
+              :src="section.icon"
+              class="packet-section-tab__img"
+              alt=""
+            >
+            <span v-else class="packet-section-tab__emoji">{{ section.iconText }}</span>
+            <span>{{ section.label }}</span>
+          </button>
+        </div>
+
+        <div
+          v-for="section in displayPacketGameSections"
+          :id="getPacketSectionDomId(section)"
+          :key="section.label"
+          class="packet-game-section"
+        >
+          <div class="packet-section-heading">
+            <div class="packet-section-heading__title">
+              <img
+                v-if="section.icon"
+                :src="section.icon"
+                class="packet-section-heading__img"
+                alt=""
+              >
+              <span v-else class="packet-section-heading__emoji">{{ section.iconText }}</span>
+              <p>{{ section.label }}</p>
+            </div>
+            <button type="button" class="packet-section-heading__more" @click="goPacketSection(section)">
+              Todo
+              <van-icon name="arrow" />
+            </button>
+          </div>
+
+          <div class="packet-game-grid">
+            <button
+              v-for="(game, gameIndex) in visiblePacketGames(section)"
+              :key="`${section.label}-${game.rawGame?.gameId || gameIndex}`"
+              type="button"
+              class="packet-game-card"
+              :class="`packet-game-card--${game.variant}`"
+              @click="playPacketGame(game)"
+            >
+              <span class="packet-game-card__brand">{{ game.brand }}</span>
+              <img
+                v-if="game.cover"
+                :src="game.cover"
+                class="packet-game-card__cover"
+                :alt="game.title"
+              >
+              <strong>{{ game.title }}</strong>
+              <small>{{ game.subtitle }}</small>
+            </button>
+          </div>
+
+          <div v-if="hasMorePacketGames(section)" class="packet-game-pager">
+            <p>{{ getPacketSectionVisibleCount(section) }}/{{ section.games.length }} {{ section.label }} games</p>
+            <button type="button" class="packet-game-pager__more" @click="loadMorePacketGames(section)">
+              Carregue mais
+              <van-icon name="arrow-down" />
+            </button>
+          </div>
+        </div>
+      </template>
     </section>
 
     <section class="winner-section">
@@ -489,6 +509,7 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .home-page {
+  box-sizing: border-box;
   min-height: 100vh;
   background-image:
     radial-gradient(circle at 20% 10%, rgba(212, 175, 55, 0.18), transparent 30%),
@@ -572,409 +593,383 @@ onBeforeUnmount(() => {
 }
 
 .packet-entry-card {
-  margin-top: 14px;
-}
-
-.packet-entry-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-}
-
-.packet-entry-option {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.trial-entry-btn {
-  position: relative;
+  box-sizing: border-box;
   width: 100%;
-  min-height: 46px;
-  padding: 0 12px;
-  border: 1px solid rgba(255, 245, 195, 0.86);
-  border-radius: 999px;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.28), transparent 42%),
-    linear-gradient(135deg, #ffec9c 0%, #ffbb00 48%, #d27900 100%);
-  color: #3a0800;
+  max-width: 100%;
+  margin-top: 14px;
+  padding: 14px 0 2px;
+}
+
+.packet-section-tabs {
+  position: sticky;
+  top: 0;
+  z-index: 8;
   display: flex;
-  align-items: center;
   gap: 8px;
-  box-shadow:
-    0 12px 22px rgba(122, 30, 0, 0.34),
-    0 0 16px rgba(255, 187, 0, 0.22),
-    inset 0 1px 0 rgba(255, 255, 255, 0.64),
-    inset 0 -2px 0 rgba(98, 22, 0, 0.22);
-  overflow: hidden;
-  transition:
-    transform 160ms ease,
-    box-shadow 160ms ease,
-    filter 160ms ease;
+  width: 100%;
+  margin: -2px 0 14px;
+  padding: 0 0 8px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  background: transparent;
 }
 
-.trial-entry-btn::before {
-  content: '';
-  position: absolute;
-  inset: 2px 10px auto;
-  height: 11px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.32);
-  pointer-events: none;
+.packet-section-tabs::-webkit-scrollbar {
+  display: none;
 }
 
-.trial-entry-btn:active {
-  transform: translateY(1px) scale(0.99);
-  filter: saturate(1.08);
-  box-shadow:
-    0 8px 16px rgba(122, 30, 0, 0.32),
-    0 0 12px rgba(255, 187, 0, 0.18),
-    inset 0 1px 0 rgba(255, 255, 255, 0.5),
-    inset 0 -1px 0 rgba(98, 22, 0, 0.24);
-}
-
-.trial-entry-btn__icon {
-  position: relative;
-  flex-shrink: 0;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: linear-gradient(180deg, #6a1200 0%, #2b0500 100%);
-  color: #ffd98b;
+.packet-section-tab {
+  flex: 0 0 72px;
   display: inline-flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
-  box-shadow:
-    inset 0 0 0 1px rgba(255, 217, 139, 0.32),
-    0 4px 10px rgba(74, 10, 0, 0.24);
-  z-index: 1;
-}
-
-.trial-entry-btn__text {
-  position: relative;
+  gap: 3px;
   min-width: 0;
-  flex: 1;
-  overflow: hidden;
-  text-align: center;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 15px;
-  line-height: 1;
-  font-weight: 900;
-  letter-spacing: 0.12em;
-  text-shadow: 0 1px 0 rgba(255, 248, 214, 0.42);
-  z-index: 1;
+  height: 56px;
+  padding: 6px 6px 5px;
+  border: 1px solid rgba(212, 175, 55, 0.22);
+  border-radius: 8px;
+  background: linear-gradient(180deg, rgba(117, 22, 14, 0.72), rgba(64, 0, 0, 0.82));
+  color: rgba(255, 232, 194, 0.78);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 237, 180, 0.08),
+    0 4px 10px rgba(0, 0, 0, 0.16);
 }
 
-.trial-entry-btn__arrow {
-  position: relative;
+.packet-section-tab--active {
+  border-color: rgba(255, 237, 172, 0.78);
+  color: #3a0800;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.34), transparent 48%),
+    linear-gradient(135deg, #ffe78a 0%, #ffb300 54%, #d57200 100%);
+  box-shadow:
+    0 6px 14px rgba(122, 30, 0, 0.32),
+    inset 0 1px 0 rgba(255, 255, 255, 0.54);
+}
+
+.packet-section-tab__img,
+.packet-section-tab__emoji {
   flex-shrink: 0;
   width: 24px;
   height: 24px;
-  border-radius: 50%;
-  color: #4a0c00;
-  background: rgba(255, 248, 214, 0.38);
+}
+
+.packet-section-tab__img {
+  object-fit: contain;
+  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.28));
+}
+
+.packet-section-tab__emoji {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  z-index: 1;
+  font-size: 23px;
+  line-height: 1;
 }
 
-.packet-entry-btn {
+.packet-section-tab span:last-child {
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  font-size: 12px;
+  line-height: 14px;
+  font-weight: 700;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.packet-game-skeleton {
+  padding-bottom: 18px;
+}
+
+.packet-game-skeleton__tabs {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.packet-game-skeleton__tab,
+.packet-game-skeleton__card,
+.packet-game-skeleton__title {
+  --van-skeleton-paragraph-background: rgba(255, 232, 194, 0.12);
+  --van-skeleton-title-background: rgba(255, 232, 194, 0.16);
+}
+
+.packet-game-skeleton__tab {
+  height: 56px;
+  padding: 8px 6px;
+  border: 1px solid rgba(212, 175, 55, 0.14);
+  border-radius: 8px;
+  background: linear-gradient(180deg, rgba(117, 22, 14, 0.5), rgba(64, 0, 0, 0.62));
+}
+
+.packet-game-skeleton__title {
+  width: 42%;
+  margin-bottom: 12px;
+}
+
+.packet-game-skeleton__grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px 8px;
+}
+
+.packet-game-skeleton__card {
+  min-height: 132px;
+  padding: 12px 8px;
+  border: 1px solid rgba(255, 218, 127, 0.16);
+  border-radius: 12px;
+  background: linear-gradient(165deg, rgba(127, 27, 16, 0.56) 0%, rgba(50, 0, 0, 0.72) 100%);
+}
+
+.packet-game-section {
   position: relative;
   width: 100%;
-  min-height: 228px;
-  padding: 0;
-  border-radius: 24px;
-  border: 1px solid rgba(255, 221, 149, 0.34);
-  color: #fff3de;
+  min-width: 0;
+  scroll-margin-top: 72px;
+  padding: 0 0 18px;
+}
+
+.packet-game-section + .packet-game-section {
+  padding-top: 16px;
+  border-top: 1px solid rgba(212, 175, 55, 0.14);
+}
+
+.packet-section-heading {
+  min-height: 38px;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.packet-section-heading__title {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.packet-section-heading__title p {
+  margin: 0;
   overflow: hidden;
-  isolation: isolate;
+  color: #ffe7a3;
+  font-size: 20px;
+  line-height: 1.1;
+  font-weight: 900;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-shadow: 0 2px 8px rgba(84, 0, 0, 0.45);
+}
+
+.packet-section-heading__img,
+.packet-section-heading__emoji {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+}
+
+.packet-section-heading__img {
+  object-fit: contain;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.32));
+}
+
+.packet-section-heading__emoji {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 25px;
+  line-height: 1;
+}
+
+.packet-section-heading__more {
+  flex-shrink: 0;
+  min-width: 72px;
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid rgba(255, 237, 172, 0.64);
+  border-radius: 10px;
   background:
-    radial-gradient(circle at 50% 18%, rgba(160, 22, 0, 0.42), rgba(160, 22, 0, 0) 35%),
-    linear-gradient(180deg, rgba(255, 243, 212, 0.04), transparent 18%),
-    linear-gradient(180deg, rgba(39, 2, 2, 0.98), rgba(27, 2, 2, 0.98));
-  box-shadow:
-    0 18px 32px rgba(0, 0, 0, 0.36),
-    inset 0 0 0 1px rgba(255, 248, 214, 0.05),
-    inset 0 -30px 48px rgba(0, 0, 0, 0.28);
-  transition:
-    transform 180ms ease,
-    box-shadow 180ms ease,
-    border-color 180ms ease;
-}
-
-.packet-entry-btn.parity {
-  background:
-    radial-gradient(circle at 50% 18%, rgba(123, 80, 18, 0.28), rgba(123, 80, 18, 0) 35%),
-    linear-gradient(180deg, rgba(255, 243, 212, 0.04), transparent 18%),
-    linear-gradient(180deg, rgba(39, 2, 2, 0.98), rgba(27, 2, 2, 0.98));
-}
-
-.packet-entry-btn::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background:
-    linear-gradient(140deg, rgba(255, 255, 255, 0.1), transparent 24%),
-    radial-gradient(circle at center, rgba(212, 175, 55, 0.06), transparent 58%);
-  pointer-events: none;
-}
-
-.packet-entry-btn::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: 24px;
-  padding: 2px;
-  background: linear-gradient(135deg, #fff5c3 0%, #ffbb00 25%, #8b4513 50%, #ffbb00 75%, #fff5c3 100%);
-  -webkit-mask:
-    linear-gradient(#fff 0 0) content-box,
-    linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask:
-    linear-gradient(#fff 0 0) content-box,
-    linear-gradient(#fff 0 0);
-  mask-composite: exclude;
-  filter: drop-shadow(0 0 5px rgba(255, 187, 0, 0.6));
-  z-index: 0;
-  pointer-events: none;
-}
-
-.packet-entry-btn:hover,
-.packet-entry-btn:active {
-  transform: translateY(-2px);
-  border-color: rgba(255, 231, 169, 0.52);
-  box-shadow:
-    0 22px 36px rgba(0, 0, 0, 0.38),
-    inset 0 0 0 1px rgba(255, 248, 214, 0.08),
-    0 0 18px rgba(212, 175, 55, 0.16);
-}
-
-.packet-entry-btn__sunburst {
-  position: absolute;
-  top: -58%;
-  left: -58%;
-  width: 220%;
-  height: 220%;
-  background: conic-gradient(from 0deg, transparent 0deg, rgba(255, 215, 0, 0.05) 15deg, transparent 30deg);
-  animation: rotateSun 20s linear infinite;
-  pointer-events: none;
-  z-index: 0;
-}
-
-.packet-entry-btn__tag {
-  position: relative;
-  position: absolute;
-  top: 18px;
-  right: -28px;
-  z-index: 3;
-  background: linear-gradient(90deg, #ff8a00, #e52d27);
-  padding: 5px 36px;
-  transform: rotate(45deg);
-  font-size: 11px;
+    linear-gradient(180deg, rgba(255, 255, 255, 0.32), transparent 44%),
+    linear-gradient(135deg, #ffe78a 0%, #ffb300 52%, #d57200 100%);
+  color: #3a0800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  font-size: 15px;
   line-height: 1;
   font-weight: 800;
-  color: #fff6eb;
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.28);
-}
-
-.packet-entry-btn__kranok {
-  position: absolute;
-  width: 34px;
-  height: 34px;
-  fill: rgba(255, 187, 0, 0.5);
-  z-index: 1;
-}
-
-.packet-entry-btn__kranok--tl {
-  top: 4px;
-  left: 4px;
-}
-
-.packet-entry-btn__kranok--br {
-  right: 8px;
-  bottom: 8px;
-  transform: rotate(180deg);
-}
-
-.packet-entry-btn__coins {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 2;
-}
-
-.packet-entry-btn__visual {
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 62px;
-  display: flex;
-  justify-content: center;
-  z-index: 3;
-}
-
-.packet-entry-btn__visual--bomb {
-  top: 64px;
-}
-
-.packet-entry-btn__visual--parity {
-  top: 52px;
-}
-
-.bomb-wrapper {
-  position: relative;
-  width: 80px;
-  height: 80px;
-  animation: bombPulse 2s ease-in-out infinite;
-}
-
-.bomb-main {
-  position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  background: radial-gradient(circle at 30% 30%, #555 0%, #141414 42%, #050505 100%);
   box-shadow:
-    0 20px 40px rgba(0, 0, 0, 0.56),
-    inset -5px -5px 15px rgba(255, 255, 255, 0.08);
+    0 8px 18px rgba(122, 30, 0, 0.32),
+    inset 0 1px 0 rgba(255, 255, 255, 0.58);
 }
 
-.bomb-rim {
-  position: absolute;
-  inset: 4px;
-  border-radius: 50%;
-  border: 2px solid #ffd700;
-  box-shadow: 0 0 10px rgba(255, 215, 0, 0.34);
-  transform: translate(-1px, -2px);
-}
-
-.bomb-fuse {
-  position: absolute;
-  top: -16px;
-  left: 50%;
-  width: 5px;
-  height: 22px;
-  background: linear-gradient(180deg, #55331f 0%, #3d2b1f 100%);
-  border-radius: 999px;
-  transform: translateX(-50%) rotate(15deg);
-}
-
-.bomb-spark {
-  position: absolute;
-  top: -24px;
-  left: 55%;
-  font-size: 14px;
-  color: #ffea33;
-  filter: drop-shadow(0 0 10px rgba(255, 187, 0, 0.9));
-  animation: sparkFlicker 0.1s infinite alternate;
-}
-
-.pill-group {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  align-items: center;
-}
-
-.pill {
-  min-width: 92px;
-  padding: 7px 0;
-  border-radius: 999px;
-  font-size: 19px;
-  line-height: 1;
-  font-weight: 900;
-  letter-spacing: 0.06em;
-  border: 2px solid #ffbb00;
-  text-align: center;
-  box-shadow:
-    0 0 14px rgba(255, 184, 0, 0.24),
-    inset 0 0 8px rgba(255, 184, 0, 0.2);
-}
-
-.pill.odd {
-  background: #ffbb00;
-  color: #1a0000;
-  transform: rotate(-3deg);
-}
-
-.pill.even {
-  background: #1a0000;
-  color: #ffbb00;
-  transform: rotate(3deg);
-}
-
-.packet-entry-btn__content {
-  position: absolute;
-  inset: auto 16px 10px;
-  z-index: 3;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.packet-entry-btn__ticker {
-  margin-top: 8px;
+.packet-game-grid {
+  box-sizing: border-box;
   width: 100%;
-  min-height: 32px;
-  padding: 5px 10px;
-  border-radius: 999px;
-  background: rgba(0, 0, 0, 0.48);
-  color: rgba(255, 229, 186, 0.72);
-  font-size: 9px;
-  line-height: 1.25;
-  text-align: center;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px 8px;
+  align-items: stretch;
+  overflow: hidden;
 }
 
-.packet-entry-btn__footer {
-  margin-top: 4px;
+.packet-game-card {
+  box-sizing: border-box;
+  width: 100%;
+  position: relative;
+  min-width: 0;
+  aspect-ratio: 0.72;
+  min-height: 132px;
+  padding: 7px 5px 9px;
+  border: 1px solid rgba(255, 218, 127, 0.34);
+  border-radius: 12px;
+  overflow: hidden;
+  color: #fff7e8;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-end;
+  text-align: left;
+  box-shadow:
+    0 10px 18px rgba(0, 0, 0, 0.26),
+    inset 0 1px 0 rgba(255, 248, 214, 0.18);
+}
+
+.packet-game-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 50% 24%, rgba(255, 248, 214, 0.3), transparent 34%),
+    linear-gradient(180deg, rgba(0, 0, 0, 0) 44%, rgba(45, 0, 0, 0.45) 100%);
+  z-index: 1;
+  pointer-events: none;
+}
+
+.packet-game-card--game {
+  background: linear-gradient(165deg, #7f1b10 0%, #320000 100%);
+}
+
+.packet-game-card--game::before {
+  background:
+    linear-gradient(180deg, rgba(0, 0, 0, 0) 38%, rgba(49, 0, 0, 0.72) 100%),
+    radial-gradient(circle at 50% 8%, rgba(255, 226, 151, 0.2), transparent 36%);
+}
+
+.packet-game-card__brand {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  z-index: 2;
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: rgba(61, 0, 0, 0.46);
+  color: rgba(255, 237, 183, 0.9);
+  font-size: 9px;
+  line-height: 1.2;
+  font-weight: 900;
+}
+
+.packet-game-card__cover {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.packet-game-card strong,
+.packet-game-card small {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  overflow: hidden;
+  display: block;
+  text-align: center;
+  text-shadow: 0 1px 4px rgba(70, 0, 0, 0.58);
+}
+
+.packet-game-card strong {
+  font-size: 13px;
+  line-height: 1.15;
+  font-weight: 900;
+}
+
+.packet-game-card small {
+  margin-top: 3px;
+  color: rgba(255, 236, 191, 0.88);
+  font-size: 10px;
+  line-height: 1.15;
+}
+
+.packet-game-card:active {
+  transform: translateY(1px) scale(0.98);
+}
+
+.packet-game-pager {
+  margin-top: 14px;
   display: flex;
   flex-direction: column;
   align-items: center;
+  gap: 7px;
+  color: rgba(255, 232, 193, 0.78);
+  text-align: center;
 }
 
-.packet-entry-btn__title {
-  color: #fff;
-  font-size: 16px;
+.packet-game-pager p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.2;
+  font-weight: 700;
+}
+
+.packet-game-pager__more {
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  color: rgba(255, 232, 193, 0.82);
+  background: rgba(84, 0, 0, 0.34);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  font-size: 14px;
   line-height: 1;
-  font-weight: 900;
-  letter-spacing: 0.02em;
 }
 
-.packet-entry-btn__subtitle {
-  margin-top: 4px;
-  color: #ffbb00;
-  font-size: 12px;
-  line-height: 1;
-  letter-spacing: 0.18em;
+.packet-game-pager__more :deep(.van-icon) {
+  font-size: 13px;
 }
 
-@keyframes rotateSun {
-  to {
-    transform: rotate(360deg);
+@media (max-width: 360px) {
+  .packet-section-heading__title p {
+    font-size: 18px;
   }
-}
 
-@keyframes bombPulse {
-  0%,
-  100% {
-    transform: scale(1);
+  .packet-game-grid {
+    gap: 8px 6px;
   }
-  50% {
-    transform: scale(1.06);
-  }
-}
 
-@keyframes sparkFlicker {
-  from {
-    opacity: 0.8;
-    transform: scale(0.8);
+  .packet-game-card {
+    min-height: 118px;
+    border-radius: 10px;
   }
-  to {
-    opacity: 1;
-    transform: scale(1.2);
+
+  .packet-game-card strong {
+    font-size: 11px;
+  }
+
+  .packet-game-card small {
+    font-size: 9px;
   }
 }
 
@@ -1068,17 +1063,6 @@ onBeforeUnmount(() => {
   color: rgba(255, 229, 186, 0.68);
   font-size: 14px;
   line-height: 1;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .packet-entry-btn,
-  .packet-entry-btn__sunburst,
-  .bomb-wrapper,
-  .bomb-spark {
-    animation: none !important;
-    transition: none !important;
-    transform: none !important;
-  }
 }
 
 /* ── 弹窗广告 ── */

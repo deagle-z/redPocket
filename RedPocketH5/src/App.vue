@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useLocalStorage } from '@vueuse/core'
-import { useRouteCacheStore } from '@/stores'
+import pinia, { useRouteCacheStore } from '@/stores'
 import { STORAGE_TOKEN_KEY } from '@/stores/mutation-type'
 import type { RechargeSuccessNotification } from '@/api/user'
 import { ackRechargeNotification, getPendingRechargeNotifications } from '@/api/user'
@@ -16,7 +16,7 @@ import { usePwaInstall } from '@/composables/usePwaInstall'
 const { t } = useI18n()
 const { showDialog: showPwaDialog, triggerInstall, dismiss: dismissPwa } = usePwaInstall()
 
-const routeCacheStore = useRouteCacheStore()
+const routeCacheStore = useRouteCacheStore(pinia)
 const accessToken = useLocalStorage<string | null>(STORAGE_TOKEN_KEY, '')
 const wsInitialized = ref(false)
 const syncingRechargeNotify = ref(false)

@@ -5,7 +5,7 @@ import NProgress from 'nprogress'
 import 'nprogress/nprogress.css'
 
 import type { EnhancedRouteLocation } from './types'
-import { useRouteCacheStore, useUserStore } from '@/stores'
+import pinia, { useRouteCacheStore, useUserStore } from '@/stores'
 
 import { isLogin } from '@/utils/auth'
 import { trackPageView } from '@/utils/attribution'
@@ -69,8 +69,8 @@ if (import.meta.hot)
 router.beforeEach(async (to: EnhancedRouteLocation) => {
   NProgress.start()
 
-  const routeCacheStore = useRouteCacheStore()
-  const userStore = useUserStore()
+  const routeCacheStore = useRouteCacheStore(pinia)
+  const userStore = useUserStore(pinia)
 
   // Route cache
   routeCacheStore.addRoute(to)

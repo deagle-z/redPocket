@@ -21,6 +21,13 @@ type Config struct {
 	Telegram TelegramConfig `yaml:"telegram"`
 	R2       R2Config       `yaml:"r2"`
 	Pay      PayConfig      `yaml:"pay"`
+	Game     GameConfig     `yaml:"game"`
+}
+
+type GameConfig struct {
+	APIURL    string `yaml:"apiUrl"`    // 游戏厂商 API 地址
+	AppID     string `yaml:"appId"`     // 商户号（商户名称）
+	AppSecret string `yaml:"appSecret"` // 签名密钥
 }
 
 type PayConfig struct {

@@ -34,9 +34,9 @@ const app = createApp(App)
 const head = createHead()
 
 app.use(head)
-app.use(router)
 app.use(pinia)
 app.use(i18n)
+app.use(router)
 app.component('CoinAmount', CoinAmount)
 
 app.mount('#app')

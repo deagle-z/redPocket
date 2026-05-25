@@ -44,6 +44,9 @@ const (
 	CashHistoryTypeLuckyNumsGift          int8 = 18 // 幸运数字赠送
 	CashHistoryTypeAdminManualRebate      int8 = 19 // 后台手工加佣金
 	CashHistoryTypeCheckInGift            int8 = 20 // 签到活动赠送
+	CashHistoryTypeGameBet                int8 = 21 // 三方游戏下注扣款
+	CashHistoryTypeGameWin                int8 = 22 // 三方游戏派奖
+	CashHistoryTypeGameRefund             int8 = 23 // 三方游戏退回下注
 )
 
 type CashHistoryResp struct {

@@ -124,6 +124,9 @@ func InitTables(prefix string) (firstInit bool, err error) {
 			&pojo.SysTenantPrizePoolRecord{},
 			&pojo.SysTenantPrizePoolConfig{},
 			&pojo.UserLotteryRecord{},
+			&pojo.AppGamePlatform{},
+			&pojo.AppGame{},
+			&pojo.AppUserBetRecord{},
 		)
 		if err != nil {
 			panic(err)

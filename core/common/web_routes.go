@@ -34,7 +34,7 @@ func InitGin() {
 	corsConfig := cors.DefaultConfig()
 	corsConfig.AllowAllOrigins = true
 	corsConfig.AllowMethods = []string{"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"}
-	corsConfig.AllowHeaders = []string{"Content-Type", "X-XSRF-TOKEN", "Accept", "X-Requested-With", "Origin", "Content-Length", "Content-Type", "Authorization"}
+	corsConfig.AllowHeaders = []string{"Content-Type", "X-XSRF-TOKEN", "Accept", "X-Requested-With", "Origin", "Content-Length", "Content-Type", "Authorization", "X-Sign", "X-Request-Id", "X-Appid"}
 	corsConfig.AllowCredentials = true
 	corsConfig.MaxAge = 12 * time.Hour
 	router.Use(hostInfoMiddleware())
@@ -48,6 +48,8 @@ func InitGin() {
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	router.GET("/ws", WsHandler)
 	router.GET("/api/v1/ws", WsHandler)
+	router.POST("/Cash/Get", api.GetGameCash)                     // 三方游戏方查询玩家余额（公开签名接口）
+	router.POST("/Cash/TransferInOut", api.TransferGameCashInOut) // 三方游戏方修改玩家余额（公开签名接口）
 	_ = mime.AddExtensionType(".js", "application/javascript")
 	router.Use(static.ServeRoot("/", "dist"))
 	apiGroup := router.Group("/api/v1")
@@ -179,6 +181,7 @@ func InitGin() {
 		adminGroup.POST("/tgUser/subStatsSummary", api.GetTgUsersWithSubStatsSummary)
 		adminGroup.POST("/userWithdrawAccount/list", api.GetSysUserWithdrawAccounts)  // 获取用户提现账户列表
 		adminGroup.GET("/userWithdrawAccount/:id", api.GetSysUserWithdrawAccountById) // 获取用户提现账户详情
+		adminGroup.POST("/appGame/list", api.GetAppGames)                             // 获取本地游戏列表
 	}
 	adminGroupLog := router.Group("/api/v1/admin")
 	adminGroupLog.Use(authMiddleware([]int{1}, false, true), manageLog())
@@ -240,6 +243,8 @@ func InitGin() {
 		adminGroupLog.DELETE("/sysCustomField/:id", api.DelSysCustomField)
 		adminGroupLog.POST("/platformProfitLedger", api.SetPlatformProfitLedger)
 		adminGroupLog.DELETE("/platformProfitLedger/:id", api.DelPlatformProfitLedger)
+		adminGroupLog.POST("/appGame", api.SetAppGame)                                       // 创建或更新本地游戏
+		adminGroupLog.POST("/appGame/sync", api.SyncAppGames)                                // 同步第三方游戏列表
 		adminGroupLog.POST("/userWithdrawAccount", api.AdminSetSysUserWithdrawAccount)       // 创建或更新用户提现账户
 		adminGroupLog.DELETE("/userWithdrawAccount/:id", api.AdminDelSysUserWithdrawAccount) // 删除用户提现账户
 		//adminGroupLog.PUT("/host_info", api2.SetHostInfo)
@@ -322,6 +327,7 @@ func InitGin() {
 		appRouter.POST("/lucky/detail", api.GetLuckyDetailApp)          // 不校验token
 		appRouter.GET("/prizePool/balance", api.GetPrizePoolBalanceApp) // 不校验token
 		appRouter.POST("/banners", api.GetAppBanners)                   // 轮播图按position分组
+		appRouter.GET("/appGame/home", api.GetAppHomeGames)             // 首页游戏按分类分组
 		appRouter.GET("/config/:key", api.GetAppSysConfig)              // 根据key获取系统配置
 		appRouter.GET("/domain/serviceLinks", api.GetAppTenantServiceLinks)
 		appRouter.GET("/tenant/serviceLinks", api.GetAppTenantServiceLinks) // 兼容旧H5路径，不校验token
@@ -384,6 +390,7 @@ func InitGin() {
 		appAuthRouter.GET("/lottery/chances", api.GetLotteryChances)                            // App端查询抽奖次数
 		appAuthRouter.POST("/lottery/draw", api.DrawLottery)                                    // App端消耗一次抽奖机会
 		appAuthRouter.GET("/lottery/history", api.GetLotteryHistory)                            // App端查询抽奖历史
+		appAuthRouter.POST("/appGame/launch", api.LaunchAppGame)                                // App端获取游戏登录URL
 		appAuthRouter.GET("/prizePool/outRecords", api.GetPrizePoolOutRecordsApp)               // App端查询奖池消耗流水
 	}
 

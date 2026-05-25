@@ -1012,6 +1012,29 @@ export interface TenantServiceLinks {
   wsServiceUrl?: string | null
 }
 
+export interface AppHomeGameItem {
+  gameId: number
+  gameName: string
+  categoryCode: string
+  type: number
+  manufacturer: string
+  gameIcon: string
+  horizontalImage?: string
+  sort: number
+  showIndex: number
+}
+
+export type AppHomeGameData = Record<string, AppHomeGameItem[] | undefined>
+
+export interface AppGameLaunchReq {
+  gameId: number
+  language: string
+}
+
+export interface AppGameLaunchResp {
+  url: string
+}
+
 export function getBanners(data: { position?: string, countryCode?: string } = {}) {
   const lang = i18n.global.locale.value || 'en-US'
   return request.post<ApiResult<BannersData>>('/api/v1/app/banners', {
@@ -1019,6 +1042,14 @@ export function getBanners(data: { position?: string, countryCode?: string } = {
     lang,
     ...data,
   })
+}
+
+export function getAppGameHome() {
+  return request.get<ApiResult<AppHomeGameData>>('/api/v1/app/appGame/home')
+}
+
+export function launchAppGame(data: AppGameLaunchReq) {
+  return request.post<ApiResult<AppGameLaunchResp>>('/api/v1/app/appGame/launch', data)
 }
 
 export function getTenantServiceLinks() {
