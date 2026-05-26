@@ -35,6 +35,68 @@ func GetAppGames(ctx *gin.Context) {
 	utils.SuccessObjBack(ctx, result)
 }
 
+// GetAppGameThirdCategories godoc
+//
+//	@Summary		按分类获取游戏厂商列表
+//	@Tags			游戏
+//	@Accept			json
+//	@Produce		json
+//	@Param			data body		pojo.AppGameThirdCategorySearch	true	"查询条件"
+//	@Success		200	{object}		pojo.AppGameThirdCategoryResp
+//	@Router			/api/v1/app/appGame/thirdCategories [post]
+func GetAppGameThirdCategories(ctx *gin.Context) {
+	var search pojo.AppGameThirdCategorySearch
+	if err := ctx.ShouldBindJSON(&search); err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	db := ctx.MustGet("db").(*gorm.DB)
+	result := repository.GetAppGameThirdCategories(db, search.CategoryCode)
+	utils.SuccessObjBack(ctx, result)
+}
+
+// GetAppGameListApp godoc
+//
+//	@Summary		App端分页查询游戏列表
+//	@Tags			游戏
+//	@Accept			json
+//	@Produce		json
+//	@Param			data body		pojo.AppGameSearch	true	"查询条件"
+//	@Success		200	{object}		pojo.AppGameHomeListResp
+//	@Router			/api/v1/app/appGame/list [post]
+func GetAppGameListApp(ctx *gin.Context) {
+	var search pojo.AppGameSearch
+	search.SetPageDefaults()
+	if err := ctx.ShouldBindJSON(&search); err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	db := ctx.MustGet("db").(*gorm.DB)
+	result := repository.GetAppGameHomeList(db, search)
+	utils.SuccessObjBack(ctx, result)
+}
+
+// GetAppGameCategoryListApp godoc
+//
+//	@Summary		App端按分类和厂商分页查询游戏列表
+//	@Tags			游戏
+//	@Accept			json
+//	@Produce		json
+//	@Param			data body		pojo.AppGameSearch	true	"查询条件"
+//	@Success		200	{object}		pojo.AppGameCategoryListResp
+//	@Router			/api/v1/app/appGame/categoryList [post]
+func GetAppGameCategoryListApp(ctx *gin.Context) {
+	var search pojo.AppGameSearch
+	search.SetPageDefaults()
+	if err := ctx.ShouldBindJSON(&search); err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	db := ctx.MustGet("db").(*gorm.DB)
+	result := repository.GetAppGameCategoryList(db, search)
+	utils.SuccessObjBack(ctx, result)
+}
+
 // SetAppGame godoc
 //
 //	@Summary		创建或更新本地游戏

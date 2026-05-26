@@ -6,7 +6,7 @@ import {
   createWebHashHistory
 } from "vue-router";
 import { router } from "./index";
-import { isProxy, toRaw } from "vue";
+import { h, isProxy, resolveComponent, toRaw } from "vue";
 import { useTimeoutFn } from "@vueuse/core";
 import {
   isString,
@@ -24,8 +24,49 @@ import { useMultiTagsStoreHook } from "@/store/modules/multiTags";
 import { usePermissionStoreHook } from "@/store/modules/permission";
 
 const IFrame = () => import("@/layout/frame.vue");
+const ParentView = {
+  name: "ParentView",
+  render: () => h(resolveComponent("router-view"))
+};
 // https://cn.vitejs.dev/guide/features.html#glob-import
 const modulesRoutes = import.meta.glob("/src/views/**/*.{vue,tsx}");
+
+function normalizeRouteViewPath(value?: string) {
+  if (!value) return "";
+  const normalized = value.replace(/^\/+/, "").replace(/\.(vue|tsx)$/, "");
+  if (normalized.endsWith("/index")) return `/src/views/${normalized}.vue`;
+  return `/src/views/${normalized}/index.vue`;
+}
+
+function resolveRouteComponentKey(
+  modulesRoutesKeys: string[],
+  component?: string,
+  path?: string
+) {
+  const exactKeys = [
+    normalizeRouteViewPath(path),
+    normalizeRouteViewPath(component)
+  ].filter(Boolean);
+  const exact = exactKeys.find(key => modulesRoutesKeys.includes(key));
+  if (exact) return exact;
+
+  const fuzzyValue = component || path;
+  if (!fuzzyValue) return "";
+  return modulesRoutesKeys.find(ev => ev.includes(fuzzyValue)) || "";
+}
+
+function isDirectoryRoute(route: RouteRecordRaw) {
+  return !route.component && route?.children && route.children.length > 0;
+}
+
+function routeNameByPath(path?: string) {
+  return (path || "")
+    .replace(/^\/+/, "")
+    .split("/")
+    .filter(Boolean)
+    .map(item => item.charAt(0).toUpperCase() + item.slice(1))
+    .join("");
+}
 
 // 动态路由
 import { getAsyncRoutes } from "@/api/routes";
@@ -150,7 +191,7 @@ function addPathMatch() {
 
 /** 处理动态路由（后端返回的路由） */
 function handleAsyncRoutes(routeList) {
-  if(routeList===null) routeList=[];
+  if (routeList === null) routeList = [];
 
   if (routeList.length === 0) {
     usePermissionStoreHook().handleWholeMenus(routeList);
@@ -169,6 +210,12 @@ function handleAsyncRoutes(routeList) {
           router.options.routes[0].children.push(v);
           // 最终路由进行升序
           ascending(router.options.routes[0].children);
+          const existedRoute = router
+            .getRoutes()
+            .find(route => route.name === v?.name);
+          if (existedRoute && existedRoute.path !== v.path) {
+            v.name = routeNameByPath(v.path) || v.name;
+          }
           if (!router.hasRoute(v?.name)) router.addRoute(v);
           const flattenRouters: any = router
             .getRoutes()
@@ -314,12 +361,16 @@ function addAsyncRoutes(arrRoutes: Array<RouteRecordRaw>) {
       v.name = (v.children[0].name as string) + "Parent";
     if (v.meta?.frameSrc) {
       v.component = IFrame;
+    } else if (isDirectoryRoute(v)) {
+      v.component = ParentView;
     } else {
       // 对后端传component组件路径和不传做兼容（如果后端传component组件路径，那么path可以随便写，如果不传，component组件路径会跟path保持一致）
-      const index = v?.component
-        ? modulesRoutesKeys.findIndex(ev => ev.includes(v.component as any))
-        : modulesRoutesKeys.findIndex(ev => ev.includes(v.path));
-      v.component = modulesRoutes[modulesRoutesKeys[index]];
+      const componentKey = resolveRouteComponentKey(
+        modulesRoutesKeys,
+        v.component as string,
+        v.path
+      );
+      v.component = modulesRoutes[componentKey];
     }
     if (v?.children && v.children.length) {
       addAsyncRoutes(v.children);

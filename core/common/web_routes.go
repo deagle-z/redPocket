@@ -48,8 +48,8 @@ func InitGin() {
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	router.GET("/ws", WsHandler)
 	router.GET("/api/v1/ws", WsHandler)
-	router.POST("/api/Cash/Get", api.GetGameCash)                     // 三方游戏方查询玩家余额（公开签名接口）
-	router.POST("/api/Cash/TransferInOut", api.TransferGameCashInOut) // 三方游戏方修改玩家余额（公开签名接口）
+	router.POST("/Cash/Get", api.GetGameCash)                     // 三方游戏方查询玩家余额（公开签名接口）
+	router.POST("/Cash/TransferInOut", api.TransferGameCashInOut) // 三方游戏方修改玩家余额（公开签名接口）
 	_ = mime.AddExtensionType(".js", "application/javascript")
 	router.Use(static.ServeRoot("/", "dist"))
 	apiGroup := router.Group("/api/v1")
@@ -182,6 +182,8 @@ func InitGin() {
 		adminGroup.POST("/userWithdrawAccount/list", api.GetSysUserWithdrawAccounts)  // 获取用户提现账户列表
 		adminGroup.GET("/userWithdrawAccount/:id", api.GetSysUserWithdrawAccountById) // 获取用户提现账户详情
 		adminGroup.POST("/appGame/list", api.GetAppGames)                             // 获取本地游戏列表
+		adminGroup.POST("/appGame/thirdCategories", api.GetAppGameThirdCategories)    // 按分类获取游戏厂商列表
+		adminGroup.POST("/appUserBetRecord/list", api.GetAppUserBetRecords)           // 获取三方游戏下注记录
 	}
 	adminGroupLog := router.Group("/api/v1/admin")
 	adminGroupLog.Use(authMiddleware([]int{1}, false, true), manageLog())
@@ -323,12 +325,15 @@ func InitGin() {
 		appRouter.POST("/attribution/event", api.CreateAttributionEvent)
 		appRouter.POST("/tg/forgotPasswordByEmail", api.ForgotPasswordByEmail)
 		appRouter.POST("/tg/forgotPasswordByPhone", api.ForgotPasswordByPhone)
-		appRouter.POST("/lucky/list", api.GetRedPacketListApp)          // 不校验token
-		appRouter.POST("/lucky/detail", api.GetLuckyDetailApp)          // 不校验token
-		appRouter.GET("/prizePool/balance", api.GetPrizePoolBalanceApp) // 不校验token
-		appRouter.POST("/banners", api.GetAppBanners)                   // 轮播图按position分组
-		appRouter.GET("/appGame/home", api.GetAppHomeGames)             // 首页游戏按分类分组
-		appRouter.GET("/config/:key", api.GetAppSysConfig)              // 根据key获取系统配置
+		appRouter.POST("/lucky/list", api.GetRedPacketListApp)                    // 不校验token
+		appRouter.POST("/lucky/detail", api.GetLuckyDetailApp)                    // 不校验token
+		appRouter.GET("/prizePool/balance", api.GetPrizePoolBalanceApp)           // 不校验token
+		appRouter.POST("/banners", api.GetAppBanners)                             // 轮播图按position分组
+		appRouter.GET("/appGame/home", api.GetAppHomeGames)                       // 首页游戏按分类分组
+		appRouter.POST("/appGame/list", api.GetAppGameListApp)                    // App端分页查询游戏列表
+		appRouter.POST("/appGame/categoryList", api.GetAppGameCategoryListApp)    // App端按分类和厂商分页查询游戏列表
+		appRouter.POST("/appGame/thirdCategories", api.GetAppGameThirdCategories) // 按分类获取游戏厂商列表
+		appRouter.GET("/config/:key", api.GetAppSysConfig)                        // 根据key获取系统配置
 		appRouter.GET("/domain/serviceLinks", api.GetAppTenantServiceLinks)
 		appRouter.GET("/tenant/serviceLinks", api.GetAppTenantServiceLinks) // 兼容旧H5路径，不校验token
 	}

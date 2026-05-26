@@ -326,7 +326,7 @@ func createGameBetRecord(tx *gorm.DB, user pojo.TgUser, req pojo.GameCashTransfe
 	uid := parseGameUserNumericUID(user.Uid)
 	remark := gameCashTransferDesc(req)
 
-	return tx.Create(&pojo.AppUserBetRecord{
+	return tx.Table(pojo.AppUserBetRecordTableNameByUserID(user.ID)).Create(&pojo.AppUserBetRecord{
 		UID:          uid,
 		UserID:       &user.ID,
 		GameID:       &gameID,

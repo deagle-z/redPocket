@@ -1026,6 +1026,30 @@ export interface AppHomeGameItem {
 
 export type AppHomeGameData = Record<string, AppHomeGameItem[] | undefined>
 
+export interface AppGameListReq {
+  currentPage: number
+  pageSize: number
+  categoryCode?: string
+  thirdGameCategory?: string
+  gameName?: string
+}
+
+export interface AppGameListResp {
+  list: AppHomeGameItem[]
+  total: number
+  pageSize: number
+  currentPage: number
+}
+
+export interface AppGameCategoryListResp extends AppGameListResp {
+  thirdGameCategories: string[]
+  thirdGameCategory: string
+}
+
+export interface AppGameThirdCategoryResp {
+  list: string[]
+}
+
 export interface AppGameLaunchReq {
   gameId: number
   language: string
@@ -1046,6 +1070,18 @@ export function getBanners(data: { position?: string, countryCode?: string } = {
 
 export function getAppGameHome() {
   return request.get<ApiResult<AppHomeGameData>>('/api/v1/app/appGame/home')
+}
+
+export function getAppGameList(data: AppGameListReq) {
+  return request.post<ApiResult<AppGameListResp>>('/api/v1/app/appGame/list', data)
+}
+
+export function getAppGameCategoryList(data: AppGameListReq) {
+  return request.post<ApiResult<AppGameCategoryListResp>>('/api/v1/app/appGame/categoryList', data)
+}
+
+export function getAppGameThirdCategories(data: { categoryCode?: string }) {
+  return request.post<ApiResult<AppGameThirdCategoryResp>>('/api/v1/app/appGame/thirdCategories', data)
 }
 
 export function launchAppGame(data: AppGameLaunchReq) {

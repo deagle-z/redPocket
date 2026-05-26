@@ -43,6 +43,7 @@ interface PacketGameCard {
 
 interface PacketGameSection {
   label: string
+  code: string
   icon?: string
   iconText?: string
   moreAction: 'packet' | 'lottery'
@@ -101,6 +102,7 @@ function mapHomeGame(game: AppHomeGameItem): PacketGameCard {
 const packetGameSections = computed<PacketGameSection[]>(() => [
   ...packetSectionMeta.map(section => ({
     label: section.label,
+    code: section.code,
     icon: section.icon,
     iconText: section.iconText,
     moreAction: section.moreAction,
@@ -187,7 +189,10 @@ function goPacketSection(section: PacketGameSection) {
     goPrize()
     return
   }
-  goPacketList(0)
+  router.push({
+    path: '/gameList',
+    query: { categoryCode: section.code },
+  })
 }
 
 function scrollToPacketSection(section: PacketGameSection) {
@@ -437,7 +442,12 @@ onMounted(async () => {
               <span v-else class="packet-section-heading__emoji">{{ section.iconText }}</span>
               <p>{{ section.label }}</p>
             </div>
-            <button type="button" class="packet-section-heading__more" @click="goPacketSection(section)">
+            <button
+              v-if="section.code !== 'hot'"
+              type="button"
+              class="packet-section-heading__more"
+              @click="goPacketSection(section)"
+            >
               Todo
               <van-icon name="arrow" />
             </button>

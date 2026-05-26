@@ -1,6 +1,9 @@
 package pojo
 
-import "time"
+import (
+	"fmt"
+	"time"
+)
 
 type AppUserBetRecord struct {
 	ID           int64      `json:"id" gorm:"column:id;type:bigint;primaryKey;autoIncrement"`
@@ -64,7 +67,24 @@ type AppUserBetRecordResp struct {
 }
 
 var AppUserBetRecordTableName = "app_user_bet_record"
+var AppUserBetRecordShards = 16
 
 func (AppUserBetRecord) TableName() string {
 	return AppUserBetRecordTableName
+}
+
+func AppUserBetRecordShardIndex(userID int64) int {
+	index := userID % int64(AppUserBetRecordShards)
+	if index < 0 {
+		index = -index
+	}
+	return int(index)
+}
+
+func AppUserBetRecordShardTableName(index int) string {
+	return fmt.Sprintf("%s_%d", AppUserBetRecordTableName, index)
+}
+
+func AppUserBetRecordTableNameByUserID(userID int64) string {
+	return AppUserBetRecordShardTableName(AppUserBetRecordShardIndex(userID))
 }

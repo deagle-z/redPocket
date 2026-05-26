@@ -46,6 +46,14 @@ type AppGameSearch struct {
 	DeletedFlag       *int   `json:"deletedFlag"`
 }
 
+type AppGameThirdCategorySearch struct {
+	CategoryCode string `json:"categoryCode"`
+}
+
+type AppGameThirdCategoryResp struct {
+	List []string `json:"list"`
+}
+
 type AppGameSet struct {
 	GameID            int64   `json:"gameId"`
 	GameName          *string `json:"gameName"`
@@ -87,6 +95,16 @@ type AppGameHomeItem struct {
 }
 
 type AppGameHomeResp map[string][]AppGameHomeItem
+
+type AppGameHomeListResp struct {
+	BasePageResponse[AppGameHomeItem]
+}
+
+type AppGameCategoryListResp struct {
+	BasePageResponse[AppGameHomeItem]
+	ThirdGameCategories []string `json:"thirdGameCategories"`
+	ThirdGameCategory   string   `json:"thirdGameCategory"`
+}
 
 type AppGameSyncReq struct {
 	Language     string `json:"language"`

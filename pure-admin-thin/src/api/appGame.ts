@@ -50,6 +50,10 @@ export type AppGameSyncReq = {
   platformCode?: string;
 };
 
+export type AppGameThirdCategorySearch = {
+  categoryCode?: string;
+};
+
 export type AppGameSet = {
   gameId?: number;
   gameName?: string | null;
@@ -105,10 +109,27 @@ type AppGameResult = {
   data: AppGame;
 };
 
+type AppGameThirdCategoryResult = {
+  code: number;
+  message: string;
+  success: boolean;
+  data: {
+    list: string[];
+  };
+};
+
 export const getAppGameList = (data: AppGameSearch) => {
   return http.request<AppGameListResult>("post", "/api/v1/admin/appGame/list", {
     data
   });
+};
+
+export const getAppGameThirdCategories = (data: AppGameThirdCategorySearch) => {
+  return http.request<AppGameThirdCategoryResult>(
+    "post",
+    "/api/v1/admin/appGame/thirdCategories",
+    { data }
+  );
 };
 
 export const syncAppGames = (data: AppGameSyncReq) => {

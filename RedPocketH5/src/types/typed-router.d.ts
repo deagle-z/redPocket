@@ -93,6 +93,13 @@ declare module 'vue-router/auto-routes' {
       Record<never, never>,
       | never
     >,
+    'GameList': RouteRecordInfo<
+      'GameList',
+      '/gameList',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
     '/gamePlay/': RouteRecordInfo<
       '/gamePlay/',
       '/gamePlay',
@@ -366,6 +373,12 @@ declare module 'vue-router/auto-routes' {
     'src/pages/firstDeposit/index.vue': {
       routes:
         | 'FirstDeposit'
+      views:
+        | never
+    }
+    'src/pages/gameList/index.vue': {
+      routes:
+        | 'GameList'
       views:
         | never
     }

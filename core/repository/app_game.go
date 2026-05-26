@@ -13,7 +13,55 @@ import (
 
 func GetAppGames(db *gorm.DB, search pojo.AppGameSearch) (result pojo.AppGameResp) {
 	var list []pojo.AppGame
-	query := db.Model(&pojo.AppGame{})
+	query := buildAppGameSearchQuery(db.Model(&pojo.AppGame{}), search)
+
+	query.Count(&result.Total)
+	query.Order("sort asc, show_index asc, game_id desc").
+		Limit(search.PageSize).
+		Offset(search.PageSize * search.CurrentPage).
+		Find(&list)
+
+	result.List = list
+	result.PageSize = search.PageSize
+	result.CurrentPage = search.CurrentPage
+	return result
+}
+
+func GetAppGameHomeList(db *gorm.DB, search pojo.AppGameSearch) (result pojo.AppGameHomeListResp) {
+	var list []pojo.AppGame
+	query := buildAppGameSearchQuery(db.Model(&pojo.AppGame{}), search).
+		Where("COALESCE(disabled_flag, 0) = 0")
+
+	query.Count(&result.Total)
+	query.Order("sort asc, show_index asc, game_id desc").
+		Limit(search.PageSize).
+		Offset(search.PageSize * search.CurrentPage).
+		Find(&list)
+
+	result.List = make([]pojo.AppGameHomeItem, 0, len(list))
+	for _, item := range list {
+		result.List = append(result.List, buildAppGameHomeItem(item))
+	}
+	result.PageSize = search.PageSize
+	result.CurrentPage = search.CurrentPage
+	return result
+}
+
+func GetAppGameCategoryList(db *gorm.DB, search pojo.AppGameSearch) pojo.AppGameCategoryListResp {
+	categories := GetAppGameThirdCategories(db, search.CategoryCode).List
+	if strings.TrimSpace(search.ThirdGameCategory) == "" && len(categories) > 0 {
+		search.ThirdGameCategory = categories[0]
+	}
+
+	listResp := GetAppGameHomeList(db, search)
+	return pojo.AppGameCategoryListResp{
+		BasePageResponse:    listResp.BasePageResponse,
+		ThirdGameCategories: categories,
+		ThirdGameCategory:   strings.TrimSpace(search.ThirdGameCategory),
+	}
+}
+
+func buildAppGameSearchQuery(query *gorm.DB, search pojo.AppGameSearch) *gorm.DB {
 
 	if search.DeletedFlag == nil {
 		query = query.Where("COALESCE(deleted_flag, 0) = 0")
@@ -59,17 +107,23 @@ func GetAppGames(db *gorm.DB, search pojo.AppGameSearch) (result pojo.AppGameRes
 	if search.DisabledFlag != nil {
 		query = query.Where("disabled_flag = ?", *search.DisabledFlag)
 	}
+	return query
+}
 
-	query.Count(&result.Total)
-	query.Order("sort asc, show_index asc, game_id desc").
-		Limit(search.PageSize).
-		Offset(search.PageSize * search.CurrentPage).
-		Find(&list)
-
-	result.List = list
-	result.PageSize = search.PageSize
-	result.CurrentPage = search.CurrentPage
-	return result
+func GetAppGameThirdCategories(db *gorm.DB, categoryCode string) pojo.AppGameThirdCategoryResp {
+	var list []string
+	query := db.Model(&pojo.AppGame{}).
+		Where("COALESCE(deleted_flag, 0) = 0").
+		Where("COALESCE(disabled_flag, 0) = 0").
+		Where("third_game_category IS NOT NULL").
+		Where("TRIM(third_game_category) <> ''")
+	if categoryCode = strings.TrimSpace(categoryCode); categoryCode != "" {
+		query = query.Where("category_code = ?", categoryCode)
+	}
+	query.Distinct("third_game_category").
+		Order("third_game_category asc").
+		Pluck("third_game_category", &list)
+	return pojo.AppGameThirdCategoryResp{List: list}
 }
 
 func GetAppGameByID(db *gorm.DB, gameID int64) (pojo.AppGame, error) {
@@ -92,21 +146,28 @@ func GetEnabledAppGameByID(db *gorm.DB, gameID int64) (pojo.AppGame, error) {
 
 func GetHomeAppGamesGrouped(db *gorm.DB) pojo.AppGameHomeResp {
 	var games []pojo.AppGame
+	var hotGames []pojo.AppGame
 	db.Model(&pojo.AppGame{}).
 		Where("COALESCE(deleted_flag, 0) = 0").
 		Where("COALESCE(disabled_flag, 0) = 0").
 		Where("COALESCE(home_show, 0) = 1").
 		Order("category_code asc, type asc, sort asc, show_index asc, game_id desc").
 		Find(&games)
+	db.Model(&pojo.AppGame{}).
+		Where("COALESCE(deleted_flag, 0) = 0").
+		Where("COALESCE(disabled_flag, 0) = 0").
+		Where("COALESCE(hot, 0) = 1").
+		Order("sort asc, show_index asc, game_id desc").
+		Find(&hotGames)
 
 	result := pojo.AppGameHomeResp{
 		"hot": make([]pojo.AppGameHomeItem, 0),
 	}
+	for _, item := range hotGames {
+		result["hot"] = append(result["hot"], buildAppGameHomeItem(item))
+	}
 	for _, item := range games {
 		homeItem := buildAppGameHomeItem(item)
-		if item.Hot != nil && *item.Hot == 1 {
-			result["hot"] = append(result["hot"], homeItem)
-		}
 		categoryCode := strings.TrimSpace(valueString(item.CategoryCode))
 		if categoryCode == "" && item.Type != nil {
 			categoryCode = fmt.Sprintf("type_%d", *item.Type)
