@@ -48,8 +48,8 @@ func InitGin() {
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	router.GET("/ws", WsHandler)
 	router.GET("/api/v1/ws", WsHandler)
-	router.POST("/Cash/Get", api.GetGameCash)                     // 三方游戏方查询玩家余额（公开签名接口）
-	router.POST("/Cash/TransferInOut", api.TransferGameCashInOut) // 三方游戏方修改玩家余额（公开签名接口）
+	router.POST("/api/Cash/Get", api.GetGameCash)                     // 三方游戏方查询玩家余额（公开签名接口）
+	router.POST("/api/Cash/TransferInOut", api.TransferGameCashInOut) // 三方游戏方修改玩家余额（公开签名接口）
 	_ = mime.AddExtensionType(".js", "application/javascript")
 	router.Use(static.ServeRoot("/", "dist"))
 	apiGroup := router.Group("/api/v1")

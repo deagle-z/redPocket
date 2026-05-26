@@ -220,6 +220,12 @@ func GrabTrialRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix st
 	if luckyID <= 0 || userID <= 0 {
 		return nil, errors.New("invalid_params")
 	}
+	releaseLock, lockErr := acquireTrialLuckyGrabLock(luckyID)
+	if lockErr != nil {
+		return nil, lockErr
+	}
+	defer releaseLock()
+
 	result := map[string]any{}
 	finished := false
 	err := db.Transaction(func(tx *gorm.DB) error {
@@ -815,6 +821,12 @@ func AutoTrialBotGrab(db *gorm.DB, luckyID int64) error {
 }
 
 func grabTrialRedPacketByBot(db *gorm.DB, luckyID int64, botID int64, grabIndex int) error {
+	releaseLock, lockErr := acquireTrialLuckyGrabLock(luckyID)
+	if lockErr != nil {
+		return lockErr
+	}
+	defer releaseLock()
+
 	result := map[string]any{}
 	finished := false
 	err := db.Transaction(func(tx *gorm.DB) error {
@@ -969,15 +981,31 @@ func pickTrialLuckyItem(tx *gorm.DB, luckyID int64, grabIndex int) (pojo.TrialLu
 	var item pojo.TrialLuckyMoneyItem
 	query := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("red_packet_id = ? AND is_grabbed = ?", luckyID, 0)
 	if grabIndex > 0 {
-		if err := query.Where("seq_no = ?", grabIndex).First(&item).Error; err != nil {
+		if err := query.Where("seq_no = ?", grabIndex).Order("seq_no asc, id asc").First(&item).Error; err != nil {
 			return item, errors.New("grab_index_unavailable")
 		}
 		return item, nil
 	}
-	if err := query.Order("seq_no asc").First(&item).Error; err != nil {
+	if err := query.Order("seq_no asc, id asc").First(&item).Error; err != nil {
 		return item, errors.New("lucky_empty")
 	}
 	return item, nil
+}
+
+func acquireTrialLuckyGrabLock(luckyID int64) (func(), error) {
+	lockKey := fmt.Sprintf("bgu_trial_lucky_grab_%d", luckyID)
+	acquired, err := utils.AcquireLock(lockKey, 8*time.Second)
+	if err != nil {
+		log.Printf("[trial_lucky] acquire grab lock error luckyID=%d err=%v", luckyID, err)
+		return nil, err
+	}
+	if !acquired {
+		log.Printf("[trial_lucky] grab lock busy luckyID=%d", luckyID)
+		return nil, errors.New("request_too_fast")
+	}
+	return func() {
+		_ = utils.ReleaseLock(lockKey)
+	}, nil
 }
 
 type trialLuckyItemAmountSwap struct {

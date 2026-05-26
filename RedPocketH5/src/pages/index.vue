@@ -35,6 +35,7 @@ interface PacketGameCard {
   brand: string
   cover?: string
   variant: 'game' | 'packet'
+  packetSkin?: 'thunder' | 'parity'
   action: PacketGameAction
   packetMode?: 0 | 1
   rawGame?: AppHomeGameItem
@@ -69,6 +70,7 @@ const defaultHotPacketGames = computed<PacketGameCard[]>(() => [
     brand: t('sendPacketPage.playTypeThunderEyebrow'),
     cover: imgRedpacketGif,
     variant: 'packet',
+    packetSkin: 'thunder',
     action: 'packet',
     packetMode: 0,
   },
@@ -78,6 +80,7 @@ const defaultHotPacketGames = computed<PacketGameCard[]>(() => [
     brand: t('sendPacketPage.playTypeParityEyebrow'),
     cover: imgRedpacketJpg,
     variant: 'packet',
+    packetSkin: 'parity',
     action: 'packet',
     packetMode: 1,
   },
@@ -446,12 +449,29 @@ onMounted(async () => {
               :key="`${section.label}-${game.rawGame?.gameId || gameIndex}`"
               type="button"
               class="packet-game-card"
-              :class="`packet-game-card--${game.variant}`"
+              :class="[
+                `packet-game-card--${game.variant}`,
+                game.packetSkin ? `packet-game-card--${game.packetSkin}` : '',
+              ]"
               @click="playPacketGame(game)"
             >
               <span class="packet-game-card__brand">{{ game.brand }}</span>
+              <template v-if="game.variant === 'packet'">
+                <span class="packet-game-card__packet-art" aria-hidden="true">
+                  <span v-if="game.packetSkin === 'thunder'" class="packet-game-card__bomb">
+                    <span class="packet-game-card__bomb-fuse" />
+                    <span class="packet-game-card__bomb-spark">✦</span>
+                    <span class="packet-game-card__bomb-main" />
+                    <span class="packet-game-card__bomb-rim" />
+                  </span>
+                  <span v-else class="packet-game-card__pills">
+                    <span class="packet-game-card__pill packet-game-card__pill--odd">ODD</span>
+                    <span class="packet-game-card__pill packet-game-card__pill--even">EVEN</span>
+                  </span>
+                </span>
+              </template>
               <img
-                v-if="game.cover"
+                v-else-if="game.cover"
                 :src="game.cover"
                 class="packet-game-card__cover"
                 :alt="game.title"
@@ -891,10 +911,22 @@ onMounted(async () => {
 }
 
 .packet-game-card--packet {
-  border-color: rgba(255, 225, 128, 0.58);
+  aspect-ratio: 0.72;
+  min-height: 132px;
+  padding: 7px 5px 9px;
+  border-color: rgba(255, 221, 149, 0.34);
+  border-radius: 12px;
   background:
-    radial-gradient(circle at 50% 20%, rgba(255, 231, 150, 0.22), transparent 34%),
-    linear-gradient(165deg, #9a1e10 0%, #4a0000 100%);
+    radial-gradient(circle at 50% 18%, rgba(160, 22, 0, 0.42), rgba(160, 22, 0, 0) 35%),
+    linear-gradient(180deg, rgba(255, 243, 212, 0.04), transparent 18%),
+    linear-gradient(180deg, rgba(39, 2, 2, 0.98), rgba(27, 2, 2, 0.98));
+  align-items: center;
+  text-align: center;
+  isolation: isolate;
+  box-shadow:
+    0 18px 32px rgba(0, 0, 0, 0.36),
+    inset 0 0 0 1px rgba(255, 248, 214, 0.05),
+    inset 0 -30px 48px rgba(0, 0, 0, 0.28);
 }
 
 .packet-game-card--game::before {
@@ -905,8 +937,28 @@ onMounted(async () => {
 
 .packet-game-card--packet::before {
   background:
-    radial-gradient(circle at 50% 22%, rgba(255, 244, 186, 0.38), transparent 32%),
-    linear-gradient(180deg, rgba(0, 0, 0, 0) 42%, rgba(67, 0, 0, 0.78) 100%);
+    linear-gradient(140deg, rgba(255, 255, 255, 0.1), transparent 24%),
+    radial-gradient(circle at center, rgba(212, 175, 55, 0.06), transparent 58%);
+}
+
+.packet-game-card--packet::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: 12px;
+  padding: 1px;
+  background: linear-gradient(135deg, #fff5c3 0%, #ffbb00 25%, #8b4513 50%, #ffbb00 75%, #fff5c3 100%);
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  filter: drop-shadow(0 0 5px rgba(255, 187, 0, 0.6));
+  pointer-events: none;
 }
 
 .packet-game-card__brand {
@@ -923,6 +975,21 @@ onMounted(async () => {
   font-weight: 900;
 }
 
+.packet-game-card--packet .packet-game-card__brand {
+  top: 9px;
+  right: -24px;
+  left: auto;
+  min-width: 82px;
+  padding: 4px 18px;
+  border-radius: 0;
+  background: linear-gradient(90deg, #ff8a00, #e52d27);
+  color: #fff6eb;
+  font-size: 10px;
+  line-height: 1;
+  transform: rotate(45deg);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.28);
+}
+
 .packet-game-card__cover {
   position: absolute;
   inset: 0;
@@ -930,6 +997,110 @@ onMounted(async () => {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.packet-game-card__packet-art {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 35px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.packet-game-card__bomb {
+  position: relative;
+  width: 52px;
+  height: 52px;
+  animation: packetBombPulse 2s ease-in-out infinite;
+}
+
+.packet-game-card__bomb-main {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, #555 0%, #141414 42%, #050505 100%);
+  box-shadow:
+    0 20px 40px rgba(0, 0, 0, 0.56),
+    inset -5px -5px 15px rgba(255, 255, 255, 0.08);
+}
+
+.packet-game-card__bomb-rim {
+  position: absolute;
+  inset: 3px;
+  border: 1.5px solid #ffd700;
+  border-radius: 50%;
+  box-shadow: 0 0 10px rgba(255, 215, 0, 0.34);
+  transform: translate(-1px, -2px);
+}
+
+.packet-game-card__bomb-fuse {
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  width: 4px;
+  height: 14px;
+  background: linear-gradient(180deg, #55331f 0%, #3d2b1f 100%);
+  border-radius: 999px;
+  transform: translateX(-50%) rotate(15deg);
+}
+
+.packet-game-card__bomb-spark {
+  position: absolute;
+  top: -17px;
+  left: 55%;
+  color: #ffea33;
+  font-size: 10px;
+  filter: drop-shadow(0 0 10px rgba(255, 187, 0, 0.9));
+  animation: packetSparkFlicker 0.1s infinite alternate;
+}
+
+.packet-game-card--parity {
+  background:
+    radial-gradient(circle at 50% 18%, rgba(123, 80, 18, 0.28), rgba(123, 80, 18, 0) 35%),
+    linear-gradient(180deg, rgba(255, 243, 212, 0.04), transparent 18%),
+    linear-gradient(180deg, rgba(39, 2, 2, 0.98), rgba(27, 2, 2, 0.98));
+}
+
+.packet-game-card--parity .packet-game-card__packet-art {
+  top: 31px;
+}
+
+.packet-game-card__pills {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+}
+
+.packet-game-card__pill {
+  min-width: 58px;
+  padding: 5px 0;
+  border: 1.5px solid #ffbb00;
+  border-radius: 999px;
+  font-size: 13px;
+  line-height: 1;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-align: center;
+  box-shadow:
+    0 0 14px rgba(255, 184, 0, 0.24),
+    inset 0 0 8px rgba(255, 184, 0, 0.2);
+}
+
+.packet-game-card__pill--odd {
+  background: #ffbb00;
+  color: #1a0000;
+  transform: rotate(-3deg);
+}
+
+.packet-game-card__pill--even {
+  background: #1a0000;
+  color: #ffbb00;
+  transform: rotate(3deg);
 }
 
 .packet-game-card strong,
@@ -949,11 +1120,44 @@ onMounted(async () => {
   font-weight: 900;
 }
 
+.packet-game-card--packet strong {
+  font-size: 13px;
+  line-height: 1.15;
+  letter-spacing: 0;
+}
+
 .packet-game-card small {
   margin-top: 3px;
   color: rgba(255, 236, 191, 0.88);
   font-size: 10px;
   line-height: 1.15;
+}
+
+.packet-game-card--packet small {
+  color: rgba(255, 238, 207, 0.96);
+  font-size: 10px;
+  font-weight: 500;
+}
+
+@keyframes packetBombPulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.06);
+  }
+}
+
+@keyframes packetSparkFlicker {
+  from {
+    opacity: 0.8;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1.2);
+  }
 }
 
 .packet-game-card:active {
@@ -1009,12 +1213,35 @@ onMounted(async () => {
     border-radius: 10px;
   }
 
+  .packet-game-card--packet {
+    min-height: 118px;
+    border-radius: 10px;
+  }
+
   .packet-game-card strong {
+    font-size: 11px;
+  }
+
+  .packet-game-card--packet strong {
     font-size: 11px;
   }
 
   .packet-game-card small {
     font-size: 9px;
+  }
+
+  .packet-game-card--packet small {
+    font-size: 9px;
+  }
+
+  .packet-game-card__pill {
+    min-width: 50px;
+    font-size: 11px;
+  }
+
+  .packet-game-card__bomb {
+    width: 46px;
+    height: 46px;
   }
 }
 
