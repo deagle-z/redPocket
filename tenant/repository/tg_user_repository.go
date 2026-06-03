@@ -261,9 +261,9 @@ func GetTgUsersWithSubStats(db *gorm.DB, tenantID int64, search pojo.TgUserSearc
 		search.ParentID = &parent.ID
 	}
 
-	// 构建整棵用户树：parent -> []children
+	// 构建用户树：parent -> []children。这里只需要树关系，不取完整用户列。
 	var allUsers []pojo.TgUser
-	allUsersQuery := db.Model(&pojo.TgUser{})
+	allUsersQuery := db.Model(&pojo.TgUser{}).Select("id, parent_id")
 	if tenantID > 0 {
 		allUsersQuery = allUsersQuery.Where("tenant_id = ?", tenantID)
 	}
@@ -281,14 +281,7 @@ func GetTgUsersWithSubStats(db *gorm.DB, tenantID int64, search pojo.TgUserSearc
 
 	var descendantIDs []int64
 	if search.ParentID != nil {
-		queue := make([]int64, 0, len(childrenMap[*search.ParentID]))
-		queue = append(queue, childrenMap[*search.ParentID]...)
-		for len(queue) > 0 {
-			cur := queue[0]
-			queue = queue[1:]
-			descendantIDs = append(descendantIDs, cur)
-			queue = append(queue, childrenMap[cur]...)
-		}
+		descendantIDs = collectTenantTgUserDescendantIDs(childrenMap, *search.ParentID)
 		if len(descendantIDs) == 0 {
 			result.PageSize = search.PageSize
 			result.CurrentPage = search.CurrentPage
@@ -335,111 +328,134 @@ func GetTgUsersWithSubStats(db *gorm.DB, tenantID int64, search pojo.TgUserSearc
 	query = query.Order("id desc").Limit(search.PageSize).Offset(search.PageSize * search.CurrentPage)
 	query.Find(&users)
 
-	// 个人维度金额（非下级）
-	rechargeOwn := make(map[int64]float64)
-	withdrawOwn := make(map[int64]float64)
-	flowOwn := make(map[int64]float64)
-	profitOwn := make(map[int64]float64)
-
-	var rechargeSums []tgUserMetricRow
-	rechargeQuery := db.Model(&pojo.RechargeOrder{})
-	if tenantID > 0 {
-		rechargeQuery = rechargeQuery.Where("tenant_id = ?", tenantID)
-	}
-	_ = rechargeQuery.
-		Select("user_id as user_id, sum(amount) as amount").
-		Where("status = ?", 2).
-		Group("user_id").
-		Scan(&rechargeSums).Error
-	for _, item := range rechargeSums {
-		rechargeOwn[item.UserId] = item.Amount
-	}
-
-	var withdrawSums []tgUserMetricRow
-	withdrawQuery := db.Model(&pojo.WithdrawOrderBr{})
-	if tenantID > 0 {
-		withdrawQuery = withdrawQuery.Where("tenant_id = ?", tenantID)
-	}
-	_ = withdrawQuery.
-		Select("user_id as user_id, sum(amount) as amount").
-		Where("status = ?", 3).
-		Group("user_id").
-		Scan(&withdrawSums).Error
-	for _, item := range withdrawSums {
-		withdrawOwn[item.UserId] = item.Amount
-	}
-
-	// 流水口径：lucky_history.amount 聚合
-	var flowSums []tgUserMetricRow
-	flowQuery := db.Model(&pojo.LuckyHistory{})
-	if tenantID > 0 {
-		flowQuery = flowQuery.Where("tenant_id = ?", tenantID)
-	}
-	_ = flowQuery.
-		Select("user_id as user_id, sum(amount) as amount").
-		Group("user_id").
-		Scan(&flowSums).Error
-	for _, item := range flowSums {
-		flowOwn[item.UserId] = item.Amount
-	}
-
-	var profitSums []tgUserMetricRow
-	profitQuery := db.Model(&pojo.LuckyHistory{})
-	if tenantID > 0 {
-		profitQuery = profitQuery.Where("tenant_id = ?", tenantID)
-	}
-	_ = profitQuery.
-		Select("user_id as user_id, " + luckyHistoryProfitSQL() + " as amount").
-		Group("user_id").
-		Scan(&profitSums).Error
-	for _, item := range profitSums {
-		profitOwn[item.UserId] = item.Amount
-	}
-
-	// DFS 计算每个节点“包含自身+全部后代”的金额
-	memo := make(map[int64]tgUserTreeAmount)
-	visiting := make(map[int64]bool)
-	var calcTotal func(userID int64) tgUserTreeAmount
-	calcTotal = func(userID int64) tgUserTreeAmount {
-		if v, ok := memo[userID]; ok {
-			return v
+	descendantIDsByUser := make(map[int64][]int64, len(users))
+	metricUserIDSet := make(map[int64]struct{})
+	for _, user := range users {
+		userDescendantIDs := collectTenantTgUserDescendantIDs(childrenMap, user.ID)
+		descendantIDsByUser[user.ID] = userDescendantIDs
+		for _, descendantID := range userDescendantIDs {
+			metricUserIDSet[descendantID] = struct{}{}
 		}
-		if visiting[userID] {
-			return tgUserTreeAmount{}
+	}
+	metricUserIDs := tenantTgUserIDSetToSlice(metricUserIDSet)
+
+	rechargeSumsByUser := make(map[int64]float64)
+	withdrawSumsByUser := make(map[int64]float64)
+	flowSumsByUser := make(map[int64]float64)
+	profitSumsByUser := make(map[int64]float64)
+
+	if len(metricUserIDs) > 0 {
+		var rechargeSums []tgUserMetricRow
+		rechargeQuery := db.Model(&pojo.RechargeOrder{})
+		if tenantID > 0 {
+			rechargeQuery = rechargeQuery.Where("tenant_id = ?", tenantID)
 		}
-		visiting[userID] = true
-		total := tgUserTreeAmount{
-			Recharge: rechargeOwn[userID],
-			Flow:     flowOwn[userID],
-			Profit:   profitOwn[userID],
-			Withdraw: withdrawOwn[userID],
+		_ = rechargeQuery.
+			Select("user_id as user_id, sum(amount) as amount").
+			Where("status = ? and user_id in (?)", 2, metricUserIDs).
+			Group("user_id").
+			Scan(&rechargeSums).Error
+		for _, item := range rechargeSums {
+			rechargeSumsByUser[item.UserId] = item.Amount
 		}
-		for _, childID := range childrenMap[userID] {
-			childTotal := calcTotal(childID)
-			total.Recharge += childTotal.Recharge
-			total.Flow += childTotal.Flow
-			total.Profit += childTotal.Profit
-			total.Withdraw += childTotal.Withdraw
+
+		var withdrawSums []tgUserMetricRow
+		withdrawQuery := db.Model(&pojo.WithdrawOrderBr{})
+		if tenantID > 0 {
+			withdrawQuery = withdrawQuery.Where("tenant_id = ?", tenantID)
 		}
-		visiting[userID] = false
-		memo[userID] = total
-		return total
+		_ = withdrawQuery.
+			Select("user_id as user_id, sum(amount) as amount").
+			Where("status = ? and user_id in (?)", 3, metricUserIDs).
+			Group("user_id").
+			Scan(&withdrawSums).Error
+		for _, item := range withdrawSums {
+			withdrawSumsByUser[item.UserId] = item.Amount
+		}
+
+		// 流水口径：lucky_history.amount 聚合
+		var flowSums []tgUserMetricRow
+		flowQuery := db.Model(&pojo.LuckyHistory{})
+		if tenantID > 0 {
+			flowQuery = flowQuery.Where("tenant_id = ?", tenantID)
+		}
+		_ = flowQuery.
+			Select("user_id as user_id, sum(amount) as amount").
+			Where("user_id in (?)", metricUserIDs).
+			Group("user_id").
+			Scan(&flowSums).Error
+		for _, item := range flowSums {
+			flowSumsByUser[item.UserId] = item.Amount
+		}
+
+		var profitSums []tgUserMetricRow
+		profitQuery := db.Model(&pojo.LuckyHistory{})
+		if tenantID > 0 {
+			profitQuery = profitQuery.Where("tenant_id = ?", tenantID)
+		}
+		_ = profitQuery.
+			Select("user_id as user_id, "+luckyHistoryProfitSQL()+" as amount").
+			Where("user_id in (?)", metricUserIDs).
+			Group("user_id").
+			Scan(&profitSums).Error
+		for _, item := range profitSums {
+			profitSumsByUser[item.UserId] = item.Amount
+		}
 	}
 
 	for _, user := range users {
 		var temp TgUserWithSubStats
 		_ = copier.Copy(&temp, &user)
-		total := calcTotal(user.ID)
-		temp.SubRechargeAmount = total.Recharge - rechargeOwn[user.ID]
-		temp.SubFlowAmount = total.Flow - flowOwn[user.ID]
-		temp.SubProfitAmount = total.Profit - profitOwn[user.ID]
-		temp.SubWithdrawAmount = total.Withdraw - withdrawOwn[user.ID]
+		total := tenantTgUserSubStatsTotal(descendantIDsByUser[user.ID], rechargeSumsByUser, flowSumsByUser, profitSumsByUser, withdrawSumsByUser)
+		temp.SubRechargeAmount = total.Recharge
+		temp.SubFlowAmount = total.Flow
+		temp.SubProfitAmount = total.Profit
+		temp.SubWithdrawAmount = total.Withdraw
 		result.List = append(result.List, temp)
 	}
 	fillTenantTgUserWithSubStatsParentUIDs(db, tenantID, result.List)
 	result.PageSize = search.PageSize
 	result.CurrentPage = search.CurrentPage
 	return result
+}
+
+func collectTenantTgUserDescendantIDs(childrenMap map[int64][]int64, rootID int64) []int64 {
+	descendantIDs := make([]int64, 0)
+	seen := map[int64]struct{}{rootID: {}}
+	queue := append([]int64(nil), childrenMap[rootID]...)
+	for len(queue) > 0 {
+		cur := queue[0]
+		queue = queue[1:]
+		if _, ok := seen[cur]; ok {
+			continue
+		}
+		seen[cur] = struct{}{}
+		descendantIDs = append(descendantIDs, cur)
+		queue = append(queue, childrenMap[cur]...)
+	}
+	return descendantIDs
+}
+
+func tenantTgUserIDSetToSlice(idSet map[int64]struct{}) []int64 {
+	if len(idSet) == 0 {
+		return nil
+	}
+	ids := make([]int64, 0, len(idSet))
+	for id := range idSet {
+		ids = append(ids, id)
+	}
+	return ids
+}
+
+func tenantTgUserSubStatsTotal(userIDs []int64, rechargeSumsByUser, flowSumsByUser, profitSumsByUser, withdrawSumsByUser map[int64]float64) tgUserTreeAmount {
+	var total tgUserTreeAmount
+	for _, userID := range userIDs {
+		total.Recharge += rechargeSumsByUser[userID]
+		total.Flow += flowSumsByUser[userID]
+		total.Profit += profitSumsByUser[userID]
+		total.Withdraw += withdrawSumsByUser[userID]
+	}
+	return total
 }
 
 func fillTenantTgUserParentUIDs(db *gorm.DB, tenantID int64, users []pojo.TgUserBack) {
