@@ -42,15 +42,9 @@ const gameTypeOptions = [
   { label: "彩票游戏", value: 4 }
 ];
 
-const yesNoOptions = [
-  { label: "是", value: false },
-  { label: "否", value: true }
-];
+const yesNoOptions = [{ label: "是" }, { label: "否" }];
 
-const statusOptions = [
-  { label: "启用", value: false },
-  { label: "禁用", value: true }
-];
+const statusOptions = [{ label: "启用" }, { label: "禁用" }];
 
 function getRef() {
   return ruleFormRef.value;
@@ -161,11 +155,11 @@ defineExpose({ getRef });
       <el-col :span="12">
         <el-form-item label="热门">
           <Segmented
-            :modelValue="newFormInline.hot !== 1"
+            :modelValue="newFormInline.hot === 1 ? 0 : 1"
             :options="yesNoOptions"
             @change="
-              ({ option: { value } }) => {
-                newFormInline.hot = value ? 0 : 1;
+              ({ index }) => {
+                newFormInline.hot = index === 0 ? 1 : 0;
               }
             "
           />
@@ -174,11 +168,11 @@ defineExpose({ getRef });
       <el-col :span="12">
         <el-form-item label="首页展示">
           <Segmented
-            :modelValue="newFormInline.homeShow !== 1"
+            :modelValue="newFormInline.homeShow === 1 ? 0 : 1"
             :options="yesNoOptions"
             @change="
-              ({ option: { value } }) => {
-                newFormInline.homeShow = value ? 0 : 1;
+              ({ index }) => {
+                newFormInline.homeShow = index === 0 ? 1 : 0;
               }
             "
           />
@@ -187,11 +181,11 @@ defineExpose({ getRef });
       <el-col :span="12">
         <el-form-item label="状态">
           <Segmented
-            :modelValue="newFormInline.disabledFlag === 1"
+            :modelValue="newFormInline.disabledFlag === 1 ? 1 : 0"
             :options="statusOptions"
             @change="
-              ({ option: { value } }) => {
-                newFormInline.disabledFlag = value ? 1 : 0;
+              ({ index }) => {
+                newFormInline.disabledFlag = index === 1 ? 1 : 0;
               }
             "
           />

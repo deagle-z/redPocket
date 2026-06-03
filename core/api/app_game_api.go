@@ -76,6 +76,27 @@ func GetAppGameListApp(ctx *gin.Context) {
 	utils.SuccessObjBack(ctx, result)
 }
 
+// GetAppGameListByCategoryCodeApp godoc
+//
+//	@Summary		App端按分类查询游戏列表
+//	@Tags			游戏
+//	@Accept			json
+//	@Produce		json
+//	@Param			data body		pojo.AppGameSearch	true	"查询条件"
+//	@Success		200	{object}		pojo.AppGameHomeListResp
+//	@Router			/api/v1/app/appGame/gameList [post]
+func GetAppGameListByCategoryCodeApp(ctx *gin.Context) {
+	var search pojo.AppGameSearch
+	search.SetPageDefaults()
+	if err := ctx.ShouldBindJSON(&search); err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	db := ctx.MustGet("db").(*gorm.DB)
+	result := repository.GetAppGameListByCategoryCode(db, search)
+	utils.SuccessObjBack(ctx, result)
+}
+
 // GetAppGameCategoryListApp godoc
 //
 //	@Summary		App端按分类和厂商分页查询游戏列表

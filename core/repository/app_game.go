@@ -47,6 +47,12 @@ func GetAppGameHomeList(db *gorm.DB, search pojo.AppGameSearch) (result pojo.App
 	return result
 }
 
+func GetAppGameListByCategoryCode(db *gorm.DB, search pojo.AppGameSearch) pojo.AppGameHomeListResp {
+	search.CategoryCode = strings.ToLower(strings.TrimSpace(search.CategoryCode))
+	search.ThirdGameCategory = ""
+	return GetAppGameHomeList(db, search)
+}
+
 func GetAppGameCategoryList(db *gorm.DB, search pojo.AppGameSearch) pojo.AppGameCategoryListResp {
 	categories := GetAppGameThirdCategories(db, search.CategoryCode).List
 	if strings.TrimSpace(search.ThirdGameCategory) == "" && len(categories) > 0 {

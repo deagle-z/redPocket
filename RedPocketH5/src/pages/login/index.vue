@@ -188,7 +188,7 @@ function goCustomerService() {
         </template>
       </AppPageHeader>
 
-      <section class="hero-card">
+      <section class="brand-hero">
         <img
           class="hero-image"
           :src="imgRegisterHeader"
@@ -209,6 +209,15 @@ function goCustomerService() {
 
       <section class="auth-card">
         <section class="email-panel">
+          <div class="form-heading">
+            <p class="form-kicker">
+              {{ t('login.phoneTab') }}
+            </p>
+            <h3 class="form-title">
+              {{ t('login.login') }}
+            </h3>
+          </div>
+
           <div class="email-form-card">
             <div class="email-form-row">
               <label for="login-phone" class="email-form-label">
@@ -377,26 +386,48 @@ function goCustomerService() {
 <style scoped>
 .login-page {
   min-height: 100vh;
+  --login-gold-line: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--color-gold-dark) 22%,
+    var(--color-gold-light) 50%,
+    var(--color-gold-dark) 78%,
+    transparent 100%
+  );
+  --login-panel-bg: linear-gradient(
+    160deg,
+    color-mix(in srgb, var(--color-primary-dark) 72%, var(--color-game-bg-start)),
+    var(--color-game-bg-mid) 78%
+  );
+  --login-subtle-border: color-mix(in srgb, var(--color-gold) 28%, transparent);
+  --login-strong-border: color-mix(in srgb, var(--color-gold) 48%, transparent);
+  --login-muted-text: var(--color-game-text-soft);
   background-image:
-    radial-gradient(circle at 16% 8%, rgba(212, 175, 55, 0.18), transparent 28%),
-    radial-gradient(circle at 84% 90%, rgba(255, 215, 0, 0.12), transparent 24%),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--color-game-bg-start) 84%, var(--color-primary-dark)) 0%,
+      var(--color-game-bg-mid) 56%,
+      var(--color-game-bg-end) 100%
+    ),
     repeating-linear-gradient(
       45deg,
       transparent,
-      transparent 18px,
-      rgba(212, 175, 55, 0.04) 18px,
-      rgba(212, 175, 55, 0.04) 20px
-    ),
-    linear-gradient(180deg, #3e0000 0%, #230000 60%, #160000 100%);
-  color: #fff0c9;
-  padding: 0 12px calc(28px + env(safe-area-inset-bottom));
+      transparent 22px,
+      color-mix(in srgb, var(--color-gold) 5%, transparent) 22px,
+      color-mix(in srgb, var(--color-gold) 5%, transparent) 23px
+    );
+  color: var(--color-game-text);
+  width: 100%;
+  overflow-x: hidden;
+  padding: 0 0 calc(24px + env(safe-area-inset-bottom));
 }
 
 .login-shell {
-  width: 100%;
+  width: calc(100% - 24px);
   max-width: 640px;
   margin: 0 auto;
   position: relative;
+  overflow: hidden;
 }
 
 .login-header {
@@ -410,19 +441,17 @@ function goCustomerService() {
     contrast(96%);
 }
 
-.hero-card,
 .auth-card,
 .feature-card {
   position: relative;
   overflow: hidden;
-  border-radius: 18px;
-  border: 1px solid rgba(212, 175, 55, 0.38);
+  border-radius: var(--radius-3xl);
+  border: 1px solid var(--login-subtle-border);
   box-shadow:
-    0 14px 28px rgba(0, 0, 0, 0.34),
-    inset 0 0 0 1px rgba(255, 248, 214, 0.08);
+    var(--shadow-game-float),
+    inset 0 1px 0 color-mix(in srgb, var(--color-gold-soft) 8%, transparent);
 }
 
-.hero-card::after,
 .auth-card::after,
 .feature-card::after {
   content: '';
@@ -431,13 +460,18 @@ function goCustomerService() {
   left: 0;
   right: 0;
   height: 2px;
-  background: linear-gradient(90deg, transparent 0%, #b8860b 18%, #ffd700 50%, #b8860b 82%, transparent 100%);
+  background: var(--login-gold-line);
 }
 
-.hero-card {
-  min-height: 188px;
-  margin-top: 8px;
-  background: linear-gradient(155deg, rgba(122, 0, 0, 0.96) 0%, rgba(70, 0, 0, 0.97) 55%, rgba(38, 0, 0, 0.98) 100%);
+.brand-hero {
+  position: relative;
+  min-height: 132px;
+  margin-top: 6px;
+  overflow: hidden;
+  border-radius: var(--radius-3xl);
+  border: 1px solid var(--login-subtle-border);
+  background: var(--login-panel-bg);
+  box-shadow: 0 12px 24px color-mix(in srgb, var(--color-game-bg-end) 72%, transparent);
 }
 
 .hero-image {
@@ -447,170 +481,124 @@ function goCustomerService() {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  opacity: 0.24;
+  opacity: 0.18;
 }
 
-.hero-card::before {
+.brand-hero::before {
   content: '';
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(105deg, rgba(62, 0, 0, 0.92) 10%, rgba(62, 0, 0, 0.6) 45%, rgba(62, 0, 0, 0.92) 100%),
-    radial-gradient(circle at 82% 18%, rgba(212, 175, 55, 0.16), transparent 22%);
+    linear-gradient(
+      100deg,
+      color-mix(in srgb, var(--color-game-bg-start) 90%, transparent) 0%,
+      color-mix(in srgb, var(--color-game-bg-start) 62%, transparent) 54%,
+      color-mix(in srgb, var(--color-game-bg-end) 86%, transparent) 100%
+    ),
+    linear-gradient(180deg, color-mix(in srgb, var(--color-gold) 12%, transparent), transparent 56%);
+}
+
+.brand-hero::after {
+  content: '';
+  position: absolute;
+  inset: auto 18px 0;
+  height: 1px;
+  background: var(--login-gold-line);
 }
 
 .hero-content {
   position: relative;
   z-index: 1;
-  padding: 22px 20px 20px;
+  padding: 18px 18px 16px;
 }
 
 .hero-eyebrow {
   margin: 0 0 6px;
-  color: #ffd98b;
+  color: var(--color-gold-light);
   font-size: 11px;
   font-weight: 800;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
 }
 
 .hero-title {
   margin: 0;
-  color: #fff0c9;
-  font-size: 28px;
+  color: var(--color-game-text);
+  font-size: 26px;
   line-height: 1.12;
   font-weight: 800;
-  letter-spacing: 0.04em;
 }
 
 .hero-desc {
-  margin: 10px 0 0;
+  margin: 8px 0 0;
   max-width: 220px;
-  color: rgba(255, 229, 186, 0.78);
+  color: var(--login-muted-text);
   font-size: 13px;
   line-height: 1.45;
 }
 
 .auth-card {
-  margin-top: 14px;
+  margin-top: 12px;
   background:
-    radial-gradient(rgba(212, 175, 55, 1) 1px, transparent 1px),
-    linear-gradient(160deg, rgba(116, 0, 0, 0.96), rgba(52, 0, 0, 0.98));
+    radial-gradient(color-mix(in srgb, var(--color-gold) 22%, transparent) 1px, transparent 1px), var(--login-panel-bg);
   background-size:
-    18px 18px,
+    20px 20px,
     100% 100%;
   padding: 14px;
 }
 
-.tabs {
-  padding: 4px;
-  background: rgba(255, 248, 214, 0.08);
-  border: 1px solid rgba(212, 175, 55, 0.2);
-  border-radius: 999px;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 6px;
-}
-
-.tab {
-  border: 0;
-  background: transparent;
-  border-radius: 999px;
-  height: 42px;
-  font-size: 14px;
-  font-weight: 700;
-  color: rgba(255, 229, 186, 0.74);
-  transition:
-    color 0.2s ease,
-    background-color 0.2s ease,
-    transform 0.2s ease;
-  cursor: pointer;
-}
-
-.tab.active {
-  color: #5a1b00;
-  background: linear-gradient(180deg, #ffdf87 0%, #d4af37 100%);
-  box-shadow:
-    0 10px 18px rgba(75, 25, 0, 0.24),
-    inset 0 1px 0 rgba(255, 255, 255, 0.3);
-}
-
-.telegram-panel,
 .email-panel {
-  margin-top: 16px;
-}
-
-.telegram-panel {
-  text-align: center;
-}
-
-.telegram-badge {
-  width: 78px;
-  height: 78px;
-  margin: 0 auto;
-  border-radius: 24px;
-  border: 1px solid rgba(212, 175, 55, 0.42);
-  background: linear-gradient(180deg, rgba(255, 248, 214, 0.16), rgba(212, 175, 55, 0.08));
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: inset 0 1px 0 rgba(255, 248, 214, 0.08);
-}
-
-.tg-logo-image {
-  display: block;
-  width: 50px;
-  height: 50px;
-}
-
-.panel-title {
-  margin: 16px 0 6px;
-  color: #fff0c9;
-  font-size: 20px;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-}
-
-.panel-subtitle {
   margin: 0;
-  color: rgba(255, 229, 186, 0.68);
+  min-width: 0;
+}
+
+.form-heading {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.form-kicker {
+  margin: 0;
+  color: var(--color-gold-light);
   font-size: 12px;
-  line-height: 1.4;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
-.telegram-widget-wrap {
-  margin-top: 16px;
-  border-radius: 16px;
-  padding: 16px 12px;
-  background: rgba(255, 248, 214, 0.05);
-  border: 1px solid rgba(212, 175, 55, 0.18);
-}
-
-.tg-loading {
-  margin-top: 14px;
+.form-title {
+  margin: 0;
+  color: var(--color-game-text);
+  font-size: var(--font-xl);
+  font-weight: 800;
+  line-height: 1.2;
+  text-wrap: pretty;
 }
 
 .email-form-card {
   position: relative;
   overflow: hidden;
-  background: linear-gradient(165deg, rgba(118, 0, 0, 0.95), rgba(54, 0, 0, 0.96));
-  border-radius: 18px;
-  border: 1px solid rgba(212, 175, 55, 0.24);
-  box-shadow: inset 0 1px 0 rgba(255, 248, 214, 0.08);
-  padding: 8px 14px;
+  background: color-mix(in srgb, var(--color-game-input) 86%, transparent);
+  border-radius: var(--radius-2xl);
+  border: 1px solid var(--login-subtle-border);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--color-gold-soft) 8%, transparent);
+  padding: 4px 14px;
 }
 
 .email-form-row {
-  min-height: 86px;
+  min-height: 78px;
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 12px;
-  padding: 12px 0;
+  gap: 9px;
+  padding: 10px 0;
 }
 
 .email-form-row + .email-form-row {
-  border-top: 1px solid rgba(212, 175, 55, 0.14);
+  border-top: 1px solid color-mix(in srgb, var(--color-gold) 14%, transparent);
 }
 
 .email-form-label {
@@ -619,9 +607,8 @@ function goCustomerService() {
   gap: 10px;
   font-size: 13px;
   font-weight: 700;
-  color: #ffe09a;
+  color: color-mix(in srgb, var(--color-gold-light) 74%, var(--color-game-text));
   cursor: text;
-  letter-spacing: 0.02em;
 }
 
 .icon-wrap {
@@ -630,10 +617,10 @@ function goCustomerService() {
   justify-content: center;
   width: 30px;
   height: 30px;
-  border-radius: 10px;
-  background: linear-gradient(180deg, rgba(255, 223, 135, 0.18), rgba(212, 175, 55, 0.08));
-  border: 1px solid rgba(212, 175, 55, 0.26);
-  box-shadow: inset 0 1px 0 rgba(255, 248, 214, 0.08);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--color-gold) 13%, transparent);
+  border: 1px solid var(--login-subtle-border);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--color-gold-soft) 8%, transparent);
 }
 
 .email-form-icon {
@@ -645,13 +632,14 @@ function goCustomerService() {
 
 .email-form-input {
   width: 100%;
-  min-height: 48px;
+  min-width: 0;
+  min-height: 46px;
   padding: 0 14px;
-  border: 1px solid rgba(212, 175, 55, 0.22);
-  border-radius: 14px;
-  background: rgba(255, 248, 214, 0.05);
+  border: 1px solid var(--login-subtle-border);
+  border-radius: var(--radius-xl);
+  background: color-mix(in srgb, var(--color-gold-soft) 5%, transparent);
   outline: none;
-  color: #fff4d1;
+  color: var(--color-game-text);
   font-size: 14px;
   transition:
     border-color 0.2s ease,
@@ -660,22 +648,22 @@ function goCustomerService() {
 }
 
 .email-form-input::placeholder {
-  color: rgba(255, 229, 186, 0.42);
+  color: color-mix(in srgb, var(--color-game-text) 44%, transparent);
 }
 
 .email-form-input:focus {
-  border-color: rgba(255, 223, 135, 0.72);
-  box-shadow: 0 0 0 4px rgba(212, 175, 55, 0.14);
-  background: rgba(255, 248, 214, 0.08);
+  border-color: color-mix(in srgb, var(--color-gold-light) 72%, transparent);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-gold) 14%, transparent);
+  background: color-mix(in srgb, var(--color-gold-soft) 8%, transparent);
 }
 
 .phone-input-wrap {
   display: flex;
   align-items: center;
-  min-height: 48px;
-  border: 1px solid rgba(212, 175, 55, 0.22);
-  border-radius: 14px;
-  background: rgba(255, 248, 214, 0.05);
+  min-height: 46px;
+  border: 1px solid var(--login-subtle-border);
+  border-radius: var(--radius-xl);
+  background: color-mix(in srgb, var(--color-gold-soft) 5%, transparent);
   transition:
     border-color 0.2s ease,
     box-shadow 0.2s ease,
@@ -683,20 +671,20 @@ function goCustomerService() {
 }
 
 .phone-input-wrap:focus-within {
-  border-color: rgba(255, 223, 135, 0.72);
-  box-shadow: 0 0 0 4px rgba(212, 175, 55, 0.14);
-  background: rgba(255, 248, 214, 0.08);
+  border-color: color-mix(in srgb, var(--color-gold-light) 72%, transparent);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-gold) 14%, transparent);
+  background: color-mix(in srgb, var(--color-gold-soft) 8%, transparent);
 }
 
 .phone-country-trigger {
   flex: 0 0 auto;
-  min-width: 76px;
-  min-height: 48px;
+  min-width: 72px;
+  min-height: 46px;
   padding: 0 10px 0 14px;
   border: 0;
-  border-right: 1px solid rgba(212, 175, 55, 0.24);
+  border-right: 1px solid var(--login-subtle-border);
   background: transparent;
-  color: #ffd77a;
+  color: var(--color-gold-light);
   font-size: 14px;
   font-weight: 700;
   display: inline-flex;
@@ -707,12 +695,14 @@ function goCustomerService() {
 }
 
 .phone-country-arrow {
-  color: rgba(255, 229, 186, 0.76);
+  color: var(--login-muted-text);
   font-size: 11px;
   line-height: 1;
 }
 
 .phone-input {
+  flex: 1 1 0;
+  width: 0;
   min-width: 0;
   border: 0;
   background: transparent;
@@ -724,7 +714,7 @@ function goCustomerService() {
 }
 
 .email-actions {
-  margin-top: 12px;
+  margin-top: 10px;
   display: flex;
   justify-content: flex-end;
 }
@@ -732,10 +722,11 @@ function goCustomerService() {
 .email-forgot-btn {
   border: none;
   background: transparent;
-  color: #ffd98b;
+  color: var(--color-gold-light);
   font-size: 13px;
   font-weight: 700;
-  padding: 4px 0;
+  min-height: 44px;
+  padding: 0;
   cursor: pointer;
 }
 
@@ -744,92 +735,111 @@ function goCustomerService() {
 }
 
 :deep(.email-login-btn.van-button) {
-  margin-top: 12px;
+  margin-top: 8px;
+  width: 100%;
   height: 54px;
-  border: 1px solid rgba(255, 248, 214, 0.34);
-  background: linear-gradient(180deg, #ffdf87 0%, #d4af37 100%);
-  color: #5a1b00;
+  border: 1px solid color-mix(in srgb, var(--color-gold-soft) 34%, transparent);
+  background: var(--color-game-gold-gradient);
+  color: var(--color-text-title);
   font-size: 16px;
   font-weight: 800;
   box-shadow:
-    0 14px 26px rgba(0, 0, 0, 0.18),
-    0 8px 18px rgba(90, 27, 0, 0.24);
+    0 14px 24px color-mix(in srgb, var(--color-game-bg-end) 42%, transparent),
+    0 8px 16px color-mix(in srgb, var(--color-gold-dark) 26%, transparent);
+  transition:
+    transform 0.18s ease,
+    filter 0.18s ease,
+    opacity 0.18s ease;
+}
+
+:deep(.email-login-btn.van-button:active) {
+  transform: translateY(1px);
+  filter: brightness(0.96);
 }
 
 :deep(.email-login-btn.van-button--disabled) {
-  opacity: 0.72;
+  opacity: 0.7;
+  filter: saturate(0.82);
 }
 
 .email-signup-text {
-  margin: 16px 0 0;
+  margin: 14px 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   text-align: center;
   font-size: 13px;
-  color: rgba(255, 229, 186, 0.74);
+  color: var(--login-muted-text);
   line-height: 1.6;
 }
 
 .email-signup-link {
-  margin-left: 8px;
-  padding: 6px 14px;
+  min-height: 44px;
+  padding: 0 14px;
   border: none;
-  border-radius: 999px;
-  background: linear-gradient(180deg, #ffdf87 0%, #d4af37 100%);
-  color: #5a1b00;
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--color-gold) 16%, transparent);
+  color: var(--color-gold-light);
   font-size: 13px;
   font-weight: 800;
   cursor: pointer;
-  box-shadow: 0 8px 16px rgba(75, 25, 0, 0.24);
+  box-shadow: inset 0 0 0 1px var(--login-subtle-border);
 }
 
 .feature-grid {
-  margin-top: 14px;
+  margin-top: 12px;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
+  gap: 8px;
 }
 
 .feature-card {
-  background: linear-gradient(165deg, rgba(118, 0, 0, 0.95), rgba(54, 0, 0, 0.96));
+  background: color-mix(in srgb, var(--color-game-card) 72%, transparent);
   color: inherit;
-  border: 1px solid rgba(212, 175, 55, 0.38);
-  padding: 16px 10px 14px;
+  border: 1px solid color-mix(in srgb, var(--color-gold) 22%, transparent);
+  padding: 12px 8px 11px;
   cursor: pointer;
   font: inherit;
+  box-shadow:
+    0 10px 18px color-mix(in srgb, var(--color-game-bg-end) 38%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--color-gold-soft) 5%, transparent);
 }
 
 .feature-icon {
-  width: 48px;
-  height: 48px;
-  margin: 0 auto 12px;
+  width: 38px;
+  height: 38px;
+  margin: 0 auto 8px;
   border-radius: 50%;
-  color: #fff7df;
+  color: var(--color-gold-soft);
   font-size: 15px;
   font-weight: 800;
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid rgba(212, 175, 55, 0.45);
+  border: 1px solid var(--login-strong-border);
   box-shadow:
-    inset 0 1px 0 rgba(255, 248, 214, 0.18),
-    0 8px 18px rgba(0, 0, 0, 0.22);
+    inset 0 1px 0 color-mix(in srgb, var(--color-gold-soft) 18%, transparent),
+    0 8px 14px color-mix(in srgb, var(--color-game-bg-end) 42%, transparent);
 }
 
 .feature-icon-service {
-  background: linear-gradient(145deg, #9a1212 0%, #6a0000 100%);
+  background: linear-gradient(145deg, var(--color-primary) 0%, var(--color-primary-link) 100%);
 }
 
 .feature-icon-coin {
-  background: linear-gradient(145deg, #ffdf87 0%, #d4af37 100%);
-  color: #5a1b00;
+  background: var(--color-game-gold-gradient);
+  color: var(--color-text-title);
 }
 
 .feature-icon-invite {
-  background: linear-gradient(145deg, #c21a1a 0%, #8a0505 100%);
+  background: linear-gradient(145deg, var(--color-primary-medium) 0%, var(--color-primary-dark) 100%);
 }
 
 .feature-icon-img {
-  width: 24px;
-  height: 24px;
+  width: 20px;
+  height: 20px;
   object-fit: contain;
   filter: brightness(0) saturate(100%) invert(97%) sepia(44%) saturate(534%) hue-rotate(320deg) brightness(104%)
     contrast(96%);
@@ -837,29 +847,33 @@ function goCustomerService() {
 
 .feature-title {
   text-align: center;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
-  color: #fff0c9;
+  color: var(--color-game-text);
   line-height: 1.35;
 }
 
 .feature-desc {
-  margin-top: 6px;
+  margin-top: 4px;
   text-align: center;
-  font-size: 11px;
-  color: rgba(255, 229, 186, 0.66);
+  font-size: 10px;
+  color: var(--login-muted-text);
   line-height: 1.45;
 }
 
 :deep(.language-popup.van-popup) {
-  min-height: 430px;
+  min-height: 420px;
   padding: 10px 0 28px;
   background:
-    radial-gradient(circle at 12% 10%, rgba(212, 175, 55, 0.18), transparent 22%),
-    linear-gradient(180deg, #540000 0%, #280000 100%);
+    radial-gradient(circle at 12% 10%, color-mix(in srgb, var(--color-gold) 18%, transparent), transparent 22%),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--color-primary-link) 68%, var(--color-game-bg-start)) 0%,
+      var(--color-game-bg-mid) 100%
+    );
   border-radius: 24px 24px 0 0;
-  border: 1px solid rgba(212, 175, 55, 0.34);
-  box-shadow: 0 -12px 32px rgba(0, 0, 0, 0.48);
+  border: 1px solid var(--login-strong-border);
+  box-shadow: 0 -12px 32px color-mix(in srgb, var(--color-game-bg-end) 62%, transparent);
 }
 
 .language-popup-header {
@@ -868,14 +882,13 @@ function goCustomerService() {
   align-items: center;
   justify-content: center;
   position: relative;
-  border-bottom: 1px solid rgba(212, 175, 55, 0.15);
+  border-bottom: 1px solid color-mix(in srgb, var(--color-gold) 15%, transparent);
 }
 
 .language-popup-title {
-  font-size: 20px;
+  font-size: var(--font-xl);
   font-weight: 800;
-  color: #fff0c9;
-  letter-spacing: 0.04em;
+  color: var(--color-game-text);
 }
 
 .language-popup-close {
@@ -886,7 +899,7 @@ function goCustomerService() {
   border: none;
   background: transparent;
   font-size: 18px;
-  color: #ffd98b;
+  color: var(--color-gold-light);
   line-height: 1;
   cursor: pointer;
 }
@@ -899,9 +912,9 @@ function goCustomerService() {
   width: 100%;
   margin-bottom: 12px;
   padding: 14px 16px;
-  border: 1px solid rgba(212, 175, 55, 0.14);
-  border-radius: 16px;
-  background: rgba(255, 248, 214, 0.05);
+  border: 1px solid color-mix(in srgb, var(--color-gold) 14%, transparent);
+  border-radius: var(--radius-2xl);
+  background: color-mix(in srgb, var(--color-gold-soft) 5%, transparent);
   display: grid;
   grid-template-columns: 34px 1fr 24px;
   align-items: center;
@@ -913,14 +926,14 @@ function goCustomerService() {
 }
 
 .language-item.active {
-  border-color: rgba(212, 175, 55, 0.52);
-  background: rgba(212, 175, 55, 0.12);
-  box-shadow: inset 0 1px 0 rgba(255, 248, 214, 0.08);
+  border-color: var(--login-strong-border);
+  background: color-mix(in srgb, var(--color-gold) 12%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--color-gold-soft) 8%, transparent);
 }
 
 .language-code {
   font-size: 14px;
-  color: #fff0c9;
+  color: var(--color-game-text);
   font-weight: 700;
 }
 
@@ -933,30 +946,34 @@ function goCustomerService() {
 .language-text .native {
   font-size: 14px;
   font-weight: 700;
-  color: #fff0c9;
+  color: var(--color-game-text);
 }
 
 .language-text .english {
   font-size: 11px;
-  color: rgba(255, 229, 186, 0.66);
+  color: var(--login-muted-text);
 }
 
 .language-check {
   font-size: 20px;
-  color: #ffd98b;
+  color: var(--color-gold-light);
   text-align: right;
 }
 
 .language-tip {
   margin: 10px 14px 0;
   text-align: center;
-  color: rgba(255, 229, 186, 0.6);
+  color: var(--login-muted-text);
   font-size: 12px;
 }
 
 @media (max-width: 390px) {
+  .login-shell {
+    width: calc(100% - 20px);
+  }
+
   .hero-content {
-    padding: 20px 16px 18px;
+    padding: 16px 16px 14px;
   }
 
   .hero-title {
@@ -968,7 +985,7 @@ function goCustomerService() {
   }
 
   .email-form-card {
-    padding: 8px 12px;
+    padding: 4px 12px;
   }
 
   .feature-grid {
@@ -976,18 +993,16 @@ function goCustomerService() {
   }
 
   .feature-icon {
-    width: 40px;
-    height: 40px;
-    margin-bottom: 8px;
+    width: 34px;
+    height: 34px;
   }
 
   .feature-icon-img {
-    width: 20px;
-    height: 20px;
+    width: 18px;
+    height: 18px;
   }
 
   .feature-desc {
-    margin-top: 4px;
     font-size: 10px;
   }
 }

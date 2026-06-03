@@ -355,9 +355,12 @@ func RegisterTgByEmail(ctx *gin.Context) {
 		utils.ErrorBack(ctx, "invalid_params")
 		return
 	}
+	tempHostInfo := ctx.MustGet("hostInfo").(pojo.HostInfo)
 	db := ctx.MustGet("db").(*gorm.DB)
 	sourceChannelCode := repository.FirstSourceChannelCode(req.SourceChannelCode, req.ChannelCode)
 	tenantID := resolveTenantIDByRegisterReferrer(db, registerReferrer(ctx, req.Referrer))
+	ip := utils.GetIPAddress(ctx)
+	region := utils.GetIPCountry(ctx)
 	newUser, err := repository.RegisterTgByEmail(
 		db,
 		req.Email,
@@ -367,20 +370,27 @@ func RegisterTgByEmail(ctx *gin.Context) {
 		sourceChannelCode,
 		tenantID,
 		req.InviteCode,
-		utils.GetIPAddress(ctx),
-		utils.GetIPCountry(ctx),
+		ip,
+		region,
 	)
 	if err != nil {
 		utils.ErrorBack(ctx, err.Error())
 		return
 	}
 
-	utils.SuccessObjBack(ctx, gin.H{
-		"id":        newUser.ID,
-		"uid":       newUser.Uid,
-		"email":     newUser.Email,
-		"firstName": newUser.FirstName,
-	})
+	loginIdentifier := strings.TrimSpace(strings.ToLower(newUser.Email))
+	onlineUser := pojo.OnlineUser{
+		Username:  loginIdentifier,
+		Browser:   ctx.GetHeader("User-Agent"),
+		Ip:        ip,
+		LoginTime: time.Now(),
+	}
+	data, err := repository.CreateTgLoginSession(tempHostInfo, newUser, loginIdentifier, onlineUser)
+	if err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	utils.SuccessObjBack(ctx, data)
 }
 
 // RegisterTgByPhone 手机号注册
@@ -390,6 +400,7 @@ func RegisterTgByPhone(ctx *gin.Context) {
 		utils.ErrorBack(ctx, "invalid_params")
 		return
 	}
+	tempHostInfo := ctx.MustGet("hostInfo").(pojo.HostInfo)
 	db := ctx.MustGet("db").(*gorm.DB)
 	sourceChannelCode := repository.FirstSourceChannelCode(req.SourceChannelCode, req.ChannelCode)
 	tenantID := resolveTenantIDByRegisterReferrer(db, registerReferrer(ctx, req.Referrer))
@@ -397,6 +408,8 @@ func RegisterTgByPhone(ctx *gin.Context) {
 	if strings.TrimSpace(inviteCode) == "" {
 		inviteCode = req.Code
 	}
+	ip := utils.GetIPAddress(ctx)
+	region := utils.GetIPCountry(ctx)
 	newUser, err := repository.RegisterTgByPhone(
 		db,
 		req.Phone,
@@ -406,21 +419,30 @@ func RegisterTgByPhone(ctx *gin.Context) {
 		sourceChannelCode,
 		tenantID,
 		inviteCode,
-		utils.GetIPAddress(ctx),
-		utils.GetIPCountry(ctx),
+		ip,
+		region,
 	)
 	if err != nil {
 		utils.ErrorBack(ctx, err.Error())
 		return
 	}
 
-	utils.SuccessObjBack(ctx, gin.H{
-		"id":        newUser.ID,
-		"uid":       newUser.Uid,
-		"phone":     newUser.Phone,
-		"country":   newUser.Country,
-		"firstName": newUser.FirstName,
-	})
+	loginIdentifier := utils.NormalizePhoneDigits(req.Phone)
+	if newUser.Phone != nil && strings.TrimSpace(*newUser.Phone) != "" {
+		loginIdentifier = strings.TrimSpace(*newUser.Phone)
+	}
+	onlineUser := pojo.OnlineUser{
+		Username:  loginIdentifier,
+		Browser:   ctx.GetHeader("User-Agent"),
+		Ip:        ip,
+		LoginTime: time.Now(),
+	}
+	data, err := repository.CreateTgLoginSession(tempHostInfo, newUser, loginIdentifier, onlineUser)
+	if err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	utils.SuccessObjBack(ctx, data)
 }
 
 func registerReferrer(ctx *gin.Context, bodyReferrer string) string {

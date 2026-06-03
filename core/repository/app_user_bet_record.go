@@ -80,6 +80,54 @@ func getAppUserBetRecordsFromTable(query *gorm.DB, search pojo.AppUserBetRecordS
 	return result
 }
 
+func GetAppUserBetRecordsApp(db *gorm.DB, userID int64, search pojo.AppUserBetRecordAppSearch) (result pojo.AppUserBetRecordResp, err error) {
+	if userID <= 0 {
+		return result, errors.New("user_required")
+	}
+	if search.EndTime > 0 && search.StartTime > 0 && search.EndTime < search.StartTime {
+		return result, errors.New("time_range_invalid")
+	}
+
+	var list []pojo.AppUserBetRecord
+	table := pojo.AppUserBetRecordTableNameByUserID(userID)
+	query := buildAppUserBetRecordAppSearchQuery(db.Table(table+" AS br"), userID, search)
+
+	query.Count(&result.Total)
+	query.Order("br.date desc, br.id desc").
+		Limit(search.PageSize).
+		Offset(search.PageSize * search.CurrentPage).
+		Find(&list)
+
+	result.List = list
+	result.PageSize = search.PageSize
+	result.CurrentPage = search.CurrentPage
+	return result, nil
+}
+
+func buildAppUserBetRecordAppSearchQuery(query *gorm.DB, userID int64, search pojo.AppUserBetRecordAppSearch) *gorm.DB {
+	query = query.
+		Where("COALESCE(br.deleted_flag, 0) = 0").
+		Where("br.user_id = ?", userID)
+	if categoryCode := strings.TrimSpace(search.CategoryCode); categoryCode != "" {
+		query = query.Where(`
+			EXISTS (
+				SELECT 1
+				FROM app_game ag
+				WHERE COALESCE(ag.deleted_flag, 0) = 0
+				  AND ag.category_code = ?
+				  AND ag.third_game_id = br.game_id
+			)
+		`, categoryCode)
+	}
+	if search.StartTime > 0 {
+		query = query.Where("br.date >= ?", time.Unix(search.StartTime, 0))
+	}
+	if search.EndTime > 0 {
+		query = query.Where("br.date <= ?", time.Unix(search.EndTime, 0))
+	}
+	return query
+}
+
 func buildAppUserBetRecordSearchQuery(query *gorm.DB, search pojo.AppUserBetRecordSearch) *gorm.DB {
 	if search.DeletedFlag == nil {
 		query = query.Where("COALESCE(deleted_flag, 0) = 0")

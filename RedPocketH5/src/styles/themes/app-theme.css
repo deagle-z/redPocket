@@ -81,6 +81,21 @@
   /* 渐变页面结束色                          */
   --bg-secondary: #fdf5f2;
   /* 二级背景色 / 语言选中浅底               */
+
+  /* ─── 深色游戏场景 / Dark Game Surface ─── */
+  --color-game-bg-start: #3e0000;
+  --color-game-bg-mid: #230000;
+  --color-game-bg-end: #120000;
+  --color-game-card: rgba(70, 24, 32, 0.84);
+  --color-game-card-strong: rgba(90, 22, 24, 0.92);
+  --color-game-card-border: rgba(255, 222, 154, 0.14);
+  --color-game-input: rgba(77, 24, 23, 0.76);
+  --color-game-text: #f9e8c6;
+  --color-game-text-soft: rgba(255, 232, 193, 0.72);
+  --color-game-gold-gradient: linear-gradient(135deg, #ffe78a 0%, #ffb300 52%, #d57200 100%);
+  --shadow-game-float: 0 12px 26px rgba(0, 0, 0, 0.34);
+  --bottom-safe-space: 92px;
+
   --space-md: 12px;
 
   /* ─── 边框 / Border ─────────────────────────── */

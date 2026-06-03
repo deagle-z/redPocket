@@ -43,6 +43,13 @@ type AppUserBetRecordSearch struct {
 	DeletedFlag  *int   `json:"deletedFlag"`
 }
 
+type AppUserBetRecordAppSearch struct {
+	PageInfo
+	CategoryCode string `json:"categoryCode"`
+	StartTime    int64  `json:"startTime"`
+	EndTime      int64  `json:"endTime"`
+}
+
 type AppUserBetRecordSet struct {
 	ID           int64      `json:"id"`
 	UID          *int64     `json:"uid"`

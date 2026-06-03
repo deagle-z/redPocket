@@ -14,6 +14,8 @@ declare module 'vue' {
     AppConfirmDialog: typeof import('./../components/AppConfirmDialog.vue')['default']
     AppEmpty: typeof import('./../components/AppEmpty.vue')['default']
     AppPageHeader: typeof import('./../components/AppPageHeader.vue')['default']
+    AppRetryState: typeof import('./../components/AppRetryState.vue')['default']
+    AppSkeletonSection: typeof import('./../components/AppSkeletonSection.vue')['default']
     AppTopHeader: typeof import('./../components/AppTopHeader.vue')['default']
     Chart: typeof import('./../components/Chart/index.vue')['default']
     CheckInFloatingEntry: typeof import('./../components/CheckInFloatingEntry.vue')['default']

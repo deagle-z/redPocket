@@ -13,7 +13,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jinzhu/copier"
 	"gorm.io/gorm"
 )
 
@@ -68,30 +67,63 @@ func TgAuthLogin(db *gorm.DB, hostInfo pojo.HostInfo, req pojo.TgAuthLoginReq, o
 		}
 
 		claimUsername := fmt.Sprintf("tg_%d", dbUser.TgID)
-		token, tokenErr := utils.GetAppJwtToken(hostInfo.AccessSecret, hostInfo.AccessExpire, claimUsername, dbUser.ID, hostInfo.HostName, dbUser.TenantId)
-		if tokenErr != nil {
-			return tokenErr
+		loginBack, loginErr := createTgLoginSessionWithClaim(hostInfo, dbUser, claimUsername, onlineUser)
+		if loginErr != nil {
+			return loginErr
 		}
-
-		key := utils.KeyRdTgOnline + utils.MD5(token)
-		onlineUser.UserId = dbUser.ID
-		onlineUser.Username = claimUsername
-		onlineUser.Key = key
-		userJSON, _ := json.Marshal(onlineUser)
-		_ = utils.RD.SetEX(context.Background(), key, string(userJSON), time.Duration(hostInfo.AccessExpire)*time.Second).Err()
-		utils.TouchTgOnlineUser(dbUser.TenantId, dbUser.ID)
-
-		var tgUserBack pojo.TgUserBack
-		_ = copier.Copy(&tgUserBack, &dbUser)
-		result = pojo.TgAuthLoginBack{
-			AccessToken: token,
-			UserType:    5,
-			ExpiresIn:   hostInfo.AccessExpire,
-			TgUser:      tgUserBack,
-		}
+		result = loginBack
 		return nil
 	})
 	return result, err
+}
+
+// CreateTgLoginSession creates the same login session payload used by email/phone login.
+func CreateTgLoginSession(hostInfo pojo.HostInfo, dbUser pojo.TgUser, loginIdentifier string, onlineUser pojo.OnlineUser) (pojo.TgAuthLoginBack, error) {
+	return createTgLoginSessionWithClaim(hostInfo, dbUser, tgLoginClaimUsername(dbUser, loginIdentifier), onlineUser)
+}
+
+func createTgLoginSessionWithClaim(hostInfo pojo.HostInfo, dbUser pojo.TgUser, claimUsername string, onlineUser pojo.OnlineUser) (pojo.TgAuthLoginBack, error) {
+	claimUsername = strings.TrimSpace(claimUsername)
+	if claimUsername == "" {
+		claimUsername = fmt.Sprintf("tg_user_%d", dbUser.ID)
+	}
+	token, err := utils.GetAppJwtToken(hostInfo.AccessSecret, hostInfo.AccessExpire, claimUsername, dbUser.ID, hostInfo.HostName, dbUser.TenantId)
+	if err != nil {
+		return pojo.TgAuthLoginBack{}, err
+	}
+	key := utils.KeyRdTgOnline + utils.MD5(token)
+	onlineUser.UserId = dbUser.ID
+	onlineUser.Username = claimUsername
+	onlineUser.Key = key
+	userJSON, _ := json.Marshal(onlineUser)
+	_ = utils.RD.SetEX(context.Background(), key, string(userJSON), time.Duration(hostInfo.AccessExpire)*time.Second).Err()
+	utils.TouchTgOnlineUser(dbUser.TenantId, dbUser.ID)
+
+	return buildTgAuthLoginBack(token, hostInfo.AccessExpire, dbUser), nil
+}
+
+func buildTgAuthLoginBack(token string, expiresIn int64, dbUser pojo.TgUser) pojo.TgAuthLoginBack {
+	return pojo.TgAuthLoginBack{
+		AccessToken: token,
+		UserType:    5,
+		ExpiresIn:   expiresIn,
+		TgUser: pojo.TgLoginUserBack{
+			ID:        dbUser.ID,
+			Uid:       dbUser.Uid,
+			TgID:      dbUser.TgID,
+			Username:  dbUser.Username,
+			TgName:    dbUser.TgName,
+			FirstName: dbUser.FirstName,
+			Avatar:    dbUser.Avatar,
+		},
+	}
+}
+
+func tgLoginClaimUsername(dbUser pojo.TgUser, fallback string) string {
+	if dbUser.Username != nil && strings.TrimSpace(*dbUser.Username) != "" {
+		return strings.TrimSpace(*dbUser.Username)
+	}
+	return strings.TrimSpace(fallback)
 }
 
 // TgEmailLogin 邮箱密码登录
@@ -123,31 +155,7 @@ func TgEmailLogin(db *gorm.DB, hostInfo pojo.HostInfo, req pojo.TgEmailLoginReq,
 		return result, errors.New("account_or_password_incorrect")
 	}
 
-	claimUsername := email
-	if dbUser.Username != nil && strings.TrimSpace(*dbUser.Username) != "" {
-		claimUsername = strings.TrimSpace(*dbUser.Username)
-	}
-	token, err := utils.GetAppJwtToken(hostInfo.AccessSecret, hostInfo.AccessExpire, claimUsername, dbUser.ID, hostInfo.HostName, dbUser.TenantId)
-	if err != nil {
-		return result, err
-	}
-	key := utils.KeyRdTgOnline + utils.MD5(token)
-	onlineUser.UserId = dbUser.ID
-	onlineUser.Username = claimUsername
-	onlineUser.Key = key
-	userJSON, _ := json.Marshal(onlineUser)
-	_ = utils.RD.SetEX(context.Background(), key, string(userJSON), time.Duration(hostInfo.AccessExpire)*time.Second).Err()
-	utils.TouchTgOnlineUser(dbUser.TenantId, dbUser.ID)
-
-	var tgUserBack pojo.TgUserBack
-	_ = copier.Copy(&tgUserBack, &dbUser)
-	result = pojo.TgAuthLoginBack{
-		AccessToken: token,
-		UserType:    5,
-		ExpiresIn:   hostInfo.AccessExpire,
-		TgUser:      tgUserBack,
-	}
-	return result, nil
+	return CreateTgLoginSession(hostInfo, dbUser, email, onlineUser)
 }
 
 // TgPhoneLogin 手机号密码登录
@@ -180,31 +188,7 @@ func TgPhoneLogin(db *gorm.DB, hostInfo pojo.HostInfo, req pojo.TgPhoneLoginReq,
 		return result, errors.New("account_or_password_incorrect")
 	}
 
-	claimUsername := phone
-	if dbUser.Username != nil && strings.TrimSpace(*dbUser.Username) != "" {
-		claimUsername = strings.TrimSpace(*dbUser.Username)
-	}
-	token, err := utils.GetAppJwtToken(hostInfo.AccessSecret, hostInfo.AccessExpire, claimUsername, dbUser.ID, hostInfo.HostName, dbUser.TenantId)
-	if err != nil {
-		return result, err
-	}
-	key := utils.KeyRdTgOnline + utils.MD5(token)
-	onlineUser.UserId = dbUser.ID
-	onlineUser.Username = claimUsername
-	onlineUser.Key = key
-	userJSON, _ := json.Marshal(onlineUser)
-	_ = utils.RD.SetEX(context.Background(), key, string(userJSON), time.Duration(hostInfo.AccessExpire)*time.Second).Err()
-	utils.TouchTgOnlineUser(dbUser.TenantId, dbUser.ID)
-
-	var tgUserBack pojo.TgUserBack
-	_ = copier.Copy(&tgUserBack, &dbUser)
-	result = pojo.TgAuthLoginBack{
-		AccessToken: token,
-		UserType:    5,
-		ExpiresIn:   hostInfo.AccessExpire,
-		TgUser:      tgUserBack,
-	}
-	return result, nil
+	return CreateTgLoginSession(hostInfo, dbUser, phone, onlineUser)
 }
 
 func createTgUserFromAuth(tx *gorm.DB, req pojo.TgAuthLoginReq, ip string, region string) (pojo.TgUser, error) {
@@ -857,6 +841,10 @@ func GetCurrentTgUserInfo(db *gorm.DB, accessSecret string, token string) (pojo.
 	if user.Status != 1 {
 		return pojo.TgCurrentUserInfo{}, errors.New("user_disabled_contact_admin")
 	}
+	hasWithdrawAccount, err := HasAppWithdrawAccount(db, user.ID)
+	if err != nil {
+		return pojo.TgCurrentUserInfo{}, errors.New("service_busy_retry")
+	}
 
 	return pojo.TgCurrentUserInfo{
 		Avatar:                    user.Avatar,
@@ -882,6 +870,7 @@ func GetCurrentTgUserInfo(db *gorm.DB, accessSecret string, token string) (pojo.
 		VipLevel:                  user.VipLevel,
 		VipLevelName:              user.VipLevelName,
 		AudioOpen:                 user.AudioOpen,
+		HasWithdrawAccount:        hasWithdrawAccount,
 	}, nil
 }
 

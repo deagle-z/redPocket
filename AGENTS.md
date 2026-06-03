@@ -35,6 +35,10 @@ docker rm -f bgu-1 && docker rmi bgu-1 && docker build --build-arg BUILDKIT_INLI
 
 The app runs on port `8080` by default (mapped to host port `9001` in Docker). Swagger UI is available at `/swagger/index.html`.
 
+## Verification
+
+After modifying Go backend code, do not run Go tests unless the user explicitly asks for them.
+
 ## Architecture
 
 ### Layered Structure

@@ -119,6 +119,12 @@ func GetAppWithdrawAccounts(db *gorm.DB, userID int64) []pojo.SysUserWithdrawAcc
 	return result
 }
 
+func HasAppWithdrawAccount(db *gorm.DB, userID int64) (bool, error) {
+	var count int64
+	err := db.Model(&pojo.SysUserWithdrawAccount{}).Where("user_id = ? AND status = 1", userID).Count(&count).Error
+	return count > 0, err
+}
+
 // AppAddWithdrawAccount App端新增提现账户
 func AppAddWithdrawAccount(db *gorm.DB, req pojo.SysUserWithdrawAccountSet, tenantID, userID int64) (result pojo.SysUserWithdrawAccountBack, err error) {
 	var entity pojo.SysUserWithdrawAccount

@@ -331,6 +331,7 @@ func InitGin() {
 		appRouter.POST("/banners", api.GetAppBanners)                             // 轮播图按position分组
 		appRouter.GET("/appGame/home", api.GetAppHomeGames)                       // 首页游戏按分类分组
 		appRouter.POST("/appGame/list", api.GetAppGameListApp)                    // App端分页查询游戏列表
+		appRouter.POST("/appGame/gameList", api.GetAppGameListByCategoryCodeApp)  // App端按分类直接查询游戏列表
 		appRouter.POST("/appGame/categoryList", api.GetAppGameCategoryListApp)    // App端按分类和厂商分页查询游戏列表
 		appRouter.POST("/appGame/thirdCategories", api.GetAppGameThirdCategories) // 按分类获取游戏厂商列表
 		appRouter.GET("/config/:key", api.GetAppSysConfig)                        // 根据key获取系统配置
@@ -396,6 +397,7 @@ func InitGin() {
 		appAuthRouter.POST("/lottery/draw", api.DrawLottery)                                    // App端消耗一次抽奖机会
 		appAuthRouter.GET("/lottery/history", api.GetLotteryHistory)                            // App端查询抽奖历史
 		appAuthRouter.POST("/appGame/launch", api.LaunchAppGame)                                // App端获取游戏登录URL
+		appAuthRouter.POST("/appUserBetRecord/list", api.GetAppCurrentUserBetRecords)           // App端查询当前用户下注记录
 		appAuthRouter.GET("/prizePool/outRecords", api.GetPrizePoolOutRecordsApp)               // App端查询奖池消耗流水
 	}
 

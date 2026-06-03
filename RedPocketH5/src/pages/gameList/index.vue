@@ -3,6 +3,8 @@ import { showToast } from 'vant'
 import type { AppHomeGameItem } from '@/api/user'
 import { getAppGameCategoryList } from '@/api/user'
 import AppPageHeader from '@/components/AppPageHeader.vue'
+import AppRetryState from '@/components/AppRetryState.vue'
+import AppSkeletonSection from '@/components/AppSkeletonSection.vue'
 import { getGameProviderIcon, getGameProviderLabel, normalizeGameProviderCode } from '@/constants/gameProviders'
 import { safeBack } from '@/utils/navigation'
 
@@ -13,6 +15,7 @@ const route = useRoute()
 const router = useRouter()
 
 const loading = ref(false)
+const loadFailed = ref(false)
 const games = ref<AppHomeGameItem[]>([])
 const providers = ref<string[]>([])
 const selectedProvider = ref('')
@@ -63,6 +66,7 @@ async function loadGames(page = currentPage.value) {
   const seq = ++requestSeq
   try {
     loading.value = true
+    loadFailed.value = false
     const { data } = await getAppGameCategoryList(buildRequest(page))
     if (seq !== requestSeq)
       return
@@ -77,8 +81,11 @@ async function loadGames(page = currentPage.value) {
     currentPage.value = Number(data?.currentPage ?? page)
   }
   catch {
-    if (seq === requestSeq)
+    if (seq === requestSeq) {
       games.value = []
+      total.value = 0
+      loadFailed.value = true
+    }
   }
   finally {
     if (seq === requestSeq)
@@ -89,6 +96,10 @@ async function loadGames(page = currentPage.value) {
 function resetAndLoad() {
   currentPage.value = 0
   void loadGames(0)
+}
+
+function retryLoadGames() {
+  void loadGames(currentPage.value)
 }
 
 function handleProviderClick(provider: string) {
@@ -192,12 +203,17 @@ onBeforeUnmount(() => {
         </button>
       </aside>
 
-      <section class="game-list-content">
-        <div v-if="loading && !hasGames" class="game-card-grid">
-          <div v-for="idx in 12" :key="`game-skeleton-${idx}`" class="game-card game-card--skeleton">
-            <van-skeleton-image />
-          </div>
-        </div>
+      <section class="game-list-content" :class="{ 'game-list-content--loading': loading && hasGames }">
+        <AppSkeletonSection v-if="loading && !hasGames" :count="12" variant="card" />
+
+        <AppRetryState
+          v-else-if="loadFailed"
+          title="Load failed"
+          text="Unable to load games. Please try again."
+          action-text="Retry"
+          :min-height="220"
+          @retry="retryLoadGames"
+        />
 
         <AppEmpty v-else-if="!hasGames" text="暂无游戏" :min-height="220" />
 
@@ -240,14 +256,15 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .game-list-page {
+  --game-list-top: 114px;
+  --game-list-side-width: 94px;
+  --game-list-gap: 12px;
   height: 100vh;
   height: 100dvh;
   padding: 0 12px 0;
   box-sizing: border-box;
   overflow: hidden;
-  color: #f9e8c6;
-  display: flex;
-  flex-direction: column;
+  color: var(--color-game-text);
   background:
     radial-gradient(circle at 16% 18%, rgba(212, 175, 55, 0.16), transparent 28%),
     radial-gradient(circle at 82% 90%, rgba(255, 120, 0, 0.12), transparent 28%),
@@ -258,7 +275,7 @@ onBeforeUnmount(() => {
       rgba(212, 175, 55, 0.035) 18px,
       rgba(212, 175, 55, 0.035) 20px
     ),
-    linear-gradient(180deg, #3e0000 0%, #230000 58%, #120000 100%);
+    linear-gradient(180deg, var(--color-game-bg-start) 0%, var(--color-game-bg-mid) 58%, var(--color-game-bg-end) 100%);
 }
 
 .game-list-page::before {
@@ -273,13 +290,12 @@ onBeforeUnmount(() => {
 
 .game-search {
   position: relative;
-  flex: 0 0 46px;
   z-index: 1;
   height: 46px;
   margin: 10px 2px 14px;
   border: 1px solid rgba(255, 218, 127, 0.18);
   border-radius: 999px;
-  background: rgba(77, 24, 23, 0.76);
+  background: var(--color-game-input);
   box-shadow:
     inset 0 1px 0 rgba(255, 245, 210, 0.08),
     0 12px 24px rgba(20, 0, 0, 0.28);
@@ -307,13 +323,15 @@ onBeforeUnmount(() => {
 }
 
 .game-list-layout {
-  position: relative;
-  flex: 1 1 auto;
+  position: absolute;
+  top: var(--game-list-top);
+  right: 12px;
+  bottom: var(--bottom-safe-space);
+  left: 12px;
   z-index: 1;
-  min-height: 0;
   display: grid;
-  grid-template-columns: 94px minmax(0, 1fr);
-  gap: 12px;
+  grid-template-columns: var(--game-list-side-width) minmax(0, 1fr);
+  gap: var(--game-list-gap);
   overflow: hidden;
 }
 
@@ -337,8 +355,8 @@ onBeforeUnmount(() => {
   padding: 8px 6px;
   border: 1px solid rgba(255, 222, 154, 0.12);
   border-radius: 8px;
-  background: rgba(70, 24, 32, 0.84);
-  color: rgba(255, 232, 193, 0.72);
+  background: var(--color-game-card);
+  color: var(--color-game-text-soft);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -402,11 +420,15 @@ onBeforeUnmount(() => {
   min-width: 0;
   min-height: 0;
   height: 100%;
-  padding-bottom: 92px;
   box-sizing: border-box;
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-width: none;
+}
+
+.game-list-content--loading {
+  opacity: 0.72;
+  pointer-events: none;
 }
 
 .game-list-content::-webkit-scrollbar {
@@ -536,13 +558,15 @@ onBeforeUnmount(() => {
 
 @media (max-width: 360px) {
   .game-list-page {
+    --game-list-side-width: 82px;
+    --game-list-gap: 9px;
     padding-right: 10px;
     padding-left: 10px;
   }
 
   .game-list-layout {
-    grid-template-columns: 82px minmax(0, 1fr);
-    gap: 9px;
+    right: 10px;
+    left: 10px;
   }
 
   .provider-tabs {

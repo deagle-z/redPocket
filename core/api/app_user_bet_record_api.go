@@ -33,3 +33,39 @@ func GetAppUserBetRecords(ctx *gin.Context) {
 	db := ctx.MustGet("db").(*gorm.DB)
 	utils.SuccessObjBack(ctx, repository.GetAppUserBetRecords(db, search))
 }
+
+// GetAppCurrentUserBetRecords app端获取当前用户三方游戏下注记录
+//
+//	@Summary		App端获取当前用户三方游戏下注记录
+//	@Tags			游戏下注记录
+//	@Accept			json
+//	@Produce		json
+//	@Param			data body		pojo.AppUserBetRecordAppSearch	true	"查询条件"
+//	@Success		200	{object}		pojo.AppUserBetRecordResp
+//	@Router			/api/v1/app/appUserBetRecord/list [post]
+func GetAppCurrentUserBetRecords(ctx *gin.Context) {
+	userIDRaw, ok := ctx.Get("userId")
+	if !ok {
+		utils.UnauthorizedBack(ctx, "token_invalid")
+		return
+	}
+	userID, ok := userIDRaw.(int64)
+	if !ok || userID <= 0 {
+		utils.UnauthorizedBack(ctx, "token_invalid")
+		return
+	}
+
+	var search pojo.AppUserBetRecordAppSearch
+	search.SetPageDefaults()
+	if err := ctx.ShouldBindJSON(&search); err != nil && err != io.EOF {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	db := ctx.MustGet("db").(*gorm.DB)
+	result, err := repository.GetAppUserBetRecordsApp(db, userID, search)
+	if err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	utils.SuccessObjBack(ctx, result)
+}

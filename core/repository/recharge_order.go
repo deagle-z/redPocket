@@ -381,26 +381,33 @@ func AppCreateRechargeOrder(db *gorm.DB, userID int64, req pojo.RechargeOrderApp
 		}
 	}
 
-	// 延迟写库策略：先解析渠道、调用三方，成功后再落库，失败不留脏数据
-	provider, providerErr := pay.MustGet(req.Channel)
-	if providerErr != nil {
-		log.Printf("[AppCreateRechargeOrder] 渠道未注册 userID=%d channel=%s err=%v", userID, req.Channel, providerErr)
-		return result, providerErr
-	}
-
 	orderNo := buildRechargeOrderNo()
-	payResp, err := provider.CreateOrder(pay.PayRequest{
-		OrderNo:        orderNo,
-		Amount:         req.Amount,
-		ProviderAmount: providerAmount,
-		Currency:       req.Currency,
-		PayMethod:      req.PayMethod,
-		CountryCode:    req.CountryCode,
-		ExtraFields:    req.ExtraFields,
-	})
-	if err != nil {
-		log.Printf("[AppCreateRechargeOrder] 三方创建订单失败 userID=%d orderNo=%s channel=%s amount=%.2f providerAmount=%.2f currency=%s country=%s err=%v", userID, orderNo, req.Channel, req.Amount, providerAmount, req.Currency, req.CountryCode, err)
-		return result, err
+	isDev := utils.IsDev()
+	payResp := pay.PayResponse{}
+	if isDev {
+		payResp.ProviderTradeNo = "DEV_" + orderNo
+		payResp.AutoSuccess = true
+	} else {
+		// 延迟写库策略：先解析渠道、调用三方，成功后再落库，失败不留脏数据
+		provider, providerErr := pay.MustGet(req.Channel)
+		if providerErr != nil {
+			log.Printf("[AppCreateRechargeOrder] 渠道未注册 userID=%d channel=%s err=%v", userID, req.Channel, providerErr)
+			return result, providerErr
+		}
+
+		payResp, err = provider.CreateOrder(pay.PayRequest{
+			OrderNo:        orderNo,
+			Amount:         req.Amount,
+			ProviderAmount: providerAmount,
+			Currency:       req.Currency,
+			PayMethod:      req.PayMethod,
+			CountryCode:    req.CountryCode,
+			ExtraFields:    req.ExtraFields,
+		})
+		if err != nil {
+			log.Printf("[AppCreateRechargeOrder] 三方创建订单失败 userID=%d orderNo=%s channel=%s amount=%.2f providerAmount=%.2f currency=%s country=%s err=%v", userID, orderNo, req.Channel, req.Amount, providerAmount, req.Currency, req.CountryCode, err)
+			return result, err
+		}
 	}
 
 	// 三方调用成功，写库（含三方流水号，无需二次 Update）
@@ -415,6 +422,11 @@ func AppCreateRechargeOrder(db *gorm.DB, userID int64, req pojo.RechargeOrderApp
 	var providerTradeNo *string
 	if payResp.ProviderTradeNo != "" {
 		providerTradeNo = &payResp.ProviderTradeNo
+	}
+	var devFlag *int8
+	if isDev {
+		flag := int8(1)
+		devFlag = &flag
 	}
 
 	order := pojo.RechargeOrder{
@@ -432,6 +444,7 @@ func AppCreateRechargeOrder(db *gorm.DB, userID int64, req pojo.RechargeOrderApp
 		BonusAmount:     0,
 		Status:          0, // 待支付
 		ProviderTradeNo: providerTradeNo,
+		IsDev:           devFlag,
 		ActivityType:    &activityType,
 	}
 	if err = db.Create(&order).Error; err != nil {
