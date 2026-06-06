@@ -137,7 +137,8 @@ func SendTrialRedPacket(db *gorm.DB, userID int64, req pojo.TrialLuckyMoneySend,
 		loseRate = 1.8
 	}
 	expireTime := time.Now().Add(time.Duration(GetLuckyExpireMinutes(db)) * time.Minute)
-	redList := utils.RedEnvelope(req.Amount, number, 0.01, math.Max(0.01, req.Amount/float64(number)*2))
+	minAmount, maxAmount := utils.LuckyEnvelopeAmountBounds(req.Amount, number)
+	redList := utils.RedEnvelope(req.Amount, number, minAmount, maxAmount)
 	redListJSON, _ := json.Marshal(redList)
 
 	var lucky pojo.TrialLuckyMoney
@@ -715,7 +716,8 @@ func sendTrialRedPacketByBot(db *gorm.DB, bot pojo.TrialBotUser, amount float64,
 		loseRate = 1.8
 	}
 	expireTime := time.Now().Add(time.Duration(GetLuckyExpireMinutes(db)) * time.Minute)
-	redList := utils.RedEnvelope(amount, number, 0.01, math.Max(0.01, amount/float64(number)*2))
+	minAmount, maxAmount := utils.LuckyEnvelopeAmountBounds(amount, number)
+	redList := utils.RedEnvelope(amount, number, minAmount, maxAmount)
 	redListJSON, _ := json.Marshal(redList)
 	name := trialBotDisplayName(bot)
 	var lucky pojo.TrialLuckyMoney

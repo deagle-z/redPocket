@@ -7,6 +7,63 @@ import (
 	"strings"
 )
 
+// LuckyEnvelopeAmountBounds returns per-packet amount bounds based on the total amount.
+func LuckyEnvelopeAmountBounds(totalAmount float64, totalCount int) (float64, float64) {
+	minUnits, maxUnits := luckyEnvelopeAmountBoundsUnits(int64(ToMoney(totalAmount)), totalCount)
+	return float64(minUnits) / 100, float64(maxUnits) / 100
+}
+
+func luckyEnvelopeAmountBoundsUnits(totalUnits int64, totalCount int) (int64, int64) {
+	if totalUnits <= 0 {
+		return 1, 1
+	}
+	if totalCount <= 0 {
+		return 1, totalUnits
+	}
+
+	countUnits := int64(totalCount)
+	minUnits := ceilDivInt64(totalUnits, 10) // ceil(total * 10%)
+	maxUnits := (totalUnits * 2) / 5         // floor(total * 40%)
+
+	if totalCount > 10 {
+		minUnits = totalUnits / countUnits
+	}
+	if totalCount < 3 {
+		maxUnits = ceilDivInt64(totalUnits, countUnits)
+	}
+
+	if minUnits < 1 {
+		minUnits = 1
+	}
+	if maxUnits < 1 {
+		maxUnits = 1
+	}
+
+	// Cent precision can make strict percentage bounds impossible, for example
+	// 10 packets with a total not divisible into exact 10% cents.
+	if minUnits*countUnits > totalUnits {
+		minUnits = totalUnits / countUnits
+		if minUnits < 1 {
+			minUnits = 1
+		}
+	}
+	if maxUnits*countUnits < totalUnits {
+		maxUnits = ceilDivInt64(totalUnits, countUnits)
+	}
+	if maxUnits < minUnits {
+		maxUnits = minUnits
+	}
+
+	return minUnits, maxUnits
+}
+
+func ceilDivInt64(a int64, b int64) int64 {
+	if b <= 0 {
+		return 0
+	}
+	return (a + b - 1) / b
+}
+
 // RedEnvelope 红包金额分配算法
 // totalAmount: 红包总金额
 // totalCount: 红包总个数

@@ -20,6 +20,16 @@ import (
 
 var autoLuckyMaintainMu sync.Mutex
 
+const (
+	luckyBotWinRateDefault              = 0.50
+	luckyBotGrabWinRateConfig           = "lucky_bot_grab_win_rate"
+	luckyBotGrabWinRateCache            = "bgu_lucky_bot_grab_win_rate"
+	luckyBotPacketUserWinRateConfig     = "lucky_bot_packet_user_win_rate"
+	luckyBotPacketUserWinRateCache      = "bgu_lucky_bot_packet_user_win_rate"
+	luckyBotGrabWinRateConfigDesc       = "机器人自动抢真实红包胜率"
+	luckyBotPacketUserWinRateConfigDesc = "真实用户抢机器人真实红包胜率"
+)
+
 type luckyNumsReward struct {
 	Triggered bool
 	Num       string
@@ -76,8 +86,7 @@ func sendRedPacket(db *gorm.DB, senderID int64, senderName string, req pojo.Luck
 	}
 
 	// 生成红包金额数组
-	minAmount := 0.01
-	maxAmount := req.Amount / float64(luckyTotal) * 2
+	minAmount, maxAmount := utils.LuckyEnvelopeAmountBounds(req.Amount, luckyTotal)
 	redEnvelopes := utils.RedEnvelope(req.Amount, luckyTotal, minAmount, maxAmount)
 
 	// 获取中雷/猜错倍数（奇偶模式使用独立配置）
@@ -608,8 +617,190 @@ func lockLuckyTgUsers(tx *gorm.DB, userID int64, senderID int64) (pojo.TgUser, p
 	return user, sender, nil
 }
 
+type luckyItemAmountSwap struct {
+	PrimaryID     uint64
+	MatchID       uint64
+	PrimaryAmount float64
+	MatchAmount   float64
+}
+
+func luckyAmountIsThunder(lucky pojo.LuckyMoney, amount float64, oddEvenGuess *int) bool {
+	amountStr := fmt.Sprintf("%.2f", utils.Truncate2(amount))
+	lastDigit := amountStr[len(amountStr)-1]
+	if lucky.GameMode == 1 {
+		if oddEvenGuess == nil {
+			return false
+		}
+		lastDigitVal := int(lastDigit - '0')
+		isOdd := lastDigitVal%2 != 0
+		userGuessedOdd := *oddEvenGuess == 1
+		return isOdd != userGuessedOdd
+	}
+	thunderStr := strconv.Itoa(lucky.Thunder)
+	return string(lastDigit) == thunderStr
+}
+
+func pickLuckyItemForTarget(items []pojo.LuckyMoneyItem, lucky pojo.LuckyMoney, grabIndex int, oddEvenGuess *int, targetWin bool) (pojo.LuckyMoneyItem, *luckyItemAmountSwap, bool) {
+	if len(items) == 0 {
+		return pojo.LuckyMoneyItem{}, nil, false
+	}
+	matchesTarget := func(item pojo.LuckyMoneyItem) bool {
+		isWin := !luckyAmountIsThunder(lucky, item.Amount, oddEvenGuess)
+		return isWin == targetWin
+	}
+	if grabIndex > 0 {
+		var fixed *pojo.LuckyMoneyItem
+		for i := range items {
+			if int(items[i].SeqNo) == grabIndex {
+				fixed = &items[i]
+				break
+			}
+		}
+		if fixed == nil {
+			return pojo.LuckyMoneyItem{}, nil, false
+		}
+		if matchesTarget(*fixed) {
+			return *fixed, nil, true
+		}
+		matchedItems := make([]pojo.LuckyMoneyItem, 0, len(items)-1)
+		for _, item := range items {
+			if item.ID == fixed.ID {
+				continue
+			}
+			if matchesTarget(item) {
+				matchedItems = append(matchedItems, item)
+			}
+		}
+		if len(matchedItems) > 0 {
+			match := matchedItems[rand.IntN(len(matchedItems))]
+			selected := *fixed
+			selected.Amount = match.Amount
+			return selected, &luckyItemAmountSwap{
+				PrimaryID:     fixed.ID,
+				MatchID:       match.ID,
+				PrimaryAmount: match.Amount,
+				MatchAmount:   fixed.Amount,
+			}, true
+		}
+		return *fixed, nil, true
+	}
+	matchedItems := make([]pojo.LuckyMoneyItem, 0, len(items))
+	for _, item := range items {
+		if matchesTarget(item) {
+			matchedItems = append(matchedItems, item)
+		}
+	}
+	if len(matchedItems) > 0 {
+		return matchedItems[rand.IntN(len(matchedItems))], nil, true
+	}
+	return items[0], nil, true
+}
+
+func countLuckyThunderItems(items []pojo.LuckyMoneyItem, lucky pojo.LuckyMoney, onlyUngrabbed bool) int {
+	count := 0
+	for _, item := range items {
+		if onlyUngrabbed && item.IsGrabbed != 0 {
+			continue
+		}
+		if luckyAmountIsThunder(lucky, item.Amount, nil) {
+			count++
+		}
+	}
+	return count
+}
+
+func hasLuckyNonThunderItem(items []pojo.LuckyMoneyItem, lucky pojo.LuckyMoney) bool {
+	for _, item := range items {
+		if item.IsGrabbed != 0 {
+			continue
+		}
+		if !luckyAmountIsThunder(lucky, item.Amount, nil) {
+			return true
+		}
+	}
+	return false
+}
+
+func pickLuckyBotThunderModeTarget(items []pojo.LuckyMoneyItem, lucky pojo.LuckyMoney, dayTotalThunder int, dayRemainingThunder int, botThunderGrabbed int64, randomValue float64) (*bool, bool) {
+	currentRemainingThunder := countLuckyThunderItems(items, lucky, true)
+	hasNonThunder := hasLuckyNonThunderItem(items, lucky)
+	if dayTotalThunder <= 0 || currentRemainingThunder <= 0 {
+		if !hasNonThunder {
+			return nil, false
+		}
+		targetWin := true
+		return &targetWin, true
+	}
+
+	maxBotThunder := dayTotalThunder / 2
+	remainingQuota := maxBotThunder - int(botThunderGrabbed)
+	if remainingQuota <= 0 {
+		if !hasNonThunder {
+			return nil, false
+		}
+		targetWin := true
+		return &targetWin, true
+	}
+	if dayRemainingThunder <= 0 || remainingQuota >= dayRemainingThunder {
+		targetWin := false
+		return &targetWin, true
+	}
+	if !hasNonThunder {
+		targetWin := false
+		return &targetWin, true
+	}
+
+	loseProbability := float64(remainingQuota) / float64(dayRemainingThunder)
+	targetWin := randomValue >= loseProbability
+	return &targetWin, true
+}
+
+func applyLuckyGrabTarget(tx *gorm.DB, lucky pojo.LuckyMoney, grabIndex int, oddEvenGuess *int, targetWin *bool) (int, float64, bool, error) {
+	if targetWin == nil {
+		return grabIndex, 0, false, nil
+	}
+	var items []pojo.LuckyMoneyItem
+	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+		Where("red_packet_id = ? AND is_grabbed = ?", lucky.ID, 0).
+		Order("seq_no asc").
+		Find(&items).Error; err != nil {
+		return grabIndex, 0, false, err
+	}
+	if len(items) == 0 {
+		return grabIndex, 0, false, nil
+	}
+	item, swap, ok := pickLuckyItemForTarget(items, lucky, grabIndex, oddEvenGuess, *targetWin)
+	if !ok {
+		return grabIndex, 0, false, nil
+	}
+	if swap != nil {
+		if err := tx.Model(&pojo.LuckyMoneyItem{}).Where("id = ?", swap.PrimaryID).Update("amount", utils.Truncate2(swap.PrimaryAmount)).Error; err != nil {
+			return grabIndex, 0, false, err
+		}
+		if err := tx.Model(&pojo.LuckyMoneyItem{}).Where("id = ?", swap.MatchID).Update("amount", utils.Truncate2(swap.MatchAmount)).Error; err != nil {
+			return grabIndex, 0, false, err
+		}
+	}
+	return int(item.SeqNo), utils.Truncate2(item.Amount), true, nil
+}
+
+func resolveLuckyGrabTargetWin(db *gorm.DB, user pojo.TgUser, lucky pojo.LuckyMoney, senderIsBot bool, forcedTargetWin *bool) *bool {
+	if forcedTargetWin != nil {
+		return forcedTargetWin
+	}
+	if !user.IsBot && senderIsBot {
+		targetWin := rand.Float64() < GetLuckyBotPacketUserWinRate(db)
+		return &targetWin
+	}
+	return nil
+}
+
 // GrabRedPacket 抢红包业务逻辑
 func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string, grabIndex int, oddEvenGuess *int) (map[string]interface{}, error) {
+	return grabRedPacketWithTarget(db, luckyID, userID, tablePrefix, grabIndex, oddEvenGuess, nil)
+}
+
+func grabRedPacketWithTarget(db *gorm.DB, luckyID int64, userID int64, tablePrefix string, grabIndex int, oddEvenGuess *int, forcedTargetWin *bool) (map[string]interface{}, error) {
 	// 获取红包信息
 	luckyMoney, err := repository.GetLuckyMoney(db, luckyID)
 	if err != nil {
@@ -699,6 +890,7 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 	}
 
 	// 选择指定包（1-based）
+	requestedGrabIndex := grabIndex
 	if grabIndex <= 0 {
 		grabIndex = int(grabbedCount) + 1
 	}
@@ -706,9 +898,6 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 		tx.Rollback()
 		return nil, errors.New("lucky_data_exception")
 	}
-	redAmount := utils.Truncate2(redList[grabIndex-1])
-	awardTs := time.Now().Unix()
-	redAmountMilli := int64(utils.ToMoney(redAmount))
 
 	// 奇偶模式参数校验
 	if luckyMoney.GameMode == 1 {
@@ -717,6 +906,29 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 			return nil, errors.New("lucky_odd_even_guess_required")
 		}
 	}
+
+	senderIsBot, err := isLuckyMoneyUserBot(tx, luckyMoney.SenderID)
+	if err != nil {
+		tx.Rollback()
+		return nil, fmt.Errorf("查询发包用户失败: %v", err)
+	}
+	targetWin := resolveLuckyGrabTargetWin(db, user, luckyMoney, senderIsBot, forcedTargetWin)
+	targetGrabIndex := grabIndex
+	if requestedGrabIndex <= 0 && targetWin != nil {
+		targetGrabIndex = 0
+	}
+	targetedGrabIndex, targetedAmount, targeted, err := applyLuckyGrabTarget(tx, luckyMoney, targetGrabIndex, oddEvenGuess, targetWin)
+	if err != nil {
+		tx.Rollback()
+		return nil, fmt.Errorf("选择机器人胜率红包失败: %v", err)
+	}
+	redAmount := utils.Truncate2(redList[grabIndex-1])
+	if targeted {
+		grabIndex = targetedGrabIndex
+		redAmount = targetedAmount
+	}
+	awardTs := time.Now().Unix()
+	redAmountMilli := int64(utils.ToMoney(redAmount))
 
 	// 判断是否中雷/猜错
 	isThunder := int8(0)
@@ -730,20 +942,7 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 	grabbingCommission := 0
 	sendPoolCommission := 0
 	grabbingPoolCommission := 0
-	amountStr := fmt.Sprintf("%.2f", redAmount)
-	lastDigit := amountStr[len(amountStr)-1]
-	var hitThunder bool
-	if luckyMoney.GameMode == 1 {
-		// 奇偶模式：比较最后一位数字的奇偶性与用户猜测
-		lastDigitVal := int(lastDigit - '0')
-		isOdd := lastDigitVal%2 != 0
-		userGuessedOdd := *oddEvenGuess == 1
-		hitThunder = isOdd != userGuessedOdd
-	} else {
-		// 雷号模式：最后一位数字与雷号相同则中雷
-		thunderStr := strconv.Itoa(luckyMoney.Thunder)
-		hitThunder = string(lastDigit) == thunderStr
-	}
+	hitThunder := luckyAmountIsThunder(luckyMoney, redAmount, oddEvenGuess)
 	if hitThunder {
 		isThunder = 1
 		if luckyMoney.GameMode == 1 {
@@ -761,11 +960,6 @@ func GrabRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix string,
 		grabbingCommission = GetGrabbingCommission(db)
 		winFee = utils.Truncate2(redAmount * float64(grabbingCommission) / 100.0)
 		grabbingPoolCommission = GetGrabbingPoolCommission(db)
-	}
-	senderIsBot, err := isLuckyMoneyUserBot(tx, luckyMoney.SenderID)
-	if err != nil {
-		tx.Rollback()
-		return nil, fmt.Errorf("查询发包用户失败: %v", err)
 	}
 	botVsBotPump := user.IsBot && senderIsBot
 
@@ -1270,6 +1464,42 @@ func GetRedPacketDetails(db *gorm.DB, luckyID int64) (map[string]interface{}, er
 	}
 
 	return result, nil
+}
+
+func GetLuckyBotGrabWinRate(db *gorm.DB) float64 {
+	return getLuckyBotWinRateConfig(db, luckyBotGrabWinRateConfig, luckyBotGrabWinRateCache, luckyBotGrabWinRateConfigDesc)
+}
+
+func GetLuckyBotPacketUserWinRate(db *gorm.DB) float64 {
+	return getLuckyBotWinRateConfig(db, luckyBotPacketUserWinRateConfig, luckyBotPacketUserWinRateCache, luckyBotPacketUserWinRateConfigDesc)
+}
+
+func getLuckyBotWinRateConfig(db *gorm.DB, configKey string, redisKey string, configDesc string) float64 {
+	ctx := context.Background()
+	if utils.RD != nil {
+		if cachedValue, err := utils.RD.Get(ctx, redisKey).Result(); err == nil && cachedValue != "" {
+			return normalizeLuckyBotWinRate(cachedValue)
+		}
+	}
+
+	defaultValue := strconv.FormatFloat(luckyBotWinRateDefault, 'f', 2, 64)
+	configValue := getOrInitSysConfigValue(db, configKey, defaultValue, configDesc)
+	result := normalizeLuckyBotWinRate(configValue)
+	if result == luckyBotWinRateDefault && strings.TrimSpace(configValue) != defaultValue {
+		_ = db.Model(&pojo.SysConfig{}).Where("config_key = ?", configKey).Update("config_value", defaultValue).Error
+	}
+	if utils.RD != nil {
+		utils.RD.SetEX(ctx, redisKey, strconv.FormatFloat(result, 'f', 2, 64), utils.GetRandomRangeSecond(20*60, 40*60))
+	}
+	return result
+}
+
+func normalizeLuckyBotWinRate(raw string) float64 {
+	value, err := strconv.ParseFloat(strings.TrimSpace(raw), 64)
+	if err != nil || value < 0 || value > 1 {
+		return luckyBotWinRateDefault
+	}
+	return value
 }
 
 // GetLoseRate 获取中雷倍数（带Redis缓存）

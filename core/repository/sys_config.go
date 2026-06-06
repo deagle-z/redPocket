@@ -138,6 +138,8 @@ var sysConfigRedisKeyMap = map[string]string{
 	"lucky_send_pool_commission":      "bgu_auth_group_send_pool_commission",
 	"lucky_grabbing_pool_commission":  "bgu_auth_group_grabbing_pool_commission",
 	"lucky_expire_time":               "bgu_lucky_expire_time",
+	"lucky_bot_grab_win_rate":         "bgu_lucky_bot_grab_win_rate",
+	"lucky_bot_packet_user_win_rate":  "bgu_lucky_bot_packet_user_win_rate",
 	"trial_user_win_rate":             "bgu_trial_user_win_rate",
 	"trial_lucky_flow_lottery_reward": "bgu_trial_lucky_flow_lottery_reward",
 }

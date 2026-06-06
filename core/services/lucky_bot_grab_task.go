@@ -18,6 +18,14 @@ import (
 
 const TaskTypeLuckyBotGrab = "lucky:bot_grab"
 
+type luckyBotAutoGrabTargetMode int
+
+const (
+	luckyBotAutoGrabNoTarget luckyBotAutoGrabTargetMode = iota
+	luckyBotAutoGrabWinRateTarget
+	luckyBotAutoGrabDailyThunderTarget
+)
+
 type LuckyBotGrabPayload struct {
 	TablePrefix    string `json:"tablePrefix"`
 	LuckyID        int64  `json:"luckyId"`
@@ -110,7 +118,15 @@ func handleLuckyBotGrabTask(ctx context.Context, task *asynq.Task) error {
 		guess := rand.IntN(2) // 0=偶, 1=奇
 		oddEvenGuess = &guess
 	}
-	result, err := GrabRedPacket(db, payload.LuckyID, botUser.ID, payload.TablePrefix, grabIndex, oddEvenGuess)
+	targetWin, canGrab, err := resolveLuckyBotAutoGrabTargetWin(db, lucky)
+	if err != nil {
+		return err
+	}
+	if !canGrab {
+		log.Printf("bot grab stopped. luckyId=%d botId=%d reason=thunder_quota_reached", payload.LuckyID, botUser.ID)
+		return nil
+	}
+	result, err := grabRedPacketWithTarget(db, payload.LuckyID, botUser.ID, payload.TablePrefix, grabIndex, oddEvenGuess, targetWin)
 	if err != nil {
 		log.Printf("bot grab skipped. luckyId=%d botId=%d err=%v", payload.LuckyID, botUser.ID, err)
 	} else {
@@ -135,6 +151,89 @@ func handleLuckyBotGrabTask(ctx context.Context, task *asynq.Task) error {
 	}
 
 	return nil
+}
+
+func resolveLuckyBotAutoGrabTargetWin(db *gorm.DB, lucky pojo.LuckyMoney) (*bool, bool, error) {
+	senderIsBot, err := isLuckyMoneyUserBot(db, lucky.SenderID)
+	if err != nil {
+		return nil, false, err
+	}
+	switch luckyBotAutoGrabTargetModeFor(lucky, senderIsBot) {
+	case luckyBotAutoGrabNoTarget:
+		return nil, true, nil
+	case luckyBotAutoGrabWinRateTarget:
+		targetWin := rand.Float64() < GetLuckyBotGrabWinRate(db)
+		return &targetWin, true, nil
+	}
+
+	var items []pojo.LuckyMoneyItem
+	if err := db.Where("red_packet_id = ?", lucky.ID).Order("seq_no asc").Find(&items).Error; err != nil {
+		return nil, false, err
+	}
+	// 兼容旧数据：没有明细的历史红包不做雷包总数统计，继续走原抢包流程。
+	if len(items) == 0 {
+		return nil, true, nil
+	}
+
+	dayStart, dayEnd := luckyBotThunderDayRange(time.Now())
+	dayTotalThunder, err := countDailyRealUserLuckyThunderItems(db, dayStart, dayEnd, false)
+	if err != nil {
+		return nil, false, err
+	}
+	dayRemainingThunder, err := countDailyRealUserLuckyThunderItems(db, dayStart, dayEnd, true)
+	if err != nil {
+		return nil, false, err
+	}
+	botThunderGrabbed, err := countDailyLuckyBotGrabbedThunder(db, dayStart, dayEnd)
+	if err != nil {
+		return nil, false, err
+	}
+	targetWin, canGrab := pickLuckyBotThunderModeTarget(items, lucky, int(dayTotalThunder), int(dayRemainingThunder), botThunderGrabbed, rand.Float64())
+	return targetWin, canGrab, nil
+}
+
+func luckyBotAutoGrabTargetModeFor(lucky pojo.LuckyMoney, senderIsBot bool) luckyBotAutoGrabTargetMode {
+	if senderIsBot {
+		return luckyBotAutoGrabNoTarget
+	}
+	if lucky.GameMode == 1 {
+		return luckyBotAutoGrabWinRateTarget
+	}
+	return luckyBotAutoGrabDailyThunderTarget
+}
+
+func luckyBotThunderDayRange(now time.Time) (time.Time, time.Time) {
+	localNow := now.In(time.Local)
+	dayStart := time.Date(localNow.Year(), localNow.Month(), localNow.Day(), 0, 0, 0, 0, localNow.Location())
+	return dayStart, dayStart.AddDate(0, 0, 1)
+}
+
+func countDailyRealUserLuckyThunderItems(db *gorm.DB, dayStart time.Time, dayEnd time.Time, onlyRemaining bool) (int64, error) {
+	var count int64
+	query := db.Table(pojo.LuckyMoneyItemTableName+" AS i").
+		Joins("JOIN "+pojo.LuckyMoneyTableName+" AS l ON l.id = i.red_packet_id").
+		Joins("JOIN "+pojo.TgUserTableName+" AS sender ON sender.id = l.sender_id").
+		Where("l.created_at >= ? AND l.created_at < ?", dayStart, dayEnd).
+		Where("l.game_mode = ? AND sender.is_bot = ?", 0, false).
+		Where("MOD(CAST(ROUND(i.amount * 100) AS UNSIGNED), 10) = l.thunder")
+	if onlyRemaining {
+		query = query.Where("l.status = ? AND i.is_grabbed = ?", 1, 0)
+	}
+	err := query.Count(&count).Error
+	return count, err
+}
+
+func countDailyLuckyBotGrabbedThunder(db *gorm.DB, dayStart time.Time, dayEnd time.Time) (int64, error) {
+	var count int64
+	err := db.Table(pojo.LuckyMoneyItemTableName+" AS i").
+		Joins("JOIN "+pojo.LuckyMoneyTableName+" AS l ON l.id = i.red_packet_id").
+		Joins("JOIN "+pojo.TgUserTableName+" AS sender ON sender.id = l.sender_id").
+		Joins("JOIN "+pojo.TgUserTableName+" AS grabber ON grabber.id = i.grabbed_uid").
+		Where("l.created_at >= ? AND l.created_at < ?", dayStart, dayEnd).
+		Where("l.game_mode = ? AND sender.is_bot = ?", 0, false).
+		Where("i.is_grabbed = ? AND i.thunder = ? AND grabber.is_bot = ?", 1, 1, true).
+		Count(&count).Error
+	return count, err
 }
 
 func pickRandomAvailableGrabBotUser(db *gorm.DB, luckyID int64, minBalance float64) (pojo.TgUser, error) {
