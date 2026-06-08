@@ -115,7 +115,12 @@ func InitTables(prefix string) (firstInit bool, err error) {
 			&pojo.TgChannelMember{},
 			&pojo.TgUserWithdrawLimitState{},
 			&pojo.TgUserWithdrawActivityCycle{},
+			&pojo.TgUserWithdrawFlowBatch{},
+			&pojo.TgUserWithdrawFlowEvent{},
+			&pojo.TgUserWithdrawFlowAllocation{},
 			&pojo.TgUserCheckInRecord{},
+			&pojo.ExchangeCode{},
+			&pojo.ExchangeCodeRedeem{},
 			&pojo.RechargeOrder{},
 			&pojo.WithdrawOrderBr{},
 			&pojo.TgUserRebateRecord{},
@@ -132,6 +137,14 @@ func InitTables(prefix string) (firstInit bool, err error) {
 			panic(err)
 		}
 		log.Print("init tables: first init automigrate done\n")
+	}
+	log.Print("init tables: ensure exchange_code tables...\n")
+	if err = db.AutoMigrate(&pojo.ExchangeCode{}, &pojo.ExchangeCodeRedeem{}); err != nil {
+		panic(err)
+	}
+	log.Print("init tables: ensure tg_user device fingerprint schema...\n")
+	if err = ensureTgUserDeviceFingerprintSchema(db); err != nil {
+		panic(err)
 	}
 	log.Print("init tables: init sharding hook...\n")
 	InitShardingHook(db)
@@ -158,4 +171,19 @@ func InitTables(prefix string) (firstInit bool, err error) {
 func shouldSkipAutoMigrate() bool {
 	value := strings.TrimSpace(os.Getenv("BGU_SKIP_AUTO_MIGRATE"))
 	return value == "1" || strings.EqualFold(value, "true")
+}
+
+func ensureTgUserDeviceFingerprintSchema(db *gorm.DB) error {
+	migrator := db.Migrator()
+	if !migrator.HasColumn(&pojo.TgUser{}, "DeviceFingerprint") {
+		if err := migrator.AddColumn(&pojo.TgUser{}, "DeviceFingerprint"); err != nil {
+			return err
+		}
+	}
+	if !migrator.HasIndex(&pojo.TgUser{}, "idx_tg_user_device_fingerprint") {
+		if err := migrator.CreateIndex(&pojo.TgUser{}, "idx_tg_user_device_fingerprint"); err != nil {
+			return err
+		}
+	}
+	return nil
 }

@@ -308,20 +308,5 @@ func CheckAppVersion(appVersion string, version int64) bool {
 }
 
 func IsDev() bool {
-	return true
-	//env := strings.ToLower(strings.TrimSpace(os.Getenv("APP_ENV")))
-	//if env == "" {
-	//	env = strings.ToLower(strings.TrimSpace(os.Getenv("GO_ENV")))
-	//}
-	//if env == "" {
-	//	env = strings.ToLower(strings.TrimSpace(os.Getenv("GIN_MODE")))
-	//}
-	//switch env {
-	//case "dev", "development", "local", "debug", "test", "testing":
-	//	return true
-	//case "prod", "production", "release":
-	//	return false
-	//}
-	//host := strings.ToLower(strings.TrimSpace(GlobalConfig.Host))
-	//return host == "127.0.0.1" || host == "localhost" || host == "0.0.0.0"
+	return GlobalConfig.IsDev
 }

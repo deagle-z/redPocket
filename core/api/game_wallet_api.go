@@ -3,6 +3,7 @@ package api
 import (
 	"BaseGoUni/core/game"
 	"BaseGoUni/core/pojo"
+	"BaseGoUni/core/repository"
 	"BaseGoUni/core/utils"
 	"encoding/json"
 	"errors"
@@ -283,6 +284,26 @@ func handleGameCashTransfer(db *gorm.DB, req pojo.GameCashTransferInOutReq) (flo
 
 		if err := createGameBetRecord(tx, user, req, amount); err != nil {
 			return err
+		}
+		betAmount, _ := gameBetRecordAmounts(req, amount)
+		if betAmount > 0 {
+			occurredAt := time.Now()
+			if req.ReqTime > 0 {
+				occurredAt = time.UnixMilli(req.ReqTime)
+			}
+			if err := repository.RecordWithdrawFlowEvent(
+				tx,
+				user.ID,
+				user.TenantId,
+				pojo.WithdrawFlowEventTypeGameBet,
+				"game_bet:"+tid,
+				0,
+				tid,
+				betAmount,
+				occurredAt,
+			); err != nil {
+				return err
+			}
 		}
 		if err := tx.Create(&pojo.CashHistory{
 			UserId:      user.ID,

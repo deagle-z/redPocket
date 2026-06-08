@@ -178,6 +178,42 @@ func AppCreateRechargeOrder(ctx *gin.Context) {
 	utils.SuccessObjBack(ctx, result)
 }
 
+// AppCreateRechargeOrderV2 godoc
+//
+//	@Summary		app端创建v2充值订单
+//	@Tags			充值订单
+//	@Accept			json
+//	@Produce		json
+//	@Param			data body		pojo.RechargeOrderAppReq	true	"充值下单参数"
+//	@Success		200	{object}		pojo.RechargeOrderAppBack
+//	@Router			/api/v1/app/rechargeOrder/v2 [post]
+func AppCreateRechargeOrderV2(ctx *gin.Context) {
+	var req pojo.RechargeOrderAppReq
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		utils.ErrorBack(ctx, "参数格式错误")
+		return
+	}
+	userIDRaw, ok := ctx.Get("userId")
+	if !ok {
+		utils.UnauthorizedBack(ctx, "token is invalid")
+		return
+	}
+	userID, ok := userIDRaw.(int64)
+	if !ok || userID <= 0 {
+		utils.UnauthorizedBack(ctx, "token is invalid")
+		return
+	}
+
+	db := ctx.MustGet("db").(*gorm.DB)
+	hostInfo := ctx.MustGet("hostInfo").(pojo.HostInfo)
+	result, err := repository.AppCreateRechargeOrderV2(db, userID, req, hostInfo.TablePrefix)
+	if err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	utils.SuccessObjBack(ctx, result)
+}
+
 // GetAppRechargeOrderHistory godoc
 //
 //	@Summary		app端充值记录
@@ -276,6 +312,36 @@ func CheckIsFirstRecharge(ctx *gin.Context) {
 	utils.SuccessObjBack(ctx, gin.H{
 		"hasFirst":      !hasFirst,
 		"hasTodayFirst": !hasTodayFirst,
+	})
+}
+
+// CheckIsFirstRechargeV2 godoc
+//
+//	@Summary		检查用户v2充值是否实际首充
+//	@Tags			充值
+//	@Produce		json
+//	@Success		200	{object}	map[string]bool	"isFirstRecharge: 是否实际首充; hasFirst: 兼容字段，同isFirstRecharge"
+//	@Router			/api/v1/app/recharge/isFirst/v2 [get]
+func CheckIsFirstRechargeV2(ctx *gin.Context) {
+	userIDRaw, ok := ctx.Get("userId")
+	if !ok {
+		utils.UnauthorizedBack(ctx, "token is invalid")
+		return
+	}
+	userID, ok := userIDRaw.(int64)
+	if !ok || userID <= 0 {
+		utils.UnauthorizedBack(ctx, "token is invalid")
+		return
+	}
+	db := ctx.MustGet("db").(*gorm.DB)
+	isFirstRecharge, err := repository.CheckRechargeV2IsFirst(db, userID)
+	if err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	utils.SuccessObjBack(ctx, gin.H{
+		"isFirstRecharge": isFirstRecharge,
+		"hasFirst":        isFirstRecharge,
 	})
 }
 

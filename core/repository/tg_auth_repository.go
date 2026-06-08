@@ -4,6 +4,8 @@ import (
 	"BaseGoUni/core/pojo"
 	"BaseGoUni/core/utils"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -14,6 +16,11 @@ import (
 	"time"
 
 	"gorm.io/gorm"
+)
+
+const (
+	registerDeviceFingerprintDailyLimit int64 = 5
+	registerDeviceFingerprintLockTTL          = 30 * time.Second
 )
 
 func TgAuthLogin(db *gorm.DB, hostInfo pojo.HostInfo, req pojo.TgAuthLoginReq, onlineUser pojo.OnlineUser, region string) (result pojo.TgAuthLoginBack, err error) {
@@ -520,7 +527,7 @@ func RegisterTgByEmail(db *gorm.DB, email string, firstName string, password str
 }
 
 // RegisterTgByPhone 手机号注册。
-func RegisterTgByPhone(db *gorm.DB, phone string, country string, firstName string, password string, sourceChannelCode string, tenantID int64, inviteCode string, ip string, region string) (pojo.TgUser, error) {
+func RegisterTgByPhone(db *gorm.DB, phone string, country string, firstName string, password string, sourceChannelCode string, tenantID int64, inviteCode string, ip string, region string, deviceFingerprint string, tablePrefix string) (pojo.TgUser, error) {
 	phone = utils.NormalizePhoneDigits(phone)
 	country = utils.InferCountryByPhone("+"+phone, country)
 	firstName = strings.TrimSpace(firstName)
@@ -542,6 +549,11 @@ func RegisterTgByPhone(db *gorm.DB, phone string, country string, firstName stri
 		return pojo.TgUser{}, errors.New("phone_registered")
 	}
 
+	deviceFingerprintHash, err := normalizeRegisterDeviceFingerprint(deviceFingerprint)
+	if err != nil {
+		return pojo.TgUser{}, err
+	}
+
 	passwordHash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		return pojo.TgUser{}, errors.New("service_busy_retry")
@@ -557,6 +569,25 @@ func RegisterTgByPhone(db *gorm.DB, phone string, country string, firstName stri
 	}
 	displayName = truncateRunes(displayName, 128)
 	username := truncateRunes(displayName, 64)
+
+	now := time.Now()
+	lockKey := registerDeviceFingerprintLockKey(tablePrefix, deviceFingerprintHash, now)
+	acquired, lockErr := utils.AcquireLock(lockKey, registerDeviceFingerprintLockTTL)
+	if lockErr != nil {
+		return pojo.TgUser{}, errors.New("service_busy_retry")
+	}
+	if !acquired {
+		return pojo.TgUser{}, errors.New("request_too_frequent_retry")
+	}
+	defer utils.ReleaseLock(lockKey)
+
+	deviceRegisterCount, err := countRegisterDeviceFingerprintToday(db, deviceFingerprintHash, now)
+	if err != nil {
+		return pojo.TgUser{}, errors.New("service_busy_retry")
+	}
+	if deviceRegisterCount >= registerDeviceFingerprintDailyLimit {
+		return pojo.TgUser{}, errors.New("device_register_limit_exceeded")
+	}
 
 	var newUser pojo.TgUser
 	err = db.Transaction(func(tx *gorm.DB) error {
@@ -588,6 +619,7 @@ func RegisterTgByPhone(db *gorm.DB, phone string, country string, firstName stri
 				Country:           nullableString(country),
 				Ip:                nullableString(ip),
 				Region:            nullableString(strings.ToUpper(strings.TrimSpace(region))),
+				DeviceFingerprint: &deviceFingerprintHash,
 				TrialBalance:      pojo.TrialUserDefaultBalance,
 				Status:            1,
 				ParentID:          parentID,
@@ -619,6 +651,42 @@ func RegisterTgByPhone(db *gorm.DB, phone string, country string, firstName stri
 		return pojo.TgUser{}, err
 	}
 	return newUser, nil
+}
+
+func normalizeRegisterDeviceFingerprint(value string) (string, error) {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return "", errors.New("device_fingerprint_required")
+	}
+	if len(value) < 8 || len(value) > 128 {
+		return "", errors.New("device_fingerprint_invalid")
+	}
+	for _, ch := range value {
+		if (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') || ch == '.' || ch == '_' || ch == ':' || ch == '-' {
+			continue
+		}
+		return "", errors.New("device_fingerprint_invalid")
+	}
+	sum := sha256.Sum256([]byte(strings.ToLower(value)))
+	return hex.EncodeToString(sum[:]), nil
+}
+
+func registerDeviceFingerprintLockKey(tablePrefix string, deviceFingerprintHash string, now time.Time) string {
+	tablePrefix = strings.TrimSpace(tablePrefix)
+	if tablePrefix == "" {
+		tablePrefix = "default"
+	}
+	return fmt.Sprintf("bgu_tg_register_device:%s:%s:%s", tablePrefix, deviceFingerprintHash, now.Format("20060102"))
+}
+
+func countRegisterDeviceFingerprintToday(db *gorm.DB, deviceFingerprintHash string, now time.Time) (int64, error) {
+	start := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	end := start.AddDate(0, 0, 1)
+	var count int64
+	err := db.Model(&pojo.TgUser{}).
+		Where("device_fingerprint = ? AND status <> ? AND created_at >= ? AND created_at < ?", deviceFingerprintHash, -1, start, end).
+		Count(&count).Error
+	return count, err
 }
 
 func resolveRegisterInviteParent(db *gorm.DB, tenantID int64, inviteCode string) (*int64, int64, error) {

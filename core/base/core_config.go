@@ -8,6 +8,7 @@ import (
 type Config struct {
 	Host   string `yaml:"host"`
 	Port   int    `yaml:"port"`
+	IsDev  bool   `yaml:"isDev"` // 开发模式；缺省 false
 	Salt   string `yaml:"salt"`
 	PriKey string `yaml:"priKey"`
 	Mysql  struct {

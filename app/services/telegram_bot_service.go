@@ -2140,15 +2140,11 @@ func (s *TelegramBotService) HandleRegisterCommand(chatID int64, userID int64, u
 		firstNamePtr = nil
 	}
 
-	registerGiftAmount := s.getRegisterGiftAmount()
 	newUser := pojo.TgUser{
 		Username:   usernamePtr,
 		TgName:     tgNamePtr,
 		FirstName:  firstNamePtr,
 		TgID:       userID,
-		Balance:    registerGiftAmount,
-		GiftAmount: registerGiftAmount,
-		GiftTotal:  registerGiftAmount,
 		Status:     1,
 		ParentID:   parentID,
 		InviteCode: &inviteCode,
@@ -2323,13 +2319,9 @@ func (s *TelegramBotService) GetOrCreateTgUserByTelegramID(telegramUserID int64,
 	if displayName == "" {
 		displayName = fmt.Sprintf("User_%d", telegramUserID)
 	}
-	registerGiftAmount := s.getRegisterGiftAmount()
 	newUser := pojo.TgUser{
 		FirstName:  strPtr(displayName),
 		TgID:       telegramUserID,
-		Balance:    registerGiftAmount,
-		GiftAmount: registerGiftAmount,
-		GiftTotal:  registerGiftAmount,
 		Status:     1,
 		InviteCode: &inviteCode,
 	}

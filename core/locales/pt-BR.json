@@ -52,6 +52,9 @@
   "withdraw_payout_email_required": "email de saque é obrigatório",
   "withdraw_payout_phone_required": "telefone de saque é obrigatório",
   "device_unique": "um dispositivo só pode registrar uma conta",
+  "device_fingerprint_required": "a impressão digital do dispositivo é obrigatória",
+  "device_fingerprint_invalid": "a impressão digital do dispositivo é inválida",
+  "device_register_limit_exceeded": "este dispositivo atingiu o limite de registros de hoje",
   "password_format_error": "formato de senha inválido",
   "phone_format_error": "formato de telefone inválido",
   "phone_country_code_required": "o telefone deve começar com o código do país 55, 62 ou 52",
@@ -187,5 +190,14 @@
   "block_user_error": "falha ao bloquear usuário",
   "amount_not_enough": "valor insuficiente: {{.amount}} -> {{.required}}",
   "withdraw_flow_insufficient": "fluxo insuficiente. disponível {{.available}}, necessário {{.required}}",
-  "lucky_packet_seq_grabbed": "o item {{.seqNo}} do envelope vermelho já foi resgatado"
+  "lucky_packet_seq_grabbed": "o item {{.seqNo}} do envelope vermelho já foi resgatado",
+  "exchange_code_format_error": "o código de resgate deve ter 6 dígitos",
+  "exchange_code_amount_invalid": "o valor de resgate deve ser maior que 0",
+  "exchange_code_max_count_invalid": "a quantidade máxima de resgates deve ser maior que 0",
+  "exchange_code_exists": "o código de resgate já existe",
+  "exchange_code_generate_failed": "falha ao gerar o código de resgate, tente novamente",
+  "exchange_code_not_found": "o código de resgate não existe",
+  "exchange_code_disabled": "o código de resgate está desativado",
+  "exchange_code_redeemed_out": "o código de resgate atingiu o limite",
+  "exchange_code_already_redeemed": "você já resgatou este código"
 }

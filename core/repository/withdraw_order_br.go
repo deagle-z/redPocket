@@ -215,6 +215,44 @@ func SetRebateWithdrawOrder(db *gorm.DB, req pojo.WithdrawOrderBrSet) (result po
 	return result, nil
 }
 
+// SetWithdrawOrderBrV2 创建 v2 普通提现订单，只检查 v2 批次流水，不占用旧提现流水状态。
+func SetWithdrawOrderBrV2(db *gorm.DB, req pojo.WithdrawOrderBrSet) (result pojo.WithdrawOrderBrBack, err error) {
+	req.NormalizeCountryCodeFromExtra()
+	if req.Amount > 0 {
+		req.Amount = utils.Truncate2(req.Amount)
+	}
+	if req.Fee > 0 {
+		req.Fee = utils.Truncate2(req.Fee)
+	}
+	var dbOrder pojo.WithdrawOrderBr
+	err = db.Transaction(func(tx *gorm.DB) error {
+		_ = copier.Copy(&dbOrder, &req)
+		ensureWithdrawMerchantOrderNo(&dbOrder)
+		fillWithdrawOrderNetAmount(tx, &dbOrder)
+		if dbOrder.SourceChannelID == nil && dbOrder.UserId > 0 {
+			sourceChannelID, _, sourceErr := LoadUserSourceChannelSnapshot(tx, dbOrder.UserId)
+			if sourceErr != nil {
+				return sourceErr
+			}
+			dbOrder.SourceChannelID = sourceChannelID
+		}
+		if err := tx.Create(&dbOrder).Error; err != nil {
+			return err
+		}
+		if needWithdrawDeductOnCreate(dbOrder.Status) {
+			if err := deductWithdrawAmountV2(tx, &dbOrder); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return result, err
+	}
+	_ = copier.Copy(&result, &dbOrder)
+	return result, nil
+}
+
 func mergeWithdrawOrderUpdate(order *pojo.WithdrawOrderBr, req pojo.WithdrawOrderBrSet) {
 	if !req.HasJSONFields() {
 		oldID := order.ID
@@ -874,6 +912,49 @@ func deductRebateWithdrawAmount(tx *gorm.DB, order *pojo.WithdrawOrderBr) error 
 	return tx.Create(&cashHistory).Error
 }
 
+func deductWithdrawAmountV2(tx *gorm.DB, order *pojo.WithdrawOrderBr) error {
+	if order == nil || order.UserId <= 0 || order.Amount <= 0 {
+		return nil
+	}
+	var user pojo.TgUser
+	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ?", order.UserId).First(&user).Error; err != nil {
+		return err
+	}
+	if user.ID == 0 {
+		return errors.New("user_not_found")
+	}
+	if user.Balance < order.Amount {
+		return errors.New("user_balance_insufficient")
+	}
+	if err := EnsureNoUnfinishedWithdrawFlowBatches(tx, user.ID); err != nil {
+		return err
+	}
+	remainingBalance := utils.Truncate2(user.Balance - order.Amount)
+	updates := map[string]any{
+		"balance": gorm.Expr("balance - ?", order.Amount),
+	}
+	if user.GiftAmount > 0 {
+		updates["gift_amount"] = withdrawGiftAmountAfterDeduct(user.GiftAmount, 0, remainingBalance)
+	}
+	if err := tx.Model(&pojo.TgUser{}).Where("id = ?", user.ID).Updates(updates).Error; err != nil {
+		return err
+	}
+	cashHistory := pojo.CashHistory{
+		UserId:          user.ID,
+		AwardUni:        fmt.Sprintf("withdraw_v2_apply_%s", order.OrderNo),
+		Amount:          -order.Amount,
+		StartAmount:     user.Balance,
+		EndAmount:       remainingBalance,
+		CashMark:        "v2提现申请",
+		CashDesc:        fmt.Sprintf("v2提现申请%s，冻结/扣减%.2f", order.OrderNo, order.Amount),
+		Type:            pojo.CashHistoryTypeWithdrawApply,
+		IsGift:          0,
+		FromUserId:      0,
+		SourceChannelID: order.SourceChannelID,
+	}
+	return tx.Create(&cashHistory).Error
+}
+
 func refundWithdrawAmount(tx *gorm.DB, order pojo.WithdrawOrderBr) error {
 	if order.UserId <= 0 || order.Amount <= 0 {
 		return nil
@@ -906,8 +987,11 @@ func refundWithdrawAmount(tx *gorm.DB, order pojo.WithdrawOrderBr) error {
 		}
 		return tx.Create(&cashHistory).Error
 	}
-	if err := RefundWithdrawLimitForOrder(tx, user, order); err != nil {
-		return err
+	isV2 := isV2WithdrawOrder(order)
+	if !isV2 {
+		if err := RefundWithdrawLimitForOrder(tx, user, order); err != nil {
+			return err
+		}
 	}
 	refundedBalance := utils.Truncate2(user.Balance + order.Amount)
 	updates := map[string]any{
@@ -921,14 +1005,22 @@ func refundWithdrawAmount(tx *gorm.DB, order pojo.WithdrawOrderBr) error {
 		Updates(updates).Error; err != nil {
 		return err
 	}
+	awardUni := fmt.Sprintf("withdraw_refund_%s", order.OrderNo)
+	cashMark := "提现退回"
+	cashDesc := fmt.Sprintf("提现订单%s失败/取消/退回，返还%.2f", order.OrderNo, order.Amount)
+	if isV2 {
+		awardUni = fmt.Sprintf("withdraw_v2_refund_%s", order.OrderNo)
+		cashMark = "v2提现退回"
+		cashDesc = fmt.Sprintf("v2提现订单%s失败/取消/退回，返还%.2f", order.OrderNo, order.Amount)
+	}
 	cashHistory := pojo.CashHistory{
 		UserId:          user.ID,
-		AwardUni:        fmt.Sprintf("withdraw_refund_%s", order.OrderNo),
+		AwardUni:        awardUni,
 		Amount:          order.Amount,
 		StartAmount:     user.Balance,
 		EndAmount:       utils.Truncate2(user.Balance + order.Amount),
-		CashMark:        "提现退回",
-		CashDesc:        fmt.Sprintf("提现订单%s失败/取消/退回，返还%.2f", order.OrderNo, order.Amount),
+		CashMark:        cashMark,
+		CashDesc:        cashDesc,
 		Type:            pojo.CashHistoryTypeWithdrawRefund,
 		IsGift:          0,
 		FromUserId:      0,
@@ -951,6 +1043,17 @@ func isRebateWithdrawOrder(order pojo.WithdrawOrderBr) bool {
 		}
 	}
 	return false
+}
+
+func isV2WithdrawOrder(order pojo.WithdrawOrderBr) bool {
+	if order.Extra == nil || strings.TrimSpace(*order.Extra) == "" {
+		return false
+	}
+	var extra map[string]any
+	if err := json.Unmarshal([]byte(*order.Extra), &extra); err != nil {
+		return false
+	}
+	return strings.EqualFold(strings.TrimSpace(fmt.Sprint(extra["withdrawVersion"])), "v2")
 }
 
 func withdrawGiftAmountAfterDeduct(currentGiftAmount float64, giftDeduct float64, balanceAfterDeduct float64) float64 {

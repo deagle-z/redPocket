@@ -22,9 +22,10 @@ type TgUser struct {
 	Phone         *string `gorm:"column:phone;size:32;index;comment:手机号码" json:"phone"`
 	Country       *string `gorm:"column:country;size:64;comment:国家" json:"country"`
 	Ip            *string `gorm:"column:ip;size:64;comment:注册IP" json:"ip"`
-	Region        *string `gorm:"column:region;size:16;comment:注册地区/国家码" json:"region"`
-	Remark        *string `gorm:"column:remark;type:varchar(255);comment:备注" json:"remark"`
-	IsBot         bool    `gorm:"column:is_bot;not null;default:false;index:idx_tg_user_register_time,priority:1;index:idx_tg_user_tenant_register_time,priority:2;comment:是否机器人" json:"is_bot"`
+	Region            *string `gorm:"column:region;size:16;comment:注册地区/国家码" json:"region"`
+	DeviceFingerprint *string `gorm:"column:device_fingerprint;size:64;index:idx_tg_user_device_fingerprint;comment:注册设备指纹哈希" json:"deviceFingerprint"`
+	Remark            *string `gorm:"column:remark;type:varchar(255);comment:备注" json:"remark"`
+	IsBot             bool    `gorm:"column:is_bot;not null;default:false;index:idx_tg_user_register_time,priority:1;index:idx_tg_user_tenant_register_time,priority:2;comment:是否机器人" json:"is_bot"`
 
 	TgID int64 `gorm:"column:tg_id;index;comment:Telegram 用户ID（唯一且稳定）" json:"tg_id"`
 
@@ -178,6 +179,7 @@ type TgPhoneRegisterReq struct {
 	SourceChannelCode string `json:"sourceChannelCode"`
 	ChannelCode       string `json:"channelCode"`
 	Referrer          string `json:"referrer"`
+	DeviceFingerprint string `json:"deviceFingerprint"`
 }
 
 type TgEmailLoginReq struct {

@@ -421,6 +421,8 @@ func RegisterTgByPhone(ctx *gin.Context) {
 		inviteCode,
 		ip,
 		region,
+		req.DeviceFingerprint,
+		tempHostInfo.TablePrefix,
 	)
 	if err != nil {
 		utils.ErrorBack(ctx, err.Error())

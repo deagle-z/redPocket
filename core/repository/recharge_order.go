@@ -49,7 +49,14 @@ type firstRechargeGiftConfigV2 struct {
 const (
 	RechargeActivityCodeFirstRecharge3Day = "first_recharge_3day"
 	RechargeActivityCodeTodayFirst        = "today_first_recharge"
+	RechargeActivityCodeV2Gift            = "recharge_v2_gift"
 	rechargePromotionTimeFormat           = "2006-01-02 15:04:05"
+)
+
+const (
+	rechargeActivityTypeFirstRecharge3Day int8 = 1
+	rechargeActivityTypeTodayFirst        int8 = 2
+	rechargeActivityTypeV2Gift            int8 = 3
 )
 
 var (
@@ -285,8 +292,17 @@ func AckRechargeFrontendNotification(db *gorm.DB, userID int64, orderNo string) 
 	return nil
 }
 
-// AppCreateRechargeOrder app端创建充值订单（dev环境自动回调）
 func AppCreateRechargeOrder(db *gorm.DB, userID int64, req pojo.RechargeOrderAppReq, tablePrefix string) (result pojo.RechargeOrderAppBack, err error) {
+	return appCreateRechargeOrder(db, userID, req, tablePrefix, nil)
+}
+
+func AppCreateRechargeOrderV2(db *gorm.DB, userID int64, req pojo.RechargeOrderAppReq, tablePrefix string) (result pojo.RechargeOrderAppBack, err error) {
+	activityType := rechargeActivityTypeV2Gift
+	return appCreateRechargeOrder(db, userID, req, tablePrefix, &activityType)
+}
+
+// appCreateRechargeOrder app端创建充值订单（dev环境自动回调）
+func appCreateRechargeOrder(db *gorm.DB, userID int64, req pojo.RechargeOrderAppReq, tablePrefix string, forcedActivityType *int8) (result pojo.RechargeOrderAppBack, err error) {
 	req.Channel = strings.TrimSpace(req.Channel)
 	req.PayMethod = strings.TrimSpace(req.PayMethod)
 	req.Currency = strings.ToUpper(strings.TrimSpace(req.Currency))
@@ -356,11 +372,15 @@ func AppCreateRechargeOrder(db *gorm.DB, userID int64, req pojo.RechargeOrderApp
 		log.Printf("[AppCreateRechargeOrder] 用户已禁用 userID=%d status=%d", userID, tgUser.Status)
 		return result, errors.New("user_disabled_contact_admin")
 	}
-	activityType, err := resolveRechargeActivityType(db, userID, req, tablePrefix)
+	activityType, err := resolveRechargeOrderCreateActivityType(db, userID, req, tablePrefix, forcedActivityType)
 	if err != nil {
 		return result, err
 	}
-	if activityType == 0 && !req.ConfirmUnfinishedActivityCycle {
+	activityCode := strings.TrimSpace(req.ActivityCode)
+	if forcedActivityType != nil {
+		activityCode = rechargeActivityCodeByType(activityType)
+	}
+	if shouldConfirmUnfinishedActivityCycleForRecharge(activityType) && !req.ConfirmUnfinishedActivityCycle {
 		activeCycle, cycleErr := GetActiveWithdrawActivityCycle(db, userID)
 		if cycleErr != nil {
 			return result, cycleErr
@@ -461,7 +481,7 @@ func AppCreateRechargeOrder(db *gorm.DB, userID int64, req pojo.RechargeOrderApp
 			return result, err
 		}
 	}
-	log.Printf("[AppCreateRechargeOrder] 订单创建成功 userID=%d orderNo=%s channel=%s amount=%.2f activityType=%d activityCode=%s", userID, orderNo, req.Channel, req.Amount, activityType, req.ActivityCode)
+	log.Printf("[AppCreateRechargeOrder] 订单创建成功 userID=%d orderNo=%s channel=%s amount=%.2f activityType=%d activityCode=%s", userID, orderNo, req.Channel, req.Amount, activityType, activityCode)
 
 	result = pojo.RechargeOrderAppBack{
 		OrderNo:         order.OrderNo,
@@ -581,8 +601,10 @@ func ProcessRechargeOrderSuccess(db *gorm.DB, orderNo string, providerTradeNo st
 		}
 		log.Printf("[recharge] pay callback user credited orderNo=%s userID=%d tablePrefix=%q rechargeCredit=%.2f activityBaseGift=%.2f startBalance=%.2f",
 			order.OrderNo, user.ID, tablePrefix, creditAmount, bonusAmount, user.Balance)
-		if err := AddUserWithdrawRestrictedBalance(tx, user, bonusAmount, clampRechargeRestrictedCredit(order.Amount-order.Fee)); err != nil {
-			return err
+		if order.ActivityType == nil || *order.ActivityType != rechargeActivityTypeV2Gift {
+			if err := AddUserWithdrawRestrictedBalance(tx, user, bonusAmount, clampRechargeRestrictedCredit(order.Amount-order.Fee)); err != nil {
+				return err
+			}
 		}
 
 		cashHistory := pojo.CashHistory{
@@ -640,7 +662,7 @@ func ProcessRechargeOrderSuccess(db *gorm.DB, orderNo string, providerTradeNo st
 				return err
 			}
 		}
-		// 活动赠送：activity_type=1(首充) 或 2(今日首充)
+		// 活动赠送：activity_type=1(三日首充)、2(今日首充)、3(v2充值赠送)
 		if order.ActivityType != nil && *order.ActivityType > 0 {
 			log.Printf("[recharge] pay callback apply activity gift orderNo=%s userID=%d activityType=%d tablePrefix=%q", order.OrderNo, user.ID, *order.ActivityType, tablePrefix)
 			if err := applyFirstRechargeActivityGift(tx, order, user, tablePrefix, now); err != nil {
@@ -653,7 +675,11 @@ func ProcessRechargeOrderSuccess(db *gorm.DB, orderNo string, providerTradeNo st
 		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ?", user.ID).First(&latestUser).Error; err != nil {
 			return err
 		}
-		if order.ActivityType != nil && *order.ActivityType > 0 {
+		if order.ActivityType != nil && *order.ActivityType == rechargeActivityTypeV2Gift {
+			if err := EnsureWithdrawFlowBatchForRechargeV2(tx, latestUser, order, user.Balance); err != nil {
+				return err
+			}
+		} else if order.ActivityType != nil && *order.ActivityType > 0 {
 			if err := EnsureWithdrawActivityCycleForRecharge(
 				tx,
 				latestUser,
@@ -780,8 +806,10 @@ func rechargeOrderDevCallback(db *gorm.DB, orderNo string, tablePrefix string) e
 			}).Error; err != nil {
 			return err
 		}
-		if err := AddUserWithdrawRestrictedBalance(tx, user, bonusAmount, clampRechargeRestrictedCredit(order.Amount-order.Fee)); err != nil {
-			return err
+		if order.ActivityType == nil || *order.ActivityType != rechargeActivityTypeV2Gift {
+			if err := AddUserWithdrawRestrictedBalance(tx, user, bonusAmount, clampRechargeRestrictedCredit(order.Amount-order.Fee)); err != nil {
+				return err
+			}
 		}
 
 		cashHistory := pojo.CashHistory{
@@ -838,7 +866,7 @@ func rechargeOrderDevCallback(db *gorm.DB, orderNo string, tablePrefix string) e
 			}
 		}
 
-		// 活动赠送：activity_type=1(首充) 或 2(今日首充)
+		// 活动赠送：activity_type=1(三日首充)、2(今日首充)、3(v2充值赠送)
 		if order.ActivityType != nil && *order.ActivityType > 0 {
 			log.Printf("[recharge] manual callback apply activity gift orderNo=%s userID=%d activityType=%d tablePrefix=%q", order.OrderNo, user.ID, *order.ActivityType, tablePrefix)
 			if err := applyFirstRechargeActivityGift(tx, order, user, tablePrefix, now); err != nil {
@@ -846,6 +874,15 @@ func rechargeOrderDevCallback(db *gorm.DB, orderNo string, tablePrefix string) e
 			}
 		} else {
 			log.Printf("[recharge] manual callback skip activity gift orderNo=%s userID=%d activityType=%s", order.OrderNo, user.ID, formatRechargeActivityType(order.ActivityType))
+		}
+		if order.ActivityType != nil && *order.ActivityType == rechargeActivityTypeV2Gift {
+			var latestUser pojo.TgUser
+			if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ?", user.ID).First(&latestUser).Error; err != nil {
+				return err
+			}
+			if err := EnsureWithdrawFlowBatchForRechargeV2(tx, latestUser, order, user.Balance); err != nil {
+				return err
+			}
 		}
 
 		successUserID = order.UserId
@@ -903,7 +940,7 @@ func pushRechargeSuccessFrontendNotification(db *gorm.DB, orderNo string) {
 		}).Error
 }
 
-// applyFirstRechargeActivityGift 活动赠送：activity_type=1 首充活动 V2；activity_type=2 今日首充仍一次性赠送
+// applyFirstRechargeActivityGift 活动赠送：activity_type=1 三日首充；2 今日首充；3 v2充值赠送。
 func applyFirstRechargeActivityGift(tx *gorm.DB, order pojo.RechargeOrder, user pojo.TgUser, tablePrefix string, now time.Time) error {
 	if order.ActivityType == nil || *order.ActivityType <= 0 {
 		log.Printf("[recharge] activity gift skip: invalid activity type orderNo=%s userID=%d activityType=%s tablePrefix=%q",
@@ -913,8 +950,11 @@ func applyFirstRechargeActivityGift(tx *gorm.DB, order pojo.RechargeOrder, user 
 
 	log.Printf("[recharge] activity gift begin orderNo=%s userID=%d activityType=%d tablePrefix=%q amount=%.2f payTime=%s now=%s",
 		order.OrderNo, user.ID, *order.ActivityType, tablePrefix, order.Amount, formatRechargeTime(order.PayTime), now.Format(time.RFC3339))
-	if *order.ActivityType == 1 {
+	switch *order.ActivityType {
+	case rechargeActivityTypeFirstRecharge3Day:
 		return applyFirstRechargeGiftV2(tx, order, user, tablePrefix, now)
+	case rechargeActivityTypeV2Gift:
+		return applyRechargeV2Gift(tx, order, user)
 	}
 
 	var completedCount int64
@@ -1013,9 +1053,9 @@ func resolveRechargeActivityType(db *gorm.DB, userID int64, req pojo.RechargeOrd
 		switch req.ActivityType {
 		case 0:
 			return 0, nil
-		case 1:
+		case rechargeActivityTypeFirstRecharge3Day:
 			code = RechargeActivityCodeFirstRecharge3Day
-		case 2:
+		case rechargeActivityTypeTodayFirst:
 			code = RechargeActivityCodeTodayFirst
 		default:
 			return 0, errors.New("activity_unavailable")
@@ -1032,24 +1072,37 @@ func resolveRechargeActivityType(db *gorm.DB, userID int64, req pojo.RechargeOrd
 		if !status.Visible || !status.Selectable {
 			return 0, errors.New("first_recharge_activity_unavailable")
 		}
-		return 1, nil
+		return rechargeActivityTypeFirstRecharge3Day, nil
 	case RechargeActivityCodeTodayFirst:
 		hasTodayFirst := hasTodayFirstRechargeUsed(db, userID, time.Now())
 		if hasTodayFirst {
 			return 0, errors.New("today_first_recharge_activity_unavailable")
 		}
-		return 2, nil
+		return rechargeActivityTypeTodayFirst, nil
 	default:
 		return 0, errors.New("activity_unavailable")
 	}
 }
 
+func resolveRechargeOrderCreateActivityType(db *gorm.DB, userID int64, req pojo.RechargeOrderAppReq, tablePrefix string, forcedActivityType *int8) (int8, error) {
+	if forcedActivityType != nil {
+		return *forcedActivityType, nil
+	}
+	return resolveRechargeActivityType(db, userID, req, tablePrefix)
+}
+
+func shouldConfirmUnfinishedActivityCycleForRecharge(activityType int8) bool {
+	return activityType == 0
+}
+
 func rechargeActivityCodeByType(activityType int8) string {
 	switch activityType {
-	case 1:
+	case rechargeActivityTypeFirstRecharge3Day:
 		return RechargeActivityCodeFirstRecharge3Day
-	case 2:
+	case rechargeActivityTypeTodayFirst:
 		return RechargeActivityCodeTodayFirst
+	case rechargeActivityTypeV2Gift:
+		return RechargeActivityCodeV2Gift
 	default:
 		return ""
 	}
@@ -1261,6 +1314,105 @@ func calculateFirstRechargeGiftV2Amount(orderAmount float64, rate float64) float
 	return utils.Truncate2(utils.ToMoney(orderAmount).Multiply(rate / 100).ToDollars())
 }
 
+func rechargeV2GiftRate(orderAmount float64, isFirstRecharge bool) float64 {
+	if !isFirstRecharge {
+		return 10
+	}
+	if orderAmount < 1000 {
+		return 18
+	}
+	if orderAmount < 5000 {
+		return 20
+	}
+	return 25
+}
+
+func calculateRechargeV2GiftAmount(orderAmount float64, isFirstRecharge bool) float64 {
+	rate := rechargeV2GiftRate(orderAmount, isFirstRecharge)
+	return utils.Truncate2(utils.ToMoney(orderAmount).Multiply(rate / 100).ToDollars())
+}
+
+func isRechargeV2FirstRechargeAmount(rechargeAmount float64) bool {
+	return rechargeAmount <= 0
+}
+
+func CheckRechargeV2IsFirst(db *gorm.DB, userID int64) (bool, error) {
+	var user pojo.TgUser
+	if err := db.Select("id", "recharge_amount").Where("id = ?", userID).First(&user).Error; err != nil {
+		return false, err
+	}
+	if user.ID == 0 {
+		return false, errors.New("user_not_found")
+	}
+	return isRechargeV2FirstRechargeAmount(user.RechargeAmount), nil
+}
+
+func applyRechargeV2Gift(tx *gorm.DB, order pojo.RechargeOrder, user pojo.TgUser) error {
+	isFirstRecharge := isRechargeV2FirstRechargeAmount(user.RechargeAmount)
+	rate := rechargeV2GiftRate(order.Amount, isFirstRecharge)
+	giftAmount := calculateRechargeV2GiftAmount(order.Amount, isFirstRecharge)
+	if giftAmount <= 0 {
+		log.Printf("[recharge] v2 gift skip: non-positive gift orderNo=%s userID=%d amount=%.2f isFirstRecharge=%t rate=%.2f giftAmount=%.2f",
+			order.OrderNo, user.ID, order.Amount, isFirstRecharge, rate, giftAmount)
+		return nil
+	}
+
+	awardUni := fmt.Sprintf("recharge_v2_gift_%s", order.OrderNo)
+	var existing pojo.CashHistory
+	if err := tx.Where("user_id = ? AND award_uni = ?", user.ID, awardUni).First(&existing).Error; err == nil && existing.ID > 0 {
+		log.Printf("[recharge] v2 gift skip: cash history exists orderNo=%s userID=%d awardUni=%s existingID=%d", order.OrderNo, user.ID, awardUni, existing.ID)
+		return nil
+	} else if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		return err
+	}
+
+	var lockedUser pojo.TgUser
+	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ?", user.ID).First(&lockedUser).Error; err != nil {
+		return err
+	}
+	if err := tx.Model(&pojo.TgUser{}).Where("id = ?", user.ID).Updates(map[string]any{
+		"balance":     gorm.Expr("balance + ?", giftAmount),
+		"gift_amount": gorm.Expr("gift_amount + ?", giftAmount),
+		"gift_total":  gorm.Expr("gift_total + ?", giftAmount),
+	}).Error; err != nil {
+		return err
+	}
+	rechargeKind := "普通充值"
+	if isFirstRecharge {
+		rechargeKind = "首次充值"
+	}
+	desc := fmt.Sprintf("v2充值赠送，%s，订单%s，充值金额%.2f，赠送比例%.2f%%，赠送%.2f", rechargeKind, order.OrderNo, order.Amount, rate, giftAmount)
+	history := pojo.CashHistory{
+		UserId:          user.ID,
+		AwardUni:        awardUni,
+		Amount:          giftAmount,
+		StartAmount:     lockedUser.Balance,
+		EndAmount:       utils.Truncate2(lockedUser.Balance + giftAmount),
+		CashMark:        "v2充值赠送",
+		CashDesc:        desc,
+		Type:            pojo.CashHistoryTypeFirstRechargeGift,
+		IsGift:          1,
+		FromUserId:      0,
+		SourceChannelID: order.SourceChannelID,
+	}
+	if err := tx.Create(&history).Error; err != nil {
+		return err
+	}
+	if err := addRechargeOrderBonusAmount(tx, order.ID, giftAmount); err != nil {
+		return err
+	}
+	return CreatePlatformProfitLedgerIfAbsent(tx, pojo.PlatformProfitLedger{
+		TenantId:        order.TenantId,
+		UserId:          user.ID,
+		SourceChannelID: order.SourceChannelID,
+		SourceType:      pojo.PlatformProfitSourceRechargeGift,
+		SourceId:        awardUni,
+		IncomeAmount:    0,
+		ExpenseAmount:   giftAmount,
+		Remark:          desc,
+	})
+}
+
 func applyFirstRechargeGiftV2OrderGift(tx *gorm.DB, order pojo.RechargeOrder, userID int64, dayIndex int, giftAmount float64, rate float64) error {
 	if giftAmount <= 0 {
 		log.Printf("[recharge] first recharge gift v2 order gift skip: non-positive gift orderNo=%s userID=%d dayIndex=%d giftAmount=%.2f", order.OrderNo, userID, dayIndex, giftAmount)
@@ -1343,6 +1495,14 @@ func applyFirstRechargeGiftV2OrderGift(tx *gorm.DB, order pojo.RechargeOrder, us
 func formatRechargeActivityType(activityType *int8) string {
 	if activityType == nil {
 		return "<nil>"
+	}
+	switch *activityType {
+	case rechargeActivityTypeFirstRecharge3Day:
+		return "1(first_recharge_3day)"
+	case rechargeActivityTypeTodayFirst:
+		return "2(today_first_recharge)"
+	case rechargeActivityTypeV2Gift:
+		return "3(recharge_v2_gift)"
 	}
 	return strconv.FormatInt(int64(*activityType), 10)
 }

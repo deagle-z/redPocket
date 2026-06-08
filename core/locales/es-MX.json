@@ -52,6 +52,9 @@
   "withdraw_payout_email_required": "el email de retiro es obligatorio",
   "withdraw_payout_phone_required": "el teléfono de retiro es obligatorio",
   "device_unique": "un dispositivo solo puede registrar una cuenta",
+  "device_fingerprint_required": "se requiere la huella del dispositivo",
+  "device_fingerprint_invalid": "la huella del dispositivo no es válida",
+  "device_register_limit_exceeded": "este dispositivo alcanzó el límite de registros de hoy",
   "password_format_error": "formato de contraseña inválido",
   "phone_format_error": "formato de teléfono inválido",
   "phone_country_code_required": "el teléfono debe comenzar con el código de país 55, 62 o 52",
@@ -187,5 +190,14 @@
   "block_user_error": "falló el bloqueo del usuario",
   "amount_not_enough": "monto insuficiente: {{.amount}} -> {{.required}}",
   "withdraw_flow_insufficient": "flujo insuficiente. disponible {{.available}}, requerido {{.required}}",
-  "lucky_packet_seq_grabbed": "el ítem {{.seqNo}} del sobre rojo ya fue reclamado"
+  "lucky_packet_seq_grabbed": "el ítem {{.seqNo}} del sobre rojo ya fue reclamado",
+  "exchange_code_format_error": "el código de canje debe tener 6 dígitos",
+  "exchange_code_amount_invalid": "el monto de canje debe ser mayor que 0",
+  "exchange_code_max_count_invalid": "la cantidad máxima de canjes debe ser mayor que 0",
+  "exchange_code_exists": "el código de canje ya existe",
+  "exchange_code_generate_failed": "no se pudo generar el código de canje, inténtalo de nuevo",
+  "exchange_code_not_found": "el código de canje no existe",
+  "exchange_code_disabled": "el código de canje está deshabilitado",
+  "exchange_code_redeemed_out": "el código de canje ya alcanzó su límite",
+  "exchange_code_already_redeemed": "ya canjeaste este código"
 }

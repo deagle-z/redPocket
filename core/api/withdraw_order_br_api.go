@@ -216,6 +216,129 @@ func AppCreateWithdrawOrder(ctx *gin.Context) {
 	utils.SuccessObjBack(ctx, pojo.AppCreateWithdrawOrderResp{OrderNo: result.OrderNo, Fee: result.Fee})
 }
 
+// AppCreateWithdrawOrderV2 App端创建 v2 提现订单，使用 v2 批次流水限制。
+func AppCreateWithdrawOrderV2(ctx *gin.Context) {
+	userIDRaw, ok := ctx.Get("userId")
+	if !ok {
+		utils.UnauthorizedBack(ctx, "token_invalid")
+		return
+	}
+	userID, ok := userIDRaw.(int64)
+	if !ok || userID <= 0 {
+		utils.UnauthorizedBack(ctx, "token_invalid")
+		return
+	}
+
+	var req pojo.AppCreateWithdrawOrderReq
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	req.Amount = utils.Truncate2(req.Amount)
+	if req.Amount < appWithdrawMinAmount {
+		utils.ErrorBack(ctx, "invalid_withdraw_amount")
+		return
+	}
+
+	db := ctx.MustGet("db").(*gorm.DB)
+	var user pojo.TgUser
+	if err := db.Where("id = ?", userID).First(&user).Error; err != nil || user.ID == 0 {
+		utils.ErrorBack(ctx, "user_not_found")
+		return
+	}
+
+	countryCode := pojo.NormalizeWithdrawCountryCode(req.CountryCode)
+	if countryCode == "" && user.Country != nil {
+		countryCode = pojo.NormalizeWithdrawCountryCode(*user.Country)
+	}
+	if countryCode == "" {
+		utils.ErrorBack(ctx, "country_required")
+		return
+	}
+
+	var country pojo.SysCountry
+	if err := db.Where("country_code = ? AND status = 1", countryCode).First(&country).Error; err != nil || country.ID == 0 {
+		utils.ErrorBack(ctx, "country_not_available")
+		return
+	}
+
+	var account *pojo.SysUserWithdrawAccount
+	if req.AccountID != nil && *req.AccountID > 0 {
+		var dbAccount pojo.SysUserWithdrawAccount
+		if err := db.Where("id = ? AND user_id = ? AND status = 1", *req.AccountID, userID).First(&dbAccount).Error; err != nil || dbAccount.ID == 0 {
+			utils.ErrorBack(ctx, "account_not_found")
+			return
+		}
+		if !strings.EqualFold(dbAccount.CountryCode, countryCode) {
+			utils.ErrorBack(ctx, "account_country_mismatch")
+			return
+		}
+		account = &dbAccount
+	}
+
+	orderNo := buildWithdrawOrderNo()
+	extraBytes, _ := json.Marshal(map[string]any{
+		"countryCode":     countryCode,
+		"fieldValues":     req.FieldValues,
+		"withdrawVersion": "v2",
+	})
+	extra := string(extraBytes)
+	accountID := ""
+	if account != nil {
+		accountID = strconv.FormatInt(account.ID, 10)
+	}
+	todayWithdrawCount, err := countTodayAppWithdrawOrders(db, user.ID, time.Now())
+	if err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	withdrawFee := calculateAppWithdrawFee(todayWithdrawCount, req.Amount)
+	orderReq := pojo.WithdrawOrderBrSet{
+		TenantId:        user.TenantId,
+		UserId:          user.ID,
+		AccountId:       optionalString(accountID),
+		OrderNo:         orderNo,
+		Currency:        country.CurrencyCode,
+		CountryCode:     countryCode,
+		Amount:          req.Amount,
+		Fee:             withdrawFee,
+		Channel:         "pix",
+		Status:          0,
+		Extra:           &extra,
+		IdempotencyKey:  optionalString(orderNo),
+		SourceChannelID: user.SourceChannelID,
+	}
+	applyWithdrawReceiverSnapshot(&orderReq, countryCode, account, req.FieldValues)
+
+	result, err := repository.SetWithdrawOrderBrV2(db, orderReq)
+	if err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	utils.SuccessObjBack(ctx, pojo.AppCreateWithdrawOrderResp{OrderNo: result.OrderNo, Fee: result.Fee})
+}
+
+func GetCurrentTgWithdrawFlowBatchSummary(ctx *gin.Context) {
+	userIDRaw, ok := ctx.Get("userId")
+	if !ok {
+		utils.UnauthorizedBack(ctx, "token_invalid")
+		return
+	}
+	userID, ok := userIDRaw.(int64)
+	if !ok || userID <= 0 {
+		utils.UnauthorizedBack(ctx, "token_invalid")
+		return
+	}
+
+	db := ctx.MustGet("db").(*gorm.DB)
+	result, err := repository.GetUserWithdrawFlowBatchSummary(db, userID)
+	if err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	utils.SuccessObjBack(ctx, result)
+}
+
 // GetAppWithdrawOrderHistory godoc
 //
 //	@Summary		app端提现记录

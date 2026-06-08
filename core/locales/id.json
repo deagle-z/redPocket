@@ -52,6 +52,9 @@
   "withdraw_payout_email_required": "email penarikan wajib diisi",
   "withdraw_payout_phone_required": "nomor telepon penarikan wajib diisi",
   "device_unique": "satu perangkat hanya dapat mendaftar satu akun",
+  "device_fingerprint_required": "sidik jari perangkat wajib diisi",
+  "device_fingerprint_invalid": "sidik jari perangkat tidak valid",
+  "device_register_limit_exceeded": "perangkat ini telah mencapai batas pendaftaran hari ini",
   "password_format_error": "format kata sandi salah",
   "phone_format_error": "format nomor telepon salah",
   "phone_country_code_required": "nomor telepon harus diawali kode negara 55, 62, atau 52",
@@ -187,5 +190,14 @@
   "block_user_error": "gagal memblokir pengguna",
   "amount_not_enough": "jumlah tidak cukup: {{.amount}} -> {{.required}}",
   "withdraw_flow_insufficient": "turnover tidak mencukupi. tersedia {{.available}}, diperlukan {{.required}}",
-  "lucky_packet_seq_grabbed": "item amplop merah ke-{{.seqNo}} sudah diambil"
+  "lucky_packet_seq_grabbed": "item amplop merah ke-{{.seqNo}} sudah diambil",
+  "exchange_code_format_error": "kode penukaran harus 6 digit",
+  "exchange_code_amount_invalid": "jumlah penukaran harus lebih dari 0",
+  "exchange_code_max_count_invalid": "jumlah maksimum penukaran harus lebih dari 0",
+  "exchange_code_exists": "kode penukaran sudah ada",
+  "exchange_code_generate_failed": "gagal membuat kode penukaran, silakan coba lagi",
+  "exchange_code_not_found": "kode penukaran tidak ditemukan",
+  "exchange_code_disabled": "kode penukaran dinonaktifkan",
+  "exchange_code_redeemed_out": "kode penukaran telah mencapai batas",
+  "exchange_code_already_redeemed": "Anda sudah menukarkan kode ini"
 }

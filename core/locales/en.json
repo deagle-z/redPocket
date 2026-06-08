@@ -52,6 +52,9 @@
   "withdraw_payout_email_required": "withdraw email is required",
   "withdraw_payout_phone_required": "withdraw phone number is required",
   "device_unique": "one device can only register an account",
+  "device_fingerprint_required": "device fingerprint is required",
+  "device_fingerprint_invalid": "device fingerprint is invalid",
+  "device_register_limit_exceeded": "this device has reached today's registration limit",
   "password_format_error": "password format error",
   "phone_format_error": "phone format error",
   "phone_country_code_required": "phone number must start with country code 55, 62 or 52",
@@ -187,5 +190,14 @@
   "block_user_error": "failed to block user",
   "amount_not_enough": "amount not enough: {{.amount}} -> {{.required}}",
   "withdraw_flow_insufficient": "insufficient turnover. available {{.available}}, required {{.required}}",
-  "lucky_packet_seq_grabbed": "red packet item {{.seqNo}} has already been claimed"
+  "lucky_packet_seq_grabbed": "red packet item {{.seqNo}} has already been claimed",
+  "exchange_code_format_error": "the exchange code must be 6 digits",
+  "exchange_code_amount_invalid": "the exchange amount must be greater than 0",
+  "exchange_code_max_count_invalid": "the maximum redemption count must be greater than 0",
+  "exchange_code_exists": "the exchange code already exists",
+  "exchange_code_generate_failed": "failed to generate an exchange code, please try again",
+  "exchange_code_not_found": "the exchange code does not exist",
+  "exchange_code_disabled": "the exchange code is disabled",
+  "exchange_code_redeemed_out": "the exchange code has been fully redeemed",
+  "exchange_code_already_redeemed": "you have already redeemed this exchange code"
 }

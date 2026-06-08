@@ -1,0 +1,346 @@
+package repository
+
+import (
+	"BaseGoUni/core/pojo"
+	"BaseGoUni/core/utils"
+	"crypto/rand"
+	"errors"
+	"fmt"
+	"math/big"
+	"regexp"
+	"strings"
+	"time"
+
+	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
+)
+
+var exchangeCodePattern = regexp.MustCompile(`^\d{6}$`)
+
+func GetExchangeCodes(db *gorm.DB, search pojo.ExchangeCodeSearch) (pojo.ExchangeCodePage, error) {
+	var result pojo.ExchangeCodePage
+	query := db.Model(&pojo.ExchangeCode{})
+
+	if code := strings.TrimSpace(search.Code); code != "" {
+		query = query.Where("code LIKE ?", "%"+code+"%")
+	}
+	if search.Status != nil {
+		query = query.Where("status = ?", *search.Status)
+	} else {
+		query = query.Where("status <> ?", -1)
+	}
+
+	if err := query.Count(&result.Total).Error; err != nil {
+		return result, err
+	}
+
+	var list []pojo.ExchangeCode
+	if err := query.Order("id desc").
+		Limit(search.PageSize).
+		Offset(search.PageSize * search.CurrentPage).
+		Find(&list).Error; err != nil {
+		return result, err
+	}
+
+	result.List = make([]pojo.ExchangeCodeBack, 0, len(list))
+	for _, item := range list {
+		result.List = append(result.List, exchangeCodeToBack(item))
+	}
+	result.PageSize = search.PageSize
+	result.CurrentPage = search.CurrentPage
+	return result, nil
+}
+
+func GetExchangeCodeByID(db *gorm.DB, id int64) (pojo.ExchangeCodeBack, error) {
+	var entity pojo.ExchangeCode
+	if err := db.Where("id = ? AND status <> ?", id, -1).First(&entity).Error; err != nil {
+		return pojo.ExchangeCodeBack{}, errors.New("record_not_found")
+	}
+	return exchangeCodeToBack(entity), nil
+}
+
+func SetExchangeCode(db *gorm.DB, currentUser pojo.SysUser, req pojo.ExchangeCodeSet) (pojo.ExchangeCodeBack, error) {
+	req.Code = normalizeExchangeCode(req.Code)
+	req.Remark = normalizeExchangeRemark(req.Remark)
+
+	if req.ID > 0 {
+		return updateExchangeCode(db, req)
+	}
+	return createExchangeCode(db, currentUser, req)
+}
+
+func DelExchangeCode(db *gorm.DB, id int64) error {
+	var entity pojo.ExchangeCode
+	if err := db.Where("id = ? AND status <> ?", id, -1).First(&entity).Error; err != nil {
+		return errors.New("record_not_found_delete")
+	}
+	return db.Model(&pojo.ExchangeCode{}).Where("id = ?", id).Update("status", -1).Error
+}
+
+func RedeemExchangeCode(db *gorm.DB, tenantID int64, userID int64, code string) (pojo.ExchangeCodeRedeemBack, error) {
+	code = normalizeExchangeCode(code)
+	if !exchangeCodePattern.MatchString(code) {
+		return pojo.ExchangeCodeRedeemBack{}, errors.New("exchange_code_format_error")
+	}
+	if userID <= 0 {
+		return pojo.ExchangeCodeRedeemBack{}, errors.New("user_not_found")
+	}
+
+	lockKey := fmt.Sprintf("exchange_code_redeem:%d:%s", userID, code)
+	if utils.RD != nil {
+		acquired, lockErr := utils.AcquireLock(lockKey, 5*time.Second)
+		if lockErr != nil || !acquired {
+			return pojo.ExchangeCodeRedeemBack{}, errors.New("operation_too_frequent")
+		}
+		defer func() {
+			_ = utils.ReleaseLock(lockKey)
+		}()
+	}
+
+	var result pojo.ExchangeCodeRedeemBack
+	now := time.Now()
+	err := db.Transaction(func(tx *gorm.DB) error {
+		var exchange pojo.ExchangeCode
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+			Where("code = ? AND status <> ?", code, -1).
+			First(&exchange).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return errors.New("exchange_code_not_found")
+			}
+			return err
+		}
+		if exchange.Status != 1 {
+			return errors.New("exchange_code_disabled")
+		}
+		if exchange.RedeemCount >= exchange.MaxRedeemCount {
+			return errors.New("exchange_code_redeemed_out")
+		}
+
+		var user pojo.TgUser
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+			Where("id = ?", userID).
+			First(&user).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return errors.New("user_not_found")
+			}
+			return err
+		}
+		if user.Status != 1 {
+			return errors.New("user_disabled_contact_admin")
+		}
+		if tenantID > 0 && user.TenantId != tenantID {
+			return errors.New("user_not_found")
+		}
+
+		redeemed, err := hasUserRedeemedExchangeCode(tx, exchange.ID, userID)
+		if err != nil {
+			return err
+		}
+		if redeemed {
+			return errors.New("exchange_code_already_redeemed")
+		}
+
+		amount := utils.Truncate2(exchange.Amount)
+		if amount <= 0 {
+			return errors.New("exchange_code_amount_invalid")
+		}
+		beforeBalance := utils.Truncate2(user.Balance)
+		afterBalance := utils.Truncate2(beforeBalance + amount)
+
+		if err := tx.Model(&pojo.TgUser{}).Where("id = ?", userID).Updates(map[string]any{
+			"balance":     gorm.Expr("balance + ?", amount),
+			"gift_amount": gorm.Expr("gift_amount + ?", amount),
+			"gift_total":  gorm.Expr("gift_total + ?", amount),
+		}).Error; err != nil {
+			return err
+		}
+		if err := AddUserWithdrawRestrictedBalance(tx, user, amount, 0); err != nil {
+			return err
+		}
+
+		history := pojo.CashHistory{
+			UserId:          userID,
+			AwardUni:        buildExchangeCodeAwardUni(exchange.ID, userID),
+			Amount:          amount,
+			StartAmount:     beforeBalance,
+			EndAmount:       afterBalance,
+			CashMark:        "兑换码赠送",
+			CashDesc:        fmt.Sprintf("兑换码%s赠送%.2f金币", exchange.Code, amount),
+			Type:            pojo.CashHistoryTypeExchangeCodeGift,
+			IsGift:          1,
+			FromUserId:      0,
+			SourceChannelID: user.SourceChannelID,
+		}
+		if err := tx.Create(&history).Error; err != nil {
+			return err
+		}
+
+		record := pojo.ExchangeCodeRedeem{
+			CodeID:          exchange.ID,
+			Code:            exchange.Code,
+			UserID:          userID,
+			TenantID:        tenantID,
+			Amount:          amount,
+			BeforeBalance:   beforeBalance,
+			AfterBalance:    afterBalance,
+			CashHistoryID:   history.ID,
+			SourceChannelID: user.SourceChannelID,
+		}
+		if err := tx.Create(&record).Error; err != nil {
+			return err
+		}
+
+		update := tx.Model(&pojo.ExchangeCode{}).
+			Where("id = ? AND redeem_count < max_redeem_count", exchange.ID).
+			UpdateColumn("redeem_count", gorm.Expr("redeem_count + ?", 1))
+		if update.Error != nil {
+			return update.Error
+		}
+		if update.RowsAffected == 0 {
+			return errors.New("exchange_code_redeemed_out")
+		}
+
+		result = pojo.ExchangeCodeRedeemBack{
+			Code:       exchange.Code,
+			Amount:     amount,
+			Balance:    afterBalance,
+			RedeemedAt: now,
+		}
+		return nil
+	})
+	return result, err
+}
+
+func createExchangeCode(db *gorm.DB, currentUser pojo.SysUser, req pojo.ExchangeCodeSet) (pojo.ExchangeCodeBack, error) {
+	if req.Code == "" {
+		code, err := generateExchangeCode(db)
+		if err != nil {
+			return pojo.ExchangeCodeBack{}, err
+		}
+		req.Code = code
+	} else if !exchangeCodePattern.MatchString(req.Code) {
+		return pojo.ExchangeCodeBack{}, errors.New("exchange_code_format_error")
+	}
+
+	amount := utils.Truncate2(req.Amount)
+	if amount <= 0 {
+		return pojo.ExchangeCodeBack{}, errors.New("exchange_code_amount_invalid")
+	}
+	if req.MaxRedeemCount <= 0 {
+		return pojo.ExchangeCodeBack{}, errors.New("exchange_code_max_count_invalid")
+	}
+	status := int8(1)
+	if req.Status != nil {
+		if !isEditableExchangeCodeStatus(*req.Status) {
+			return pojo.ExchangeCodeBack{}, errors.New("invalid_status")
+		}
+		status = *req.Status
+	}
+
+	var existing int64
+	if err := db.Model(&pojo.ExchangeCode{}).Where("code = ?", req.Code).Count(&existing).Error; err != nil {
+		return pojo.ExchangeCodeBack{}, err
+	}
+	if existing > 0 {
+		return pojo.ExchangeCodeBack{}, errors.New("exchange_code_exists")
+	}
+
+	entity := pojo.ExchangeCode{
+		Code:           req.Code,
+		Amount:         amount,
+		MaxRedeemCount: req.MaxRedeemCount,
+		Status:         status,
+		Remark:         req.Remark,
+		CreatedBy:      currentUser.ID,
+	}
+	if err := db.Create(&entity).Error; err != nil {
+		return pojo.ExchangeCodeBack{}, err
+	}
+	return exchangeCodeToBack(entity), nil
+}
+
+func updateExchangeCode(db *gorm.DB, req pojo.ExchangeCodeSet) (pojo.ExchangeCodeBack, error) {
+	var entity pojo.ExchangeCode
+	if err := db.Where("id = ? AND status <> ?", req.ID, -1).First(&entity).Error; err != nil {
+		return pojo.ExchangeCodeBack{}, errors.New("record_not_found_update")
+	}
+
+	updates := map[string]any{
+		"remark": req.Remark,
+	}
+	if req.Status != nil {
+		if !isEditableExchangeCodeStatus(*req.Status) {
+			return pojo.ExchangeCodeBack{}, errors.New("invalid_status")
+		}
+		updates["status"] = *req.Status
+	}
+	if err := db.Model(&pojo.ExchangeCode{}).Where("id = ?", entity.ID).Updates(updates).Error; err != nil {
+		return pojo.ExchangeCodeBack{}, err
+	}
+	if err := db.Where("id = ?", entity.ID).First(&entity).Error; err != nil {
+		return pojo.ExchangeCodeBack{}, err
+	}
+	return exchangeCodeToBack(entity), nil
+}
+
+func generateExchangeCode(db *gorm.DB) (string, error) {
+	for i := 0; i < 50; i++ {
+		n, err := rand.Int(rand.Reader, big.NewInt(1000000))
+		if err != nil {
+			return "", err
+		}
+		code := fmt.Sprintf("%06d", n.Int64())
+		var count int64
+		if err := db.Model(&pojo.ExchangeCode{}).Where("code = ?", code).Count(&count).Error; err != nil {
+			return "", err
+		}
+		if count == 0 {
+			return code, nil
+		}
+	}
+	return "", errors.New("exchange_code_generate_failed")
+}
+
+func hasUserRedeemedExchangeCode(tx *gorm.DB, codeID int64, userID int64) (bool, error) {
+	var count int64
+	err := tx.Model(&pojo.ExchangeCodeRedeem{}).
+		Where("code_id = ? AND user_id = ?", codeID, userID).
+		Count(&count).Error
+	return count > 0, err
+}
+
+func exchangeCodeToBack(entity pojo.ExchangeCode) pojo.ExchangeCodeBack {
+	return pojo.ExchangeCodeBack{
+		ID:             entity.ID,
+		CreatedAt:      entity.CreatedAt,
+		UpdatedAt:      entity.UpdatedAt,
+		Code:           entity.Code,
+		Amount:         utils.Truncate2(entity.Amount),
+		MaxRedeemCount: entity.MaxRedeemCount,
+		RedeemCount:    entity.RedeemCount,
+		Status:         entity.Status,
+		Remark:         entity.Remark,
+		CreatedBy:      entity.CreatedBy,
+	}
+}
+
+func normalizeExchangeCode(code string) string {
+	return strings.TrimSpace(code)
+}
+
+func normalizeExchangeRemark(remark string) string {
+	remark = strings.TrimSpace(remark)
+	runes := []rune(remark)
+	if len(runes) > 255 {
+		return string(runes[:255])
+	}
+	return remark
+}
+
+func isEditableExchangeCodeStatus(status int8) bool {
+	return status == 0 || status == 1
+}
+
+func buildExchangeCodeAwardUni(codeID int64, userID int64) string {
+	return fmt.Sprintf("exchange_code_%d_%d", codeID, userID)
+}

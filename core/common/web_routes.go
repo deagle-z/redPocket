@@ -123,16 +123,18 @@ func InitGin() {
 		adminGroup.POST("/dashboard/registerUsers", api.GetAdminDashboardRegisterUsers)
 		adminGroup.POST("/withdrawalTask", api.SendWithdrawalTask)
 		adminGroup.POST("/verifyCodeTask", api.SendVerifyCodeTask)
-		adminGroup.POST("/tgUser/list", api.GetTgUsers)                    // 获取Telegram用户列表
-		adminGroup.GET("/tgUser/:id", api.GetTgUserById)                   // 获取Telegram用户详情
-		adminGroup.POST("/tgUserRebate/list", api.GetTgUserRebateRecords)  // 获取Telegram反水记录列表
-		adminGroup.GET("/tgUserRebate/:id", api.GetTgUserRebateRecordById) // 获取Telegram反水记录详情
-		adminGroup.POST("/lucky/list", api.GetLuckyMoneyListAdmin)         // 管理员获取红包列表
-		adminGroup.POST("/lucky/history", api.GetLuckyHistoryListAdmin)    // 管理员获取领取历史
-		adminGroup.GET("/lucky/:id", api.GetLuckyMoneyDetailAdmin)         // 管理员获取红包详情
-		adminGroup.POST("/luckyItem/list", api.GetLuckyMoneyItems)         // 管理员获取红包明细列表
-		adminGroup.GET("/luckyItem/:id", api.GetLuckyMoneyItemById)        // 管理员获取红包明细详情
-		adminGroup.POST("/cashHistory/list", api.GetCashHistoryListAdmin)  // 管理员获取余额变动记录列表
+		adminGroup.POST("/tgUser/list", api.GetTgUsers)                     // 获取Telegram用户列表
+		adminGroup.GET("/tgUser/:id", api.GetTgUserById)                    // 获取Telegram用户详情
+		adminGroup.POST("/tgUserRebate/list", api.GetTgUserRebateRecords)   // 获取Telegram反水记录列表
+		adminGroup.GET("/tgUserRebate/:id", api.GetTgUserRebateRecordById)  // 获取Telegram反水记录详情
+		adminGroup.POST("/lucky/list", api.GetLuckyMoneyListAdmin)          // 管理员获取红包列表
+		adminGroup.POST("/lucky/history", api.GetLuckyHistoryListAdmin)     // 管理员获取领取历史
+		adminGroup.GET("/lucky/:id", api.GetLuckyMoneyDetailAdmin)          // 管理员获取红包详情
+		adminGroup.POST("/luckyItem/list", api.GetLuckyMoneyItems)          // 管理员获取红包明细列表
+		adminGroup.GET("/luckyItem/:id", api.GetLuckyMoneyItemById)         // 管理员获取红包明细详情
+		adminGroup.POST("/cashHistory/list", api.GetCashHistoryListAdmin)   // 管理员获取余额变动记录列表
+		adminGroup.POST("/exchangeCode/list", api.GetExchangeCodeListAdmin) // 管理员获取兑换码列表
+		adminGroup.GET("/exchangeCode/:id", api.GetExchangeCodeByIDAdmin)   // 管理员获取兑换码详情
 		adminGroup.POST("/trialBot/list", api.GetTrialBotUsers)
 		adminGroup.POST("/trial/lucky/list", api.GetTrialLuckyListAdmin)
 		adminGroup.POST("/authGroup/list", api.GetAuthGroups)                                         // 获取授权群组列表
@@ -241,6 +243,8 @@ func InitGin() {
 		adminGroupLog.DELETE("/sysBanner/:id", api.DelSysBanner)
 		adminGroupLog.POST("/sysConfig", api.SetSysConfig)
 		adminGroupLog.DELETE("/sysConfig/:id", api.DelSysConfig)
+		adminGroupLog.POST("/exchangeCode", api.SetExchangeCodeAdmin)
+		adminGroupLog.DELETE("/exchangeCode/:id", api.DelExchangeCodeAdmin)
 		adminGroupLog.POST("/sysCustomField", api.SetSysCustomField)
 		adminGroupLog.DELETE("/sysCustomField/:id", api.DelSysCustomField)
 		adminGroupLog.POST("/platformProfitLedger", api.SetPlatformProfitLedger)
@@ -343,10 +347,12 @@ func InitGin() {
 	appAuthRouter.Use(appAuthMiddle(true))
 	{
 		appAuthRouter.POST("/rechargeOrder", api.AppCreateRechargeOrder)
+		appAuthRouter.POST("/rechargeOrder/v2", api.AppCreateRechargeOrderV2)
 		appAuthRouter.POST("/rechargeOrder/list", api.GetAppRechargeOrderHistory)
 		appAuthRouter.GET("/rechargeOrder/pendingNotifications", api.GetCurrentUserPendingRechargeNotifications)
 		appAuthRouter.POST("/rechargeOrder/notifyAck", api.AckRechargeFrontendNotification)
 		appAuthRouter.GET("/recharge/isFirst", api.CheckIsFirstRecharge)
+		appAuthRouter.GET("/recharge/isFirst/v2", api.CheckIsFirstRechargeV2)
 		appAuthRouter.POST("/lucky/send", api.SendRedPacketApp)
 		appAuthRouter.POST("/lucky/history", api.GetLuckyAppHistory)
 		appAuthRouter.GET("/trial/me", api.GetTrialMeApp)
@@ -360,6 +366,7 @@ func InitGin() {
 		appAuthRouter.GET("/tg/currentUserInfo", api.GetCurrentTgUserInfo)
 		appAuthRouter.GET("/tg/withdrawSummary", api.GetCurrentTgWithdrawSummary)
 		appAuthRouter.GET("/tg/withdrawActivityFlow", api.GetCurrentTgWithdrawActivityFlow)
+		appAuthRouter.GET("/withdraw/v2/summary", api.GetCurrentTgWithdrawFlowBatchSummary)
 		appAuthRouter.POST("/tg/avatar", api.UpdateCurrentTgUserAvatar)
 		appAuthRouter.POST("/tg/name", api.UpdateCurrentTgUserName)
 		appAuthRouter.POST("/tg/channelName", api.BindCurrentTgChannelName)
@@ -372,6 +379,7 @@ func InitGin() {
 		appAuthRouter.POST("/tg/rebate/withdraw", api.AppCreateRebateWithdrawOrder)
 		appAuthRouter.POST("/tg/rebate/list", api.GetCurrentTgUserRebateRecords)
 		appAuthRouter.POST("/cashHistory/list", api.GetCurrentTgCashHistory)
+		appAuthRouter.POST("/exchangeCode/redeem", api.RedeemExchangeCodeApp)
 		appAuthRouter.GET("/checkin/status", api.GetCurrentCheckInStatus)
 		appAuthRouter.POST("/checkin", api.DoCurrentUserCheckIn)
 		appAuthRouter.GET("/checkin/records", api.GetCurrentUserCheckInRecords)
@@ -383,6 +391,7 @@ func InitGin() {
 
 		appAuthRouter.GET("/country/:code/withdrawFields", api.GetCountryWithdrawFields)        // App端获取国家提现字段配置
 		appAuthRouter.GET("/country/:code/rechargeFields", api.GetCountryRechargeFields)        // App端获取国家充值字段配置
+		appAuthRouter.POST("/withdraw/v2", api.AppCreateWithdrawOrderV2)                        // App端创建 v2 提现订单
 		appAuthRouter.POST("/withdraw", api.AppCreateWithdrawOrder)                             // App端创建提现订单
 		appAuthRouter.POST("/withdraw/list", api.GetAppWithdrawOrderHistory)                    // App端提现记录
 		appAuthRouter.GET("/withdrawAccount/list", api.GetAppWithdrawAccounts)                  // App端获取当前用户提现账户列表

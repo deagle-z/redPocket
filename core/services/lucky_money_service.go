@@ -181,6 +181,21 @@ func sendRedPacket(db *gorm.DB, senderID int64, senderName string, req pojo.Luck
 	luckyMoney.RechargeRestrictedAmount = sourceSplit.RechargeRestrictedAmount
 	luckyMoney.UnrestrictedAmount = sourceSplit.UnrestrictedAmount
 
+	if err := repository.RecordWithdrawFlowEvent(
+		tx,
+		senderID,
+		lockedSender.TenantId,
+		pojo.WithdrawFlowEventTypeLuckySend,
+		fmt.Sprintf("lucky_send:%d", luckyMoney.ID),
+		luckyMoney.ID,
+		"",
+		req.Amount,
+		time.Now(),
+	); err != nil {
+		tx.Rollback()
+		return nil, fmt.Errorf("记录提现流水失败: %v", err)
+	}
+
 	// 记录余额变动
 	awardUniBase := fmt.Sprintf("lucky_%d", luckyMoney.ID)
 	runningBalance := utils.Truncate2(lockedSender.Balance)
@@ -1318,6 +1333,40 @@ func grabRedPacketWithTarget(db *gorm.DB, luckyID int64, userID int64, tablePref
 	if err := repository.CreateLuckyHistory(tx, history); err != nil {
 		tx.Rollback()
 		return nil, fmt.Errorf("创建领取记录失败: %v", err)
+	}
+
+	grabFlowAmount := utils.Truncate2(redAmount + loseMoney)
+	if grabFlowAmount > 0 {
+		if err := repository.RecordWithdrawFlowEvent(
+			tx,
+			userID,
+			user.TenantId,
+			pojo.WithdrawFlowEventTypeLuckyGrab,
+			fmt.Sprintf("lucky_grab:%d:user", history.ID),
+			history.ID,
+			"",
+			grabFlowAmount,
+			time.Now(),
+		); err != nil {
+			tx.Rollback()
+			return nil, fmt.Errorf("记录抢包提现流水失败: %v", err)
+		}
+	}
+	if redAmount > 0 {
+		if err := repository.RecordWithdrawFlowEvent(
+			tx,
+			luckyMoney.SenderID,
+			luckyMoney.TenantId,
+			pojo.WithdrawFlowEventTypeLuckySenderGrabbed,
+			fmt.Sprintf("lucky_sender_grabbed:%d:sender", history.ID),
+			history.ID,
+			"",
+			redAmount,
+			time.Now(),
+		); err != nil {
+			tx.Rollback()
+			return nil, fmt.Errorf("记录发包提现流水失败: %v", err)
+		}
 	}
 
 	// 更新红包已领取金额
