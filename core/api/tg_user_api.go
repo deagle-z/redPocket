@@ -348,6 +348,26 @@ func SendTgSMSCode(ctx *gin.Context) {
 	})
 }
 
+// CheckTgRegisterPhone 手机号注册前重复用户校验
+func CheckTgRegisterPhone(ctx *gin.Context) {
+	var req pojo.TgPhoneRegisterCheckReq
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		utils.ErrorBack(ctx, "invalid_params")
+		return
+	}
+	db := ctx.MustGet("db").(*gorm.DB)
+	phone, country, err := repository.CheckTgRegisterPhoneAvailable(db, req.Phone, req.Country)
+	if err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	utils.SuccessObjBack(ctx, pojo.TgPhoneRegisterCheckBack{
+		Phone:     phone,
+		Country:   country,
+		Available: true,
+	})
+}
+
 // RegisterTgByEmail 邮箱注册
 func RegisterTgByEmail(ctx *gin.Context) {
 	var req pojo.TgEmailRegisterReq

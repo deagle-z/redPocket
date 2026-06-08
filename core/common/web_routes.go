@@ -324,6 +324,7 @@ func InitGin() {
 		appRouter.POST("/tg/phoneLogin", api.LoginTgByPhone)
 		appRouter.POST("/tg/sendEmailCode", api.SendTgEmailCode)
 		appRouter.POST("/tg/sendSMSCode", api.SendTgSMSCode)
+		appRouter.POST("/tg/checkRegisterPhone", api.CheckTgRegisterPhone)
 		appRouter.POST("/tg/registerByEmail", api.RegisterTgByEmail)
 		appRouter.POST("/tg/registerByPhone", api.RegisterTgByPhone)
 		appRouter.POST("/attribution/event", api.CreateAttributionEvent)

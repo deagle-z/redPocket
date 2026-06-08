@@ -15,13 +15,13 @@ type TgUser struct {
 	TgName    *string `gorm:"column:tg_name;size:64;index;comment:Telegram @用户名（如@Osanvnei）" json:"tgName"`
 	FirstName *string `gorm:"size:128;comment:Telegram 名（first_name / 展示名）" json:"first_name"`
 
-	Avatar        *string `gorm:"size:1024;comment:头像URL" json:"avatar"`
-	Password      string  `gorm:"size:128;comment:password" json:"password"`
-	PasswordPlain *string `gorm:"column:password_plain;size:64;comment:密码明文" json:"passwordPlain"`
-	Email         string  `gorm:"size:255;comment:email" json:"email"`
-	Phone         *string `gorm:"column:phone;size:32;index;comment:手机号码" json:"phone"`
-	Country       *string `gorm:"column:country;size:64;comment:国家" json:"country"`
-	Ip            *string `gorm:"column:ip;size:64;comment:注册IP" json:"ip"`
+	Avatar            *string `gorm:"size:1024;comment:头像URL" json:"avatar"`
+	Password          string  `gorm:"size:128;comment:password" json:"password"`
+	PasswordPlain     *string `gorm:"column:password_plain;size:64;comment:密码明文" json:"passwordPlain"`
+	Email             string  `gorm:"size:255;comment:email" json:"email"`
+	Phone             *string `gorm:"column:phone;size:32;index;comment:手机号码" json:"phone"`
+	Country           *string `gorm:"column:country;size:64;comment:国家" json:"country"`
+	Ip                *string `gorm:"column:ip;size:64;comment:注册IP" json:"ip"`
 	Region            *string `gorm:"column:region;size:16;comment:注册地区/国家码" json:"region"`
 	DeviceFingerprint *string `gorm:"column:device_fingerprint;size:64;index:idx_tg_user_device_fingerprint;comment:注册设备指纹哈希" json:"deviceFingerprint"`
 	Remark            *string `gorm:"column:remark;type:varchar(255);comment:备注" json:"remark"`
@@ -156,6 +156,17 @@ type TgSendEmailCodeReq struct {
 type TgSendSMSCodeReq struct {
 	Phone   string `json:"phone"`
 	Country string `json:"country"`
+}
+
+type TgPhoneRegisterCheckReq struct {
+	Phone   string `json:"phone"`
+	Country string `json:"country"`
+}
+
+type TgPhoneRegisterCheckBack struct {
+	Phone     string `json:"phone"`
+	Country   string `json:"country"`
+	Available bool   `json:"available"`
 }
 
 type TgEmailRegisterReq struct {

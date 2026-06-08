@@ -6,7 +6,6 @@ import (
 	"context"
 	"encoding/json"
 	"log"
-	"math/rand/v2"
 
 	"github.com/hibiken/asynq"
 	"gorm.io/gorm"
@@ -73,21 +72,6 @@ func handleTrialLuckyBotGrabTask(ctx context.Context, task *asynq.Task) error {
 	grabIndex := 0
 	if payload.GrabIndex != nil {
 		grabIndex = *payload.GrabIndex
-	} else {
-		var seqRows []struct {
-			SeqNo int `gorm:"column:seq_no"`
-		}
-		if err := db.Model(&pojo.TrialLuckyMoneyItem{}).
-			Select("seq_no").
-			Where("red_packet_id = ? AND is_grabbed = ?", lucky.ID, 0).
-			Order("seq_no asc").
-			Scan(&seqRows).Error; err != nil {
-			return err
-		}
-		if len(seqRows) == 0 {
-			return nil
-		}
-		grabIndex = seqRows[rand.IntN(len(seqRows))].SeqNo
 	}
 
 	minBalance := utils.Truncate2(lucky.Amount * lucky.LoseRate)

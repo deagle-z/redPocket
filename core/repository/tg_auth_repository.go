@@ -408,6 +408,22 @@ func SendTgSMSCode(phone string, country string, ip string, isDev bool) (string,
 	return code, nil
 }
 
+func CheckTgRegisterPhoneAvailable(db *gorm.DB, phone string, country string) (string, string, error) {
+	phone, country, err := normalizeTgRegisterPhone(phone, country)
+	if err != nil {
+		return "", "", err
+	}
+
+	var exist pojo.TgUser
+	if err = db.Select("id").Where("phone = ? AND status <> ?", phone, -1).First(&exist).Error; err == nil && exist.ID > 0 {
+		return phone, country, errors.New("phone_registered")
+	}
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		return phone, country, errors.New("service_busy_retry")
+	}
+	return phone, country, nil
+}
+
 // RegisterTgByEmail 邮箱注册。
 func RegisterTgByEmail(db *gorm.DB, email string, firstName string, password string, code string, sourceChannelCode string, tenantID int64, inviteCode string, ip string, region string) (pojo.TgUser, error) {
 	email = strings.TrimSpace(strings.ToLower(email))
@@ -528,25 +544,18 @@ func RegisterTgByEmail(db *gorm.DB, email string, firstName string, password str
 
 // RegisterTgByPhone 手机号注册。
 func RegisterTgByPhone(db *gorm.DB, phone string, country string, firstName string, password string, sourceChannelCode string, tenantID int64, inviteCode string, ip string, region string, deviceFingerprint string, tablePrefix string) (pojo.TgUser, error) {
-	phone = utils.NormalizePhoneDigits(phone)
-	country = utils.InferCountryByPhone("+"+phone, country)
 	firstName = strings.TrimSpace(firstName)
-	if !utils.IsPhone(phone) {
-		return pojo.TgUser{}, errors.New("phone_format_error")
+	normalizedPhone, normalizedCountry, err := CheckTgRegisterPhoneAvailable(db, phone, country)
+	if err != nil {
+		return pojo.TgUser{}, err
 	}
-	if !utils.HasSupportedRegisterPhoneDialCode(phone) {
-		return pojo.TgUser{}, errors.New("phone_country_code_required")
-	}
+	phone = normalizedPhone
+	country = normalizedCountry
 	if len([]rune(firstName)) > 128 {
 		return pojo.TgUser{}, errors.New("first_name_too_long")
 	}
 	if len(password) < 6 || len(password) > 64 {
 		return pojo.TgUser{}, errors.New("password_length_6_64")
-	}
-
-	var exist pojo.TgUser
-	if err := db.Where("phone = ? AND status <> ?", phone, -1).First(&exist).Error; err == nil && exist.ID > 0 {
-		return pojo.TgUser{}, errors.New("phone_registered")
 	}
 
 	deviceFingerprintHash, err := normalizeRegisterDeviceFingerprint(deviceFingerprint)
@@ -651,6 +660,18 @@ func RegisterTgByPhone(db *gorm.DB, phone string, country string, firstName stri
 		return pojo.TgUser{}, err
 	}
 	return newUser, nil
+}
+
+func normalizeTgRegisterPhone(phone string, country string) (string, string, error) {
+	phone = utils.NormalizePhoneDigits(phone)
+	country = utils.InferCountryByPhone("+"+phone, country)
+	if !utils.IsPhone(phone) {
+		return "", "", errors.New("phone_format_error")
+	}
+	if !utils.HasSupportedRegisterPhoneDialCode(phone) {
+		return "", "", errors.New("phone_country_code_required")
+	}
+	return phone, country, nil
 }
 
 func normalizeRegisterDeviceFingerprint(value string) (string, error) {
