@@ -146,6 +146,10 @@ func InitTables(prefix string) (firstInit bool, err error) {
 	if err = ensureTgUserDeviceFingerprintSchema(db); err != nil {
 		panic(err)
 	}
+	log.Print("init tables: ensure trial lucky item pick index...\n")
+	if err = ensureTrialLuckyMoneyItemPickIndex(db); err != nil {
+		panic(err)
+	}
 	log.Print("init tables: init sharding hook...\n")
 	InitShardingHook(db)
 	if !db.Migrator().HasTable(pojo.CashHistoryTableName + "_0") {
@@ -182,6 +186,19 @@ func ensureTgUserDeviceFingerprintSchema(db *gorm.DB) error {
 	}
 	if !migrator.HasIndex(&pojo.TgUser{}, "idx_tg_user_device_fingerprint") {
 		if err := migrator.CreateIndex(&pojo.TgUser{}, "idx_tg_user_device_fingerprint"); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func ensureTrialLuckyMoneyItemPickIndex(db *gorm.DB) error {
+	migrator := db.Migrator()
+	if !migrator.HasTable(&pojo.TrialLuckyMoneyItem{}) {
+		return nil
+	}
+	if !migrator.HasIndex(&pojo.TrialLuckyMoneyItem{}, "idx_trial_lucky_item_pick") {
+		if err := migrator.CreateIndex(&pojo.TrialLuckyMoneyItem{}, "idx_trial_lucky_item_pick"); err != nil {
 			return err
 		}
 	}

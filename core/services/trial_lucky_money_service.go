@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/go-sql-driver/mysql"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 	"log"
@@ -24,6 +25,11 @@ const (
 	trialUserWinRateDefault = 0.80
 	trialUserWinRateConfig  = "trial_user_win_rate"
 	trialUserWinRateCache   = "bgu_trial_user_win_rate"
+
+	trialLuckyGrabLockTTL        = 30 * time.Second
+	trialLuckyGrabLockWait       = 10 * time.Second
+	trialLuckyGrabLockRetryDelay = 50 * time.Millisecond
+	trialLuckyDBRetryMax         = 3
 )
 
 func GetTrialMe(db *gorm.DB, userID int64) (pojo.TrialMeResp, error) {
@@ -229,154 +235,165 @@ func GrabTrialRedPacket(db *gorm.DB, luckyID int64, userID int64, tablePrefix st
 
 	result := map[string]any{}
 	finished := false
-	err := db.Transaction(func(tx *gorm.DB) error {
-		var lucky pojo.TrialLuckyMoney
-		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ?", luckyID).First(&lucky).Error; err != nil {
-			return errors.New("lucky_not_found")
-		}
-		if lucky.Status != 1 {
-			return errors.New("lucky_finished")
-		}
-		if !lucky.ExpireTime.IsZero() && time.Now().After(lucky.ExpireTime) {
-			if err := refundExpiredTrialLucky(tx, &lucky); err != nil {
-				return err
+	targetUserWin := trialTargetUserWin(db)
+	err := withTrialLuckyDBRetry(func() error {
+		result = map[string]any{}
+		finished = false
+		return db.Transaction(func(tx *gorm.DB) error {
+			var lucky pojo.TrialLuckyMoney
+			if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ?", luckyID).First(&lucky).Error; err != nil {
+				if !errors.Is(err, gorm.ErrRecordNotFound) {
+					return err
+				}
+				return errors.New("lucky_not_found")
 			}
-			return errors.New("lucky_expired")
-		}
-		if !canTrialUserGrabSender(lucky.SenderType, lucky.SenderID, userID) {
-			return errors.New("cannot_grab_self")
-		}
-		if lucky.GameMode == 1 {
-			if oddEvenGuess == nil || (*oddEvenGuess != 0 && *oddEvenGuess != 1) {
-				return errors.New("odd_even_guess_required")
+			if lucky.Status != 1 {
+				return errors.New("lucky_finished")
 			}
-		}
-		var user pojo.TgUser
-		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ?", userID).First(&user).Error; err != nil {
-			return errors.New("user_not_found")
-		}
-		if user.Status != 1 {
-			return errors.New("user_disabled_contact_admin")
-		}
-		requiredBalance := utils.Truncate2(lucky.Amount * lucky.LoseRate)
-		if lucky.GameMode == 1 {
-			requiredBalance = utils.Truncate2((lucky.Amount / float64(maxInt(1, lucky.Number))) * lucky.LoseRate)
-		}
-		if user.TrialBalance < requiredBalance {
-			return errors.New("trial_balance_insufficient")
-		}
-
-		item, err := pickTrialLuckyItemForUser(tx, lucky, grabIndex, oddEvenGuess, trialTargetUserWin(tx))
-		if err != nil {
-			return err
-		}
-		now := time.Now()
-		openNum := trialOpenNum(item.Amount)
-		isThunder := trialIsThunder(lucky, item.Amount, oddEvenGuess)
-		loseMoney := 0.0
-		if isThunder {
+			if !lucky.ExpireTime.IsZero() && time.Now().After(lucky.ExpireTime) {
+				if err := refundExpiredTrialLucky(tx, &lucky); err != nil {
+					return err
+				}
+				return errors.New("lucky_expired")
+			}
+			if !canTrialUserGrabSender(lucky.SenderType, lucky.SenderID, userID) {
+				return errors.New("cannot_grab_self")
+			}
 			if lucky.GameMode == 1 {
-				loseMoney = utils.Truncate2(item.Amount * lucky.LoseRate)
-			} else {
-				loseMoney = utils.Truncate2(lucky.Amount * lucky.LoseRate)
+				if oddEvenGuess == nil || (*oddEvenGuess != 0 && *oddEvenGuess != 1) {
+					return errors.New("odd_even_guess_required")
+				}
 			}
-		}
-		actualAmount := utils.Truncate2(item.Amount - loseMoney)
-		startBalance := utils.Truncate2(user.TrialBalance)
-		endBalance := utils.Truncate2(startBalance + actualAmount)
-		thunderFlag := int8(0)
-		if isThunder {
-			thunderFlag = 1
-		}
+			var user pojo.TgUser
+			if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ?", userID).First(&user).Error; err != nil {
+				if !errors.Is(err, gorm.ErrRecordNotFound) {
+					return err
+				}
+				return errors.New("user_not_found")
+			}
+			if user.Status != 1 {
+				return errors.New("user_disabled_contact_admin")
+			}
+			requiredBalance := utils.Truncate2(lucky.Amount * lucky.LoseRate)
+			if lucky.GameMode == 1 {
+				requiredBalance = utils.Truncate2((lucky.Amount / float64(maxInt(1, lucky.Number))) * lucky.LoseRate)
+			}
+			if user.TrialBalance < requiredBalance {
+				return errors.New("trial_balance_insufficient")
+			}
 
-		if err := tx.Model(&pojo.TrialLuckyMoneyItem{}).
-			Where("id = ? AND is_grabbed = ?", item.ID, 0).
-			Updates(map[string]any{
-				"is_grabbed":   1,
-				"thunder":      thunderFlag,
-				"grabbed_uid":  user.ID,
-				"grabbed_type": pojo.TrialActorUser,
-				"grabbed_at":   now,
-			}).Error; err != nil {
-			return err
-		}
-		if err := tx.Model(&pojo.TgUser{}).Where("id = ?", user.ID).Update("trial_balance", endBalance).Error; err != nil {
-			return err
-		}
-		if err := tx.Model(&pojo.TrialLuckyMoney{}).Where("id = ?", lucky.ID).
-			Update("received", gorm.Expr("received + ?", item.Amount)).Error; err != nil {
-			return err
-		}
-
-		history := pojo.TrialLuckyHistory{
-			UserID:       user.ID,
-			ActorType:    pojo.TrialActorUser,
-			FirstName:    trialTgDisplayName(user),
-			LuckyID:      lucky.ID,
-			IsThunder:    int(thunderFlag),
-			GrabType:     1,
-			Amount:       utils.Truncate2(item.Amount),
-			ActualAmount: actualAmount,
-			LoseMoney:    loseMoney,
-			Guess:        oddEvenGuess,
-			TenantId:     lucky.TenantId,
-		}
-		if err := tx.Create(&history).Error; err != nil {
-			return err
-		}
-		if err := createTrialCashHistory(tx, pojo.TrialCashHistory{
-			UserId:      user.ID,
-			ActorType:   pojo.TrialActorUser,
-			AwardUni:    fmt.Sprintf("trial_grab_%d_%d_%d_%d", lucky.ID, user.ID, item.SeqNo, now.UnixNano()),
-			Amount:      actualAmount,
-			StartAmount: startBalance,
-			EndAmount:   endBalance,
-			CashMark:    "trial_lucky_grab",
-			CashDesc:    "试玩抢包",
-			Type:        mapTrialGrabCashType(isThunder),
-			IsThunder:   thunderFlag,
-			LuckyID:     lucky.ID,
-			TenantId:    lucky.TenantId,
-		}); err != nil {
-			return err
-		}
-		lotteryRewardCount, trialFlowLotteryRewarded, err := awardTrialLuckyFlowLotteryIfNeeded(tx, user.ID, lucky.TenantId, lucky.ID, history.ID, tablePrefix)
-		if err != nil {
-			return err
-		}
-		if isThunder && loseMoney > 0 {
-			if err := addTrialSenderThunderIncome(tx, lucky, loseMoney); err != nil {
+			item, err := pickTrialLuckyItemForUser(tx, lucky, grabIndex, oddEvenGuess, targetUserWin)
+			if err != nil {
 				return err
 			}
-		}
+			now := time.Now()
+			openNum := trialOpenNum(item.Amount)
+			isThunder := trialIsThunder(lucky, item.Amount, oddEvenGuess)
+			loseMoney := 0.0
+			if isThunder {
+				if lucky.GameMode == 1 {
+					loseMoney = utils.Truncate2(item.Amount * lucky.LoseRate)
+				} else {
+					loseMoney = utils.Truncate2(lucky.Amount * lucky.LoseRate)
+				}
+			}
+			actualAmount := utils.Truncate2(item.Amount - loseMoney)
+			startBalance := utils.Truncate2(user.TrialBalance)
+			endBalance := utils.Truncate2(startBalance + actualAmount)
+			thunderFlag := int8(0)
+			if isThunder {
+				thunderFlag = 1
+			}
 
-		var grabbedCount int64
-		if err := tx.Model(&pojo.TrialLuckyMoneyItem{}).Where("red_packet_id = ? AND is_grabbed = ?", lucky.ID, 1).Count(&grabbedCount).Error; err != nil {
-			return err
-		}
-		if int(grabbedCount) >= lucky.Number {
-			if err := tx.Model(&pojo.TrialLuckyMoney{}).Where("id = ?", lucky.ID).Update("status", 2).Error; err != nil {
+			if err := tx.Model(&pojo.TrialLuckyMoneyItem{}).
+				Where("id = ? AND is_grabbed = ?", item.ID, 0).
+				Updates(map[string]any{
+					"is_grabbed":   1,
+					"thunder":      thunderFlag,
+					"grabbed_uid":  user.ID,
+					"grabbed_type": pojo.TrialActorUser,
+					"grabbed_at":   now,
+				}).Error; err != nil {
 				return err
 			}
-			finished = true
-		}
-		result = map[string]any{
-			"luckyId":                  lucky.ID,
-			"actorType":                pojo.TrialActorUser,
-			"userId":                   user.ID,
-			"firstName":                trialTgDisplayName(user),
-			"grabIndex":                item.SeqNo,
-			"amount":                   utils.Truncate2(item.Amount),
-			"actualAmount":             actualAmount,
-			"loseMoney":                loseMoney,
-			"isThunder":                int(thunderFlag),
-			"openNum":                  openNum,
-			"balance":                  endBalance,
-			"message":                  "success",
-			"lotteryRewardCount":       lotteryRewardCount,
-			"trialFlowLotteryRewarded": trialFlowLotteryRewarded,
-		}
-		return nil
+			if err := tx.Model(&pojo.TgUser{}).Where("id = ?", user.ID).Update("trial_balance", endBalance).Error; err != nil {
+				return err
+			}
+			if err := tx.Model(&pojo.TrialLuckyMoney{}).Where("id = ?", lucky.ID).
+				Update("received", gorm.Expr("received + ?", item.Amount)).Error; err != nil {
+				return err
+			}
+
+			history := pojo.TrialLuckyHistory{
+				UserID:       user.ID,
+				ActorType:    pojo.TrialActorUser,
+				FirstName:    trialTgDisplayName(user),
+				LuckyID:      lucky.ID,
+				IsThunder:    int(thunderFlag),
+				GrabType:     1,
+				Amount:       utils.Truncate2(item.Amount),
+				ActualAmount: actualAmount,
+				LoseMoney:    loseMoney,
+				Guess:        oddEvenGuess,
+				TenantId:     lucky.TenantId,
+			}
+			if err := tx.Create(&history).Error; err != nil {
+				return err
+			}
+			if err := createTrialCashHistory(tx, pojo.TrialCashHistory{
+				UserId:      user.ID,
+				ActorType:   pojo.TrialActorUser,
+				AwardUni:    fmt.Sprintf("trial_grab_%d_%d_%d_%d", lucky.ID, user.ID, item.SeqNo, now.UnixNano()),
+				Amount:      actualAmount,
+				StartAmount: startBalance,
+				EndAmount:   endBalance,
+				CashMark:    "trial_lucky_grab",
+				CashDesc:    "试玩抢包",
+				Type:        mapTrialGrabCashType(isThunder),
+				IsThunder:   thunderFlag,
+				LuckyID:     lucky.ID,
+				TenantId:    lucky.TenantId,
+			}); err != nil {
+				return err
+			}
+			lotteryRewardCount, trialFlowLotteryRewarded, err := awardTrialLuckyFlowLotteryIfNeeded(tx, user.ID, lucky.TenantId, lucky.ID, history.ID, tablePrefix)
+			if err != nil {
+				return err
+			}
+			if isThunder && loseMoney > 0 {
+				if err := addTrialSenderThunderIncome(tx, lucky, loseMoney); err != nil {
+					return err
+				}
+			}
+
+			var grabbedCount int64
+			if err := tx.Model(&pojo.TrialLuckyMoneyItem{}).Where("red_packet_id = ? AND is_grabbed = ?", lucky.ID, 1).Count(&grabbedCount).Error; err != nil {
+				return err
+			}
+			if int(grabbedCount) >= lucky.Number {
+				if err := tx.Model(&pojo.TrialLuckyMoney{}).Where("id = ?", lucky.ID).Update("status", 2).Error; err != nil {
+					return err
+				}
+				finished = true
+			}
+			result = map[string]any{
+				"luckyId":                  lucky.ID,
+				"actorType":                pojo.TrialActorUser,
+				"userId":                   user.ID,
+				"firstName":                trialTgDisplayName(user),
+				"grabIndex":                item.SeqNo,
+				"amount":                   utils.Truncate2(item.Amount),
+				"actualAmount":             actualAmount,
+				"loseMoney":                loseMoney,
+				"isThunder":                int(thunderFlag),
+				"openNum":                  openNum,
+				"balance":                  endBalance,
+				"message":                  "success",
+				"lotteryRewardCount":       lotteryRewardCount,
+				"trialFlowLotteryRewarded": trialFlowLotteryRewarded,
+			}
+			return nil
+		})
 	})
 	if err == nil {
 		BroadcastTrialLuckyGrabResult(db, luckyID, result)
@@ -831,144 +848,148 @@ func grabTrialRedPacketByBot(db *gorm.DB, luckyID int64, botID int64, grabIndex 
 
 	result := map[string]any{}
 	finished := false
-	err := db.Transaction(func(tx *gorm.DB) error {
-		var lucky pojo.TrialLuckyMoney
-		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ?", luckyID).First(&lucky).Error; err != nil {
-			return err
-		}
-		if lucky.Status != 1 {
-			return errors.New("lucky_finished")
-		}
-		if !canTrialBotGrabSender(lucky.SenderType, lucky.SenderID, botID) {
-			return errors.New("cannot_grab_self")
-		}
-		var bot pojo.TrialBotUser
-		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ? AND status = ?", botID, 1).First(&bot).Error; err != nil {
-			return err
-		}
-		var exists int64
-		if err := tx.Model(&pojo.TrialLuckyHistory{}).
-			Where("lucky_id = ? AND user_id = ? AND actor_type = ? AND grab_type = ?", lucky.ID, bot.ID, pojo.TrialActorBot, 1).
-			Count(&exists).Error; err != nil {
-			return err
-		}
-		if exists > 0 {
-			return errors.New("already_grabbed")
-		}
-		requiredBalance := utils.Truncate2(lucky.Amount * lucky.LoseRate)
-		if lucky.GameMode == 1 {
-			requiredBalance = utils.Truncate2((lucky.Amount / float64(maxInt(1, lucky.Number))) * lucky.LoseRate)
-		}
-		if bot.Balance < requiredBalance {
-			return errors.New("trial_bot_balance_insufficient")
-		}
-		item, err := pickTrialLuckyItem(tx, lucky.ID, grabIndex)
-		if err != nil {
-			return err
-		}
-		guess := rand.IntN(2)
-		var guessPtr *int
-		if lucky.GameMode == 1 {
-			guessPtr = &guess
-		}
-		now := time.Now()
-		openNum := trialOpenNum(item.Amount)
-		isThunder := trialIsThunder(lucky, item.Amount, guessPtr)
-		loseMoney := 0.0
-		if isThunder {
+	err := withTrialLuckyDBRetry(func() error {
+		result = map[string]any{}
+		finished = false
+		return db.Transaction(func(tx *gorm.DB) error {
+			var lucky pojo.TrialLuckyMoney
+			if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ?", luckyID).First(&lucky).Error; err != nil {
+				return err
+			}
+			if lucky.Status != 1 {
+				return errors.New("lucky_finished")
+			}
+			if !canTrialBotGrabSender(lucky.SenderType, lucky.SenderID, botID) {
+				return errors.New("cannot_grab_self")
+			}
+			var bot pojo.TrialBotUser
+			if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ? AND status = ?", botID, 1).First(&bot).Error; err != nil {
+				return err
+			}
+			var exists int64
+			if err := tx.Model(&pojo.TrialLuckyHistory{}).
+				Where("lucky_id = ? AND user_id = ? AND actor_type = ? AND grab_type = ?", lucky.ID, bot.ID, pojo.TrialActorBot, 1).
+				Count(&exists).Error; err != nil {
+				return err
+			}
+			if exists > 0 {
+				return errors.New("already_grabbed")
+			}
+			requiredBalance := utils.Truncate2(lucky.Amount * lucky.LoseRate)
 			if lucky.GameMode == 1 {
-				loseMoney = utils.Truncate2(item.Amount * lucky.LoseRate)
-			} else {
-				loseMoney = utils.Truncate2(lucky.Amount * lucky.LoseRate)
+				requiredBalance = utils.Truncate2((lucky.Amount / float64(maxInt(1, lucky.Number))) * lucky.LoseRate)
 			}
-		}
-		actualAmount := utils.Truncate2(item.Amount - loseMoney)
-		startBalance := utils.Truncate2(bot.Balance)
-		endBalance := utils.Truncate2(startBalance + actualAmount)
-		thunderFlag := int8(0)
-		if isThunder {
-			thunderFlag = 1
-		}
-		if err := tx.Model(&pojo.TrialLuckyMoneyItem{}).
-			Where("id = ? AND is_grabbed = ?", item.ID, 0).
-			Updates(map[string]any{
-				"is_grabbed":   1,
-				"thunder":      thunderFlag,
-				"grabbed_uid":  bot.ID,
-				"grabbed_type": pojo.TrialActorBot,
-				"grabbed_at":   now,
+			if bot.Balance < requiredBalance {
+				return errors.New("trial_bot_balance_insufficient")
+			}
+			item, err := pickTrialLuckyItem(tx, lucky.ID, grabIndex)
+			if err != nil {
+				return err
+			}
+			guess := rand.IntN(2)
+			var guessPtr *int
+			if lucky.GameMode == 1 {
+				guessPtr = &guess
+			}
+			now := time.Now()
+			openNum := trialOpenNum(item.Amount)
+			isThunder := trialIsThunder(lucky, item.Amount, guessPtr)
+			loseMoney := 0.0
+			if isThunder {
+				if lucky.GameMode == 1 {
+					loseMoney = utils.Truncate2(item.Amount * lucky.LoseRate)
+				} else {
+					loseMoney = utils.Truncate2(lucky.Amount * lucky.LoseRate)
+				}
+			}
+			actualAmount := utils.Truncate2(item.Amount - loseMoney)
+			startBalance := utils.Truncate2(bot.Balance)
+			endBalance := utils.Truncate2(startBalance + actualAmount)
+			thunderFlag := int8(0)
+			if isThunder {
+				thunderFlag = 1
+			}
+			if err := tx.Model(&pojo.TrialLuckyMoneyItem{}).
+				Where("id = ? AND is_grabbed = ?", item.ID, 0).
+				Updates(map[string]any{
+					"is_grabbed":   1,
+					"thunder":      thunderFlag,
+					"grabbed_uid":  bot.ID,
+					"grabbed_type": pojo.TrialActorBot,
+					"grabbed_at":   now,
+				}).Error; err != nil {
+				return err
+			}
+			if err := tx.Model(&pojo.TrialBotUser{}).Where("id = ?", bot.ID).Update("balance", endBalance).Error; err != nil {
+				return err
+			}
+			if err := tx.Model(&pojo.TrialLuckyMoney{}).Where("id = ?", lucky.ID).
+				Update("received", gorm.Expr("received + ?", item.Amount)).Error; err != nil {
+				return err
+			}
+			name := trialBotDisplayName(bot)
+			if err := tx.Create(&pojo.TrialLuckyHistory{
+				UserID:       bot.ID,
+				ActorType:    pojo.TrialActorBot,
+				FirstName:    name,
+				LuckyID:      lucky.ID,
+				IsThunder:    int(thunderFlag),
+				GrabType:     1,
+				Amount:       utils.Truncate2(item.Amount),
+				ActualAmount: actualAmount,
+				LoseMoney:    loseMoney,
+				Guess:        guessPtr,
+				TenantId:     lucky.TenantId,
 			}).Error; err != nil {
-			return err
-		}
-		if err := tx.Model(&pojo.TrialBotUser{}).Where("id = ?", bot.ID).Update("balance", endBalance).Error; err != nil {
-			return err
-		}
-		if err := tx.Model(&pojo.TrialLuckyMoney{}).Where("id = ?", lucky.ID).
-			Update("received", gorm.Expr("received + ?", item.Amount)).Error; err != nil {
-			return err
-		}
-		name := trialBotDisplayName(bot)
-		if err := tx.Create(&pojo.TrialLuckyHistory{
-			UserID:       bot.ID,
-			ActorType:    pojo.TrialActorBot,
-			FirstName:    name,
-			LuckyID:      lucky.ID,
-			IsThunder:    int(thunderFlag),
-			GrabType:     1,
-			Amount:       utils.Truncate2(item.Amount),
-			ActualAmount: actualAmount,
-			LoseMoney:    loseMoney,
-			Guess:        guessPtr,
-			TenantId:     lucky.TenantId,
-		}).Error; err != nil {
-			return err
-		}
-		if err := createTrialCashHistory(tx, pojo.TrialCashHistory{
-			UserId:      bot.ID,
-			ActorType:   pojo.TrialActorBot,
-			AwardUni:    fmt.Sprintf("trial_bot_grab_%d_%d", lucky.ID, bot.ID),
-			Amount:      actualAmount,
-			StartAmount: startBalance,
-			EndAmount:   endBalance,
-			CashMark:    "trial_lucky_grab",
-			CashDesc:    "试玩机器人抢包",
-			Type:        mapTrialGrabCashType(isThunder),
-			IsThunder:   thunderFlag,
-			LuckyID:     lucky.ID,
-			TenantId:    lucky.TenantId,
-		}); err != nil {
-			return err
-		}
-		if isThunder && loseMoney > 0 {
-			if err := addTrialSenderThunderIncome(tx, lucky, loseMoney); err != nil {
 				return err
 			}
-		}
-		var grabbedCount int64
-		if err := tx.Model(&pojo.TrialLuckyMoneyItem{}).Where("red_packet_id = ? AND is_grabbed = ?", lucky.ID, 1).Count(&grabbedCount).Error; err != nil {
-			return err
-		}
-		if int(grabbedCount) >= lucky.Number {
-			if err := tx.Model(&pojo.TrialLuckyMoney{}).Where("id = ?", lucky.ID).Update("status", 2).Error; err != nil {
+			if err := createTrialCashHistory(tx, pojo.TrialCashHistory{
+				UserId:      bot.ID,
+				ActorType:   pojo.TrialActorBot,
+				AwardUni:    fmt.Sprintf("trial_bot_grab_%d_%d", lucky.ID, bot.ID),
+				Amount:      actualAmount,
+				StartAmount: startBalance,
+				EndAmount:   endBalance,
+				CashMark:    "trial_lucky_grab",
+				CashDesc:    "试玩机器人抢包",
+				Type:        mapTrialGrabCashType(isThunder),
+				IsThunder:   thunderFlag,
+				LuckyID:     lucky.ID,
+				TenantId:    lucky.TenantId,
+			}); err != nil {
 				return err
 			}
-			finished = true
-		}
-		result = map[string]any{
-			"luckyId":      lucky.ID,
-			"actorType":    pojo.TrialActorBot,
-			"userId":       bot.ID,
-			"firstName":    name,
-			"grabIndex":    item.SeqNo,
-			"amount":       utils.Truncate2(item.Amount),
-			"actualAmount": actualAmount,
-			"loseMoney":    loseMoney,
-			"isThunder":    int(thunderFlag),
-			"openNum":      openNum,
-			"balance":      endBalance,
-			"message":      "success",
-		}
-		return nil
+			if isThunder && loseMoney > 0 {
+				if err := addTrialSenderThunderIncome(tx, lucky, loseMoney); err != nil {
+					return err
+				}
+			}
+			var grabbedCount int64
+			if err := tx.Model(&pojo.TrialLuckyMoneyItem{}).Where("red_packet_id = ? AND is_grabbed = ?", lucky.ID, 1).Count(&grabbedCount).Error; err != nil {
+				return err
+			}
+			if int(grabbedCount) >= lucky.Number {
+				if err := tx.Model(&pojo.TrialLuckyMoney{}).Where("id = ?", lucky.ID).Update("status", 2).Error; err != nil {
+					return err
+				}
+				finished = true
+			}
+			result = map[string]any{
+				"luckyId":      lucky.ID,
+				"actorType":    pojo.TrialActorBot,
+				"userId":       bot.ID,
+				"firstName":    name,
+				"grabIndex":    item.SeqNo,
+				"amount":       utils.Truncate2(item.Amount),
+				"actualAmount": actualAmount,
+				"loseMoney":    loseMoney,
+				"isThunder":    int(thunderFlag),
+				"openNum":      openNum,
+				"balance":      endBalance,
+				"message":      "success",
+			}
+			return nil
+		})
 	})
 	if err == nil {
 		BroadcastTrialLuckyGrabResult(db, luckyID, result)
@@ -984,11 +1005,17 @@ func pickTrialLuckyItem(tx *gorm.DB, luckyID int64, grabIndex int) (pojo.TrialLu
 	query := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("red_packet_id = ? AND is_grabbed = ?", luckyID, 0)
 	if grabIndex > 0 {
 		if err := query.Where("seq_no = ?", grabIndex).Order("seq_no asc, id asc").First(&item).Error; err != nil {
+			if !errors.Is(err, gorm.ErrRecordNotFound) {
+				return item, err
+			}
 			return item, errors.New("grab_index_unavailable")
 		}
 		return item, nil
 	}
 	if err := query.Order("seq_no asc, id asc").First(&item).Error; err != nil {
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			return item, err
+		}
 		return item, errors.New("lucky_empty")
 	}
 	return item, nil
@@ -996,18 +1023,62 @@ func pickTrialLuckyItem(tx *gorm.DB, luckyID int64, grabIndex int) (pojo.TrialLu
 
 func acquireTrialLuckyGrabLock(luckyID int64) (func(), error) {
 	lockKey := fmt.Sprintf("bgu_trial_lucky_grab_%d", luckyID)
-	acquired, err := utils.AcquireLock(lockKey, 8*time.Second)
-	if err != nil {
-		log.Printf("[trial_lucky] acquire grab lock error luckyID=%d err=%v", luckyID, err)
-		return nil, err
+	lockToken := fmt.Sprintf("%d-%d-%d", luckyID, time.Now().UnixNano(), rand.IntN(1000000000))
+	deadline := time.Now().Add(trialLuckyGrabLockWait)
+	for {
+		acquired, err := utils.RD.SetNX(context.Background(), lockKey, lockToken, trialLuckyGrabLockTTL).Result()
+		if err != nil {
+			log.Printf("[trial_lucky] acquire grab lock error luckyID=%d err=%v", luckyID, err)
+			return nil, err
+		}
+		if acquired {
+			return func() {
+				releaseTrialLuckyGrabLock(lockKey, lockToken)
+			}, nil
+		}
+		if time.Now().After(deadline) {
+			log.Printf("[trial_lucky] grab lock busy luckyID=%d", luckyID)
+			return nil, errors.New("request_too_fast")
+		}
+		time.Sleep(trialLuckyGrabLockRetryDelay)
 	}
-	if !acquired {
-		log.Printf("[trial_lucky] grab lock busy luckyID=%d", luckyID)
-		return nil, errors.New("request_too_fast")
+}
+
+func releaseTrialLuckyGrabLock(lockKey string, lockToken string) {
+	const releaseScript = `
+if redis.call("get", KEYS[1]) == ARGV[1] then
+	return redis.call("del", KEYS[1])
+end
+return 0
+`
+	if err := utils.RD.Eval(context.Background(), releaseScript, []string{lockKey}, lockToken).Err(); err != nil {
+		log.Printf("[trial_lucky] release grab lock error key=%s err=%v", lockKey, err)
 	}
-	return func() {
-		_ = utils.ReleaseLock(lockKey)
-	}, nil
+}
+
+func withTrialLuckyDBRetry(fn func() error) error {
+	var err error
+	for attempt := 0; attempt < trialLuckyDBRetryMax; attempt++ {
+		err = fn()
+		if !isTrialLuckyRetryableDBError(err) {
+			return err
+		}
+		sleep := time.Duration(50*(attempt+1)+rand.IntN(50)) * time.Millisecond
+		log.Printf("[trial_lucky] retry db transaction after lock error attempt=%d err=%v", attempt+1, err)
+		time.Sleep(sleep)
+	}
+	return err
+}
+
+func isTrialLuckyRetryableDBError(err error) bool {
+	if err == nil {
+		return false
+	}
+	var mysqlErr *mysql.MySQLError
+	if errors.As(err, &mysqlErr) {
+		return mysqlErr.Number == 1213 || mysqlErr.Number == 1205
+	}
+	return false
 }
 
 type trialLuckyItemAmountSwap struct {
