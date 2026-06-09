@@ -400,6 +400,7 @@ func InitGin() {
 		appAuthRouter.POST("/withdrawAccount/:id/update", api.AppUpdateWithdrawAccount)         // App端修改提现账户
 		appAuthRouter.DELETE("/withdrawAccount/:id", api.AppDelWithdrawAccount)                 // App端删除提现账户
 		appAuthRouter.POST("/withdrawAccount/:id/setDefault", api.AppSetDefaultWithdrawAccount) // App端设置默认提现账户
+		appAuthRouter.GET("/vip/levels", api.AppGetVipLevels)                                    // App端获取所有VIP等级配置列表
 		appAuthRouter.GET("/vip/progress", api.AppGetVipProgress)                               // App端获取当前用户VIP进度
 		appAuthRouter.GET("/vip/rewards", api.AppGetClaimableVipRewards)                        // App端查询可领取VIP奖励列表
 		appAuthRouter.POST("/vip/rewards/:id/claim", api.AppClaimVipReward)                     // App端领取VIP奖励（id=0领取全部）

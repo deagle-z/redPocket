@@ -90,6 +90,25 @@ const {
             />
           </el-select>
         </el-form-item>
+        <el-form-item label="是否热门：" prop="hot">
+          <el-select
+            v-model="form.hot"
+            placeholder="请选择"
+            clearable
+            class="!w-[120px]"
+          >
+            <el-option label="热门" :value="1" />
+            <el-option label="普通" :value="0" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="分类：" prop="categoryCode">
+          <el-input
+            v-model="form.categoryCode"
+            placeholder="分类"
+            clearable
+            class="!w-[160px]"
+          />
+        </el-form-item>
         <el-form-item label="首页展示：" prop="homeShow">
           <el-select
             v-model="form.homeShow"

@@ -126,6 +126,20 @@ func AppClaimVipReward(ctx *gin.Context) {
 	utils.SuccessObjBack(ctx, "领取成功")
 }
 
+// AppGetVipLevels godoc
+//
+//	@Summary		获取所有VIP等级配置列表
+//	@Tags			VIP等级
+//	@Produce		json
+//	@Success		200	{object}	[]pojo.SysVipLevelBack
+//	@Router			/api/v1/app/vip/levels [get]
+func AppGetVipLevels(ctx *gin.Context) {
+	userID := ctx.MustGet("userId").(int64)
+	db := ctx.MustGet("db").(*gorm.DB)
+	result := repository.GetAppVipLevels(db, userID)
+	utils.SuccessObjBack(ctx, result)
+}
+
 // AppGetVipProgress godoc
 //
 //	@Summary		获取当前用户VIP进度

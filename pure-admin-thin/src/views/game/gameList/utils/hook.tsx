@@ -57,6 +57,8 @@ export function useAppGame(tableRef: Ref) {
     thirdGameCategory: "",
     type: undefined as number | undefined,
     homeShow: undefined as number | undefined,
+    hot: undefined as number | undefined,
+    categoryCode: "slots" as string | undefined,
     disabledFlag: undefined as number | undefined
   });
   const syncForm = reactive({
@@ -112,6 +114,12 @@ export function useAppGame(tableRef: Ref) {
       prop: "thirdGameCategory",
       minWidth: 120,
       formatter: ({ thirdGameCategory }) => thirdGameCategory || "-"
+    },
+    {
+      label: "分类",
+      prop: "categoryCode",
+      minWidth: 120,
+      formatter: ({ categoryCode }) => categoryCode || "-"
     },
     {
       label: "热门",

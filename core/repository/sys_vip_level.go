@@ -228,6 +228,20 @@ func GetAppVipProgress(db *gorm.DB, userID int64) (pojo.AppVipProgressBack, erro
 	return result, nil
 }
 
+// GetAppVipLevels 返回当前用户所在租户所有启用的VIP等级配置（App端）
+func GetAppVipLevels(db *gorm.DB, userID int64) []pojo.SysVipLevelBack {
+	var user pojo.TgUser
+	db.Where("id = ?", userID).First(&user)
+	levels := getActiveVipLevels(db, user.TenantId)
+	var result []pojo.SysVipLevelBack
+	for _, lv := range levels {
+		var back pojo.SysVipLevelBack
+		_ = copier.Copy(&back, &lv)
+		result = append(result, back)
+	}
+	return result
+}
+
 func getActiveVipLevels(db *gorm.DB, tenantID int64) []pojo.SysVipLevel {
 	var levels []pojo.SysVipLevel
 	db.Where("tenant_id = ? AND status = 1", tenantID).Order("level asc").Find(&levels)

@@ -8,6 +8,7 @@ type SysVipLevel struct {
 	AgentTag            *string  `json:"agentTag" gorm:"column:agent_tag;type:varchar(64);comment:代理标签（如：平台默认）"`
 	TotalRechargeCount  *int     `json:"totalRechargeCount" gorm:"column:total_recharge_count;comment:总充值次数"`
 	TotalRechargeAmount *float64 `json:"totalRechargeAmount" gorm:"column:total_recharge_amount;type:decimal(18,2);comment:总充值金额"`
+	TotalWithdrawCount  *int     `json:"totalWithdrawCount" gorm:"column:total_withdraw_count;comment:总提现次数"`
 	TotalValidBet       *float64 `json:"totalValidBet" gorm:"column:total_valid_bet;type:decimal(18,2);comment:总有效投注"`
 	MonthRechargeAmount *float64 `json:"monthRechargeAmount" gorm:"column:month_recharge_amount;type:decimal(18,2);comment:当月充值金额"`
 	MonthValidBet       *float64 `json:"monthValidBet" gorm:"column:month_valid_bet;type:decimal(18,2);comment:当月有效投注"`
@@ -41,6 +42,7 @@ type SysVipLevelSet struct {
 	AgentTag            *string  `json:"agentTag"`
 	TotalRechargeCount  *int     `json:"totalRechargeCount"`
 	TotalRechargeAmount *float64 `json:"totalRechargeAmount"`
+	TotalWithdrawCount  *int     `json:"totalWithdrawCount"`
 	TotalValidBet       *float64 `json:"totalValidBet"`
 	MonthRechargeAmount *float64 `json:"monthRechargeAmount"`
 	MonthValidBet       *float64 `json:"monthValidBet"`
@@ -78,6 +80,7 @@ type SysVipLevelBack struct {
 	AgentTag            *string  `json:"agentTag"`
 	TotalRechargeCount  *int     `json:"totalRechargeCount"`
 	TotalRechargeAmount *float64 `json:"totalRechargeAmount"`
+	TotalWithdrawCount  *int     `json:"totalWithdrawCount"`
 	TotalValidBet       *float64 `json:"totalValidBet"`
 	MonthRechargeAmount *float64 `json:"monthRechargeAmount"`
 	MonthValidBet       *float64 `json:"monthValidBet"`

@@ -14,6 +14,7 @@ const props = withDefaults(defineProps<FormProps>(), {
     agentTag: "",
     totalRechargeCount: null,
     totalRechargeAmount: null,
+    totalWithdrawCount: null,
     totalValidBet: null,
     monthRechargeAmount: null,
     monthValidBet: null,
@@ -187,6 +188,18 @@ defineExpose({ getRef });
         <el-divider content-position="left">其他设置</el-divider>
       </el-col>
 
+      <el-col :span="12">
+        <el-form-item label="提现次数">
+          <el-input-number
+            v-model="newFormInline.totalWithdrawCount"
+            :min="0"
+            :precision="0"
+            class="!w-full"
+            controls-position="right"
+            placeholder="不限则留空"
+          />
+        </el-form-item>
+      </el-col>
       <el-col :span="12">
         <el-form-item label="需要保级">
           <Segmented

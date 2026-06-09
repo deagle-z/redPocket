@@ -10,6 +10,7 @@ export type SysVipLevel = {
   agentTag?: string | null;
   totalRechargeCount?: number | null;
   totalRechargeAmount?: number | null;
+  totalWithdrawCount?: number | null;
   totalValidBet?: number | null;
   monthRechargeAmount?: number | null;
   monthValidBet?: number | null;
@@ -36,6 +37,7 @@ export type SysVipLevelSet = {
   agentTag?: string | null;
   totalRechargeCount?: number | null;
   totalRechargeAmount?: number | null;
+  totalWithdrawCount?: number | null;
   totalValidBet?: number | null;
   monthRechargeAmount?: number | null;
   monthValidBet?: number | null;

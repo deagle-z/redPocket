@@ -7,6 +7,7 @@ interface FormItemProps {
   agentTag: string;
   totalRechargeCount: number | null;
   totalRechargeAmount: number | null;
+  totalWithdrawCount: number | null;
   totalValidBet: number | null;
   monthRechargeAmount: number | null;
   monthValidBet: number | null;
