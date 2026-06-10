@@ -15,6 +15,9 @@ type SysVipLevel struct {
 	UpgradeBonusAmount  float64  `json:"upgradeBonusAmount" gorm:"column:upgrade_bonus_amount;type:decimal(18,2);not null;default:0;comment:升级赠送金额"`
 	UpgradeType         *int8    `json:"upgradeType" gorm:"column:upgrade_type;type:tinyint;default:1;comment:升级方式：1累计 2当月"`
 	KeepLevelCondition  *int8    `json:"keepLevelCondition" gorm:"column:keep_level_condition;type:tinyint;default:0;comment:是否需要保级（0否 1是）"`
+	WeeklySalary        *float64 `json:"weeklySalary" gorm:"column:weekly_salary;type:decimal(18,2);comment:周薪"`
+	MaxWithdrawAmount   *float64 `json:"maxWithdrawAmount" gorm:"column:max_withdraw_amount;type:decimal(18,2);comment:单笔最大提现金额"`
+	ExclusiveService    *int8    `json:"exclusiveService" gorm:"column:exclusive_service;type:tinyint;default:0;comment:是否专属客服（0否 1是）"`
 	Sort                int      `json:"sort" gorm:"column:sort;not null;default:0;comment:排序"`
 	Status              int8     `json:"status" gorm:"column:status;type:tinyint;not null;default:1;comment:状态：1启用 0禁用"`
 	Remark              *string  `json:"remark" gorm:"column:remark;type:varchar(255);comment:备注"`
@@ -49,6 +52,9 @@ type SysVipLevelSet struct {
 	UpgradeBonusAmount  float64  `json:"upgradeBonusAmount"`
 	UpgradeType         *int8    `json:"upgradeType"`
 	KeepLevelCondition  *int8    `json:"keepLevelCondition"`
+	WeeklySalary        *float64 `json:"weeklySalary"`
+	MaxWithdrawAmount   *float64 `json:"maxWithdrawAmount"`
+	ExclusiveService    *int8    `json:"exclusiveService"`
 	Sort                int      `json:"sort"`
 	Status              int8     `json:"status"`
 	Remark              *string  `json:"remark"`
@@ -72,6 +78,16 @@ type AppVipLevelSimple struct {
 	UpgradeBonusAmount float64 `json:"upgradeBonusAmount"`
 }
 
+// AppVipWeeklySalaryBack app端VIP周薪状态响应
+type AppVipWeeklySalaryBack struct {
+	Level        int     `json:"level"`
+	LevelName    string  `json:"levelName"`
+	WeeklySalary float64 `json:"weeklySalary"`
+	Claimable    bool    `json:"claimable"`   // weeklySalary>0 且本周未领
+	Claimed      bool    `json:"claimed"`     // 本周是否已领
+	NextResetAt  string  `json:"nextResetAt"` // 下周一 00:00，格式 2006-01-02 15:04:05
+}
+
 type SysVipLevelBack struct {
 	ID                  int64    `json:"id"`
 	TenantID            int64    `json:"tenantId"`
@@ -87,6 +103,9 @@ type SysVipLevelBack struct {
 	UpgradeBonusAmount  float64  `json:"upgradeBonusAmount"`
 	UpgradeType         *int8    `json:"upgradeType"`
 	KeepLevelCondition  *int8    `json:"keepLevelCondition"`
+	WeeklySalary        *float64 `json:"weeklySalary"`
+	MaxWithdrawAmount   *float64 `json:"maxWithdrawAmount"`
+	ExclusiveService    *int8    `json:"exclusiveService"`
 	Sort                int      `json:"sort"`
 	Status              int8     `json:"status"`
 	Remark              *string  `json:"remark"`

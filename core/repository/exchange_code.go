@@ -211,17 +211,9 @@ func RedeemExchangeCode(db *gorm.DB, tenantID int64, userID int64, code string) 
 	return result, err
 }
 
-func createExchangeCode(db *gorm.DB, currentUser pojo.SysUser, req pojo.ExchangeCodeSet) (pojo.ExchangeCodeBack, error) {
-	if req.Code == "" {
-		code, err := generateExchangeCode(db)
-		if err != nil {
-			return pojo.ExchangeCodeBack{}, err
-		}
-		req.Code = code
-	} else if !exchangeCodePattern.MatchString(req.Code) {
-		return pojo.ExchangeCodeBack{}, errors.New("exchange_code_format_error")
-	}
+const exchangeCodeGenerateCountMax = 500
 
+func createExchangeCode(db *gorm.DB, currentUser pojo.SysUser, req pojo.ExchangeCodeSet) (pojo.ExchangeCodeBack, error) {
 	amount := utils.Truncate2(req.Amount)
 	if amount <= 0 {
 		return pojo.ExchangeCodeBack{}, errors.New("exchange_code_amount_invalid")
@@ -237,8 +229,43 @@ func createExchangeCode(db *gorm.DB, currentUser pojo.SysUser, req pojo.Exchange
 		status = *req.Status
 	}
 
+	// 指定了固定兑换码：只能创建一个
+	if req.Code != "" {
+		if !exchangeCodePattern.MatchString(req.Code) {
+			return pojo.ExchangeCodeBack{}, errors.New("exchange_code_format_error")
+		}
+		return createSingleExchangeCode(db, currentUser, req.Code, amount, req.MaxRedeemCount, status, req.Remark)
+	}
+
+	// 随机生成：支持批量
+	count := req.GenerateCount
+	if count <= 0 {
+		count = 1
+	}
+	if count > exchangeCodeGenerateCountMax {
+		return pojo.ExchangeCodeBack{}, errors.New("exchange_code_generate_count_invalid")
+	}
+
+	var first pojo.ExchangeCodeBack
+	for i := 0; i < count; i++ {
+		code, err := generateExchangeCode(db)
+		if err != nil {
+			return pojo.ExchangeCodeBack{}, err
+		}
+		back, err := createSingleExchangeCode(db, currentUser, code, amount, req.MaxRedeemCount, status, req.Remark)
+		if err != nil {
+			return pojo.ExchangeCodeBack{}, err
+		}
+		if i == 0 {
+			first = back
+		}
+	}
+	return first, nil
+}
+
+func createSingleExchangeCode(db *gorm.DB, currentUser pojo.SysUser, code string, amount float64, maxRedeemCount int, status int8, remark string) (pojo.ExchangeCodeBack, error) {
 	var existing int64
-	if err := db.Model(&pojo.ExchangeCode{}).Where("code = ?", req.Code).Count(&existing).Error; err != nil {
+	if err := db.Model(&pojo.ExchangeCode{}).Where("code = ?", code).Count(&existing).Error; err != nil {
 		return pojo.ExchangeCodeBack{}, err
 	}
 	if existing > 0 {
@@ -246,11 +273,11 @@ func createExchangeCode(db *gorm.DB, currentUser pojo.SysUser, req pojo.Exchange
 	}
 
 	entity := pojo.ExchangeCode{
-		Code:           req.Code,
+		Code:           code,
 		Amount:         amount,
-		MaxRedeemCount: req.MaxRedeemCount,
+		MaxRedeemCount: maxRedeemCount,
 		Status:         status,
-		Remark:         req.Remark,
+		Remark:         remark,
 		CreatedBy:      currentUser.ID,
 	}
 	if err := db.Create(&entity).Error; err != nil {

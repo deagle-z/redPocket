@@ -7,7 +7,8 @@ const (
 	WithdrawFlowBatchStatusCompleted = 2
 	WithdrawFlowBatchStatusClosed    = 3
 
-	WithdrawFlowBatchSourceRechargeV2 = "recharge_v2"
+	WithdrawFlowBatchSourceRechargeV2      = "recharge_v2"
+	WithdrawFlowBatchSourceVipWeeklySalary = "vip_weekly_salary"
 
 	WithdrawFlowEventTypeGameBet            = "game_bet"
 	WithdrawFlowEventTypeLuckySend          = "lucky_send"

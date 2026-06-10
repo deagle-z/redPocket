@@ -245,6 +245,28 @@ func GetAppRechargeOrderHistory(ctx *gin.Context) {
 	utils.SuccessObjBack(ctx, repository.GetAppRechargeOrderHistory(db, userID, search))
 }
 
+// GetCurrentUserRechargeCount godoc
+//
+//	@Summary		查询当前用户充值次数
+//	@Tags			充值订单
+//	@Produce		json
+//	@Success		200	{object}	pojo.UserRechargeCountBack
+//	@Router			/api/v1/app/recharge/count [get]
+func GetCurrentUserRechargeCount(ctx *gin.Context) {
+	userIDRaw, ok := ctx.Get("userId")
+	if !ok {
+		utils.UnauthorizedBack(ctx, "token is invalid")
+		return
+	}
+	userID, ok := userIDRaw.(int64)
+	if !ok || userID <= 0 {
+		utils.UnauthorizedBack(ctx, "token is invalid")
+		return
+	}
+	db := ctx.MustGet("db").(*gorm.DB)
+	utils.SuccessObjBack(ctx, repository.GetUserRechargeCount(db, userID))
+}
+
 func GetCurrentUserPendingRechargeNotifications(ctx *gin.Context) {
 	userIDRaw, ok := ctx.Get("userId")
 	if !ok {

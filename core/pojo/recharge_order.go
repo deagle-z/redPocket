@@ -220,6 +220,11 @@ type RechargeOrderFrontendNotifyItem struct {
 	FrontendNotifyAckAt  *time.Time `json:"frontendNotifyAckAt"`
 }
 
+// UserRechargeCountBack 用户充值次数响应
+type UserRechargeCountBack struct {
+	RechargeCount int64 `json:"rechargeCount"`
+}
+
 var RechargeOrderTableName = "recharge_order"
 
 func (RechargeOrder) TableName() string {

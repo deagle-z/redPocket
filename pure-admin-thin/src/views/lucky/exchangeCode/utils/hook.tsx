@@ -146,6 +146,7 @@ export function useExchangeCode(tableRef: Ref) {
           code: row?.code ?? "",
           amount: row?.amount ?? 0,
           maxRedeemCount: row?.maxRedeemCount ?? 1,
+          generateCount: 1,
           status: row?.status === 0 ? 0 : 1,
           remark: row?.remark ?? ""
         } as FormItemProps
@@ -170,10 +171,12 @@ export function useExchangeCode(tableRef: Ref) {
                 remark: curData.remark?.trim() || ""
               });
             } else {
+              const code = curData.code?.trim() || "";
               await setExchangeCodeAdmin({
-                code: curData.code?.trim() || "",
+                code,
                 amount: Number(curData.amount || 0),
                 maxRedeemCount: Number(curData.maxRedeemCount || 0),
+                generateCount: code ? 1 : Number(curData.generateCount || 1),
                 status: curData.status,
                 remark: curData.remark?.trim() || ""
               });

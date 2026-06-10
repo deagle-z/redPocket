@@ -14,6 +14,9 @@ interface FormItemProps {
   upgradeBonusAmount: number;
   upgradeType: number;
   keepLevelCondition: number;
+  weeklySalary: number | null;
+  maxWithdrawAmount: number | null;
+  exclusiveService: number;
   sort: number;
   status: number;
   remark: string;

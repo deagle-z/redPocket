@@ -158,6 +158,42 @@ func AppGetVipProgress(ctx *gin.Context) {
 	utils.SuccessObjBack(ctx, result)
 }
 
+// AppGetVipWeeklySalary godoc
+//
+//	@Summary		查询当前用户VIP周薪状态
+//	@Tags			VIP等级
+//	@Produce		json
+//	@Success		200	{object}	pojo.AppVipWeeklySalaryBack
+//	@Router			/api/v1/app/vip/weeklySalary [get]
+func AppGetVipWeeklySalary(ctx *gin.Context) {
+	userID := ctx.MustGet("userId").(int64)
+	db := ctx.MustGet("db").(*gorm.DB)
+	result, err := repository.GetVipWeeklySalaryStatus(db, userID)
+	if err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	utils.SuccessObjBack(ctx, result)
+}
+
+// AppClaimVipWeeklySalary godoc
+//
+//	@Summary		领取当前用户VIP周薪（每个自然周一次）
+//	@Tags			VIP等级
+//	@Produce		json
+//	@Success		200	{object}	string
+//	@Router			/api/v1/app/vip/weeklySalary/claim [post]
+func AppClaimVipWeeklySalary(ctx *gin.Context) {
+	userID := ctx.MustGet("userId").(int64)
+	db := ctx.MustGet("db").(*gorm.DB)
+	hostInfo := ctx.MustGet("hostInfo").(pojo.HostInfo)
+	if err := repository.ClaimVipWeeklySalary(db, userID, hostInfo.TablePrefix); err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	utils.SuccessObjBack(ctx, "领取成功")
+}
+
 // GetSysVipLevelById godoc
 //
 //	@Summary		根据ID获取VIP等级

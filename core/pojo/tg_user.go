@@ -268,6 +268,7 @@ type TgCurrentUserInfo struct {
 	VipLevelName              *string `json:"vip_level_name"`
 	AudioOpen                 int8    `json:"audio_open"`
 	HasWithdrawAccount        bool    `json:"hasWithdrawAccount"`
+	RechargeCount             int64   `json:"rechargeCount"`
 }
 
 type TgWithdrawSummaryBack struct {

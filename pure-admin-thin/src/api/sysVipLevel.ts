@@ -17,6 +17,9 @@ export type SysVipLevel = {
   upgradeBonusAmount: number;
   upgradeType?: number | null;
   keepLevelCondition?: number | null;
+  weeklySalary?: number | null;
+  maxWithdrawAmount?: number | null;
+  exclusiveService?: number | null;
   sort: number;
   status: number;
   remark?: string | null;
@@ -44,6 +47,9 @@ export type SysVipLevelSet = {
   upgradeBonusAmount: number;
   upgradeType?: number | null;
   keepLevelCondition?: number | null;
+  weeklySalary?: number | null;
+  maxWithdrawAmount?: number | null;
+  exclusiveService?: number | null;
   sort: number;
   status: number;
   remark?: string | null;

@@ -1,9 +1,10 @@
 package pojo
 
 const (
-	VipRewardTypeUpgrade int8 = 1 // 升级奖励
-	VipRewardTypeKeep    int8 = 2 // 保级奖励
-	VipRewardTypeManual  int8 = 3 // 手动补发
+	VipRewardTypeUpgrade      int8 = 1 // 升级奖励
+	VipRewardTypeKeep         int8 = 2 // 保级奖励
+	VipRewardTypeManual       int8 = 3 // 手动补发
+	VipRewardTypeWeeklySalary int8 = 4 // 周薪
 
 	VipRewardStatusPending int8 = 0  // 待发放
 	VipRewardStatusDone    int8 = 1  // 已发放

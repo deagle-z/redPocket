@@ -21,6 +21,9 @@ const props = withDefaults(defineProps<FormProps>(), {
     upgradeBonusAmount: 0,
     upgradeType: 1,
     keepLevelCondition: 0,
+    weeklySalary: null,
+    maxWithdrawAmount: null,
+    exclusiveService: 0,
     sort: 0,
     status: 1,
     remark: ""
@@ -41,6 +44,11 @@ const upgradeTypeOptions = [
 ];
 
 const keepLevelOptions = [
+  { label: "否", value: false },
+  { label: "是", value: true }
+];
+
+const exclusiveServiceOptions = [
   { label: "否", value: false },
   { label: "是", value: true }
 ];
@@ -197,6 +205,43 @@ defineExpose({ getRef });
             class="!w-full"
             controls-position="right"
             placeholder="不限则留空"
+          />
+        </el-form-item>
+      </el-col>
+      <el-col :span="12">
+        <el-form-item label="周薪">
+          <el-input-number
+            v-model="newFormInline.weeklySalary"
+            :min="0"
+            :precision="2"
+            class="!w-full"
+            controls-position="right"
+            placeholder="不限则留空"
+          />
+        </el-form-item>
+      </el-col>
+      <el-col :span="12">
+        <el-form-item label="单笔最大提现">
+          <el-input-number
+            v-model="newFormInline.maxWithdrawAmount"
+            :min="0"
+            :precision="2"
+            class="!w-full"
+            controls-position="right"
+            placeholder="不限则留空"
+          />
+        </el-form-item>
+      </el-col>
+      <el-col :span="12">
+        <el-form-item label="专属客服">
+          <Segmented
+            :modelValue="newFormInline.exclusiveService === 1"
+            :options="exclusiveServiceOptions"
+            @change="
+              ({ option: { value } }) => {
+                newFormInline.exclusiveService = value ? 1 : 0;
+              }
+            "
           />
         </el-form-item>
       </el-col>

@@ -350,6 +350,7 @@ func InitGin() {
 		appAuthRouter.POST("/rechargeOrder", api.AppCreateRechargeOrder)
 		appAuthRouter.POST("/rechargeOrder/v2", api.AppCreateRechargeOrderV2)
 		appAuthRouter.POST("/rechargeOrder/list", api.GetAppRechargeOrderHistory)
+		appAuthRouter.GET("/recharge/count", api.GetCurrentUserRechargeCount)
 		appAuthRouter.GET("/rechargeOrder/pendingNotifications", api.GetCurrentUserPendingRechargeNotifications)
 		appAuthRouter.POST("/rechargeOrder/notifyAck", api.AckRechargeFrontendNotification)
 		appAuthRouter.GET("/recharge/isFirst", api.CheckIsFirstRecharge)
@@ -402,6 +403,8 @@ func InitGin() {
 		appAuthRouter.POST("/withdrawAccount/:id/setDefault", api.AppSetDefaultWithdrawAccount) // App端设置默认提现账户
 		appAuthRouter.GET("/vip/levels", api.AppGetVipLevels)                                    // App端获取所有VIP等级配置列表
 		appAuthRouter.GET("/vip/progress", api.AppGetVipProgress)                               // App端获取当前用户VIP进度
+		appAuthRouter.GET("/vip/weeklySalary", api.AppGetVipWeeklySalary)                        // App端查询当前用户VIP周薪状态
+		appAuthRouter.POST("/vip/weeklySalary/claim", api.AppClaimVipWeeklySalary)               // App端领取VIP周薪（每个自然周一次）
 		appAuthRouter.GET("/vip/rewards", api.AppGetClaimableVipRewards)                        // App端查询可领取VIP奖励列表
 		appAuthRouter.POST("/vip/rewards/:id/claim", api.AppClaimVipReward)                     // App端领取VIP奖励（id=0领取全部）
 		appAuthRouter.GET("/lottery/chances", api.GetLotteryChances)                            // App端查询抽奖次数

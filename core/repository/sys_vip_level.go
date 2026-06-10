@@ -503,6 +503,152 @@ func buildVipUpgradeCashHistory(userID int64, item pojo.SysVipRewardLog, running
 	}
 }
 
+func buildVipWeeklySalaryCashHistory(userID int64, item pojo.SysVipRewardLog, runningBalance float64) pojo.CashHistory {
+	return pojo.CashHistory{
+		UserId:      userID,
+		AwardUni:    fmt.Sprintf("vip_weekly_%d", item.ID),
+		Amount:      item.BonusAmount,
+		StartAmount: runningBalance,
+		EndAmount:   utils.Truncate2(runningBalance + item.BonusAmount),
+		CashMark:    "VIP周薪",
+		CashDesc:    fmt.Sprintf("领取%s周薪 %.2f", item.LevelName, item.BonusAmount),
+		Type:        pojo.CashHistoryTypeVipWeeklySalary,
+		IsGift:      1,
+		FromUserId:  0,
+	}
+}
+
+// weekStart 返回 now 所在自然周的周一 00:00（同 now 时区）。
+func weekStart(now time.Time) time.Time {
+	weekday := int(now.Weekday()) // 周日=0
+	if weekday == 0 {
+		weekday = 7
+	}
+	daysSinceMonday := weekday - 1
+	d := now.AddDate(0, 0, -daysSinceMonday)
+	return time.Date(d.Year(), d.Month(), d.Day(), 0, 0, 0, 0, now.Location())
+}
+
+// currentVipLevelRow 返回用户当前 VIP 等级对应的配置行（找不到返回 nil）。
+func currentVipLevelRow(db *gorm.DB, user pojo.TgUser) *pojo.SysVipLevel {
+	currentLevel := 0
+	if user.VipLevel != nil {
+		currentLevel = *user.VipLevel
+	}
+	levels := getActiveVipLevels(db, user.TenantId)
+	for i := range levels {
+		if levels[i].Level == currentLevel {
+			return &levels[i]
+		}
+	}
+	return nil
+}
+
+// GetVipWeeklySalaryStatus 查询当前用户VIP周薪状态（本周是否可领）。
+func GetVipWeeklySalaryStatus(db *gorm.DB, userID int64) (pojo.AppVipWeeklySalaryBack, error) {
+	var result pojo.AppVipWeeklySalaryBack
+
+	var user pojo.TgUser
+	if err := db.Where("id = ?", userID).First(&user).Error; err != nil || user.ID == 0 {
+		return result, errors.New("user_not_found")
+	}
+
+	now := time.Now()
+	start := weekStart(now)
+	result.NextResetAt = start.AddDate(0, 0, 7).Format("2006-01-02 15:04:05")
+
+	row := currentVipLevelRow(db, user)
+	if row == nil {
+		return result, nil
+	}
+	result.Level = row.Level
+	result.LevelName = row.LevelName
+	if row.WeeklySalary == nil || *row.WeeklySalary <= 0 {
+		return result, nil
+	}
+	result.WeeklySalary = utils.Truncate2(*row.WeeklySalary)
+
+	var count int64
+	db.Model(&pojo.SysVipRewardLog{}).
+		Where("user_id = ? AND vip_level = ? AND reward_type = ? AND created_at >= ?",
+			userID, row.Level, pojo.VipRewardTypeWeeklySalary, start).
+		Count(&count)
+	result.Claimed = count > 0
+	result.Claimable = !result.Claimed
+
+	return result, nil
+}
+
+// ClaimVipWeeklySalary 领取当前用户VIP周薪（同一用户/等级每个自然周仅一次）。
+func ClaimVipWeeklySalary(db *gorm.DB, userID int64, tablePrefix string) error {
+	var user pojo.TgUser
+	if err := db.Where("id = ?", userID).First(&user).Error; err != nil || user.ID == 0 {
+		return errors.New("user_not_found")
+	}
+
+	row := currentVipLevelRow(db, user)
+	if row == nil || row.WeeklySalary == nil || *row.WeeklySalary <= 0 {
+		return errors.New("vip_weekly_salary_unavailable")
+	}
+	amount := utils.Truncate2(*row.WeeklySalary)
+	start := weekStart(time.Now())
+
+	return db.Transaction(func(tx *gorm.DB) error {
+		var u pojo.TgUser
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ?", userID).First(&u).Error; err != nil {
+			return err
+		}
+
+		// 行锁内重新判重
+		var count int64
+		tx.Model(&pojo.SysVipRewardLog{}).
+			Where("user_id = ? AND vip_level = ? AND reward_type = ? AND created_at >= ?",
+				userID, row.Level, pojo.VipRewardTypeWeeklySalary, start).
+			Count(&count)
+		if count > 0 {
+			return errors.New("vip_weekly_salary_already_claimed")
+		}
+
+		// 仅入账余额；提现限制走 v2 流水批次（不使用 v1 的 gift_amount/限提余额机制）
+		if err := tx.Model(&pojo.TgUser{}).Where("id = ?", userID).Updates(map[string]any{
+			"balance": gorm.Expr("balance + ?", amount),
+		}).Error; err != nil {
+			return err
+		}
+
+		rewardLog := pojo.SysVipRewardLog{
+			TenantID:    u.TenantId,
+			UserID:      userID,
+			VipLevel:    row.Level,
+			LevelName:   row.LevelName,
+			RewardType:  pojo.VipRewardTypeWeeklySalary,
+			BonusAmount: amount,
+			Status:      pojo.VipRewardStatusDone,
+		}
+		if err := tx.Create(&rewardLog).Error; err != nil {
+			return err
+		}
+
+		// v2 提现流水批次：领取的周薪需完成 amount × 赠送倍数 的流水后方可提现
+		if err := EnsureWithdrawFlowBatchForGift(
+			tx, u,
+			pojo.WithdrawFlowBatchSourceVipWeeklySalary,
+			rewardLog.ID,
+			fmt.Sprintf("vip_weekly_%d", rewardLog.ID),
+			pojo.WithdrawFlowBatchSourceVipWeeklySalary,
+			amount,
+		); err != nil {
+			return err
+		}
+
+		history := buildVipWeeklySalaryCashHistory(userID, rewardLog, u.Balance)
+		if err := tx.Create(&history).Error; err != nil {
+			return err
+		}
+		return nil
+	})
+}
+
 // vipLevelQualifies 判断用户当前数据是否满足某 VIP 等级的升级条件。
 // nil 条件表示"无要求"，直接跳过。
 // 累计模式：充值金额（占50%）与下注流水（占50%）必须同时满足。

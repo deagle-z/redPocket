@@ -271,6 +271,13 @@ func GetCurrentUserPendingRechargeNotifications(db *gorm.DB, userID int64) ([]po
 	return result, nil
 }
 
+// GetUserRechargeCount 统计当前用户成功充值次数（status=1）
+func GetUserRechargeCount(db *gorm.DB, userID int64) pojo.UserRechargeCountBack {
+	var count int64
+	db.Model(&pojo.RechargeOrder{}).Where("user_id = ? AND status = 1", userID).Count(&count)
+	return pojo.UserRechargeCountBack{RechargeCount: count}
+}
+
 func AckRechargeFrontendNotification(db *gorm.DB, userID int64, orderNo string) error {
 	orderNo = strings.TrimSpace(orderNo)
 	if userID <= 0 || orderNo == "" {

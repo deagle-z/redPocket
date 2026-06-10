@@ -10,6 +10,7 @@ const props = withDefaults(defineProps<FormProps>(), {
     code: "",
     amount: 0,
     maxRedeemCount: 1,
+    generateCount: 1,
     status: 1,
     remark: ""
   })
@@ -39,6 +40,25 @@ defineExpose({ getRef });
         clearable
         placeholder="请输入6位数字，留空自动生成"
       />
+    </el-form-item>
+
+    <el-form-item
+      v-if="newFormInline.title === '新增' && !newFormInline.code.trim()"
+      label="生成数量"
+      prop="generateCount"
+    >
+      <el-input-number
+        v-model="newFormInline.generateCount"
+        :min="1"
+        :max="500"
+        :step="1"
+        :precision="0"
+        class="!w-full"
+        controls-position="right"
+      />
+      <div class="text-xs text-[var(--el-text-color-secondary)] mt-1">
+        留空兑换码时按此数量批量随机生成（1-500）
+      </div>
     </el-form-item>
     <el-form-item v-else label="兑换码">
       <el-input v-model="newFormInline.code" disabled />

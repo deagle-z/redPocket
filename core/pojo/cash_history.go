@@ -48,6 +48,7 @@ const (
 	CashHistoryTypeGameWin                int8 = 22 // 三方游戏派奖
 	CashHistoryTypeGameRefund             int8 = 23 // 三方游戏退回下注
 	CashHistoryTypeExchangeCodeGift       int8 = 24 // 兑换码赠送
+	CashHistoryTypeVipWeeklySalary        int8 = 25 // VIP周薪
 )
 
 type CashHistoryResp struct {

@@ -50,6 +50,7 @@ type ExchangeCodeSet struct {
 	Code           string  `json:"code"`
 	Amount         float64 `json:"amount"`
 	MaxRedeemCount int     `json:"maxRedeemCount"`
+	GenerateCount  int     `json:"generateCount"` // 随机生成时的数量（仅新增且未指定code时生效，默认1）
 	Status         *int8   `json:"status"`
 	Remark         string  `json:"remark"`
 }

@@ -935,6 +935,9 @@ func GetCurrentTgUserInfo(db *gorm.DB, accessSecret string, token string) (pojo.
 		return pojo.TgCurrentUserInfo{}, errors.New("service_busy_retry")
 	}
 
+	var rechargeCount int64
+	db.Model(&pojo.RechargeOrder{}).Where("user_id = ? AND status = 1", user.ID).Count(&rechargeCount)
+
 	return pojo.TgCurrentUserInfo{
 		Avatar:                    user.Avatar,
 		TenantId:                  user.TenantId,
@@ -960,6 +963,7 @@ func GetCurrentTgUserInfo(db *gorm.DB, accessSecret string, token string) (pojo.
 		VipLevelName:              user.VipLevelName,
 		AudioOpen:                 user.AudioOpen,
 		HasWithdrawAccount:        hasWithdrawAccount,
+		RechargeCount:             rechargeCount,
 	}, nil
 }
 

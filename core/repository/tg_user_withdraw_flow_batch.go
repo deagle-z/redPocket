@@ -74,6 +74,41 @@ func EnsureWithdrawFlowBatchForRechargeV2(tx *gorm.DB, user pojo.TgUser, order p
 	return tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&batch).Error
 }
 
+// EnsureWithdrawFlowBatchForGift 为纯赠送金额创建 v2 提现流水批次（所需流水 = 赠送额 × 赠送倍数）。
+// 复用充值赠送的 withdraw_gift_limit 倍数配置。sourceOrderNo 需全局唯一以防重复建批次。
+func EnsureWithdrawFlowBatchForGift(tx *gorm.DB, user pojo.TgUser, sourceType string, sourceID int64, sourceOrderNo string, activityCode string, giftAmount float64) error {
+	if tx == nil || user.ID <= 0 {
+		return nil
+	}
+	bonusAmount := utils.Truncate2(giftAmount)
+	if bonusAmount <= 0 {
+		return nil
+	}
+	giftMultiplier := loadWithdrawFlowBatchMultiplier(tx, "withdraw_gift_limit", 5, "v2充值赠送金额提现所需流水倍数")
+	requiredFlow := utils.Truncate2(bonusAmount * giftMultiplier)
+	if requiredFlow <= 0 {
+		return nil
+	}
+	batch := pojo.TgUserWithdrawFlowBatch{
+		TenantID:           user.TenantId,
+		UserID:             user.ID,
+		SourceType:         sourceType,
+		SourceOrderID:      sourceID,
+		SourceOrderNo:      strings.TrimSpace(sourceOrderNo),
+		ActivityType:       0,
+		ActivityCode:       activityCode,
+		CreditAmount:       0,
+		BonusAmount:        bonusAmount,
+		BaseAmount:         bonusAmount,
+		WithdrawMultiplier: 0,
+		GiftMultiplier:     giftMultiplier,
+		RequiredFlow:       requiredFlow,
+		CompletedFlow:      0,
+		Status:             pojo.WithdrawFlowBatchStatusActive,
+	}
+	return tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&batch).Error
+}
+
 func CloseActiveWithdrawFlowBatches(tx *gorm.DB, userID int64, reason string) error {
 	if tx == nil || userID <= 0 {
 		return nil

@@ -50,6 +50,22 @@ export function useSysVipLevel(tableRef: Ref) {
     { label: "当月充值", prop: "monthRechargeAmount", minWidth: 100, formatter: ({ monthRechargeAmount }) => monthRechargeAmount ?? "-" },
     { label: "当月投注", prop: "monthValidBet", minWidth: 100, formatter: ({ monthValidBet }) => monthValidBet ?? "-" },
     { label: "升级奖励", prop: "upgradeBonusAmount", minWidth: 100 },
+    { label: "周薪", prop: "weeklySalary", minWidth: 100, formatter: ({ weeklySalary }) => weeklySalary ?? "-" },
+    { label: "单笔最大提现", prop: "maxWithdrawAmount", minWidth: 110, formatter: ({ maxWithdrawAmount }) => maxWithdrawAmount ?? "-" },
+    {
+      label: "专属客服",
+      prop: "exclusiveService",
+      minWidth: 90,
+      cellRenderer: scope => (
+        <el-tag
+          size="small"
+          type={scope.row.exclusiveService === 1 ? "success" : "info"}
+          effect="plain"
+        >
+          {scope.row.exclusiveService === 1 ? "是" : "否"}
+        </el-tag>
+      )
+    },
     { label: "排序", prop: "sort", minWidth: 70 },
     {
       label: "状态",
@@ -129,6 +145,9 @@ export function useSysVipLevel(tableRef: Ref) {
           upgradeBonusAmount: row?.upgradeBonusAmount ?? 0,
           upgradeType: row?.upgradeType ?? 1,
           keepLevelCondition: row?.keepLevelCondition ?? 0,
+          weeklySalary: row?.weeklySalary ?? null,
+          maxWithdrawAmount: row?.maxWithdrawAmount ?? null,
+          exclusiveService: row?.exclusiveService ?? 0,
           sort: row?.sort ?? 0,
           status: row?.status ?? 1,
           remark: row?.remark ?? ""
@@ -162,6 +181,9 @@ export function useSysVipLevel(tableRef: Ref) {
                 upgradeBonusAmount: Number(curData.upgradeBonusAmount || 0),
                 upgradeType: curData.upgradeType,
                 keepLevelCondition: curData.keepLevelCondition,
+                weeklySalary: curData.weeklySalary,
+                maxWithdrawAmount: curData.maxWithdrawAmount,
+                exclusiveService: curData.exclusiveService,
                 sort: Number(curData.sort || 0),
                 status: curData.status,
                 remark: curData.remark.trim() || null
