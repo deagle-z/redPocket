@@ -8,6 +8,7 @@ import AddFill from "@iconify-icons/ri/add-circle-line";
 import Delete from "@iconify-icons/ep/delete";
 import EditPen from "@iconify-icons/ep/edit-pen";
 import Refresh from "@iconify-icons/ep/refresh";
+import Download from "@iconify-icons/ep/download";
 
 defineOptions({ name: "LuckyExchangeCode" });
 
@@ -20,13 +21,16 @@ const {
   columns,
   dataList,
   pagination,
+  multipleSelection,
   onSearch,
   resetForm,
   openDialog,
   handleDelete,
   handleToggleStatus,
   handleSizeChange,
-  handleCurrentChange
+  handleCurrentChange,
+  handleSelectionChange,
+  handleExport
 } = useExchangeCode(tableRef);
 </script>
 
@@ -82,10 +86,21 @@ const {
         >
           新增兑换码
         </el-button>
+        <el-button
+          type="success"
+          :icon="useRenderIcon(Download)"
+          :disabled="!multipleSelection.length"
+          @click="handleExport"
+        >
+          导出选中{{
+            multipleSelection.length ? `(${multipleSelection.length})` : ""
+          }}
+        </el-button>
       </template>
       <template v-slot="{ size, dynamicColumns }">
         <pure-table
           ref="tableRef"
+          row-key="id"
           align-whole="center"
           showOverflowTooltip
           table-layout="auto"
@@ -103,6 +118,7 @@ const {
             background: 'var(--el-fill-color-light)',
             color: 'var(--el-text-color-primary)'
           }"
+          @selection-change="handleSelectionChange"
           @page-size-change="handleSizeChange"
           @page-current-change="handleCurrentChange"
         >

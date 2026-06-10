@@ -85,6 +85,14 @@ router.beforeEach(async (to: EnhancedRouteLocation) => {
   const isPublicRoute = publicRouteNames.has(routeName) || publicRoutePaths.has(to.path)
   const isAuthPage = to.path === '/login' || to.path === '/register'
 
+  // Registration is disabled for this project — redirect any attempt to /login
+  if (to.path === '/register' || routeName === 'Register') {
+    return {
+      path: '/login',
+      replace: true,
+    }
+  }
+
   if (isLogin() && isAuthPage) {
     return {
       path: '/',

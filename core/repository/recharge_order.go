@@ -57,6 +57,8 @@ const (
 	rechargeActivityTypeFirstRecharge3Day int8 = 1
 	rechargeActivityTypeTodayFirst        int8 = 2
 	rechargeActivityTypeV2Gift            int8 = 3
+
+	rechargeV2MinAmount float64 = 100 // v2版本充值最低金额
 )
 
 var (
@@ -317,6 +319,11 @@ func appCreateRechargeOrder(db *gorm.DB, userID int64, req pojo.RechargeOrderApp
 	req.Amount = floorRechargeAmount(req.Amount)
 	if req.Amount <= 0 {
 		return result, errors.New("recharge_amount_positive")
+	}
+	if forcedActivityType != nil && *forcedActivityType == rechargeActivityTypeV2Gift && req.Amount < rechargeV2MinAmount {
+		return result, errors.New(utils.I18nMessage("recharge_v2_min_amount", map[string]interface{}{
+			"min": fmt.Sprintf("%.0f", rechargeV2MinAmount),
+		}))
 	}
 	if req.Channel == "" {
 		return result, errors.New("recharge_channel_required")

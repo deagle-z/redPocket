@@ -137,6 +137,7 @@
   "config_key_required": "configuration key cannot be empty",
   "config_key_exists": "configuration key already exists",
   "recharge_amount_positive": "recharge amount must be greater than 0",
+  "recharge_v2_min_amount": "minimum recharge amount is {{.min}}",
   "recharge_channel_required": "recharge channel cannot be empty",
   "order_not_found": "order does not exist",
   "order_not_found_with_no": "order does not exist: {{.orderNo}}",

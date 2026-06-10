@@ -137,6 +137,7 @@
   "config_key_required": "kunci konfigurasi tidak boleh kosong",
   "config_key_exists": "kunci konfigurasi sudah ada",
   "recharge_amount_positive": "jumlah isi ulang harus lebih besar dari 0",
+  "recharge_v2_min_amount": "jumlah isi ulang minimum adalah {{.min}}",
   "recharge_channel_required": "saluran isi ulang tidak boleh kosong",
   "order_not_found": "pesanan tidak ditemukan",
   "order_not_found_with_no": "pesanan tidak ditemukan: {{.orderNo}}",

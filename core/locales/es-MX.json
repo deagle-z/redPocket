@@ -137,6 +137,7 @@
   "config_key_required": "la clave de configuración no puede estar vacía",
   "config_key_exists": "la clave de configuración ya existe",
   "recharge_amount_positive": "el monto de recarga debe ser mayor que 0",
+  "recharge_v2_min_amount": "el monto mínimo de recarga es {{.min}}",
   "recharge_channel_required": "el canal de recarga no puede estar vacío",
   "order_not_found": "la orden no existe",
   "order_not_found_with_no": "la orden no existe: {{.orderNo}}",

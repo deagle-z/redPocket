@@ -24,6 +24,7 @@ export function useExchangeCode(tableRef: Ref) {
   const formRef = ref();
   const dataList = ref<ExchangeCode[]>([]);
   const loading = ref(true);
+  const multipleSelection = ref<ExchangeCode[]>([]);
   const pagination = reactive<PaginationProps>({
     total: 0,
     pageSize: 10,
@@ -32,6 +33,7 @@ export function useExchangeCode(tableRef: Ref) {
   });
 
   const columns: TableColumnList = [
+    { type: "selection", reserveSelection: true, width: 50, align: "left" },
     { label: "ID", prop: "id", width: 80 },
     { label: "兑换码", prop: "code", minWidth: 120 },
     {
@@ -194,6 +196,29 @@ export function useExchangeCode(tableRef: Ref) {
     });
   }
 
+  function handleSelectionChange(rows: ExchangeCode[]) {
+    multipleSelection.value = rows;
+  }
+
+  function handleExport() {
+    const rows = multipleSelection.value;
+    if (!rows.length) {
+      message("请先勾选要导出的兑换码", { type: "warning" });
+      return;
+    }
+    const content = rows.map(row => row.code).join("\r\n");
+    const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `兑换码_${dayjs().format("YYYYMMDD_HHmmss")}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    message(`已导出 ${rows.length} 个兑换码`, { type: "success" });
+  }
+
   onMounted(onSearch);
 
   return {
@@ -202,12 +227,15 @@ export function useExchangeCode(tableRef: Ref) {
     columns,
     dataList,
     pagination,
+    multipleSelection,
     onSearch,
     resetForm,
     openDialog,
     handleDelete,
     handleToggleStatus,
     handleSizeChange,
-    handleCurrentChange
+    handleCurrentChange,
+    handleSelectionChange,
+    handleExport
   };
 }

@@ -165,10 +165,6 @@ function goForgotPassword() {
   router.push('/resetpwd')
 }
 
-function goRegister() {
-  router.push('/register')
-}
-
 function goCustomerService() {
   router.push('/cs')
 }
@@ -279,12 +275,6 @@ function goCustomerService() {
             {{ t('login.login') }}
           </van-button>
 
-          <p class="email-signup-text">
-            {{ t('login.noAccountYet') }}
-            <button type="button" class="email-signup-link" @click="goRegister">
-              {{ t('login.signUpNow') }}
-            </button>
-          </p>
         </section>
       </section>
 
