@@ -177,7 +177,16 @@ func DelSysTenant(db *gorm.DB, id int64) (result string, err error) {
 	if dbTenant.ID == 0 {
 		return result, errors.New("record_not_found_delete")
 	}
-	err = db.Delete(&dbTenant).Error
+	err = db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Delete(&dbTenant).Error; err != nil {
+			return err
+		}
+		// 同步删除该租户下的租户用户
+		if err := tx.Where("tenant_id = ?", dbTenant.ID).Delete(&pojo.SysTenantUser{}).Error; err != nil {
+			return err
+		}
+		return nil
+	})
 	if err != nil {
 		return result, err
 	}

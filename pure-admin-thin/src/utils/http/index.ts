@@ -177,6 +177,12 @@ class PureHttp {
             return Promise.reject("Unauthorized, redirecting to login");
           }
         }
+        // 非取消请求时，对接口错误响应弹出 toast 提示
+        if (!$error.isCancelRequest) {
+          const data = error.response?.data;
+          const errorMessage = isApiResponse(data) ? data.message : undefined;
+          message(errorMessage || "请求失败", { type: "error" });
+        }
         return Promise.reject($error);
       }
     );
