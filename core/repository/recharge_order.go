@@ -58,7 +58,8 @@ const (
 	rechargeActivityTypeTodayFirst        int8 = 2
 	rechargeActivityTypeV2Gift            int8 = 3
 
-	rechargeV2MinAmount float64 = 100 // v2版本充值最低金额
+	rechargeV2MinAmount     float64 = 10 // v2版本充值最低金额
+	rechargeV2GiftMinAmount float64 = 50 // v2版本充值赠送门槛（满此金额才赠送）
 )
 
 var (
@@ -1342,6 +1343,9 @@ func rechargeV2GiftRate(orderAmount float64, isFirstRecharge bool) float64 {
 }
 
 func calculateRechargeV2GiftAmount(orderAmount float64, isFirstRecharge bool) float64 {
+	if orderAmount < rechargeV2GiftMinAmount {
+		return 0
+	}
 	rate := rechargeV2GiftRate(orderAmount, isFirstRecharge)
 	return utils.Truncate2(utils.ToMoney(orderAmount).Multiply(rate / 100).ToDollars())
 }

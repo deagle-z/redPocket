@@ -260,3 +260,22 @@ function isActive(name: string) {
   }
 }
 </style>
+
+<!--
+  Global (non-scoped) override: when the OS forces dark mode, `html.dark` sets
+  `color-scheme: dark`, which composites the tabbar's translucent layers against
+  a dark canvas and makes the bar look washed-out. Pin a fully opaque background
+  in dark mode so it stays solid.
+-->
+<style>
+html.dark .lp-tabbar.van-tabbar,
+html.dark .lp-tabbar.van-tabbar--fixed {
+  background-color: #650400 !important;
+  background-image:
+    radial-gradient(rgba(212, 175, 55, 1) 1px, transparent 1px),
+    linear-gradient(170deg, #7d0000 0%, #4e0000 58%, #2e0000 100%) !important;
+  background-size:
+    18px 18px,
+    100% 100% !important;
+}
+</style>
