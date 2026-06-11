@@ -231,6 +231,10 @@ func GetCurrentTenantServiceLinks(db *gorm.DB, tenantID int64, host string) (res
 	}
 
 	if tenantID <= 0 {
+		// 未匹配到租户时，回退到 sys_config 的 cs_url 默认客服配置
+		if fallback, ok := tenantServiceLinksFromCsURLConfig(db); ok {
+			return fallback, nil
+		}
 		return result, nil
 	}
 	tenantCacheKey := tenantServiceLinksCacheKey(tenantID, "")
@@ -250,6 +254,28 @@ func GetCurrentTenantServiceLinks(db *gorm.DB, tenantID int64, host string) (res
 	}
 	setTenantServiceLinksCache(tenantCacheKey, result)
 	return result, nil
+}
+
+// tenantServiceLinksFromCsURLConfig 读取 sys_config 的 cs_url 默认客服配置，
+// 值格式：TG客服链接|WS客服链接（用 | 分隔）。任一段非空即返回 ok=true。
+func tenantServiceLinksFromCsURLConfig(db *gorm.DB) (pojo.SysTenantServiceLinksBack, bool) {
+	var result pojo.SysTenantServiceLinksBack
+	var cfg pojo.SysConfig
+	if err := db.Where("config_key = ?", "cs_url").First(&cfg).Error; err != nil {
+		return result, false
+	}
+	parts := strings.Split(cfg.ConfigValue, "|")
+	if len(parts) > 0 {
+		if tg := strings.TrimSpace(parts[0]); tg != "" {
+			result.TgServiceURL = &tg
+		}
+	}
+	if len(parts) > 1 {
+		if ws := strings.TrimSpace(parts[1]); ws != "" {
+			result.WsServiceURL = &ws
+		}
+	}
+	return result, result.TgServiceURL != nil || result.WsServiceURL != nil
 }
 
 func ClearTenantServiceLinksCache(tenantID int64) {
