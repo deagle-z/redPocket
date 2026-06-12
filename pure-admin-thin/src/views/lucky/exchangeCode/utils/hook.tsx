@@ -177,6 +177,7 @@ export function useExchangeCode(tableRef: Ref) {
           amount: row?.amount ?? 0,
           maxRedeemCount: row?.maxRedeemCount ?? 1,
           generateCount: 1,
+          exportAfterCreate: false,
           status: row?.status === 0 ? 0 : 1,
           remark: row?.remark ?? ""
         } as FormItemProps
@@ -202,7 +203,7 @@ export function useExchangeCode(tableRef: Ref) {
               });
             } else {
               const code = curData.code?.trim() || "";
-              await setExchangeCodeAdmin({
+              const { data } = await setExchangeCodeAdmin({
                 code,
                 amount: Number(curData.amount || 0),
                 maxRedeemCount: Number(curData.maxRedeemCount || 0),
@@ -210,6 +211,13 @@ export function useExchangeCode(tableRef: Ref) {
                 status: curData.status,
                 remark: curData.remark?.trim() || ""
               });
+              if (curData.exportAfterCreate) {
+                const codes = data?.codes?.length
+                  ? data.codes
+                  : [data?.code].filter(Boolean);
+                const fileBase = data?.batchNo || dayjs().format("YYYYMMDDHHmm");
+                downloadCodesTxt(codes as string[], fileBase);
+              }
             }
             message(`${title}成功`, { type: "success" });
             done();
@@ -228,22 +236,31 @@ export function useExchangeCode(tableRef: Ref) {
     multipleSelection.value = rows;
   }
 
+  function downloadCodesTxt(codes: string[], fileBase: string) {
+    const list = (codes || []).filter(Boolean);
+    if (!list.length) return;
+    const content = list.join("\r\n");
+    const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${fileBase}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }
+
   function handleExport() {
     const rows = multipleSelection.value;
     if (!rows.length) {
       message("请先勾选要导出的兑换码", { type: "warning" });
       return;
     }
-    const content = rows.map(row => row.code).join("\r\n");
-    const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `兑换码_${dayjs().format("YYYYMMDD_HHmmss")}.txt`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    downloadCodesTxt(
+      rows.map(row => row.code),
+      `兑换码_${dayjs().format("YYYYMMDD_HHmmss")}`
+    );
     message(`已导出 ${rows.length} 个兑换码`, { type: "success" });
   }
 

@@ -59,12 +59,16 @@ func GetExchangeCodeByID(db *gorm.DB, id int64) (pojo.ExchangeCodeBack, error) {
 	return exchangeCodeToBack(entity), nil
 }
 
-func SetExchangeCode(db *gorm.DB, currentUser pojo.SysUser, req pojo.ExchangeCodeSet) (pojo.ExchangeCodeBack, error) {
+func SetExchangeCode(db *gorm.DB, currentUser pojo.SysUser, req pojo.ExchangeCodeSet) (pojo.ExchangeCodeSetResult, error) {
 	req.Code = normalizeExchangeCode(req.Code)
 	req.Remark = normalizeExchangeRemark(req.Remark)
 
 	if req.ID > 0 {
-		return updateExchangeCode(db, req)
+		back, err := updateExchangeCode(db, req)
+		if err != nil {
+			return pojo.ExchangeCodeSetResult{}, err
+		}
+		return pojo.ExchangeCodeSetResult{ExchangeCodeBack: back}, nil
 	}
 	return createExchangeCode(db, currentUser, req)
 }
@@ -247,18 +251,18 @@ func RedeemExchangeCode(db *gorm.DB, tenantID int64, userID int64, code string) 
 
 const exchangeCodeGenerateCountMax = 500
 
-func createExchangeCode(db *gorm.DB, currentUser pojo.SysUser, req pojo.ExchangeCodeSet) (pojo.ExchangeCodeBack, error) {
+func createExchangeCode(db *gorm.DB, currentUser pojo.SysUser, req pojo.ExchangeCodeSet) (pojo.ExchangeCodeSetResult, error) {
 	amount := utils.Truncate2(req.Amount)
 	if amount <= 0 {
-		return pojo.ExchangeCodeBack{}, errors.New("exchange_code_amount_invalid")
+		return pojo.ExchangeCodeSetResult{}, errors.New("exchange_code_amount_invalid")
 	}
 	if req.MaxRedeemCount <= 0 {
-		return pojo.ExchangeCodeBack{}, errors.New("exchange_code_max_count_invalid")
+		return pojo.ExchangeCodeSetResult{}, errors.New("exchange_code_max_count_invalid")
 	}
 	status := int8(1)
 	if req.Status != nil {
 		if !isEditableExchangeCodeStatus(*req.Status) {
-			return pojo.ExchangeCodeBack{}, errors.New("invalid_status")
+			return pojo.ExchangeCodeSetResult{}, errors.New("invalid_status")
 		}
 		status = *req.Status
 	}
@@ -266,9 +270,13 @@ func createExchangeCode(db *gorm.DB, currentUser pojo.SysUser, req pojo.Exchange
 	// 指定了固定兑换码：只能创建一个，不归入批次
 	if req.Code != "" {
 		if !exchangeCodePattern.MatchString(req.Code) {
-			return pojo.ExchangeCodeBack{}, errors.New("exchange_code_format_error")
+			return pojo.ExchangeCodeSetResult{}, errors.New("exchange_code_format_error")
 		}
-		return createSingleExchangeCode(db, currentUser, req.Code, amount, req.MaxRedeemCount, status, req.Remark, "")
+		back, err := createSingleExchangeCode(db, currentUser, req.Code, amount, req.MaxRedeemCount, status, req.Remark, "")
+		if err != nil {
+			return pojo.ExchangeCodeSetResult{}, err
+		}
+		return pojo.ExchangeCodeSetResult{ExchangeCodeBack: back, Codes: []string{back.Code}}, nil
 	}
 
 	// 随机生成：支持批量，同一次生成共用一个批次号（同批次一个用户仅可兑换一次）
@@ -277,25 +285,27 @@ func createExchangeCode(db *gorm.DB, currentUser pojo.SysUser, req pojo.Exchange
 		count = 1
 	}
 	if count > exchangeCodeGenerateCountMax {
-		return pojo.ExchangeCodeBack{}, errors.New("exchange_code_generate_count_invalid")
+		return pojo.ExchangeCodeSetResult{}, errors.New("exchange_code_generate_count_invalid")
 	}
 
 	batchNo := generateExchangeBatchNo()
 	var first pojo.ExchangeCodeBack
+	codes := make([]string, 0, count)
 	for i := 0; i < count; i++ {
 		code, err := generateExchangeCode(db)
 		if err != nil {
-			return pojo.ExchangeCodeBack{}, err
+			return pojo.ExchangeCodeSetResult{}, err
 		}
 		back, err := createSingleExchangeCode(db, currentUser, code, amount, req.MaxRedeemCount, status, req.Remark, batchNo)
 		if err != nil {
-			return pojo.ExchangeCodeBack{}, err
+			return pojo.ExchangeCodeSetResult{}, err
 		}
 		if i == 0 {
 			first = back
 		}
+		codes = append(codes, back.Code)
 	}
-	return first, nil
+	return pojo.ExchangeCodeSetResult{ExchangeCodeBack: first, Codes: codes}, nil
 }
 
 func generateExchangeBatchNo() string {

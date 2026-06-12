@@ -11,6 +11,7 @@ const props = withDefaults(defineProps<FormProps>(), {
     amount: 0,
     maxRedeemCount: 1,
     generateCount: 1,
+    exportAfterCreate: false,
     status: 1,
     remark: ""
   })
@@ -84,6 +85,11 @@ defineExpose({ getRef });
           class="!w-full"
           controls-position="right"
         />
+      </el-form-item>
+      <el-form-item label="创建后导出">
+        <el-checkbox v-model="newFormInline.exportAfterCreate">
+          创建成功后自动导出兑换码到 txt
+        </el-checkbox>
       </el-form-item>
     </template>
 

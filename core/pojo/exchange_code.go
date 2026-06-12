@@ -62,6 +62,12 @@ type ExchangeCodePage struct {
 	BasePageResponse[ExchangeCodeBack]
 }
 
+// ExchangeCodeSetResult 创建/更新兑换码的返回，Codes 为本次创建的全部兑换码（批量随机时多个）
+type ExchangeCodeSetResult struct {
+	ExchangeCodeBack
+	Codes []string `json:"codes"`
+}
+
 type ExchangeCodeBatchDelReq struct {
 	Ids []int64 `json:"ids" binding:"required"`
 }

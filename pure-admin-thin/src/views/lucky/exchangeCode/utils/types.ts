@@ -5,6 +5,7 @@ export interface FormItemProps {
   amount: number;
   maxRedeemCount: number;
   generateCount: number;
+  exportAfterCreate: boolean;
   status: 1 | 0;
   remark: string;
 }
