@@ -1094,7 +1094,18 @@ func TransferRebateToBalance(ctx *gin.Context) {
 			FromUserId:      0,
 			SourceChannelID: user.SourceChannelID,
 		}
-		return tx.Create(&cashHistory).Error
+		if err := tx.Create(&cashHistory).Error; err != nil {
+			return err
+		}
+		return repository.EnsureWithdrawFlowBatchForGift(
+			tx,
+			user,
+			pojo.WithdrawFlowBatchSourceRebateTransfer,
+			cashHistory.ID,
+			fmt.Sprintf("rebate_transfer_%d", cashHistory.ID),
+			pojo.WithdrawFlowBatchSourceRebateTransfer,
+			transferAmount,
+		)
 	})
 	if err != nil {
 		utils.ErrorBack(ctx, err.Error())

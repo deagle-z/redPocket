@@ -196,7 +196,9 @@ func validateGameCashTransferReq(req pojo.GameCashTransferInOutReq) (int, string
 			return game.GameCodeInvalidTransferAmount, game.ErrorMessage(game.GameCodeInvalidTransferAmount)
 		}
 		return game.GameCodeSuccess, ""
-	case "win", "refund":
+	case "win":
+		return game.GameCodeSuccess, ""
+	case "refund":
 		if req.Amount < 0 {
 			return game.GameCodeInvalidTransferAmount, game.ErrorMessage(game.GameCodeInvalidTransferAmount)
 		}
@@ -268,6 +270,10 @@ func handleGameCashTransfer(db *gorm.DB, req pojo.GameCashTransferInOutReq) (flo
 		}
 
 		amount := utils.Truncate2(req.Amount)
+		gameInfo := lookupGameCashTransferGameInfo(tx, req.GameID)
+		if code, msg := validateGameCashTransferAmount(req, amount, gameInfo.IsFishing); code != game.GameCodeSuccess {
+			return newGameCashTransferError(code, msg)
+		}
 		if amount < 0 && utils.Truncate2(user.Balance+amount) < 0 {
 			log.Printf("[game_wallet] TransferInOut insufficient balance userid=%s tid=%s userId=%d balance=%.2f amount=%.2f",
 				userID, tid, user.ID, utils.Truncate2(user.Balance), amount)
@@ -282,10 +288,10 @@ func handleGameCashTransfer(db *gorm.DB, req pojo.GameCashTransferInOutReq) (flo
 			return err
 		}
 
-		if err := createGameBetRecord(tx, user, req, amount); err != nil {
+		if err := createGameBetRecord(tx, user, req, amount, gameInfo); err != nil {
 			return err
 		}
-		betAmount, _ := gameBetRecordAmounts(req, amount)
+		betAmount, _ := gameBetRecordAmounts(req, amount, gameInfo.IsFishing)
 		if betAmount > 0 {
 			occurredAt := time.Now()
 			if req.ReqTime > 0 {
@@ -314,9 +320,9 @@ func handleGameCashTransfer(db *gorm.DB, req pojo.GameCashTransferInOutReq) (flo
 			Amount:      amount,
 			StartAmount: startBalance,
 			EndAmount:   endBalance,
-			CashMark:    gameCashTransferMark(req.Reason),
+			CashMark:    gameCashTransferMark(req.Reason, amount),
 			CashDesc:    gameCashTransferDesc(req),
-			Type:        gameCashTransferCashHistoryType(req.Reason),
+			Type:        gameCashTransferCashHistoryType(req.Reason, amount),
 		}).Error; err != nil {
 			return err
 		}
@@ -332,7 +338,37 @@ func handleGameCashTransfer(db *gorm.DB, req pojo.GameCashTransferInOutReq) (flo
 	return balance, nil
 }
 
-func createGameBetRecord(tx *gorm.DB, user pojo.TgUser, req pojo.GameCashTransferInOutReq, amount float64) error {
+func validateGameCashTransferAmount(req pojo.GameCashTransferInOutReq, amount float64, isFishingGame bool) (int, string) {
+	reason := strings.ToLower(strings.TrimSpace(req.Reason))
+	if reason == "win" && amount < 0 && !isFishingGame {
+		return game.GameCodeInvalidTransferAmount, game.ErrorMessage(game.GameCodeInvalidTransferAmount)
+	}
+	return game.GameCodeSuccess, ""
+}
+
+type gameCashTransferGameInfo struct {
+	GameName  string
+	IsFishing bool
+}
+
+func lookupGameCashTransferGameInfo(tx *gorm.DB, thirdGameID string) gameCashTransferGameInfo {
+	var appGame pojo.AppGame
+	err := tx.Model(&pojo.AppGame{}).
+		Select("game_name, category_code, type").
+		Where("third_game_id = ? AND COALESCE(deleted_flag, 0) = 0", strings.TrimSpace(thirdGameID)).
+		First(&appGame).Error
+	if err != nil {
+		return gameCashTransferGameInfo{}
+	}
+	categoryCode := strings.ToLower(strings.TrimSpace(appGameStringValue(appGame.CategoryCode)))
+	isFishing := categoryCode == "fishing" || (appGame.Type != nil && *appGame.Type == 3)
+	return gameCashTransferGameInfo{
+		GameName:  appGameStringValue(appGame.GameName),
+		IsFishing: isFishing,
+	}
+}
+
+func createGameBetRecord(tx *gorm.DB, user pojo.TgUser, req pojo.GameCashTransferInOutReq, amount float64, gameInfo gameCashTransferGameInfo) error {
 	now := time.Now()
 	if req.ReqTime > 0 {
 		now = time.UnixMilli(req.ReqTime)
@@ -341,12 +377,12 @@ func createGameBetRecord(tx *gorm.DB, user pojo.TgUser, req pojo.GameCashTransfe
 	roundID := strings.TrimSpace(req.RoundID)
 	tid := strings.TrimSpace(req.TID)
 	platformCode := "hg"
-	gameName := lookupAppGameName(tx, gameID)
+	gameName := gameInfo.GameName
 	roundEnd := 0
 	if req.IsEnd {
 		roundEnd = 1
 	}
-	betAmount, winAmount := gameBetRecordAmounts(req, amount)
+	betAmount, winAmount := gameBetRecordAmounts(req, amount, gameInfo.IsFishing)
 	uid := parseGameUserNumericUID(user.Uid)
 	remark := gameCashTransferDesc(req)
 
@@ -368,19 +404,7 @@ func createGameBetRecord(tx *gorm.DB, user pojo.TgUser, req pojo.GameCashTransfe
 	}).Error
 }
 
-func lookupAppGameName(tx *gorm.DB, thirdGameID string) string {
-	var appGame pojo.AppGame
-	err := tx.Model(&pojo.AppGame{}).
-		Select("game_name").
-		Where("third_game_id = ? AND COALESCE(deleted_flag, 0) = 0", strings.TrimSpace(thirdGameID)).
-		First(&appGame).Error
-	if err != nil || appGame.GameName == nil {
-		return ""
-	}
-	return *appGame.GameName
-}
-
-func gameBetRecordAmounts(req pojo.GameCashTransferInOutReq, amount float64) (float64, float64) {
+func gameBetRecordAmounts(req pojo.GameCashTransferInOutReq, amount float64, isFishingGame bool) (float64, float64) {
 	betAmount := utils.Truncate2(req.Bet)
 	winAmount := 0.0
 	switch strings.ToLower(strings.TrimSpace(req.Reason)) {
@@ -388,7 +412,17 @@ func gameBetRecordAmounts(req pojo.GameCashTransferInOutReq, amount float64) (fl
 		if betAmount <= 0 {
 			betAmount = utils.Truncate2(-amount)
 		}
-	case "win", "refund":
+	case "win":
+		if isFishingGame && amount < 0 {
+			if betAmount <= 0 {
+				betAmount = utils.Truncate2(-amount)
+			}
+			break
+		}
+		if amount > 0 {
+			winAmount = amount
+		}
+	case "refund":
 		if amount > 0 {
 			winAmount = amount
 		}
@@ -408,11 +442,14 @@ func gameCashTransferAwardUni(tid string) string {
 	return "game_transfer_" + strings.TrimSpace(tid)
 }
 
-func gameCashTransferCashHistoryType(reason string) int8 {
+func gameCashTransferCashHistoryType(reason string, amount float64) int8 {
 	switch strings.ToLower(strings.TrimSpace(reason)) {
 	case "bet":
 		return pojo.CashHistoryTypeGameBet
 	case "win":
+		if amount < 0 {
+			return pojo.CashHistoryTypeGameBet
+		}
 		return pojo.CashHistoryTypeGameWin
 	case "refund":
 		return pojo.CashHistoryTypeGameRefund
@@ -421,11 +458,14 @@ func gameCashTransferCashHistoryType(reason string) int8 {
 	}
 }
 
-func gameCashTransferMark(reason string) string {
+func gameCashTransferMark(reason string, amount float64) string {
 	switch strings.ToLower(strings.TrimSpace(reason)) {
 	case "bet":
 		return "游戏下注"
 	case "win":
+		if amount < 0 {
+			return "游戏下注"
+		}
 		return "游戏派奖"
 	case "refund":
 		return "游戏退款"
