@@ -83,6 +83,27 @@ func DelExchangeCodeAdmin(ctx *gin.Context) {
 	utils.SuccessObjBack(ctx, "success")
 }
 
+// BatchDelExchangeCodeAdmin 批量删除兑换码。
+func BatchDelExchangeCodeAdmin(ctx *gin.Context) {
+	var req pojo.ExchangeCodeBatchDelReq
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	if len(req.Ids) == 0 {
+		utils.ErrorBack(ctx, "invalid_params")
+		return
+	}
+
+	db := ctx.MustGet("db").(*gorm.DB)
+	deleted, err := repository.BatchDelExchangeCode(db, req.Ids)
+	if err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	utils.SuccessObjBack(ctx, gin.H{"deleted": deleted})
+}
+
 // RedeemExchangeCodeApp H5 用户兑换兑换码。
 func RedeemExchangeCodeApp(ctx *gin.Context) {
 	var req pojo.ExchangeCodeRedeemReq

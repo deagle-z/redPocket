@@ -239,6 +239,107 @@ func GetUserWithdrawFlowBatchSummary(db *gorm.DB, userID int64) (pojo.TgWithdraw
 	return result, nil
 }
 
+func GetUserWithdrawFlowBatchOverview(db *gorm.DB, userID int64) (pojo.TgWithdrawFlowBatchOverviewBack, error) {
+	var result pojo.TgWithdrawFlowBatchOverviewBack
+	if db == nil || userID <= 0 {
+		return result, errors.New("user_not_found")
+	}
+
+	var user pojo.TgUser
+	if err := db.Select("id, balance").Where("id = ?", userID).First(&user).Error; err != nil {
+		return result, err
+	}
+	if user.ID == 0 {
+		return result, errors.New("user_not_found")
+	}
+
+	totalFlow, err := GetUserTotalFlow(db, user.ID)
+	if err != nil {
+		return result, err
+	}
+
+	var totalRow struct {
+		Count         int64   `gorm:"column:count"`
+		RequiredFlow  float64 `gorm:"column:required_flow"`
+		CompletedFlow float64 `gorm:"column:completed_flow"`
+	}
+	if err := db.Model(&pojo.TgUserWithdrawFlowBatch{}).
+		Select("COUNT(*) AS count, COALESCE(SUM(required_flow), 0) AS required_flow, COALESCE(SUM(completed_flow), 0) AS completed_flow").
+		Where("user_id = ?", user.ID).
+		Scan(&totalRow).Error; err != nil {
+		return result, err
+	}
+
+	unfinished, err := getUnfinishedWithdrawFlowBatchTotals(db, user.ID)
+	if err != nil {
+		return result, err
+	}
+
+	var batches []pojo.TgUserWithdrawFlowBatch
+	if err := db.Model(&pojo.TgUserWithdrawFlowBatch{}).
+		Where("user_id = ?", user.ID).
+		Order("id desc").
+		Limit(100).
+		Find(&batches).Error; err != nil {
+		return result, err
+	}
+
+	result.UserID = user.ID
+	result.Balance = utils.Truncate2(user.Balance)
+	result.TotalFlow = totalFlow
+	result.TotalRequiredFlow = utils.Truncate2(totalRow.RequiredFlow)
+	result.TotalCompletedFlow = utils.Truncate2(totalRow.CompletedFlow)
+	result.HasUnfinishedBatch = unfinished.Count > 0
+	result.UnfinishedRequiredFlow = unfinished.RequiredFlow
+	result.UnfinishedCompletedFlow = unfinished.CompletedFlow
+	result.UnfinishedRemainingFlow = unfinished.RemainingFlow
+	result.BatchCount = totalRow.Count
+	result.UnfinishedBatchCount = unfinished.Count
+	result.Batches = make([]pojo.TgWithdrawFlowBatchBack, 0, len(batches))
+	for _, batch := range batches {
+		result.Batches = append(result.Batches, buildWithdrawFlowBatchBack(batch))
+	}
+	return result, nil
+}
+
+func buildWithdrawFlowBatchBack(batch pojo.TgUserWithdrawFlowBatch) pojo.TgWithdrawFlowBatchBack {
+	requiredFlow := utils.Truncate2(batch.RequiredFlow)
+	completedFlow := utils.Truncate2(batch.CompletedFlow)
+	progressPercent := 0.0
+	if requiredFlow > 0 {
+		progressPercent = utils.Truncate2(completedFlow / requiredFlow * 100)
+		if progressPercent > 100 {
+			progressPercent = 100
+		}
+	}
+	return pojo.TgWithdrawFlowBatchBack{
+		ID:                 batch.ID,
+		CreatedAt:          batch.CreatedAt,
+		UpdatedAt:          batch.UpdatedAt,
+		TenantID:           batch.TenantID,
+		UserID:             batch.UserID,
+		SourceType:         batch.SourceType,
+		SourceOrderID:      batch.SourceOrderID,
+		SourceOrderNo:      batch.SourceOrderNo,
+		ActivityType:       batch.ActivityType,
+		ActivityCode:       batch.ActivityCode,
+		CreditAmount:       utils.Truncate2(batch.CreditAmount),
+		BonusAmount:        utils.Truncate2(batch.BonusAmount),
+		BaseAmount:         utils.Truncate2(batch.BaseAmount),
+		WithdrawMultiplier: utils.Truncate2(batch.WithdrawMultiplier),
+		GiftMultiplier:     utils.Truncate2(batch.GiftMultiplier),
+		RequiredFlow:       requiredFlow,
+		CompletedFlow:      completedFlow,
+		RemainingFlow:      clampNonNegative(requiredFlow - completedFlow),
+		ProgressPercent:    progressPercent,
+		Status:             batch.Status,
+		ClosedReason:       batch.ClosedReason,
+		CompletedAt:        batch.CompletedAt,
+		ClosedAt:           batch.ClosedAt,
+		LastFlowAt:         batch.LastFlowAt,
+	}
+}
+
 func EnsureNoUnfinishedWithdrawFlowBatches(tx *gorm.DB, userID int64) error {
 	summary, err := getUnfinishedWithdrawFlowBatchTotals(tx, userID)
 	if err != nil {

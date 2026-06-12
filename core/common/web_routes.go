@@ -150,6 +150,10 @@ func InitGin() {
 		adminGroup.POST("/withdrawOrderBr/list", api.GetWithdrawOrderBrs)                             // 获取巴西提现订单列表
 		adminGroup.GET("/withdrawOrderBr/:id", api.GetWithdrawOrderBrById)                            // 获取巴西提现订单详情
 		adminGroup.GET("/tgUser/:id/withdrawActivityFlow", api.GetTgUserWithdrawActivityFlowById)     // 查询用户提现活动和流水进度
+		adminGroup.GET(
+			"/tgUser/:id/withdrawFlowBatchOverview",
+			api.GetTgUserWithdrawFlowBatchOverviewById,
+		) // 查询用户v2提现流水批次完成情况
 		adminGroup.POST("/payChannel/list", api.GetPayChannels)                                       // 获取支付通道列表
 		adminGroup.GET("/payChannel/:id", api.GetPayChannelById)                                      // 获取支付通道详情
 		adminGroup.POST("/sysCountry/list", api.GetSysCountries)
@@ -245,6 +249,7 @@ func InitGin() {
 		adminGroupLog.DELETE("/sysConfig/:id", api.DelSysConfig)
 		adminGroupLog.POST("/exchangeCode", api.SetExchangeCodeAdmin)
 		adminGroupLog.DELETE("/exchangeCode/:id", api.DelExchangeCodeAdmin)
+		adminGroupLog.POST("/exchangeCode/batchDel", api.BatchDelExchangeCodeAdmin)
 		adminGroupLog.POST("/sysCustomField", api.SetSysCustomField)
 		adminGroupLog.DELETE("/sysCustomField/:id", api.DelSysCustomField)
 		adminGroupLog.POST("/platformProfitLedger", api.SetPlatformProfitLedger)

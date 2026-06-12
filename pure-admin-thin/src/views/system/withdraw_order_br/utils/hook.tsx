@@ -4,10 +4,13 @@ import { addDialog } from "@/components/ReDialog";
 import type { PaginationProps } from "@pureadmin/table";
 import {
   getTgUserWithdrawActivityFlowAdmin,
+  getTgUserWithdrawFlowBatchOverviewAdmin,
   getWithdrawOrderBrListAdmin,
   setWithdrawOrderBr,
   type WithdrawActivityFlow,
   type WithdrawActivityFlowCycle,
+  type WithdrawFlowBatch,
+  type WithdrawFlowBatchOverview,
   type WithdrawOrderBr
 } from "@/api/withdrawOrderBr";
 import { getSysPayChannelList, type SysPayChannel } from "@/api/sysPayChannel";
@@ -85,6 +88,31 @@ function getActivityStatusType(status: number) {
   return status === 1 ? "success" : "info";
 }
 
+function getFlowBatchSourceLabel(sourceType: string) {
+  if (sourceType === "recharge_v2") return "V2充值";
+  if (sourceType === "vip_weekly_salary") return "VIP周薪";
+  return sourceType || "-";
+}
+
+function getFlowBatchStatusLabel(status: number) {
+  if (status === 1) return "进行中";
+  if (status === 2) return "已完成";
+  if (status === 3) return "已关闭";
+  return "-";
+}
+
+function getFlowBatchStatusType(status: number) {
+  if (status === 2) return "success";
+  if (status === 1) return "warning";
+  if (status === 3) return "info";
+  return "info";
+}
+
+function getFlowBatchClosedReasonLabel(reason: string) {
+  if (reason === "balance_below_threshold") return "余额低于阈值";
+  return reason || "-";
+}
+
 function renderActivityOverview(data: WithdrawActivityFlow) {
   const active = data.activeActivity;
 
@@ -159,6 +187,86 @@ function activityTableRows(data: WithdrawActivityFlow) {
     startedAtText: formatDateTime(item.startedAt),
     endedAtText: formatDateTime(item.endedAt)
   }));
+}
+
+function flowBatchTableRows(data: WithdrawFlowBatchOverview) {
+  return (data.batches || []).map(item => ({
+    ...item,
+    sourceTypeText: getFlowBatchSourceLabel(item.sourceType),
+    statusText: getFlowBatchStatusLabel(item.status),
+    closedReasonText: getFlowBatchClosedReasonLabel(item.closedReason),
+    createdAtText: formatDateTime(item.createdAt),
+    completedAtText: formatDateTime(item.completedAt),
+    closedAtText: formatDateTime(item.closedAt),
+    lastFlowAtText: formatDateTime(item.lastFlowAt)
+  }));
+}
+
+function renderFlowBatchOverview(data: WithdrawFlowBatchOverview) {
+  const unfinishedPercent =
+    data.unfinishedRequiredFlow > 0
+      ? Math.min(
+          100,
+          Number(
+            (
+              (data.unfinishedCompletedFlow / data.unfinishedRequiredFlow) *
+              100
+            ).toFixed(2)
+          )
+        )
+      : 100;
+
+  return (
+    <div class="space-y-4">
+      <ElDescriptions border column={3} size="small">
+        <ElDescriptionsItem label="用户ID">{data.userId}</ElDescriptionsItem>
+        <ElDescriptionsItem label="账户余额">
+          {formatMoney(data.balance)}
+        </ElDescriptionsItem>
+        <ElDescriptionsItem label="总流水">
+          {formatMoney(data.totalFlow)}
+        </ElDescriptionsItem>
+        <ElDescriptionsItem label="批次数">
+          {formatMoney(data.batchCount)}
+        </ElDescriptionsItem>
+        <ElDescriptionsItem label="总要求流水">
+          {formatMoney(data.totalRequiredFlow)}
+        </ElDescriptionsItem>
+        <ElDescriptionsItem label="总完成流水">
+          {formatMoney(data.totalCompletedFlow)}
+        </ElDescriptionsItem>
+      </ElDescriptions>
+
+      <div class="rounded border border-[var(--el-border-color)] p-4">
+        <div class="mb-3 flex items-center justify-between">
+          <span class="text-sm font-medium text-[var(--el-text-color-primary)]">
+            未完成批次流水进度
+          </span>
+          {data.hasUnfinishedBatch ? (
+            <ElTag type="warning" effect="plain">
+              {data.unfinishedBatchCount} 个未完成
+            </ElTag>
+          ) : (
+            <ElTag type="success" effect="plain">
+              全部完成
+            </ElTag>
+          )}
+        </div>
+        <ElProgress percentage={unfinishedPercent} strokeWidth={10} />
+        <ElDescriptions class="mt-4" border column={3} size="small">
+          <ElDescriptionsItem label="未完成要求">
+            {formatMoney(data.unfinishedRequiredFlow)}
+          </ElDescriptionsItem>
+          <ElDescriptionsItem label="未完成已做">
+            {formatMoney(data.unfinishedCompletedFlow)}
+          </ElDescriptionsItem>
+          <ElDescriptionsItem label="未完成剩余">
+            {formatMoney(data.unfinishedRemainingFlow)}
+          </ElDescriptionsItem>
+        </ElDescriptions>
+      </div>
+    </div>
+  );
 }
 
 export function useWithdrawOrderBr(tableRef: Ref) {
@@ -274,7 +382,7 @@ export function useWithdrawOrderBr(tableRef: Ref) {
     {
       label: "操作",
       fixed: "right",
-      width: 260,
+      width: 340,
       slot: "operation"
     }
   ];
@@ -625,6 +733,154 @@ export function useWithdrawOrderBr(tableRef: Ref) {
     }
   }
 
+  async function showWithdrawFlowBatchV2(row: WithdrawOrderBr) {
+    if (!row.userId) {
+      message("该订单缺少用户ID", { type: "warning" });
+      return;
+    }
+
+    try {
+      const { data } = await getTgUserWithdrawFlowBatchOverviewAdmin(
+        row.userId
+      );
+      const rows = flowBatchTableRows(data);
+
+      addDialog({
+        title: `用户 ${row.userUid || row.userId} V2提现流水批次`,
+        width: "1080px",
+        draggable: true,
+        hideFooter: true,
+        contentRenderer: () => (
+          <div class="max-h-[72vh] overflow-auto pr-1">
+            {renderFlowBatchOverview(data)}
+            <div class="mt-4">
+              {rows.length ? (
+                <ElTable data={rows} border size="small">
+                  <ElTableColumn
+                    label="批次来源"
+                    minWidth={120}
+                    v-slots={{
+                      default: ({ row: item }: { row: WithdrawFlowBatch }) => (
+                        <ElTag effect="plain">
+                          {getFlowBatchSourceLabel(item.sourceType)}
+                        </ElTag>
+                      )
+                    }}
+                  />
+                  <ElTableColumn
+                    prop="sourceOrderNo"
+                    label="来源订单"
+                    minWidth={170}
+                    showOverflowTooltip={true}
+                  />
+                  <ElTableColumn
+                    prop="activityCode"
+                    label="活动"
+                    minWidth={140}
+                    showOverflowTooltip={true}
+                    v-slots={{
+                      default: ({ row: item }: { row: WithdrawFlowBatch }) =>
+                        item.activityCode || "-"
+                    }}
+                  />
+                  <ElTableColumn
+                    prop="baseAmount"
+                    label="基准金额"
+                    width={110}
+                    v-slots={{
+                      default: ({ row: item }: { row: WithdrawFlowBatch }) =>
+                        formatMoney(item.baseAmount)
+                    }}
+                  />
+                  <ElTableColumn
+                    prop="requiredFlow"
+                    label="要求流水"
+                    width={110}
+                    v-slots={{
+                      default: ({ row: item }: { row: WithdrawFlowBatch }) =>
+                        formatMoney(item.requiredFlow)
+                    }}
+                  />
+                  <ElTableColumn
+                    prop="completedFlow"
+                    label="完成流水"
+                    width={110}
+                    v-slots={{
+                      default: ({ row: item }: { row: WithdrawFlowBatch }) =>
+                        formatMoney(item.completedFlow)
+                    }}
+                  />
+                  <ElTableColumn
+                    prop="remainingFlow"
+                    label="剩余流水"
+                    width={110}
+                    v-slots={{
+                      default: ({ row: item }: { row: WithdrawFlowBatch }) =>
+                        formatMoney(item.remainingFlow)
+                    }}
+                  />
+                  <ElTableColumn
+                    prop="progressPercent"
+                    label="进度"
+                    width={170}
+                    v-slots={{
+                      default: ({ row: item }: { row: WithdrawFlowBatch }) => (
+                        <ElProgress
+                          percentage={Math.min(
+                            100,
+                            Number(item.progressPercent || 0)
+                          )}
+                        />
+                      )
+                    }}
+                  />
+                  <ElTableColumn
+                    label="状态"
+                    width={90}
+                    v-slots={{
+                      default: ({ row: item }: { row: WithdrawFlowBatch }) => (
+                        <ElTag
+                          type={getFlowBatchStatusType(item.status)}
+                          effect="plain"
+                        >
+                          {getFlowBatchStatusLabel(item.status)}
+                        </ElTag>
+                      )
+                    }}
+                  />
+                  <ElTableColumn
+                    prop="lastFlowAtText"
+                    label="最后流水"
+                    minWidth={160}
+                  />
+                  <ElTableColumn
+                    prop="completedAtText"
+                    label="完成时间"
+                    minWidth={160}
+                  />
+                  <ElTableColumn
+                    label="关闭原因"
+                    minWidth={130}
+                    showOverflowTooltip={true}
+                    v-slots={{
+                      default: ({ row: item }: { row: WithdrawFlowBatch }) =>
+                        getFlowBatchClosedReasonLabel(item.closedReason)
+                    }}
+                  />
+                </ElTable>
+              ) : (
+                <ElEmpty description="暂无V2提现流水批次" />
+              )}
+            </div>
+          </div>
+        )
+      });
+    } catch (error) {
+      console.error("获取V2提现流水批次失败", error);
+      message("获取V2提现流水批次失败", { type: "error" });
+    }
+  }
+
   onMounted(() => {
     onSearch();
   });
@@ -643,6 +899,7 @@ export function useWithdrawOrderBr(tableRef: Ref) {
     handleSelectionChange,
     approveOrder,
     rejectOrder,
-    showWithdrawActivityFlow
+    showWithdrawActivityFlow,
+    showWithdrawFlowBatchV2
   };
 }

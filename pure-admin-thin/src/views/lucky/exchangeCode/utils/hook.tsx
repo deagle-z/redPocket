@@ -6,7 +6,9 @@ import { addDialog } from "@/components/ReDialog";
 import { deviceDetection } from "@pureadmin/utils";
 import type { PaginationProps } from "@pureadmin/table";
 import type { FormItemProps } from "./types";
+import { ElMessageBox } from "element-plus";
 import {
+  batchDelExchangeCodeAdmin,
   delExchangeCodeAdmin,
   getExchangeCodeListAdmin,
   setExchangeCodeAdmin,
@@ -54,6 +56,12 @@ export function useExchangeCode(tableRef: Ref) {
             Number(row.maxRedeemCount || 0) - Number(row.redeemCount || 0)
           )
         )
+    },
+    {
+      label: "批次号",
+      prop: "batchNo",
+      minWidth: 140,
+      formatter: ({ batchNo }) => batchNo || "-"
     },
     {
       label: "状态",
@@ -124,6 +132,26 @@ export function useExchangeCode(tableRef: Ref) {
   async function handleDelete(row: ExchangeCode) {
     await delExchangeCodeAdmin(row.id);
     message(`已删除兑换码 [${row.code}]`, { type: "success" });
+    onSearch();
+  }
+
+  async function handleBatchDelete() {
+    const rows = multipleSelection.value;
+    if (!rows.length) {
+      message("请先勾选要删除的兑换码", { type: "warning" });
+      return;
+    }
+    try {
+      await ElMessageBox.confirm(
+        `确认删除选中的 ${rows.length} 个兑换码吗？`,
+        "批量删除",
+        { type: "warning" }
+      );
+    } catch {
+      return;
+    }
+    await batchDelExchangeCodeAdmin(rows.map(row => row.id));
+    message(`已删除 ${rows.length} 个兑换码`, { type: "success" });
     onSearch();
   }
 
@@ -236,6 +264,7 @@ export function useExchangeCode(tableRef: Ref) {
     handleSizeChange,
     handleCurrentChange,
     handleSelectionChange,
-    handleExport
+    handleExport,
+    handleBatchDelete
   };
 }

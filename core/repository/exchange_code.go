@@ -77,6 +77,20 @@ func DelExchangeCode(db *gorm.DB, id int64) error {
 	return db.Model(&pojo.ExchangeCode{}).Where("id = ?", id).Update("status", -1).Error
 }
 
+// BatchDelExchangeCode 批量软删除兑换码，返回实际删除数量。
+func BatchDelExchangeCode(db *gorm.DB, ids []int64) (int64, error) {
+	if len(ids) == 0 {
+		return 0, errors.New("invalid_params")
+	}
+	result := db.Model(&pojo.ExchangeCode{}).
+		Where("id IN ? AND status <> ?", ids, -1).
+		Update("status", -1)
+	if result.Error != nil {
+		return 0, result.Error
+	}
+	return result.RowsAffected, nil
+}
+
 func RedeemExchangeCode(db *gorm.DB, tenantID int64, userID int64, code string) (pojo.ExchangeCodeRedeemBack, error) {
 	code = normalizeExchangeCode(code)
 	if !exchangeCodePattern.MatchString(code) {
@@ -140,6 +154,17 @@ func RedeemExchangeCode(db *gorm.DB, tenantID int64, userID int64, code string) 
 			return errors.New("exchange_code_already_redeemed")
 		}
 
+		// 同一批次：一个用户只能兑换一次
+		if exchange.BatchNo != "" {
+			batchRedeemed, err := hasUserRedeemedExchangeBatch(tx, exchange.BatchNo, userID)
+			if err != nil {
+				return err
+			}
+			if batchRedeemed {
+				return errors.New("exchange_code_batch_already_redeemed")
+			}
+		}
+
 		amount := utils.Truncate2(exchange.Amount)
 		if amount <= 0 {
 			return errors.New("exchange_code_amount_invalid")
@@ -178,6 +203,7 @@ func RedeemExchangeCode(db *gorm.DB, tenantID int64, userID int64, code string) 
 		record := pojo.ExchangeCodeRedeem{
 			CodeID:          exchange.ID,
 			Code:            exchange.Code,
+			BatchNo:         exchange.BatchNo,
 			UserID:          userID,
 			TenantID:        tenantID,
 			Amount:          amount,
@@ -229,15 +255,15 @@ func createExchangeCode(db *gorm.DB, currentUser pojo.SysUser, req pojo.Exchange
 		status = *req.Status
 	}
 
-	// 指定了固定兑换码：只能创建一个
+	// 指定了固定兑换码：只能创建一个，不归入批次
 	if req.Code != "" {
 		if !exchangeCodePattern.MatchString(req.Code) {
 			return pojo.ExchangeCodeBack{}, errors.New("exchange_code_format_error")
 		}
-		return createSingleExchangeCode(db, currentUser, req.Code, amount, req.MaxRedeemCount, status, req.Remark)
+		return createSingleExchangeCode(db, currentUser, req.Code, amount, req.MaxRedeemCount, status, req.Remark, "")
 	}
 
-	// 随机生成：支持批量
+	// 随机生成：支持批量，同一次生成共用一个批次号（同批次一个用户仅可兑换一次）
 	count := req.GenerateCount
 	if count <= 0 {
 		count = 1
@@ -246,13 +272,14 @@ func createExchangeCode(db *gorm.DB, currentUser pojo.SysUser, req pojo.Exchange
 		return pojo.ExchangeCodeBack{}, errors.New("exchange_code_generate_count_invalid")
 	}
 
+	batchNo := generateExchangeBatchNo()
 	var first pojo.ExchangeCodeBack
 	for i := 0; i < count; i++ {
 		code, err := generateExchangeCode(db)
 		if err != nil {
 			return pojo.ExchangeCodeBack{}, err
 		}
-		back, err := createSingleExchangeCode(db, currentUser, code, amount, req.MaxRedeemCount, status, req.Remark)
+		back, err := createSingleExchangeCode(db, currentUser, code, amount, req.MaxRedeemCount, status, req.Remark, batchNo)
 		if err != nil {
 			return pojo.ExchangeCodeBack{}, err
 		}
@@ -263,7 +290,11 @@ func createExchangeCode(db *gorm.DB, currentUser pojo.SysUser, req pojo.Exchange
 	return first, nil
 }
 
-func createSingleExchangeCode(db *gorm.DB, currentUser pojo.SysUser, code string, amount float64, maxRedeemCount int, status int8, remark string) (pojo.ExchangeCodeBack, error) {
+func generateExchangeBatchNo() string {
+	return fmt.Sprintf("B%d%s", time.Now().UnixNano(), strings.ToUpper(utils.RandomString(4)))
+}
+
+func createSingleExchangeCode(db *gorm.DB, currentUser pojo.SysUser, code string, amount float64, maxRedeemCount int, status int8, remark string, batchNo string) (pojo.ExchangeCodeBack, error) {
 	var existing int64
 	if err := db.Model(&pojo.ExchangeCode{}).Where("code = ?", code).Count(&existing).Error; err != nil {
 		return pojo.ExchangeCodeBack{}, err
@@ -276,6 +307,7 @@ func createSingleExchangeCode(db *gorm.DB, currentUser pojo.SysUser, code string
 		Code:           code,
 		Amount:         amount,
 		MaxRedeemCount: maxRedeemCount,
+		BatchNo:        batchNo,
 		Status:         status,
 		Remark:         remark,
 		CreatedBy:      currentUser.ID,
@@ -336,6 +368,17 @@ func hasUserRedeemedExchangeCode(tx *gorm.DB, codeID int64, userID int64) (bool,
 	return count > 0, err
 }
 
+func hasUserRedeemedExchangeBatch(tx *gorm.DB, batchNo string, userID int64) (bool, error) {
+	if batchNo == "" {
+		return false, nil
+	}
+	var count int64
+	err := tx.Model(&pojo.ExchangeCodeRedeem{}).
+		Where("batch_no = ? AND user_id = ?", batchNo, userID).
+		Count(&count).Error
+	return count > 0, err
+}
+
 func exchangeCodeToBack(entity pojo.ExchangeCode) pojo.ExchangeCodeBack {
 	return pojo.ExchangeCodeBack{
 		ID:             entity.ID,
@@ -345,6 +388,7 @@ func exchangeCodeToBack(entity pojo.ExchangeCode) pojo.ExchangeCodeBack {
 		Amount:         utils.Truncate2(entity.Amount),
 		MaxRedeemCount: entity.MaxRedeemCount,
 		RedeemCount:    entity.RedeemCount,
+		BatchNo:        entity.BatchNo,
 		Status:         entity.Status,
 		Remark:         entity.Remark,
 		CreatedBy:      entity.CreatedBy,

@@ -30,7 +30,8 @@ const {
   handleSelectionChange,
   approveOrder,
   rejectOrder,
-  showWithdrawActivityFlow
+  showWithdrawActivityFlow,
+  showWithdrawFlowBatchV2
 } = useWithdrawOrderBr(tableRef);
 </script>
 
@@ -152,6 +153,16 @@ const {
             @selection-change="handleSelectionChange"
           >
             <template #operation="{ row }">
+              <el-button
+                class="reset-margin"
+                link
+                type="primary"
+                :size="size"
+                :icon="useRenderIcon('ri:bar-chart-box-line')"
+                @click="showWithdrawFlowBatchV2(row)"
+              >
+                V2流水
+              </el-button>
               <el-button
                 class="reset-margin"
                 link

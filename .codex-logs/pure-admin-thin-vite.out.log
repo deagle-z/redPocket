@@ -1,0 +1,22 @@
+╭─────────────────────────────────────────────╮
+│ 您好! 欢迎使用 pure-admin 开源项目          │
+│ 我们为您精心准备了下面两个贴心的保姆级文档  │
+│ https://pure-admin.cn                       │
+│ https://pure-admin-utils.netlify.app        │
+╰─────────────────────────────────────────────╯
+
+  [32m[1mVITE[22m v6.1.0[39m  [2mready in [0m[1m2668[22m[2m[0m ms[22m
+
+  [32m➜[39m  [1mLocal[22m:   [36mhttp://localhost:[1m8848[22m/[39m
+  [32m➜[39m  [1mNetwork[22m: [36mhttp://198.18.0.1:[1m8848[22m/[39m
+  [32m➜[39m  [1mNetwork[22m: [36mhttp://192.168.56.1:[1m8848[22m/[39m
+  [32m➜[39m  [1mNetwork[22m: [36mhttp://192.168.103.2:[1m8848[22m/[39m
+  [32m➜[39m  [1mNetwork[22m: [36mhttp://192.168.203.1:[1m8848[22m/[39m
+  [32m➜[39m  [1mNetwork[22m: [36mhttp://192.168.1.1:[1m8848[22m/[39m
+  [32m➜[39m  [1mNetwork[22m: [36mhttp://192.168.50.103:[1m8848[22m/[39m
+[2m00:33:06[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/api/exchangeCode.ts[22m
+[2m00:33:19[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/views/lucky/exchangeCode/utils/hook.tsx[22m
+[2m00:33:35[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/views/lucky/exchangeCode/utils/hook.tsx[22m
+[2m00:33:46[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/views/lucky/exchangeCode/utils/hook.tsx[22m
+[2m00:33:58[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/views/lucky/exchangeCode/index.vue[22m
+[2m00:34:12[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/views/lucky/exchangeCode/index.vue[22m

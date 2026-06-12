@@ -30,7 +30,8 @@ const {
   handleSizeChange,
   handleCurrentChange,
   handleSelectionChange,
-  handleExport
+  handleExport,
+  handleBatchDelete
 } = useExchangeCode(tableRef);
 </script>
 
@@ -93,6 +94,16 @@ const {
           @click="handleExport"
         >
           导出选中{{
+            multipleSelection.length ? `(${multipleSelection.length})` : ""
+          }}
+        </el-button>
+        <el-button
+          type="danger"
+          :icon="useRenderIcon(Delete)"
+          :disabled="!multipleSelection.length"
+          @click="handleBatchDelete"
+        >
+          批量删除{{
             multipleSelection.length ? `(${multipleSelection.length})` : ""
           }}
         </el-button>

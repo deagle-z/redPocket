@@ -1,0 +1,8 @@
+[WARN] The "pnpm" field in package.json is no longer read by pnpm. The following keys were ignored: "pnpm.allowedDeprecatedVersions", "pnpm.peerDependencyRules". See https://pnpm.io/settings for the new home of each setting.
+$ set NODE_OPTIONS=--max-old-space-size=4096 && vite "--" "--host" "127.0.0.1"
+[2m00:32:52[22m [31m[1m[vite-plugin-fake-server][22m[39m [31mfailed to load module from mock/refreshToken.ts[39m
+[2m00:32:52[22m [31m[1m[vite-plugin-fake-server][22m[39m [31mfailed to load module from mock/asyncRoutes.ts[39m
+[2m00:32:52[22m [31m[1m[vite-plugin-fake-server][22m[39m [31mfailed to load module from mock/login.ts[39m
+Browserslist: browsers data (caniuse-lite) is 16 months old. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme

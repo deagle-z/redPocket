@@ -132,6 +132,55 @@ export type WithdrawActivityFlowResult = {
   data: WithdrawActivityFlow;
 };
 
+export type WithdrawFlowBatch = {
+  id: number;
+  createdAt: string;
+  updatedAt: string;
+  tenantId: number;
+  userId: number;
+  sourceType: string;
+  sourceOrderId: number;
+  sourceOrderNo: string;
+  activityType: number;
+  activityCode: string;
+  creditAmount: number;
+  bonusAmount: number;
+  baseAmount: number;
+  withdrawMultiplier: number;
+  giftMultiplier: number;
+  requiredFlow: number;
+  completedFlow: number;
+  remainingFlow: number;
+  progressPercent: number;
+  status: number;
+  closedReason: string;
+  completedAt?: string | null;
+  closedAt?: string | null;
+  lastFlowAt?: string | null;
+};
+
+export type WithdrawFlowBatchOverview = {
+  userId: number;
+  balance: number;
+  totalFlow: number;
+  totalRequiredFlow: number;
+  totalCompletedFlow: number;
+  hasUnfinishedBatch: boolean;
+  unfinishedRequiredFlow: number;
+  unfinishedCompletedFlow: number;
+  unfinishedRemainingFlow: number;
+  batchCount: number;
+  unfinishedBatchCount: number;
+  batches: WithdrawFlowBatch[];
+};
+
+export type WithdrawFlowBatchOverviewResult = {
+  code: number;
+  message: string;
+  success: boolean;
+  data: WithdrawFlowBatchOverview;
+};
+
 export const getWithdrawOrderBrListAdmin = (data: WithdrawOrderBrSearch) => {
   return http.request<WithdrawOrderBrListResult>(
     "post",
@@ -152,5 +201,12 @@ export const getTgUserWithdrawActivityFlowAdmin = (userId: number) => {
   return http.request<WithdrawActivityFlowResult>(
     "get",
     `/api/v1/admin/tgUser/${userId}/withdrawActivityFlow`
+  );
+};
+
+export const getTgUserWithdrawFlowBatchOverviewAdmin = (userId: number) => {
+  return http.request<WithdrawFlowBatchOverviewResult>(
+    "get",
+    `/api/v1/admin/tgUser/${userId}/withdrawFlowBatchOverview`
   );
 };

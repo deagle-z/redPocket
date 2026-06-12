@@ -38,7 +38,7 @@ type TgUserWithdrawFlowBatch struct {
 	ClosedReason       string     `json:"closedReason" gorm:"column:closed_reason;type:varchar(64);not null;default:''"`
 	CompletedAt        *time.Time `json:"completedAt" gorm:"column:completed_at;type:datetime(3)"`
 	ClosedAt           *time.Time `json:"closedAt" gorm:"column:closed_at;type:datetime(3)"`
-	LastFlowAt          *time.Time `json:"lastFlowAt" gorm:"column:last_flow_at;type:datetime(3)"`
+	LastFlowAt         *time.Time `json:"lastFlowAt" gorm:"column:last_flow_at;type:datetime(3)"`
 }
 
 var TgUserWithdrawFlowBatchTableName = "tg_user_withdraw_flow_batch"
@@ -88,4 +88,46 @@ type TgWithdrawFlowBatchSummaryBack struct {
 	CompletedFlow        float64 `json:"completedFlow"`
 	RemainingFlow        float64 `json:"remainingFlow"`
 	UnfinishedBatchCount int64   `json:"unfinishedBatchCount"`
+}
+
+type TgWithdrawFlowBatchOverviewBack struct {
+	UserID                  int64                     `json:"userId"`
+	Balance                 float64                   `json:"balance"`
+	TotalFlow               float64                   `json:"totalFlow"`
+	TotalRequiredFlow       float64                   `json:"totalRequiredFlow"`
+	TotalCompletedFlow      float64                   `json:"totalCompletedFlow"`
+	HasUnfinishedBatch      bool                      `json:"hasUnfinishedBatch"`
+	UnfinishedRequiredFlow  float64                   `json:"unfinishedRequiredFlow"`
+	UnfinishedCompletedFlow float64                   `json:"unfinishedCompletedFlow"`
+	UnfinishedRemainingFlow float64                   `json:"unfinishedRemainingFlow"`
+	BatchCount              int64                     `json:"batchCount"`
+	UnfinishedBatchCount    int64                     `json:"unfinishedBatchCount"`
+	Batches                 []TgWithdrawFlowBatchBack `json:"batches"`
+}
+
+type TgWithdrawFlowBatchBack struct {
+	ID                 int64      `json:"id"`
+	CreatedAt          time.Time  `json:"createdAt"`
+	UpdatedAt          time.Time  `json:"updatedAt"`
+	TenantID           int64      `json:"tenantId"`
+	UserID             int64      `json:"userId"`
+	SourceType         string     `json:"sourceType"`
+	SourceOrderID      int64      `json:"sourceOrderId"`
+	SourceOrderNo      string     `json:"sourceOrderNo"`
+	ActivityType       int8       `json:"activityType"`
+	ActivityCode       string     `json:"activityCode"`
+	CreditAmount       float64    `json:"creditAmount"`
+	BonusAmount        float64    `json:"bonusAmount"`
+	BaseAmount         float64    `json:"baseAmount"`
+	WithdrawMultiplier float64    `json:"withdrawMultiplier"`
+	GiftMultiplier     float64    `json:"giftMultiplier"`
+	RequiredFlow       float64    `json:"requiredFlow"`
+	CompletedFlow      float64    `json:"completedFlow"`
+	RemainingFlow      float64    `json:"remainingFlow"`
+	ProgressPercent    float64    `json:"progressPercent"`
+	Status             int        `json:"status"`
+	ClosedReason       string     `json:"closedReason"`
+	CompletedAt        *time.Time `json:"completedAt"`
+	ClosedAt           *time.Time `json:"closedAt"`
+	LastFlowAt         *time.Time `json:"lastFlowAt"`
 }

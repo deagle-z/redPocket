@@ -11,6 +11,7 @@ export type ExchangeCode = {
   amount: number;
   maxRedeemCount: number;
   redeemCount: number;
+  batchNo: string;
   status: ExchangeCodeStatus;
   remark: string;
   createdBy: number;
@@ -49,4 +50,10 @@ export const setExchangeCodeAdmin = (data: ExchangeCodeSet) => {
 
 export const delExchangeCodeAdmin = (id: number) => {
   return http.request<Result>("delete", `/api/v1/admin/exchangeCode/${id}`);
+};
+
+export const batchDelExchangeCodeAdmin = (ids: number[]) => {
+  return http.request<Result>("post", "/api/v1/admin/exchangeCode/batchDel", {
+    data: { ids }
+  });
 };

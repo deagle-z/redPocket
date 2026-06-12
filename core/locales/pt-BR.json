@@ -200,5 +200,6 @@
   "exchange_code_not_found": "o código de resgate não existe",
   "exchange_code_disabled": "o código de resgate está desativado",
   "exchange_code_redeemed_out": "o código de resgate atingiu o limite",
-  "exchange_code_already_redeemed": "você já resgatou este código"
+  "exchange_code_already_redeemed": "você já resgatou este código",
+  "exchange_code_batch_already_redeemed": "você já resgatou um código deste lote"
 }

@@ -776,6 +776,24 @@ func GetTgUserWithdrawActivityFlowById(ctx *gin.Context) {
 	utils.SuccessObjBack(ctx, data)
 }
 
+// GetTgUserWithdrawFlowBatchOverviewById 管理端查询指定TG用户 v2 提现流水批次完成情况
+func GetTgUserWithdrawFlowBatchOverviewById(ctx *gin.Context) {
+	idStr := ctx.Param("id")
+	userID, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil || userID <= 0 {
+		utils.ErrorBack(ctx, "invalid_params")
+		return
+	}
+
+	db := ctx.MustGet("db").(*gorm.DB)
+	data, err := repository.GetUserWithdrawFlowBatchOverview(db, userID)
+	if err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	utils.SuccessObjBack(ctx, data)
+}
+
 // UpdateCurrentTgUserAvatar 更新当前TG用户头像
 func UpdateCurrentTgUserAvatar(ctx *gin.Context) {
 	userIDRaw, ok := ctx.Get("userId")
