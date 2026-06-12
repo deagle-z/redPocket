@@ -902,10 +902,15 @@ func GetCurrentTgInviteStats(ctx *gin.Context) {
 	now := time.Now()
 	startOfDay := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
 	endOfDay := startOfDay.Add(24 * time.Hour)
-	var todayInviteCount int64
+	var todayValidUsers int64
 	_ = db.Model(&pojo.TgUser{}).
-		Where("parent_id = ? AND status <> ? AND created_at >= ? AND created_at < ?", userID, -1, startOfDay, endOfDay).
-		Count(&todayInviteCount).Error
+		Where("parent_id = ? AND status <> ? AND invite_valid_flag = ? AND invite_valid_at >= ? AND invite_valid_at < ?", userID, -1, 1, startOfDay, endOfDay).
+		Count(&todayValidUsers).Error
+
+	var validUsers int64
+	_ = db.Model(&pojo.TgUser{}).
+		Where("parent_id = ? AND status <> ? AND invite_valid_flag = ?", userID, -1, 1).
+		Count(&validUsers).Error
 
 	var rechargeUsers int64
 	_ = db.Model(&pojo.TgUser{}).
@@ -933,7 +938,9 @@ func GetCurrentTgInviteStats(ctx *gin.Context) {
 	utils.SuccessObjBack(ctx, pojo.TgInviteStatsBack{
 		InviteCode:          inviteCode,
 		InviteCount:         inviteCount,
-		TodayInviteCount:    todayInviteCount,
+		TodayInviteCount:    todayValidUsers,
+		ValidUsers:          validUsers,
+		TodayValidUsers:     todayValidUsers,
 		RechargeUsers:       rechargeUsers,
 		TodayRechargeUsers:  todayRechargeUsers,
 		TotalCommission:     utils.Truncate2(user.RebateTotalAmount),
@@ -1006,6 +1013,9 @@ func GetCurrentTgInviteRuleConfig(ctx *gin.Context) {
 		InviteFirstRechargeReward: parseConfigFloat("invite_first_recharge_reward", "10"),
 		InviteLuckyRebateRate:     inviteLuckyRebateRate,
 		InviteThunderRebateRate:   parseConfigFloat("invite_thunder_rebate_rate", "40"),
+		InviteBetRebateRate:       repository.InviteBetRebateRate,
+		InviteValidMinRecharge:    repository.InviteValidMinRecharge,
+		InviteValidMinBet:         repository.InviteValidMinBet,
 		SendMinAmount:             sendMinAmount,
 		SendMaxAmount:             sendMaxAmount,
 	})

@@ -2,6 +2,14 @@ package pojo
 
 import "time"
 
+const (
+	TgUserRebateSourceTypeBetFlow       = 1
+	TgUserRebateSourceTypeRecharge      = 2
+	TgUserRebateSourceTypeLucky         = 3
+	TgUserRebateSourceTypeManual        = 4
+	TgUserRebateSourceTypeFirstRecharge = 5
+)
+
 // TgUserRebateRecord 下级给上级反水/返佣记录表
 type TgUserRebateRecord struct {
 	BaseModel

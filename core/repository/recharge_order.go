@@ -58,8 +58,8 @@ const (
 	rechargeActivityTypeTodayFirst        int8 = 2
 	rechargeActivityTypeV2Gift            int8 = 3
 
-	rechargeV2MinAmount     float64 = 10 // v2版本充值最低金额
-	rechargeV2GiftMinAmount float64 = 50 // v2版本充值赠送门槛（满此金额才赠送）
+	rechargeV2MinAmount     float64 = 10  // v2版本充值最低金额
+	rechargeV2GiftMinAmount float64 = 100 // v2版本充值赠送门槛（满此金额才赠送）
 )
 
 var (
@@ -616,6 +616,9 @@ func ProcessRechargeOrderSuccess(db *gorm.DB, orderNo string, providerTradeNo st
 		}
 		log.Printf("[recharge] pay callback user credited orderNo=%s userID=%d tablePrefix=%q rechargeCredit=%.2f activityBaseGift=%.2f startBalance=%.2f",
 			order.OrderNo, user.ID, tablePrefix, creditAmount, bonusAmount, user.Balance)
+		if _, err := EnsureInviteValidUser(tx, user.ID, now); err != nil {
+			return err
+		}
 		if order.ActivityType == nil || *order.ActivityType != rechargeActivityTypeV2Gift {
 			if err := AddUserWithdrawRestrictedBalance(tx, user, bonusAmount, clampRechargeRestrictedCredit(order.Amount-order.Fee)); err != nil {
 				return err
@@ -819,6 +822,9 @@ func rechargeOrderDevCallback(db *gorm.DB, orderNo string, tablePrefix string) e
 				"gift_total":      gorm.Expr("gift_total + ?", bonusAmount),
 				"recharge_amount": gorm.Expr("recharge_amount + ?", order.Amount),
 			}).Error; err != nil {
+			return err
+		}
+		if _, err := EnsureInviteValidUser(tx, user.ID, now); err != nil {
 			return err
 		}
 		if order.ActivityType == nil || *order.ActivityType != rechargeActivityTypeV2Gift {

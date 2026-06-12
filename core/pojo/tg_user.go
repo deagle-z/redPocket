@@ -38,6 +38,10 @@ type TgUser struct {
 	RebateAmount              float64    `gorm:"type:decimal(20,2);not null;default:0.00;comment:可用返水余额" json:"rebate_amount"`
 	RebateTotalAmount         float64    `gorm:"type:decimal(20,2);not null;default:0.00;comment:累计返水金额" json:"rebate_total_amount"`
 	RebateRate                float64    `gorm:"column:rebate_rate;type:decimal(10,2);not null;default:40.00;comment:返水比例" json:"rebate_rate"`
+	InviteValidFlag           int8       `gorm:"column:invite_valid_flag;type:tinyint;not null;default:0;index:idx_tg_user_invite_valid,priority:2;comment:邀请有效用户标记 0否 1是" json:"inviteValidFlag"`
+	InviteValidAt             *time.Time `gorm:"column:invite_valid_at;type:datetime(3);index:idx_tg_user_invite_valid,priority:3;comment:首次成为邀请有效用户时间" json:"inviteValidAt"`
+	InviteValidRechargeAmount float64    `gorm:"column:invite_valid_recharge_amount;type:decimal(20,2);not null;default:0.00;comment:邀请有效用户达标时累计充值快照" json:"inviteValidRechargeAmount"`
+	InviteValidBetAmount      float64    `gorm:"column:invite_valid_bet_amount;type:decimal(20,2);not null;default:0.00;comment:邀请有效用户达标时累计投注快照" json:"inviteValidBetAmount"`
 	FreeLotteryCount          int        `gorm:"column:free_lottery_count;type:int;not null;default:0;comment:免费转盘次数" json:"freeLotteryCount"`
 	FlowLotteryTotalCount     int        `gorm:"column:flow_lottery_total_count;type:int;not null;default:0;comment:累计流水抽奖次数" json:"flowLotteryTotalCount"`
 	FlowLotteryAvailableCount int        `gorm:"column:flow_lottery_available_count;type:int;not null;default:0;comment:可用流水抽奖次数" json:"flowLotteryAvailableCount"`
@@ -313,6 +317,8 @@ type TgInviteStatsBack struct {
 	InviteCode          string  `json:"inviteCode"`
 	InviteCount         int64   `json:"inviteCount"`
 	TodayInviteCount    int64   `json:"todayInviteCount"`
+	ValidUsers          int64   `json:"validUsers"`
+	TodayValidUsers     int64   `json:"todayValidUsers"`
 	RechargeUsers       int64   `json:"rechargeUsers"`
 	TodayRechargeUsers  int64   `json:"todayRechargeUsers"`
 	TotalCommission     float64 `json:"totalCommission"`
@@ -326,6 +332,9 @@ type TgInviteRuleConfigBack struct {
 	InviteFirstRechargeReward float64 `json:"inviteFirstRechargeReward"`
 	InviteLuckyRebateRate     float64 `json:"inviteLuckyRebateRate"`
 	InviteThunderRebateRate   float64 `json:"inviteThunderRebateRate"`
+	InviteBetRebateRate       float64 `json:"inviteBetRebateRate"`
+	InviteValidMinRecharge    float64 `json:"inviteValidMinRecharge"`
+	InviteValidMinBet         float64 `json:"inviteValidMinBet"`
 	SendMinAmount             float64 `json:"sendMinAmount"`
 	SendMaxAmount             float64 `json:"sendMaxAmount"`
 }

@@ -146,6 +146,10 @@ func InitTables(prefix string) (firstInit bool, err error) {
 	if err = ensureTgUserDeviceFingerprintSchema(db); err != nil {
 		panic(err)
 	}
+	log.Print("init tables: ensure tg_user invite valid schema...\n")
+	if err = ensureTgUserInviteValidSchema(db); err != nil {
+		panic(err)
+	}
 	log.Print("init tables: ensure trial lucky item pick index...\n")
 	if err = ensureTrialLuckyMoneyItemPickIndex(db); err != nil {
 		panic(err)
@@ -186,6 +190,28 @@ func ensureTgUserDeviceFingerprintSchema(db *gorm.DB) error {
 	}
 	if !migrator.HasIndex(&pojo.TgUser{}, "idx_tg_user_device_fingerprint") {
 		if err := migrator.CreateIndex(&pojo.TgUser{}, "idx_tg_user_device_fingerprint"); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func ensureTgUserInviteValidSchema(db *gorm.DB) error {
+	migrator := db.Migrator()
+	for _, column := range []string{
+		"InviteValidFlag",
+		"InviteValidAt",
+		"InviteValidRechargeAmount",
+		"InviteValidBetAmount",
+	} {
+		if !migrator.HasColumn(&pojo.TgUser{}, column) {
+			if err := migrator.AddColumn(&pojo.TgUser{}, column); err != nil {
+				return err
+			}
+		}
+	}
+	if !migrator.HasIndex(&pojo.TgUser{}, "idx_tg_user_invite_valid") {
+		if err := migrator.CreateIndex(&pojo.TgUser{}, "idx_tg_user_invite_valid"); err != nil {
 			return err
 		}
 	}

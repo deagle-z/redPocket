@@ -304,6 +304,9 @@ func handleGameCashTransfer(db *gorm.DB, req pojo.GameCashTransferInOutReq) (flo
 			); err != nil {
 				return err
 			}
+			if err := repository.ApplyInviteBetRebate(tx, user, betAmount, tid, occurredAt); err != nil {
+				return err
+			}
 		}
 		if err := tx.Create(&pojo.CashHistory{
 			UserId:      user.ID,
