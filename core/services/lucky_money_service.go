@@ -1720,14 +1720,20 @@ func applyLuckyNumsGift(tx *gorm.DB, user pojo.TgUser, luckyMoney pojo.LuckyMone
 
 	giftAmount := utils.Truncate2(reward.Amount)
 	user.Balance = utils.Truncate2(startBalance)
+	// 仅入账余额；提现限制走 v2 流水批次
 	if err := tx.Model(&pojo.TgUser{}).Where("id = ?", user.ID).Updates(map[string]any{
-		"balance":     gorm.Expr("balance + ?", giftAmount),
-		"gift_amount": gorm.Expr("gift_amount + ?", giftAmount),
-		"gift_total":  gorm.Expr("gift_total + ?", giftAmount),
+		"balance": gorm.Expr("balance + ?", giftAmount),
 	}).Error; err != nil {
 		return fmt.Errorf("发放幸运数字奖励失败: %v", err)
 	}
-	if err := repository.AddUserWithdrawRestrictedBalance(tx, user, giftAmount, 0); err != nil {
+	if err := repository.EnsureWithdrawFlowBatchForGift(
+		tx, user,
+		pojo.WithdrawFlowBatchSourceLuckyNums,
+		luckyMoney.ID,
+		fmt.Sprintf("lucky_nums_%d_%d_%d", luckyMoney.ID, user.ID, grabIndex),
+		pojo.WithdrawFlowBatchSourceLuckyNums,
+		giftAmount,
+	); err != nil {
 		return fmt.Errorf("更新幸运数字奖励提现限制失败: %v", err)
 	}
 

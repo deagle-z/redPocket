@@ -9,6 +9,11 @@ const (
 
 	WithdrawFlowBatchSourceRechargeV2      = "recharge_v2"
 	WithdrawFlowBatchSourceVipWeeklySalary = "vip_weekly_salary"
+	WithdrawFlowBatchSourceExchangeCode    = "exchange_code"
+	WithdrawFlowBatchSourceLottery         = "lottery"
+	WithdrawFlowBatchSourceCheckIn         = "check_in"
+	WithdrawFlowBatchSourceLuckyNums       = "lucky_nums"
+	WithdrawFlowBatchSourceVipUpgrade      = "vip_upgrade"
 
 	WithdrawFlowEventTypeGameBet            = "game_bet"
 	WithdrawFlowEventTypeLuckySend          = "lucky_send"

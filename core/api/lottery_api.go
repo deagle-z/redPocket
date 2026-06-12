@@ -288,15 +288,10 @@ func DrawLottery(ctx *gin.Context) {
 			record.BeforeBalance = user.Balance
 			record.AfterBalance = utils.Truncate2(user.Balance + awardAmount)
 
-			// 更新余额 + gift 字段
+			// 仅入账余额；提现限制走 v2 流水批次
 			if err := tx.Model(&pojo.TgUser{}).Where("id = ?", userID).Updates(map[string]any{
-				"balance":     gorm.Expr("balance + ?", awardAmount),
-				"gift_amount": gorm.Expr("gift_amount + ?", awardAmount),
-				"gift_total":  gorm.Expr("gift_total + ?", awardAmount),
+				"balance": gorm.Expr("balance + ?", awardAmount),
 			}).Error; err != nil {
-				return err
-			}
-			if err := repository.AddUserWithdrawRestrictedBalance(tx, user, awardAmount, 0); err != nil {
 				return err
 			}
 		}
@@ -305,6 +300,20 @@ func DrawLottery(ctx *gin.Context) {
 			return err
 		}
 		recordID = record.ID
+
+		// v2 提现流水批次：中奖金额需完成流水后方可提现
+		if awardAmount > 0 {
+			if err := repository.EnsureWithdrawFlowBatchForGift(
+				tx, user,
+				pojo.WithdrawFlowBatchSourceLottery,
+				record.ID,
+				fmt.Sprintf("lottery_%d", record.ID),
+				pojo.WithdrawFlowBatchSourceLottery,
+				awardAmount,
+			); err != nil {
+				return err
+			}
+		}
 
 		poolRecordRemark := fmt.Sprintf("lottery_draw_%d", record.ID)
 		if err := repository.CreateLotteryDrawRecord(tx, tenantId, config.PoolId, userID, consumption.PeerAmount, &poolRecordRemark); err != nil {

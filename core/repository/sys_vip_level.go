@@ -393,14 +393,20 @@ func CheckAndUpgradeVipLevel(db *gorm.DB, userID int64) {
 			if err := tx.Create(&rewardLog).Error; err != nil {
 				return err
 			}
+			// 仅入账余额；提现限制走 v2 流水批次
 			if err := tx.Model(&pojo.TgUser{}).Where("id = ?", userID).Updates(map[string]any{
-				"balance":     gorm.Expr("balance + ?", targetRow.UpgradeBonusAmount),
-				"gift_amount": gorm.Expr("gift_amount + ?", targetRow.UpgradeBonusAmount),
-				"gift_total":  gorm.Expr("gift_total + ?", targetRow.UpgradeBonusAmount),
+				"balance": gorm.Expr("balance + ?", targetRow.UpgradeBonusAmount),
 			}).Error; err != nil {
 				return err
 			}
-			if err := AddUserWithdrawRestrictedBalance(tx, u, targetRow.UpgradeBonusAmount, 0); err != nil {
+			if err := EnsureWithdrawFlowBatchForGift(
+				tx, u,
+				pojo.WithdrawFlowBatchSourceVipUpgrade,
+				rewardLog.ID,
+				fmt.Sprintf("vip_upgrade_%d", rewardLog.ID),
+				pojo.WithdrawFlowBatchSourceVipUpgrade,
+				targetRow.UpgradeBonusAmount,
+			); err != nil {
 				return err
 			}
 			history := buildVipUpgradeCashHistory(userID, rewardLog, u.Balance)
@@ -458,15 +464,10 @@ func ClaimVipReward(db *gorm.DB, userID int64, rewardLogID int64, tablePrefix st
 			totalBonus = utils.Truncate2(totalBonus + item.BonusAmount)
 		}
 
-		// 更新用户余额
+		// 仅入账余额；提现限制走 v2 流水批次
 		if err := tx.Model(&pojo.TgUser{}).Where("id = ?", userID).Updates(map[string]any{
-			"balance":     gorm.Expr("balance + ?", totalBonus),
-			"gift_amount": gorm.Expr("gift_amount + ?", totalBonus),
-			"gift_total":  gorm.Expr("gift_total + ?", totalBonus),
+			"balance": gorm.Expr("balance + ?", totalBonus),
 		}).Error; err != nil {
-			return err
-		}
-		if err := AddUserWithdrawRestrictedBalance(tx, user, totalBonus, 0); err != nil {
 			return err
 		}
 
@@ -475,6 +476,18 @@ func ClaimVipReward(db *gorm.DB, userID int64, rewardLogID int64, tablePrefix st
 			// 标记已领取
 			if err := tx.Model(&pojo.SysVipRewardLog{}).Where("id = ?", item.ID).
 				Update("status", pojo.VipRewardStatusDone).Error; err != nil {
+				return err
+			}
+
+			// v2 提现流水批次：每条奖励需完成流水后方可提现
+			if err := EnsureWithdrawFlowBatchForGift(
+				tx, user,
+				pojo.WithdrawFlowBatchSourceVipUpgrade,
+				item.ID,
+				fmt.Sprintf("vip_upgrade_%d", item.ID),
+				pojo.WithdrawFlowBatchSourceVipUpgrade,
+				item.BonusAmount,
+			); err != nil {
 				return err
 			}
 

@@ -130,14 +130,10 @@ func DoCurrentUserCheckIn(db *gorm.DB, tenantID int64, userID int64, now time.Ti
 		beforeBalance := utils.Truncate2(user.Balance)
 		afterBalance := utils.Truncate2(beforeBalance + rewardAmount)
 
+		// 仅入账余额；提现限制走 v2 流水批次
 		if err := tx.Model(&pojo.TgUser{}).Where("id = ?", userID).Updates(map[string]any{
-			"balance":     gorm.Expr("balance + ?", rewardAmount),
-			"gift_amount": gorm.Expr("gift_amount + ?", rewardAmount),
-			"gift_total":  gorm.Expr("gift_total + ?", rewardAmount),
+			"balance": gorm.Expr("balance + ?", rewardAmount),
 		}).Error; err != nil {
-			return err
-		}
-		if err := AddUserWithdrawRestrictedBalance(tx, user, rewardAmount, 0); err != nil {
 			return err
 		}
 
@@ -151,6 +147,18 @@ func DoCurrentUserCheckIn(db *gorm.DB, tenantID int64, userID int64, now time.Ti
 			AfterBalance:  afterBalance,
 		}
 		if err := tx.Create(&record).Error; err != nil {
+			return err
+		}
+
+		// v2 提现流水批次：签到奖励需完成流水后方可提现
+		if err := EnsureWithdrawFlowBatchForGift(
+			tx, user,
+			pojo.WithdrawFlowBatchSourceCheckIn,
+			record.ID,
+			fmt.Sprintf("check_in_%d", record.ID),
+			pojo.WithdrawFlowBatchSourceCheckIn,
+			rewardAmount,
+		); err != nil {
 			return err
 		}
 

@@ -356,6 +356,13 @@ export function useWithdrawOrderBr(tableRef: Ref) {
       formatter: ({ remark }) => remark || "-"
     },
     {
+      label: "失败原因",
+      prop: "failMsg",
+      minWidth: 220,
+      showOverflowTooltip: true,
+      formatter: ({ failMsg }) => failMsg || "-"
+    },
+    {
       label: "状态",
       prop: "status",
       minWidth: 120,
@@ -553,6 +560,7 @@ export function useWithdrawOrderBr(tableRef: Ref) {
           } catch (error) {
             console.error("审核通过失败", error);
             message("审核通过失败", { type: "error" });
+            onSearch();
           }
         });
       }

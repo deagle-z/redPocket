@@ -122,6 +122,7 @@ func SetWithdrawOrderBr(db *gorm.DB, req pojo.WithdrawOrderBrSet) (result pojo.W
 		req.Fee = utils.Truncate2(req.Fee)
 	}
 	var dbOrder pojo.WithdrawOrderBr
+	var payoutErr error
 	err = db.Transaction(func(tx *gorm.DB) error {
 		if req.ID > 0 {
 			if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ?", req.ID).First(&dbOrder).Error; err != nil {
@@ -136,7 +137,13 @@ func SetWithdrawOrderBr(db *gorm.DB, req pojo.WithdrawOrderBrSet) (result pojo.W
 			fillWithdrawOrderNetAmount(tx, &dbOrder)
 			if oldStatus == 0 && dbOrder.Status == 1 {
 				if err := submitWithdrawPayout(tx, &dbOrder); err != nil {
-					return err
+					payoutErr = err
+					failMsg := withdrawFailMsgFromError(err)
+					dbOrder.Status = oldStatus
+					dbOrder.FailMsg = &failMsg
+					return tx.Model(&pojo.WithdrawOrderBr{}).
+						Where("id = ?", dbOrder.ID).
+						Update("fail_msg", failMsg).Error
 				}
 			}
 			if err := tx.Save(&dbOrder).Error; err != nil {
@@ -172,6 +179,9 @@ func SetWithdrawOrderBr(db *gorm.DB, req pojo.WithdrawOrderBrSet) (result pojo.W
 	})
 	if err != nil {
 		return result, err
+	}
+	if payoutErr != nil {
+		return result, payoutErr
 	}
 	_ = copier.Copy(&result, &dbOrder)
 	return result, nil
@@ -430,6 +440,21 @@ func withdrawOrderCountryRate(db *gorm.DB, order pojo.WithdrawOrderBr) float64 {
 		return 1
 	}
 	return country.Rate
+}
+
+func withdrawFailMsgFromError(err error) string {
+	if err == nil {
+		return ""
+	}
+	msg := strings.TrimSpace(err.Error())
+	if msg == "" {
+		msg = "withdraw_payout_failed"
+	}
+	runes := []rune(msg)
+	if len(runes) > 255 {
+		return string(runes[:255])
+	}
+	return msg
 }
 
 func submitWithdrawPayout(db *gorm.DB, order *pojo.WithdrawOrderBr) error {
