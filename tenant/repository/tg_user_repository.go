@@ -354,8 +354,21 @@ func GetTgUsersWithSubStats(db *gorm.DB, tenantID int64, search pojo.TgUserSearc
 	if search.InviteCode != "" {
 		query = query.Where("invite_code = ?", search.InviteCode)
 	}
+
+	// 按充值金额倒序：LEFT JOIN 充值汇总子查询（status=1 成功充值）
+	rechargeSub := db.Model(&pojo.RechargeOrder{}).
+		Select("user_id, sum(amount) as recharge_amt").
+		Where("status = ?", 1)
+	if tenantID > 0 {
+		rechargeSub = rechargeSub.Where("tenant_id = ?", tenantID)
+	}
+	rechargeSub = rechargeSub.Group("user_id")
+	query = query.Joins("LEFT JOIN (?) AS rsum ON rsum.user_id = tg_user.id", rechargeSub)
+
 	query.Count(&result.Total)
-	query = query.Order("id desc").Limit(search.PageSize).Offset(search.PageSize * search.CurrentPage)
+	query = query.Order("coalesce(rsum.recharge_amt, 0) desc").
+		Order("tg_user.id desc").
+		Limit(search.PageSize).Offset(search.PageSize * search.CurrentPage)
 	query.Find(&users)
 
 	// 口径：每行只统计用户本人
