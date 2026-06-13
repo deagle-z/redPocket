@@ -42,6 +42,9 @@ func EnqueueTrialLuckyBotGrabTask(db *gorm.DB, tablePrefix string, luckyID int64
 }
 
 func handleTrialLuckyBotGrabTask(ctx context.Context, task *asynq.Task) error {
+	// 红包玩法已停止：机器人不再抢包
+	return nil
+
 	var payload TrialLuckyBotGrabPayload
 	if err := json.Unmarshal(task.Payload(), &payload); err != nil {
 		return err

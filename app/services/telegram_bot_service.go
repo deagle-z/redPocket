@@ -1204,11 +1204,9 @@ func (s *TelegramBotService) manualRechargeCallback(db *gorm.DB, orderID int64) 
 		tx.Rollback()
 		return err
 	}
-	if isFirstRecharge {
-		if err := s.applyInviteFirstRechargeReward(tx, order, user, time.Now()); err != nil {
-			tx.Rollback()
-			return err
-		}
+	if err := s.applyFirstLevelRechargeRebate(tx, order, user, time.Now()); err != nil {
+		tx.Rollback()
+		return err
 	}
 
 	if err := tx.Commit().Error; err != nil {
@@ -1219,12 +1217,12 @@ func (s *TelegramBotService) manualRechargeCallback(db *gorm.DB, orderID int64) 
 	return nil
 }
 
-func (s *TelegramBotService) applyInviteFirstRechargeReward(tx *gorm.DB, order pojo.RechargeOrder, user pojo.TgUser, now time.Time) error {
+func (s *TelegramBotService) applyFirstLevelRechargeRebate(tx *gorm.DB, order pojo.RechargeOrder, user pojo.TgUser, now time.Time) error {
 	if user.ParentID == nil || *user.ParentID == 0 {
 		return nil
 	}
 
-	rate := s.getRebateRate("invite_first_recharge_reward")
+	rate := s.getRebateRate("first_level_rebate")
 	if rate <= 0 {
 		return nil
 	}
@@ -1243,7 +1241,7 @@ func (s *TelegramBotService) applyInviteFirstRechargeReward(tx *gorm.DB, order p
 		return nil
 	}
 
-	idempotencyKey := fmt.Sprintf("first_recharge_reward:%s:%d", order.OrderNo, parentID)
+	idempotencyKey := fmt.Sprintf("%d:%s:%d", pojo.TgUserRebateSourceTypeRecharge, order.OrderNo, parentID)
 	var existing pojo.TgUserRebateRecord
 	if err := tx.Where("idempotency_key = ?", idempotencyKey).First(&existing).Error; err == nil && existing.ID > 0 {
 		return nil
@@ -1253,13 +1251,13 @@ func (s *TelegramBotService) applyInviteFirstRechargeReward(tx *gorm.DB, order p
 	if currency == "" {
 		currency = "USDT"
 	}
-	remark := strPtr("first_recharge_reward")
+	remark := strPtr("level_1_rebate")
 	record := pojo.TgUserRebateRecord{
 		TenantId:        &order.TenantId,
 		SubUserId:       user.ID,
 		ParentUserId:    parentID,
 		SourceChannelID: order.SourceChannelID,
-		SourceType:      5,
+		SourceType:      pojo.TgUserRebateSourceTypeRecharge,
 		SourceOrderId:   order.OrderNo,
 		SourceAmount:    order.Amount,
 		RebateRate:      rate,

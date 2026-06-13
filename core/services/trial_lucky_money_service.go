@@ -573,6 +573,9 @@ func getTrialLuckyBroadcastDetail(db *gorm.DB, luckyID int64) (pojo.TrialLuckyMo
 }
 
 func EnsureMinActiveTrialLuckyPackets(db *gorm.DB, tablePrefix string) error {
+	// 红包玩法已停止：不再自动补齐机器人红包（停止机器人发包）
+	return nil
+
 	if db == nil {
 		return nil
 	}

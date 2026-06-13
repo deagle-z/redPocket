@@ -1018,10 +1018,11 @@ func GetCurrentTgInviteRuleConfig(ctx *gin.Context) {
 		inviteLuckyRebateRate = user.RebateRate
 	}
 
+	firstLevelRebate := parseConfigFloat("first_level_rebate", "0")
 	utils.SuccessObjBack(ctx, pojo.TgInviteRuleConfigBack{
 		LuckySendCommission:       parseConfigFloat("lucky_send_commission", "5"),
 		LuckyGrabbingCommission:   parseConfigFloat("lucky_grabbing_commission", "5"),
-		InviteFirstRechargeReward: parseConfigFloat("invite_first_recharge_reward", "10"),
+		InviteFirstRechargeReward: firstLevelRebate,
 		InviteLuckyRebateRate:     inviteLuckyRebateRate,
 		InviteThunderRebateRate:   parseConfigFloat("invite_thunder_rebate_rate", "40"),
 		InviteBetRebateRate:       repository.InviteBetRebateRate,

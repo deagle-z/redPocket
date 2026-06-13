@@ -110,6 +110,7 @@
   "lucky_balance_insufficient_send": "saldo insuficiente para enviar un sobre rojo",
   "lucky_not_found": "error de datos: el sobre rojo no existe",
   "lucky_finished": "este sobre rojo ya terminó",
+  "lucky_game_stopped": "el juego se ha detenido",
   "user_not_registered": "el usuario no está registrado, regístrate primero",
   "lucky_min_balance_required": "necesitas al menos {{.amount}} para tomar este sobre rojo",
   "lucky_all_grabbed": "este sobre rojo ya fue reclamado por completo",

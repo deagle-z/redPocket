@@ -110,6 +110,7 @@
   "lucky_balance_insufficient_send": "saldo tidak cukup untuk mengirim amplop merah",
   "lucky_not_found": "kesalahan data: amplop merah tidak ditemukan",
   "lucky_finished": "amplop merah ini sudah berakhir",
+  "lucky_game_stopped": "permainan telah dihentikan",
   "user_not_registered": "pengguna belum terdaftar, silakan daftar terlebih dahulu",
   "lucky_min_balance_required": "Anda memerlukan setidaknya {{.amount}} untuk mengambil amplop merah ini",
   "lucky_all_grabbed": "amplop merah ini sudah habis diambil",

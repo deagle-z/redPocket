@@ -120,6 +120,7 @@ export type TgUserSubStatsSummaryResult = {
     subFlowAmount: number;
     subProfitAmount: number;
     subWithdrawAmount: number;
+    validUsers: number;
   };
 };
 

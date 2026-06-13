@@ -7,7 +7,7 @@ import (
 // TgUser Telegram 用户表
 type TgUser struct {
 	ID        int64     `gorm:"primaryKey;autoIncrement;comment:自增主键" json:"id"`
-	Uid       string    `gorm:"size:8;comment:uid" json:"uid"`
+	Uid       string    `gorm:"size:8;index:idx_tg_user_uid;comment:uid" json:"uid"`
 	CreatedAt time.Time `gorm:"column:created_at;index:idx_tg_user_register_time,priority:2;index:idx_tg_user_tenant_register_time,priority:3;comment:创建时间" json:"created_at"`
 	UpdatedAt time.Time `gorm:"column:updated_at;comment:更新时间" json:"updated_at"`
 

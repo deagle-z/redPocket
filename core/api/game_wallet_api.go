@@ -131,22 +131,6 @@ func TransferGameCashInOut(ctx *gin.Context) {
 		return
 	}
 
-	lockKey := fmt.Sprintf("bgu_game_cash_transfer_%s", utils.MD5(strings.TrimSpace(req.UserID)))
-	acquired, lockErr := utils.AcquireLock(lockKey, 20*time.Second)
-	if lockErr != nil {
-		log.Printf("[game_wallet] TransferInOut lock error requestId=%s userid=%s tid=%s err=%v",
-			ctx.GetHeader(game.HeaderRequestID), strings.TrimSpace(req.UserID), strings.TrimSpace(req.TID), lockErr)
-		gameErrorBack(ctx, game.GameCodeTooFrequent, "request too frequent")
-		return
-	}
-	if !acquired {
-		log.Printf("[game_wallet] TransferInOut lock busy requestId=%s userid=%s tid=%s",
-			ctx.GetHeader(game.HeaderRequestID), strings.TrimSpace(req.UserID), strings.TrimSpace(req.TID))
-		gameErrorBack(ctx, game.GameCodeTooFrequent, game.ErrorMessage(game.GameCodeTooFrequent))
-		return
-	}
-	defer utils.ReleaseLock(lockKey)
-
 	db := ctx.MustGet("db").(*gorm.DB)
 	balance, err := handleGameCashTransfer(db, req)
 	if err != nil {
@@ -240,20 +224,8 @@ func handleGameCashTransfer(db *gorm.DB, req pojo.GameCashTransferInOutReq) (flo
 	var balance float64
 
 	err := db.Transaction(func(tx *gorm.DB) error {
-		var history pojo.CashHistory
-		err := tx.Where("award_uni = ?", awardUni).First(&history).Error
-		if err == nil {
-			balance = utils.Truncate2(history.EndAmount)
-			log.Printf("[game_wallet] TransferInOut idempotent hit userid=%s tid=%s balance=%.2f historyId=%d",
-				userID, tid, balance, history.ID)
-			return nil
-		}
-		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-			return err
-		}
-
 		var user pojo.TgUser
-		err = tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+		err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
 			Where("uid = ? AND status <> ?", userID, int8(-1)).
 			First(&user).Error
 		if err != nil {
@@ -261,6 +233,17 @@ func handleGameCashTransfer(db *gorm.DB, req pojo.GameCashTransferInOutReq) (flo
 				log.Printf("[game_wallet] TransferInOut user not found userid=%s tid=%s", userID, tid)
 				return newGameCashTransferError(game.GameCodePlayerNotFound, "")
 			}
+			return err
+		}
+		var history pojo.CashHistory
+		err = tx.Where("user_id = ? AND award_uni = ?", user.ID, awardUni).First(&history).Error
+		if err == nil {
+			balance = utils.Truncate2(history.EndAmount)
+			log.Printf("[game_wallet] TransferInOut idempotent hit userid=%s tid=%s userId=%d balance=%.2f historyId=%d",
+				userID, tid, user.ID, balance, history.ID)
+			return nil
+		}
+		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 			return err
 		}
 		if user.Status != 1 {

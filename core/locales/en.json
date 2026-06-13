@@ -110,6 +110,7 @@
   "lucky_balance_insufficient_send": "insufficient balance to send a red packet",
   "lucky_not_found": "data error: red packet does not exist",
   "lucky_finished": "this red packet has ended",
+  "lucky_game_stopped": "the game has stopped",
   "user_not_registered": "user is not registered, please register first",
   "lucky_min_balance_required": "you need at least {{.amount}} to grab this red packet",
   "lucky_all_grabbed": "this red packet has been fully claimed",

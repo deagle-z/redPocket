@@ -225,6 +225,7 @@ type TgUsersSubStatsSummary struct {
 	SubFlowAmount     float64 `json:"subFlowAmount"`
 	SubProfitAmount   float64 `json:"subProfitAmount"`
 	SubWithdrawAmount float64 `json:"subWithdrawAmount"`
+	ValidUsers        int64   `json:"validUsers"`
 }
 
 type tgUserMetricRow struct {
@@ -243,7 +244,7 @@ func luckyHistoryProfitSQL() string {
 	return "sum(case when is_thunder = 0 then coalesce(nullif(actual_amount, 0), amount) else -lose_money end)"
 }
 
-// GetTgUsersWithSubStats 列表并返回所有下级（不限层级）的充值/流水/盈利/提现聚合金额
+// GetTgUsersWithSubStats 分页列出用户；传 parentID 时列出直属下级，每行返回该用户所有下级（不限层级）的充值/流水/盈利/提现聚合金额
 func GetTgUsersWithSubStats(db *gorm.DB, tenantID int64, search pojo.TgUserSearch) (result TgUserWithSubStatsResp) {
 	if search.ParentID == nil && search.ParentUid != "" {
 		parentUid := strings.TrimSpace(search.ParentUid)
@@ -279,16 +280,6 @@ func GetTgUsersWithSubStats(db *gorm.DB, tenantID int64, search pojo.TgUserSearc
 		childrenMap[*user.ParentID] = append(childrenMap[*user.ParentID], user.ID)
 	}
 
-	var descendantIDs []int64
-	if search.ParentID != nil {
-		descendantIDs = collectTenantTgUserDescendantIDs(childrenMap, *search.ParentID)
-		if len(descendantIDs) == 0 {
-			result.PageSize = search.PageSize
-			result.CurrentPage = search.CurrentPage
-			return result
-		}
-	}
-
 	var users []pojo.TgUser
 	query := db.Model(&pojo.TgUser{})
 	if tenantID > 0 {
@@ -319,7 +310,7 @@ func GetTgUsersWithSubStats(db *gorm.DB, tenantID int64, search pojo.TgUserSearc
 		query = query.Where("status = ?", *search.Status)
 	}
 	if search.ParentID != nil {
-		query = query.Where("id in (?)", descendantIDs)
+		query = query.Where("parent_id = ?", *search.ParentID)
 	}
 	if search.InviteCode != "" {
 		query = query.Where("invite_code = ?", search.InviteCode)
@@ -526,7 +517,7 @@ func getTenantParentUIDMap(db *gorm.DB, tenantID int64, users []pojo.TgUserBack)
 	return parentUIDMap
 }
 
-// GetTgUsersWithSubStatsSummary 返回下级（不限层级）的充值金额之和、流水之和、盈利之和、提现金额之和
+// GetTgUsersWithSubStatsSummary 返回下级（不限层级）的充值金额之和、流水之和、盈利之和、提现金额之和、有效用户数
 // parentID 为空：口径为全量 parent_id 非空的用户集合
 // parentID 非空：口径为该 parentID 的所有后代（不含自身）
 func GetTgUsersWithSubStatsSummary(db *gorm.DB, tenantID int64, search pojo.TgUserSearch) (result TgUsersSubStatsSummary) {
@@ -541,6 +532,17 @@ func GetTgUsersWithSubStatsSummary(db *gorm.DB, tenantID int64, search pojo.TgUs
 		if search.IsBot != nil {
 			subUsersQuery = subUsersQuery.Where("is_bot = ?", *search.IsBot)
 		}
+
+		validUsersQuery := db.Model(&pojo.TgUser{}).
+			Where("parent_id is not null").
+			Where("invite_valid_flag = ?", 1)
+		if tenantID > 0 {
+			validUsersQuery = validUsersQuery.Where("tenant_id = ?", tenantID)
+		}
+		if search.IsBot != nil {
+			validUsersQuery = validUsersQuery.Where("is_bot = ?", *search.IsBot)
+		}
+		_ = validUsersQuery.Count(&result.ValidUsers).Error
 
 		rechargeQuery := db.Model(&pojo.RechargeOrder{})
 		if tenantID > 0 {
@@ -611,6 +613,14 @@ func GetTgUsersWithSubStatsSummary(db *gorm.DB, tenantID int64, search pojo.TgUs
 	if len(descendantIDs) == 0 {
 		return result
 	}
+
+	validUsersQuery := db.Model(&pojo.TgUser{}).
+		Where("id in (?)", descendantIDs).
+		Where("invite_valid_flag = ?", 1)
+	if tenantID > 0 {
+		validUsersQuery = validUsersQuery.Where("tenant_id = ?", tenantID)
+	}
+	_ = validUsersQuery.Count(&result.ValidUsers).Error
 
 	rechargeQuery := db.Model(&pojo.RechargeOrder{})
 	if tenantID > 0 {

@@ -61,6 +61,10 @@ func SendRedPacket(ctx *gin.Context) {
 
 // SendRedPacketApp app端发送红包（TG用户）
 func SendRedPacketApp(ctx *gin.Context) {
+	// 红包玩法已停止
+	utils.ErrorBack(ctx, "lucky_game_stopped")
+	return
+
 	var req pojo.LuckyMoneySend
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		utils.ErrorBack(ctx, err.Error())
@@ -351,6 +355,10 @@ func CheckGrabBalance(ctx *gin.Context) {
 
 // GrabRedPacketApp app端抢红包（TG用户）
 func GrabRedPacketApp(ctx *gin.Context) {
+	// 红包玩法已停止
+	utils.ErrorBack(ctx, "lucky_game_stopped")
+	return
+
 	authHeader := strings.TrimSpace(ctx.GetHeader("Authorization"))
 	if authHeader == "" {
 		utils.UnauthorizedBack(ctx, "auth_header_missing")

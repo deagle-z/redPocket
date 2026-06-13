@@ -54,6 +54,10 @@ func GetTrialLuckyListApp(ctx *gin.Context) {
 }
 
 func SendTrialLuckyApp(ctx *gin.Context) {
+	// 红包玩法已停止
+	utils.ErrorBack(ctx, "lucky_game_stopped")
+	return
+
 	var req pojo.TrialLuckyMoneySend
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		utils.ErrorBack(ctx, err.Error())
@@ -73,6 +77,10 @@ func SendTrialLuckyApp(ctx *gin.Context) {
 }
 
 func GrabTrialLuckyApp(ctx *gin.Context) {
+	// 红包玩法已停止
+	utils.ErrorBack(ctx, "lucky_game_stopped")
+	return
+
 	var req pojo.TrialLuckyMoneyGrab
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		utils.ErrorBack(ctx, err.Error())

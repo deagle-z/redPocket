@@ -676,10 +676,8 @@ func ProcessRechargeOrderSuccess(db *gorm.DB, orderNo string, providerTradeNo st
 			}
 		}
 
-		if isFirstRecharge {
-			if err := applyInviteFirstRechargeReward(tx, order, user, tablePrefix, now); err != nil {
-				return err
-			}
+		if err := applyFirstLevelRechargeRebate(tx, order, user, tablePrefix, now); err != nil {
+			return err
 		}
 		// 活动赠送：activity_type=1(三日首充)、2(今日首充)、3(v2充值赠送)
 		if order.ActivityType != nil && *order.ActivityType > 0 {
@@ -887,10 +885,8 @@ func rechargeOrderDevCallback(db *gorm.DB, orderNo string, tablePrefix string) e
 			}
 		}
 
-		if isFirstRecharge {
-			if err := applyInviteFirstRechargeReward(tx, order, user, tablePrefix, now); err != nil {
-				return err
-			}
+		if err := applyFirstLevelRechargeRebate(tx, order, user, tablePrefix, now); err != nil {
+			return err
 		}
 
 		// 活动赠送：activity_type=1(三日首充)、2(今日首充)、3(v2充值赠送)
@@ -1806,12 +1802,12 @@ func ApplyFirstRechargeGiftInstallmentByOrderNo(db *gorm.DB, orderNo string, ins
 	})
 }
 
-func applyInviteFirstRechargeReward(tx *gorm.DB, order pojo.RechargeOrder, subUser pojo.TgUser, tablePrefix string, now time.Time) error {
+func applyFirstLevelRechargeRebate(tx *gorm.DB, order pojo.RechargeOrder, subUser pojo.TgUser, tablePrefix string, now time.Time) error {
 	if subUser.ParentID == nil || *subUser.ParentID <= 0 {
 		return nil
 	}
 
-	rate := getInviteFirstRechargeRewardRate(tablePrefix)
+	rate := getFirstLevelRechargeRebateRate(tablePrefix)
 	if rate <= 0 {
 		return nil
 	}
@@ -1830,7 +1826,7 @@ func applyInviteFirstRechargeReward(tx *gorm.DB, order pojo.RechargeOrder, subUs
 		return nil
 	}
 
-	idempotencyKey := fmt.Sprintf("first_recharge_reward:%s:%d", order.OrderNo, parentID)
+	idempotencyKey := fmt.Sprintf("%d:%s:%d", pojo.TgUserRebateSourceTypeRecharge, order.OrderNo, parentID)
 	var existing pojo.TgUserRebateRecord
 	if err := tx.Where("idempotency_key = ?", idempotencyKey).First(&existing).Error; err == nil && existing.ID > 0 {
 		return nil
@@ -1840,13 +1836,13 @@ func applyInviteFirstRechargeReward(tx *gorm.DB, order pojo.RechargeOrder, subUs
 	if currency == "" {
 		currency = "USDT"
 	}
-	remark := "first_recharge_reward"
+	remark := "level_1_rebate"
 	record := pojo.TgUserRebateRecord{
 		TenantId:        &order.TenantId,
 		SubUserId:       subUser.ID,
 		ParentUserId:    parentID,
 		SourceChannelID: order.SourceChannelID,
-		SourceType:      5,
+		SourceType:      pojo.TgUserRebateSourceTypeRecharge,
 		SourceOrderId:   order.OrderNo,
 		SourceAmount:    order.Amount,
 		RebateRate:      rate,
@@ -1877,9 +1873,9 @@ func CheckActivityStatus(db *gorm.DB, userID int64) (hasFirst bool, hasTodayFirs
 	return
 }
 
-func getInviteFirstRechargeRewardRate(tablePrefix string) float64 {
-	defaultValue := "10"
-	val := utils.GetStringCache(tablePrefix, "invite_first_recharge_reward", &defaultValue)
+func getFirstLevelRechargeRebateRate(tablePrefix string) float64 {
+	defaultValue := "0"
+	val := utils.GetStringCache(tablePrefix, "first_level_rebate", &defaultValue)
 	if val == nil || strings.TrimSpace(*val) == "" {
 		r, _ := strconv.ParseFloat(defaultValue, 64)
 		return r

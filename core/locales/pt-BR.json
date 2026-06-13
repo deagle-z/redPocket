@@ -110,6 +110,7 @@
   "lucky_balance_insufficient_send": "saldo insuficiente para enviar um envelope vermelho",
   "lucky_not_found": "erro de dados: envelope vermelho não existe",
   "lucky_finished": "este envelope vermelho já terminou",
+  "lucky_game_stopped": "o jogo foi interrompido",
   "user_not_registered": "usuário não registrado, registre-se primeiro",
   "lucky_min_balance_required": "você precisa de pelo menos {{.amount}} para pegar este envelope vermelho",
   "lucky_all_grabbed": "este envelope vermelho já foi totalmente resgatado",
