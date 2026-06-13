@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { reactive, ref } from "vue";
+import { computed, reactive, ref } from "vue";
 import { useTgUser } from "./utils/hook";
 import { PureTableBar } from "@/components/RePureTableBar";
 import { useRenderIcon } from "@/components/ReIcon/src/hooks";
@@ -84,6 +84,13 @@ const subStatsPagination = reactive({
   pageSize: 10,
   total: 0
 });
+const subStatsPageCount = computed(() =>
+  Math.max(1, Math.ceil(subStatsPagination.total / subStatsPagination.pageSize))
+);
+const subStatsHasPrevPage = computed(() => subStatsPagination.currentPage > 1);
+const subStatsHasNextPage = computed(
+  () => subStatsPagination.currentPage < subStatsPageCount.value
+);
 
 function formatMoney(val?: number | null) {
   if (val === null || val === undefined || Number.isNaN(Number(val)))
@@ -258,8 +265,15 @@ function handleSubStatsPageSizeChange(size: number) {
   loadSubStatsList();
 }
 
-function handleSubStatsCurrentChange(page: number) {
-  subStatsPagination.currentPage = page;
+function handleSubStatsPrevPage() {
+  if (!subStatsHasPrevPage.value) return;
+  subStatsPagination.currentPage -= 1;
+  loadSubStatsList();
+}
+
+function handleSubStatsNextPage() {
+  if (!subStatsHasNextPage.value) return;
+  subStatsPagination.currentPage += 1;
   loadSubStatsList();
 }
 </script>
@@ -444,6 +458,7 @@ function handleSubStatsCurrentChange(page: number) {
       v-model="subStatsDialogVisible"
       :title="`下级统计汇总（TG用户ID: ${currentUser?.tgId ?? '-'}）`"
       width="78%"
+      class="sub-stats-dialog"
       destroy-on-close
     >
       <el-skeleton :loading="subStatsSummaryLoading" animated :rows="2">
@@ -496,7 +511,7 @@ function handleSubStatsCurrentChange(page: number) {
         :data="subStatsList"
         border
         stripe
-        max-height="52vh"
+        :max-height="360"
       >
         <el-table-column prop="id" label="ID" width="80" />
         <el-table-column prop="tgId" label="TG用户ID" min-width="140" />
@@ -538,17 +553,37 @@ function handleSubStatsCurrentChange(page: number) {
       </el-table>
 
       <div class="dialog-pagination">
-        <el-pagination
-          v-model:current-page="subStatsPagination.currentPage"
-          v-model:page-size="subStatsPagination.pageSize"
-          :page-sizes="[10, 20, 50, 100]"
-          :small="deviceDetection()"
-          :background="true"
-          layout="total, sizes, prev, pager, next, jumper"
-          :total="subStatsPagination.total"
-          @size-change="handleSubStatsPageSizeChange"
-          @current-change="handleSubStatsCurrentChange"
-        />
+        <span class="dialog-pagination__total">
+          共 {{ subStatsPagination.total }} 条
+        </span>
+        <el-select
+          v-model="subStatsPagination.pageSize"
+          size="small"
+          class="dialog-pagination__size"
+          @change="handleSubStatsPageSizeChange"
+        >
+          <el-option :value="10" label="10条/页" />
+          <el-option :value="20" label="20条/页" />
+          <el-option :value="50" label="50条/页" />
+          <el-option :value="100" label="100条/页" />
+        </el-select>
+        <el-button
+          size="small"
+          :disabled="!subStatsHasPrevPage"
+          @click="handleSubStatsPrevPage"
+        >
+          上一页
+        </el-button>
+        <span class="dialog-pagination__pager">
+          {{ subStatsPagination.currentPage }} / {{ subStatsPageCount }}
+        </span>
+        <el-button
+          size="small"
+          :disabled="!subStatsHasNextPage"
+          @click="handleSubStatsNextPage"
+        >
+          下一页
+        </el-button>
       </div>
     </el-dialog>
 
@@ -688,10 +723,32 @@ function handleSubStatsCurrentChange(page: number) {
   font-weight: 600;
 }
 
+:deep(.sub-stats-dialog) {
+  max-height: 88vh;
+}
+
+:deep(.sub-stats-dialog .el-dialog__body) {
+  padding-bottom: 10px;
+}
+
 .dialog-pagination {
   display: flex;
+  align-items: center;
   justify-content: flex-end;
-  margin-top: 14px;
+  gap: 10px;
+  padding-top: 14px;
+  background: var(--el-bg-color);
+}
+
+.dialog-pagination__total,
+.dialog-pagination__pager {
+  color: var(--el-text-color-regular);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.dialog-pagination__size {
+  width: 104px;
 }
 
 .form-tip {

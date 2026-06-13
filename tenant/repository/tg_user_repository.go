@@ -244,6 +244,63 @@ func luckyHistoryProfitSQL() string {
 	return "sum(case when is_thunder = 0 then coalesce(nullif(actual_amount, 0), amount) else -lose_money end)"
 }
 
+type tgUserBetStat struct {
+	Flow   float64
+	Profit float64
+}
+
+// tenantTgUserBetStatsByUser 按用户聚合投注流水与盈利（投注记录分表，按分片分组查询）。
+// 流水 = sum(bet_amount)；盈利 = sum(bet_amount - win_amount)（平台对玩家盈利）。
+func tenantTgUserBetStatsByUser(db *gorm.DB, userIDs []int64) map[int64]tgUserBetStat {
+	statByUser := make(map[int64]tgUserBetStat, len(userIDs))
+	if len(userIDs) == 0 {
+		return statByUser
+	}
+
+	shardGroups := make(map[int][]int64)
+	for _, uid := range userIDs {
+		idx := pojo.AppUserBetRecordShardIndex(uid)
+		shardGroups[idx] = append(shardGroups[idx], uid)
+	}
+
+	type betRow struct {
+		UserID int64   `gorm:"column:user_id"`
+		Flow   float64 `gorm:"column:flow"`
+		Profit float64 `gorm:"column:profit"`
+	}
+	for idx, ids := range shardGroups {
+		table := pojo.AppUserBetRecordShardTableName(idx)
+		if !db.Migrator().HasTable(table) {
+			continue
+		}
+		var rows []betRow
+		_ = db.Table(table).
+			Select("user_id as user_id, " +
+				"coalesce(sum(coalesce(bet_amount, 0)), 0) as flow, " +
+				"coalesce(sum(coalesce(bet_amount, 0) - coalesce(win_amount, 0)), 0) as profit").
+			Where("user_id in (?) and coalesce(deleted_flag, 0) = 0", ids).
+			Group("user_id").
+			Scan(&rows).Error
+		for _, r := range rows {
+			statByUser[r.UserID] = tgUserBetStat{
+				Flow:   utils.Truncate2(r.Flow),
+				Profit: utils.Truncate2(r.Profit),
+			}
+		}
+	}
+	return statByUser
+}
+
+// tenantTgUserBetStatsTotal 汇总一组用户的投注流水之和与盈利之和。
+func tenantTgUserBetStatsTotal(db *gorm.DB, userIDs []int64) (flow float64, profit float64) {
+	statByUser := tenantTgUserBetStatsByUser(db, userIDs)
+	for _, s := range statByUser {
+		flow += s.Flow
+		profit += s.Profit
+	}
+	return utils.Truncate2(flow), utils.Truncate2(profit)
+}
+
 // GetTgUsersWithSubStats 分页列出用户；传 parentID 时列出直属下级，每行返回该用户所有下级（不限层级）的充值/流水/盈利/提现聚合金额
 func GetTgUsersWithSubStats(db *gorm.DB, tenantID int64, search pojo.TgUserSearch) (result TgUserWithSubStatsResp) {
 	if search.ParentID == nil && search.ParentUid != "" {
@@ -260,24 +317,6 @@ func GetTgUsersWithSubStats(db *gorm.DB, tenantID int64, search pojo.TgUserSearc
 			return result
 		}
 		search.ParentID = &parent.ID
-	}
-
-	// 构建用户树：parent -> []children。这里只需要树关系，不取完整用户列。
-	var allUsers []pojo.TgUser
-	allUsersQuery := db.Model(&pojo.TgUser{}).Select("id, parent_id")
-	if tenantID > 0 {
-		allUsersQuery = allUsersQuery.Where("tenant_id = ?", tenantID)
-	}
-	if search.IsBot != nil {
-		allUsersQuery = allUsersQuery.Where("is_bot = ?", *search.IsBot)
-	}
-	_ = allUsersQuery.Find(&allUsers).Error
-	childrenMap := make(map[int64][]int64)
-	for _, user := range allUsers {
-		if user.ParentID == nil {
-			continue
-		}
-		childrenMap[*user.ParentID] = append(childrenMap[*user.ParentID], user.ID)
 	}
 
 	var users []pojo.TgUser
@@ -319,21 +358,14 @@ func GetTgUsersWithSubStats(db *gorm.DB, tenantID int64, search pojo.TgUserSearc
 	query = query.Order("id desc").Limit(search.PageSize).Offset(search.PageSize * search.CurrentPage)
 	query.Find(&users)
 
-	descendantIDsByUser := make(map[int64][]int64, len(users))
-	metricUserIDSet := make(map[int64]struct{})
+	// 口径：每行只统计用户本人
+	metricUserIDs := make([]int64, 0, len(users))
 	for _, user := range users {
-		userDescendantIDs := collectTenantTgUserDescendantIDs(childrenMap, user.ID)
-		descendantIDsByUser[user.ID] = userDescendantIDs
-		for _, descendantID := range userDescendantIDs {
-			metricUserIDSet[descendantID] = struct{}{}
-		}
+		metricUserIDs = append(metricUserIDs, user.ID)
 	}
-	metricUserIDs := tenantTgUserIDSetToSlice(metricUserIDSet)
 
 	rechargeSumsByUser := make(map[int64]float64)
 	withdrawSumsByUser := make(map[int64]float64)
-	flowSumsByUser := make(map[int64]float64)
-	profitSumsByUser := make(map[int64]float64)
 
 	if len(metricUserIDs) > 0 {
 		var rechargeSums []tgUserMetricRow
@@ -343,7 +375,7 @@ func GetTgUsersWithSubStats(db *gorm.DB, tenantID int64, search pojo.TgUserSearc
 		}
 		_ = rechargeQuery.
 			Select("user_id as user_id, sum(amount) as amount").
-			Where("status = ? and user_id in (?)", 2, metricUserIDs).
+			Where("status = ? and user_id in (?)", 1, metricUserIDs).
 			Group("user_id").
 			Scan(&rechargeSums).Error
 		for _, item := range rechargeSums {
@@ -363,45 +395,18 @@ func GetTgUsersWithSubStats(db *gorm.DB, tenantID int64, search pojo.TgUserSearc
 		for _, item := range withdrawSums {
 			withdrawSumsByUser[item.UserId] = item.Amount
 		}
-
-		// 流水口径：lucky_history.amount 聚合
-		var flowSums []tgUserMetricRow
-		flowQuery := db.Model(&pojo.LuckyHistory{})
-		if tenantID > 0 {
-			flowQuery = flowQuery.Where("tenant_id = ?", tenantID)
-		}
-		_ = flowQuery.
-			Select("user_id as user_id, sum(amount) as amount").
-			Where("user_id in (?)", metricUserIDs).
-			Group("user_id").
-			Scan(&flowSums).Error
-		for _, item := range flowSums {
-			flowSumsByUser[item.UserId] = item.Amount
-		}
-
-		var profitSums []tgUserMetricRow
-		profitQuery := db.Model(&pojo.LuckyHistory{})
-		if tenantID > 0 {
-			profitQuery = profitQuery.Where("tenant_id = ?", tenantID)
-		}
-		_ = profitQuery.
-			Select("user_id as user_id, "+luckyHistoryProfitSQL()+" as amount").
-			Where("user_id in (?)", metricUserIDs).
-			Group("user_id").
-			Scan(&profitSums).Error
-		for _, item := range profitSums {
-			profitSumsByUser[item.UserId] = item.Amount
-		}
 	}
+
+	// 流水/盈利口径：遍历 user_id 查询投注记录（分表）
+	betStatByUser := tenantTgUserBetStatsByUser(db, metricUserIDs)
 
 	for _, user := range users {
 		var temp TgUserWithSubStats
 		_ = copier.Copy(&temp, &user)
-		total := tenantTgUserSubStatsTotal(descendantIDsByUser[user.ID], rechargeSumsByUser, flowSumsByUser, profitSumsByUser, withdrawSumsByUser)
-		temp.SubRechargeAmount = total.Recharge
-		temp.SubFlowAmount = total.Flow
-		temp.SubProfitAmount = total.Profit
-		temp.SubWithdrawAmount = total.Withdraw
+		temp.SubRechargeAmount = utils.Truncate2(rechargeSumsByUser[user.ID])
+		temp.SubWithdrawAmount = utils.Truncate2(withdrawSumsByUser[user.ID])
+		temp.SubFlowAmount = betStatByUser[user.ID].Flow
+		temp.SubProfitAmount = betStatByUser[user.ID].Profit
 		result.List = append(result.List, temp)
 	}
 	fillTenantTgUserWithSubStatsParentUIDs(db, tenantID, result.List)
@@ -550,26 +555,20 @@ func GetTgUsersWithSubStatsSummary(db *gorm.DB, tenantID int64, search pojo.TgUs
 		}
 		_ = rechargeQuery.
 			Select("coalesce(sum(amount), 0)").
-			Where("status = ? and user_id in (?)", 2, subUsersQuery).
+			Where("status = ? and user_id in (?)", 1, subUsersQuery).
 			Scan(&result.SubRechargeAmount).Error
 
-		flowQuery := db.Model(&pojo.LuckyHistory{})
+		// 流水/盈利口径：遍历 user_id 查询投注记录（分表）
+		var subUserIDs []int64
+		subIDQuery := db.Model(&pojo.TgUser{}).Where("parent_id is not null")
 		if tenantID > 0 {
-			flowQuery = flowQuery.Where("tenant_id = ?", tenantID)
+			subIDQuery = subIDQuery.Where("tenant_id = ?", tenantID)
 		}
-		_ = flowQuery.
-			Select("coalesce(sum(amount), 0)").
-			Where("user_id in (?)", subUsersQuery).
-			Scan(&result.SubFlowAmount).Error
-
-		profitQuery := db.Model(&pojo.LuckyHistory{})
-		if tenantID > 0 {
-			profitQuery = profitQuery.Where("tenant_id = ?", tenantID)
+		if search.IsBot != nil {
+			subIDQuery = subIDQuery.Where("is_bot = ?", *search.IsBot)
 		}
-		_ = profitQuery.
-			Select("coalesce("+luckyHistoryProfitSQL()+", 0)").
-			Where("user_id in (?)", subUsersQuery).
-			Scan(&result.SubProfitAmount).Error
+		_ = subIDQuery.Pluck("id", &subUserIDs).Error
+		result.SubFlowAmount, result.SubProfitAmount = tenantTgUserBetStatsTotal(db, subUserIDs)
 
 		withdrawQuery := db.Model(&pojo.WithdrawOrderBr{})
 		if tenantID > 0 {
@@ -582,33 +581,16 @@ func GetTgUsersWithSubStatsSummary(db *gorm.DB, tenantID int64, search pojo.TgUs
 		return result
 	}
 
-	var allUsers []pojo.TgUser
-	allUsersQuery := db.Model(&pojo.TgUser{})
+	// 口径：只统计直接下级（parent_id = parentID），不递归整棵子树
+	var descendantIDs []int64
+	directChildrenQuery := db.Model(&pojo.TgUser{}).Where("parent_id = ?", *parentID)
 	if tenantID > 0 {
-		allUsersQuery = allUsersQuery.Where("tenant_id = ?", tenantID)
+		directChildrenQuery = directChildrenQuery.Where("tenant_id = ?", tenantID)
 	}
 	if search.IsBot != nil {
-		allUsersQuery = allUsersQuery.Where("is_bot = ?", *search.IsBot)
+		directChildrenQuery = directChildrenQuery.Where("is_bot = ?", *search.IsBot)
 	}
-	_ = allUsersQuery.Find(&allUsers).Error
-
-	childrenMap := make(map[int64][]int64)
-	for _, user := range allUsers {
-		if user.ParentID == nil {
-			continue
-		}
-		childrenMap[*user.ParentID] = append(childrenMap[*user.ParentID], user.ID)
-	}
-
-	var descendantIDs []int64
-	queue := make([]int64, 0, len(childrenMap[*parentID]))
-	queue = append(queue, childrenMap[*parentID]...)
-	for len(queue) > 0 {
-		cur := queue[0]
-		queue = queue[1:]
-		descendantIDs = append(descendantIDs, cur)
-		queue = append(queue, childrenMap[cur]...)
-	}
+	_ = directChildrenQuery.Pluck("id", &descendantIDs).Error
 
 	if len(descendantIDs) == 0 {
 		return result
@@ -628,26 +610,11 @@ func GetTgUsersWithSubStatsSummary(db *gorm.DB, tenantID int64, search pojo.TgUs
 	}
 	_ = rechargeQuery.
 		Select("coalesce(sum(amount), 0)").
-		Where("status = ? and user_id in (?)", 2, descendantIDs).
+		Where("status = ? and user_id in (?)", 1, descendantIDs).
 		Scan(&result.SubRechargeAmount).Error
 
-	flowQuery := db.Model(&pojo.LuckyHistory{})
-	if tenantID > 0 {
-		flowQuery = flowQuery.Where("tenant_id = ?", tenantID)
-	}
-	_ = flowQuery.
-		Select("coalesce(sum(amount), 0)").
-		Where("user_id in (?)", descendantIDs).
-		Scan(&result.SubFlowAmount).Error
-
-	profitQuery := db.Model(&pojo.LuckyHistory{})
-	if tenantID > 0 {
-		profitQuery = profitQuery.Where("tenant_id = ?", tenantID)
-	}
-	_ = profitQuery.
-		Select("coalesce("+luckyHistoryProfitSQL()+", 0)").
-		Where("user_id in (?)", descendantIDs).
-		Scan(&result.SubProfitAmount).Error
+	// 流水/盈利口径：遍历 user_id 查询投注记录（分表）
+	result.SubFlowAmount, result.SubProfitAmount = tenantTgUserBetStatsTotal(db, descendantIDs)
 
 	withdrawQuery := db.Model(&pojo.WithdrawOrderBr{})
 	if tenantID > 0 {
