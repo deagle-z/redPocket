@@ -54,6 +54,7 @@ type TelegramConfig struct {
 	SafeMode      bool   `yaml:"safeMode"`      // 是否验证IP
 	Enabled       bool   `yaml:"enabled"`       // 是否启用
 	InviteBaseURL string `yaml:"inviteBaseUrl"` // 邀请链接前缀（如 https://t.me/xxxBot/?start=）
+	NotifyGroupID int64  `yaml:"notifyGroupId"` // 注册/充值/提现通知群ID
 }
 
 type AliOssConfig struct {

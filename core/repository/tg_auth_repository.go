@@ -29,6 +29,7 @@ func TgAuthLogin(db *gorm.DB, hostInfo pojo.HostInfo, req pojo.TgAuthLoginReq, o
 	}
 
 	var dbUser pojo.TgUser
+	createdUser := false
 	err = db.Transaction(func(tx *gorm.DB) error {
 		queryErr := tx.Where("tg_id = ?", req.ID).First(&dbUser).Error
 		if queryErr != nil {
@@ -40,6 +41,7 @@ func TgAuthLogin(db *gorm.DB, hostInfo pojo.HostInfo, req pojo.TgAuthLoginReq, o
 				return createErr
 			}
 			dbUser = newUser
+			createdUser = true
 		}
 
 		if dbUser.Status != 1 {
@@ -81,6 +83,9 @@ func TgAuthLogin(db *gorm.DB, hostInfo pojo.HostInfo, req pojo.TgAuthLoginReq, o
 		result = loginBack
 		return nil
 	})
+	if err == nil && createdUser {
+		notifyTelegramRegister(dbUser)
+	}
 	return result, err
 }
 
@@ -539,6 +544,7 @@ func RegisterTgByEmail(db *gorm.DB, email string, firstName string, password str
 	}
 
 	_ = utils.RD.Del(context.Background(), codeKey).Err()
+	notifyTelegramRegister(newUser)
 	return newUser, nil
 }
 
@@ -659,6 +665,7 @@ func RegisterTgByPhone(db *gorm.DB, phone string, country string, firstName stri
 	if err != nil {
 		return pojo.TgUser{}, err
 	}
+	notifyTelegramRegister(newUser)
 	return newUser, nil
 }
 

@@ -1,7 +1,6 @@
 package main
 
 import (
-	appservices "BaseGoUni/app/services"
 	utils2 "BaseGoUni/app/utils"
 	"BaseGoUni/core/base"
 	"BaseGoUni/core/common"
@@ -99,14 +98,13 @@ func main() {
 		}
 	}
 
-	// 初始化 Telegram Bot（如果配置了）
+	// 旧 Telegram Bot 消息监听/命令处理不再启动，仅初始化群通知发送器。
 	if utils.GlobalConfig.Telegram.Enabled && utils.GlobalConfig.Telegram.BotToken != "" {
-		db := utils.NewPrefixDb(dbHostInfo.TablePrefix)
-		err = appservices.InitTelegramBot(db, dbHostInfo.TablePrefix, utils.GlobalConfig.Telegram.BotToken)
+		err = services.InitTelegramNotifier(utils.GlobalConfig.Telegram.BotToken)
 		if err != nil {
-			log.Printf("Init telegram bot error.err=%v\n", err)
+			log.Printf("Init telegram notifier error.err=%v\n", err)
 		} else {
-			log.Print("init telegram bot success\n")
+			log.Print("init telegram notifier success\n")
 		}
 	}
 	utils.NewITNioSMSClient()

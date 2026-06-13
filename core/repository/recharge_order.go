@@ -58,7 +58,7 @@ const (
 	rechargeActivityTypeTodayFirst        int8 = 2
 	rechargeActivityTypeV2Gift            int8 = 3
 
-	rechargeV2MinAmount     float64 = 10  // v2版本充值最低金额
+	rechargeV2MinAmount     float64 = 50  // v2版本充值最低金额
 	rechargeV2GiftMinAmount float64 = 100 // v2版本充值赠送门槛（满此金额才赠送）
 )
 
@@ -550,6 +550,7 @@ func addRechargeOrderBonusAmount(tx *gorm.DB, orderID int64, bonusAmount float64
 func ProcessRechargeOrderSuccess(db *gorm.DB, orderNo string, providerTradeNo string, payAmount float64, tablePrefix string) error {
 	var successUserID int64
 	var successOrderNo string
+	notifyRecharge := false
 	err := db.Transaction(func(tx *gorm.DB) error {
 		var order pojo.RechargeOrder
 		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("order_no = ?", orderNo).First(&order).Error; err != nil {
@@ -713,11 +714,15 @@ func ProcessRechargeOrderSuccess(db *gorm.DB, orderNo string, providerTradeNo st
 		}
 		successUserID = order.UserId
 		successOrderNo = order.OrderNo
+		notifyRecharge = true
 		return nil
 	})
 	if err == nil && successUserID > 0 {
 		go CheckAndUpgradeVipLevel(utils.NewPrefixDb(tablePrefix), successUserID)
 		go pushRechargeSuccessFrontendNotification(utils.NewPrefixDb(tablePrefix), successOrderNo)
+		if notifyRecharge {
+			go notifyTelegramRechargeByOrderNo(utils.NewPrefixDb(tablePrefix), successOrderNo)
+		}
 	}
 	return err
 }
@@ -766,6 +771,7 @@ func buildRechargeOrderNo() string {
 func rechargeOrderDevCallback(db *gorm.DB, orderNo string, tablePrefix string) error {
 	var successUserID int64
 	var successOrderNo string
+	notifyRecharge := false
 	err := db.Transaction(func(tx *gorm.DB) error {
 		var order pojo.RechargeOrder
 		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("order_no = ?", orderNo).First(&order).Error; err != nil {
@@ -908,11 +914,15 @@ func rechargeOrderDevCallback(db *gorm.DB, orderNo string, tablePrefix string) e
 
 		successUserID = order.UserId
 		successOrderNo = order.OrderNo
+		notifyRecharge = true
 		return nil
 	})
 	if err == nil && successUserID > 0 {
 		go CheckAndUpgradeVipLevel(utils.NewPrefixDb(tablePrefix), successUserID)
 		go pushRechargeSuccessFrontendNotification(utils.NewPrefixDb(tablePrefix), successOrderNo)
+		if notifyRecharge {
+			go notifyTelegramRechargeByOrderNo(utils.NewPrefixDb(tablePrefix), successOrderNo)
+		}
 	}
 	return err
 }

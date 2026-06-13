@@ -15,6 +15,7 @@ const (
 	WithdrawFlowBatchSourceLuckyNums       = "lucky_nums"
 	WithdrawFlowBatchSourceVipUpgrade      = "vip_upgrade"
 	WithdrawFlowBatchSourceRebateTransfer  = "rebate_transfer"
+	WithdrawFlowBatchSourceInviteRebate    = "invite_rebate"
 
 	WithdrawFlowEventTypeGameBet            = "game_bet"
 	WithdrawFlowEventTypeLuckySend          = "lucky_send"

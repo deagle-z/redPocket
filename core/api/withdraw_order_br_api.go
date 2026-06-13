@@ -213,6 +213,7 @@ func AppCreateWithdrawOrder(ctx *gin.Context) {
 		utils.ErrorBack(ctx, err.Error())
 		return
 	}
+	notifyTelegramWithdraw(user, result)
 	utils.SuccessObjBack(ctx, pojo.AppCreateWithdrawOrderResp{OrderNo: result.OrderNo, Fee: result.Fee})
 }
 
@@ -315,6 +316,7 @@ func AppCreateWithdrawOrderV2(ctx *gin.Context) {
 		utils.ErrorBack(ctx, err.Error())
 		return
 	}
+	notifyTelegramWithdraw(user, result)
 	utils.SuccessObjBack(ctx, pojo.AppCreateWithdrawOrderResp{OrderNo: result.OrderNo, Fee: result.Fee})
 }
 
@@ -474,6 +476,7 @@ func AppCreateRebateWithdrawOrder(ctx *gin.Context) {
 		utils.ErrorBack(ctx, err.Error())
 		return
 	}
+	notifyTelegramWithdraw(user, result)
 
 	var updated pojo.TgUser
 	_ = db.Select("rebate_amount").Where("id = ?", user.ID).First(&updated).Error

@@ -29,6 +29,12 @@ type TelegramBotService struct {
 
 // InitTelegramBot 初始化 Telegram Bot
 func InitTelegramBot(db *gorm.DB, tablePrefix string, botToken string) error {
+	log.Println("旧 Telegram Bot 消息监听/命令处理已停用，仅保留 core/services.InitTelegramNotifier 群通知")
+	return nil
+
+	// Legacy bot command listener is intentionally disabled. The old code below is
+	// kept for reference while registration/recharge/withdraw notifications are
+	// sent by core/services.InitTelegramNotifier.
 	if botToken == "" {
 		log.Println("Telegram Bot Token 未配置，跳过初始化")
 		return nil
