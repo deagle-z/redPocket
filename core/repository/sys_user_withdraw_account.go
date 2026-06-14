@@ -245,6 +245,12 @@ func withdrawAccountBindingIdentities(accountData string) map[withdrawAccountBin
 	if fields.accNoMXNW != "" {
 		result[withdrawAccountBindingIdentity{AccountNo: fields.accNoMXNW, AccountName: fields.accNameMXNW}] = true
 	}
+	// 通用账号字段（clabe / accountNumber / cardNo / pixKey 等）：账号唯一即视为同一银行账号
+	for _, accNo := range fields.extraAccNos {
+		if accNo != "" {
+			result[withdrawAccountBindingIdentity{AccountNo: accNo}] = true
+		}
+	}
 	return result
 }
 
@@ -254,6 +260,7 @@ type withdrawAccountBindingFieldsResult struct {
 	accNameBRLW string
 	accNoMXNW   string
 	accNameMXNW string
+	extraAccNos []string
 }
 
 func withdrawAccountBindingFields(values map[string]any) withdrawAccountBindingFieldsResult {
@@ -272,6 +279,10 @@ func withdrawAccountBindingFields(values map[string]any) withdrawAccountBindingF
 			result.accNoMXNW = value
 		case "accnamemxnw":
 			result.accNameMXNW = value
+		case "clabe", "accountnumber", "accountno", "cardno", "cardnumber", "pixkey", "bankaccount", "bankaccountno":
+			if value != "" {
+				result.extraAccNos = append(result.extraAccNos, value)
+			}
 		}
 	}
 	return result

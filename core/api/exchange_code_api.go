@@ -28,6 +28,17 @@ func GetExchangeCodeListAdmin(ctx *gin.Context) {
 	utils.SuccessObjBack(ctx, result)
 }
 
+// GetExchangeCodeTagsAdmin 获取已有兑换码标签列表（用于下拉筛选）。
+func GetExchangeCodeTagsAdmin(ctx *gin.Context) {
+	db := ctx.MustGet("db").(*gorm.DB)
+	tags, err := repository.GetExchangeCodeTags(db)
+	if err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	utils.SuccessObjBack(ctx, gin.H{"list": tags})
+}
+
 // GetExchangeCodeByIDAdmin 获取兑换码详情。
 func GetExchangeCodeByIDAdmin(ctx *gin.Context) {
 	id, err := strconv.ParseInt(ctx.Param("id"), 10, 64)

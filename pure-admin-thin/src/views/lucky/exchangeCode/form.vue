@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { onMounted, ref } from "vue";
 import { formRules } from "./utils/rule";
 import type { FormProps } from "./utils/types";
+import { getExchangeCodeTagsAdmin } from "@/api/exchangeCode";
 
 const props = withDefaults(defineProps<FormProps>(), {
   formInline: () => ({
@@ -20,12 +21,24 @@ const props = withDefaults(defineProps<FormProps>(), {
 
 const ruleFormRef = ref();
 const newFormInline = ref(props.formInline);
+const tagOptions = ref<string[]>([]);
+
+async function loadTagOptions() {
+  try {
+    const { data } = await getExchangeCodeTagsAdmin();
+    tagOptions.value = data?.list || [];
+  } catch {
+    tagOptions.value = [];
+  }
+}
 
 function getRef() {
   return ruleFormRef.value;
 }
 
 defineExpose({ getRef });
+
+onMounted(loadTagOptions);
 </script>
 
 <template>
@@ -88,12 +101,22 @@ defineExpose({ getRef });
         />
       </el-form-item>
       <el-form-item label="标签">
-        <el-input
+        <el-select
           v-model="newFormInline.tag"
-          maxlength="64"
+          class="!w-full"
+          filterable
+          allow-create
           clearable
-          placeholder="同标签一个用户仅可兑换一次，留空不限"
-        />
+          default-first-option
+          placeholder="选择已有标签或输入新标签，留空不限"
+        >
+          <el-option
+            v-for="item in tagOptions"
+            :key="item"
+            :label="item"
+            :value="item"
+          />
+        </el-select>
       </el-form-item>
       <el-form-item label="创建后导出">
         <el-checkbox v-model="newFormInline.exportAfterCreate">

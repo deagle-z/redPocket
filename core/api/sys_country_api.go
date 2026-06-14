@@ -6,7 +6,6 @@ import (
 	"BaseGoUni/core/utils"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
-	"log"
 	"strconv"
 )
 
@@ -174,6 +173,5 @@ func GetCountryRechargeFields(ctx *gin.Context) {
 		utils.ErrorBack(ctx, err.Error())
 		return
 	}
-	log.Printf("result: %v", result)
 	utils.SuccessObjBack(ctx, result)
 }

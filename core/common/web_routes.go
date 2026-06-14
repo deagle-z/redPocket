@@ -135,6 +135,7 @@ func InitGin() {
 		adminGroup.GET("/luckyItem/:id", api.GetLuckyMoneyItemById)         // 管理员获取红包明细详情
 		adminGroup.POST("/cashHistory/list", api.GetCashHistoryListAdmin)   // 管理员获取余额变动记录列表
 		adminGroup.POST("/exchangeCode/list", api.GetExchangeCodeListAdmin) // 管理员获取兑换码列表
+		adminGroup.POST("/exchangeCode/tags", api.GetExchangeCodeTagsAdmin) // 管理员获取已有兑换码标签列表
 		adminGroup.GET("/exchangeCode/:id", api.GetExchangeCodeByIDAdmin)   // 管理员获取兑换码详情
 		adminGroup.POST("/trialBot/list", api.GetTrialBotUsers)
 		adminGroup.POST("/trial/lucky/list", api.GetTrialLuckyListAdmin)

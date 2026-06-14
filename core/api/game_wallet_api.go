@@ -121,9 +121,6 @@ func TransferGameCashInOut(ctx *gin.Context) {
 		gameErrorBack(ctx, game.GameCodeInvalidMerchantCode, "")
 		return
 	}
-	log.Printf("[game_wallet] TransferInOut begin requestId=%s appId=%s userid=%s tid=%s roundid=%s gameid=%s reason=%s amount=%.2f bet=%.2f isEnd=%t isBuy=%t ip=%s",
-		ctx.GetHeader(game.HeaderRequestID), ctx.GetHeader(game.HeaderAppID), strings.TrimSpace(req.UserID), strings.TrimSpace(req.TID),
-		strings.TrimSpace(req.RoundID), strings.TrimSpace(req.GameID), strings.TrimSpace(req.Reason), req.Amount, req.Bet, req.IsEnd, req.IsBuy, utils.GetIPAddress(ctx))
 	if code, msg := validateGameCashTransferReq(req); code != game.GameCodeSuccess {
 		log.Printf("[game_wallet] TransferInOut validate failed requestId=%s userid=%s tid=%s code=%d msg=%s",
 			ctx.GetHeader(game.HeaderRequestID), strings.TrimSpace(req.UserID), strings.TrimSpace(req.TID), code, msg)
@@ -139,8 +136,6 @@ func TransferGameCashInOut(ctx *gin.Context) {
 		writeGameCashTransferError(ctx, err)
 		return
 	}
-	log.Printf("[game_wallet] TransferInOut success requestId=%s userid=%s tid=%s balance=%.2f",
-		ctx.GetHeader(game.HeaderRequestID), strings.TrimSpace(req.UserID), strings.TrimSpace(req.TID), balance)
 	gameSuccessBack(ctx, pojo.GameCashGetData{Balance: balance})
 }
 
@@ -239,8 +234,6 @@ func handleGameCashTransfer(db *gorm.DB, req pojo.GameCashTransferInOutReq) (flo
 		err = tx.Where("user_id = ? AND award_uni = ?", user.ID, awardUni).First(&history).Error
 		if err == nil {
 			balance = utils.Truncate2(history.EndAmount)
-			log.Printf("[game_wallet] TransferInOut idempotent hit userid=%s tid=%s userId=%d balance=%.2f historyId=%d",
-				userID, tid, user.ID, balance, history.ID)
 			return nil
 		}
 		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
@@ -311,8 +304,6 @@ func handleGameCashTransfer(db *gorm.DB, req pojo.GameCashTransferInOutReq) (flo
 		}
 
 		balance = endBalance
-		log.Printf("[game_wallet] TransferInOut persisted userid=%s tid=%s userId=%d reason=%s amount=%.2f before=%.2f after=%.2f",
-			userID, tid, user.ID, strings.TrimSpace(req.Reason), amount, startBalance, endBalance)
 		return nil
 	})
 	if err != nil {

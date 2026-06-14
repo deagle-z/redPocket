@@ -46,6 +46,21 @@ export const getExchangeCodeByIdAdmin = (id: number) => {
   return http.request<Result>("get", `/api/v1/admin/exchangeCode/${id}`);
 };
 
+export type ExchangeCodeTagsResult = {
+  code: number;
+  message: string;
+  success: boolean;
+  data: { list: string[] };
+};
+
+export const getExchangeCodeTagsAdmin = () => {
+  return http.request<ExchangeCodeTagsResult>(
+    "post",
+    "/api/v1/admin/exchangeCode/tags",
+    {}
+  );
+};
+
 export type ExchangeCodeSetResult = {
   code: number;
   message: string;

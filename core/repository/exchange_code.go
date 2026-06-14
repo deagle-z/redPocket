@@ -74,6 +74,20 @@ func SetExchangeCode(db *gorm.DB, currentUser pojo.SysUser, req pojo.ExchangeCod
 	return createExchangeCode(db, currentUser, req)
 }
 
+// GetExchangeCodeTags 返回已有的去重标签列表（非空、未删除）
+func GetExchangeCodeTags(db *gorm.DB) ([]string, error) {
+	var tags []string
+	err := db.Model(&pojo.ExchangeCode{}).
+		Where("tag <> '' AND status <> ?", -1).
+		Distinct().
+		Order("tag asc").
+		Pluck("tag", &tags).Error
+	if err != nil {
+		return nil, err
+	}
+	return tags, nil
+}
+
 func DelExchangeCode(db *gorm.DB, id int64) error {
 	var entity pojo.ExchangeCode
 	if err := db.Where("id = ? AND status <> ?", id, -1).First(&entity).Error; err != nil {
