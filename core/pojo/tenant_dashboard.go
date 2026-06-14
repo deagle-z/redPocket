@@ -8,8 +8,9 @@ type TenantDashboardPeriodStats struct {
 	WithdrawAmount     float64 `json:"withdrawAmount"`
 	RebateAmount       float64 `json:"rebateAmount"`
 	PlatformPumpAmount float64 `json:"platformPumpAmount"`
-	RechargeUsers      int64   `json:"rechargeUsers"`
-	RegisterUsers      int64   `json:"registerUsers"`
+	RechargeUsers       int64 `json:"rechargeUsers"`
+	RepeatRechargeUsers int64 `json:"repeatRechargeUsers"`
+	RegisterUsers       int64 `json:"registerUsers"`
 }
 
 type TenantDashboardStatsBack struct {

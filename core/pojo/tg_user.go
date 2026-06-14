@@ -399,6 +399,7 @@ type TgUserAdminBack struct {
 	TgID                      int64     `json:"tgId"`
 	Balance                   float64   `json:"balance"`
 	TrialBalance              float64   `json:"trialBalance"`
+	TotalFlow                 float64   `json:"totalFlow"`
 	GiftAmount                float64   `json:"giftAmount"`
 	GiftTotal                 float64   `json:"giftTotal"`
 	RebateAmount              float64   `json:"rebateAmount"`

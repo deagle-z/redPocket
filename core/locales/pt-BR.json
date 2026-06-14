@@ -138,6 +138,7 @@
   "config_key_required": "a chave da configuração não pode estar vazia",
   "config_key_exists": "a chave da configuração já existe",
   "recharge_amount_positive": "o valor da recarga deve ser maior que 0",
+  "game_recharge_required": "faça um depósito antes de entrar no jogo",
   "recharge_v2_min_amount": "o valor mínimo de recarga é {{.min}}",
   "recharge_channel_required": "o canal de recarga não pode estar vazio",
   "order_not_found": "pedido não existe",

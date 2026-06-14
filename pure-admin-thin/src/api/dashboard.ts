@@ -7,6 +7,7 @@ export type AdminDashboardPeriodStats = {
   rebateAmount: number;
   platformPumpAmount: number;
   rechargeUsers: number;
+  repeatRechargeUsers: number;
   registerUsers: number;
 };
 

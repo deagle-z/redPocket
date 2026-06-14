@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	appWithdrawMinAmount      = 20.0
+	appWithdrawMinAmount      = 50.0
 	appWithdrawFreeDailyCount = int64(1)
 	appWithdrawFeeRate        = 0.05
 	appWithdrawSourceRebate   = "rebate"

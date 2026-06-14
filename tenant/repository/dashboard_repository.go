@@ -211,6 +211,12 @@ func getDashboardPeriodStats(db *gorm.DB, tenantID int64, start time.Time, end t
 		Distinct("user_id").
 		Count(&result.RechargeUsers).Error
 
+	// 复充人数：成功充值且非首充的去重用户
+	_ = db.Model(&pojo.RechargeOrder{}).
+		Where("tenant_id = ? AND status = ? AND is_first_recharge = ? AND pay_time >= ? AND pay_time < ?", tenantID, 1, false, start, end).
+		Distinct("user_id").
+		Count(&result.RepeatRechargeUsers).Error
+
 	result.BetAmount = sumDashboardAmount(db.Table(pojo.LuckyHistoryTableName+" lh").
 		Joins("JOIN "+pojo.TgUserTableName+" tu ON tu.id = lh.user_id AND tu.tenant_id = ? AND tu.is_bot = ?", tenantID, false).
 		Where("lh.tenant_id = ? AND lh.created_at >= ? AND lh.created_at < ?", tenantID, start, end),

@@ -28,6 +28,7 @@ const emptyPeriodStats = () => ({
   rebateAmount: 0,
   platformPumpAmount: 0,
   rechargeUsers: 0,
+  repeatRechargeUsers: 0,
   registerUsers: 0
 });
 
@@ -194,6 +195,18 @@ const metricCards = computed(() => [
     unit: "人",
     tone: "slate",
     detailType: "monthRechargeUsers" as DetailType
+  },
+  {
+    title: "当日复充客户数",
+    value: String(stats.value.today.repeatRechargeUsers || 0),
+    unit: "人",
+    tone: "slate"
+  },
+  {
+    title: "当月复充客户数",
+    value: String(stats.value.month.repeatRechargeUsers || 0),
+    unit: "人",
+    tone: "slate"
   }
 ]);
 

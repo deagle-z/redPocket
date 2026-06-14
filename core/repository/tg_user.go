@@ -68,9 +68,17 @@ func GetTgUsers(db *gorm.DB, search pojo.TgUserSearch) (result pojo.TgUserAdminR
 	query = query.Order("id desc").Limit(search.PageSize).Offset(search.PageSize * search.CurrentPage)
 	query.Find(&users)
 
+	// 遍历页内用户ID，查询各自投注流水总额（投注记录分表）
+	userIDs := make([]int64, 0, len(users))
+	for _, user := range users {
+		userIDs = append(userIDs, user.ID)
+	}
+	flowByUser := sumTgUserBetFlowByUserID(db, userIDs)
+
 	for _, user := range users {
 		var temp pojo.TgUserAdminBack
 		_ = copier.Copy(&temp, &user)
+		temp.TotalFlow = flowByUser[user.ID]
 		result.List = append(result.List, temp)
 	}
 	fillAdminTgUserParentUIDs(db, result.List)
@@ -79,6 +87,41 @@ func GetTgUsers(db *gorm.DB, search pojo.TgUserSearch) (result pojo.TgUserAdminR
 	result.PageSize = search.PageSize
 	result.CurrentPage = search.CurrentPage
 	return result
+}
+
+// sumTgUserBetFlowByUserID 按用户聚合投注流水总额（投注记录分表，按分片分组查询）。流水 = sum(bet_amount)。
+func sumTgUserBetFlowByUserID(db *gorm.DB, userIDs []int64) map[int64]float64 {
+	flowByUser := make(map[int64]float64, len(userIDs))
+	if len(userIDs) == 0 {
+		return flowByUser
+	}
+
+	shardGroups := make(map[int][]int64)
+	for _, uid := range userIDs {
+		idx := pojo.AppUserBetRecordShardIndex(uid)
+		shardGroups[idx] = append(shardGroups[idx], uid)
+	}
+
+	type betRow struct {
+		UserID int64   `gorm:"column:user_id"`
+		Flow   float64 `gorm:"column:flow"`
+	}
+	for idx, ids := range shardGroups {
+		table := pojo.AppUserBetRecordShardTableName(idx)
+		if !db.Migrator().HasTable(table) {
+			continue
+		}
+		var rows []betRow
+		_ = db.Table(table).
+			Select("user_id as user_id, coalesce(sum(coalesce(bet_amount, 0)), 0) as flow").
+			Where("user_id in (?) and coalesce(deleted_flag, 0) = 0", ids).
+			Group("user_id").
+			Scan(&rows).Error
+		for _, r := range rows {
+			flowByUser[r.UserID] = utils.Truncate2(r.Flow)
+		}
+	}
+	return flowByUser
 }
 
 // SetTgUser 创建或更新Telegram用户

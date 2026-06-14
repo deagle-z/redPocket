@@ -179,12 +179,17 @@ func LaunchAppGame(ctx *gin.Context) {
 	userID := ctx.MustGet("userId").(int64)
 	db := ctx.MustGet("db").(*gorm.DB)
 	var tgUser pojo.TgUser
-	if err := db.Select("id, uid, status").Where("id = ? AND status <> ?", userID, int8(-1)).First(&tgUser).Error; err != nil {
+	if err := db.Select("id, uid, status, recharge_amount").Where("id = ? AND status <> ?", userID, int8(-1)).First(&tgUser).Error; err != nil {
 		utils.ErrorBack(ctx, "player not found")
 		return
 	}
 	if tgUser.Status != 1 {
 		utils.ErrorBack(ctx, "player disabled")
+		return
+	}
+	// 进入游戏需先充值
+	if tgUser.RechargeAmount <= 0 {
+		utils.ErrorBack(ctx, "game_recharge_required")
 		return
 	}
 

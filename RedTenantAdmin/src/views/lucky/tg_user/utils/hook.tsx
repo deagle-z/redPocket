@@ -93,6 +93,12 @@ export function useTgUser(_tableRef: Ref) {
       formatter: ({ trialBalance }) => formatMoney(trialBalance)
     },
     {
+      label: "用户流水",
+      prop: "subFlowAmount",
+      minWidth: 120,
+      formatter: ({ subFlowAmount }) => formatMoney(subFlowAmount ?? 0)
+    },
+    {
       label: "赠送余额",
       prop: "giftAmount",
       minWidth: 120,
