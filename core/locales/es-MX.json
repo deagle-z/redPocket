@@ -203,5 +203,6 @@
   "exchange_code_disabled": "el código de canje está deshabilitado",
   "exchange_code_redeemed_out": "el código de canje ya alcanzó su límite",
   "exchange_code_already_redeemed": "ya canjeaste este código",
-  "exchange_code_batch_already_redeemed": "ya canjeaste un código de este lote"
+  "exchange_code_batch_already_redeemed": "ya canjeaste un código de este lote",
+  "exchange_code_tag_already_redeemed": "ya canjeaste un código con esta etiqueta"
 }

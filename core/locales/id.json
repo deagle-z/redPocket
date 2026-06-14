@@ -203,5 +203,6 @@
   "exchange_code_disabled": "kode penukaran dinonaktifkan",
   "exchange_code_redeemed_out": "kode penukaran telah mencapai batas",
   "exchange_code_already_redeemed": "Anda sudah menukarkan kode ini",
-  "exchange_code_batch_already_redeemed": "Anda sudah menukarkan kode dari batch ini"
+  "exchange_code_batch_already_redeemed": "Anda sudah menukarkan kode dari batch ini",
+  "exchange_code_tag_already_redeemed": "Anda sudah menukarkan kode dengan tag ini"
 }

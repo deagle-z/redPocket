@@ -62,6 +62,7 @@ func GetExchangeCodeByID(db *gorm.DB, id int64) (pojo.ExchangeCodeBack, error) {
 func SetExchangeCode(db *gorm.DB, currentUser pojo.SysUser, req pojo.ExchangeCodeSet) (pojo.ExchangeCodeSetResult, error) {
 	req.Code = normalizeExchangeCode(req.Code)
 	req.Remark = normalizeExchangeRemark(req.Remark)
+	req.Tag = strings.TrimSpace(req.Tag)
 
 	if req.ID > 0 {
 		back, err := updateExchangeCode(db, req)
@@ -169,6 +170,17 @@ func RedeemExchangeCode(db *gorm.DB, tenantID int64, userID int64, code string) 
 			}
 		}
 
+		// 同一标签：一个用户只能兑换一次
+		if exchange.Tag != "" {
+			tagRedeemed, err := hasUserRedeemedExchangeTag(tx, exchange.Tag, userID)
+			if err != nil {
+				return err
+			}
+			if tagRedeemed {
+				return errors.New("exchange_code_tag_already_redeemed")
+			}
+		}
+
 		amount := utils.Truncate2(exchange.Amount)
 		if amount <= 0 {
 			return errors.New("exchange_code_amount_invalid")
@@ -204,6 +216,7 @@ func RedeemExchangeCode(db *gorm.DB, tenantID int64, userID int64, code string) 
 			CodeID:          exchange.ID,
 			Code:            exchange.Code,
 			BatchNo:         exchange.BatchNo,
+			Tag:             exchange.Tag,
 			UserID:          userID,
 			TenantID:        tenantID,
 			Amount:          amount,
@@ -272,7 +285,7 @@ func createExchangeCode(db *gorm.DB, currentUser pojo.SysUser, req pojo.Exchange
 		if !exchangeCodePattern.MatchString(req.Code) {
 			return pojo.ExchangeCodeSetResult{}, errors.New("exchange_code_format_error")
 		}
-		back, err := createSingleExchangeCode(db, currentUser, req.Code, amount, req.MaxRedeemCount, status, req.Remark, "")
+		back, err := createSingleExchangeCode(db, currentUser, req.Code, amount, req.MaxRedeemCount, status, req.Remark, "", req.Tag)
 		if err != nil {
 			return pojo.ExchangeCodeSetResult{}, err
 		}
@@ -296,7 +309,7 @@ func createExchangeCode(db *gorm.DB, currentUser pojo.SysUser, req pojo.Exchange
 		if err != nil {
 			return pojo.ExchangeCodeSetResult{}, err
 		}
-		back, err := createSingleExchangeCode(db, currentUser, code, amount, req.MaxRedeemCount, status, req.Remark, batchNo)
+		back, err := createSingleExchangeCode(db, currentUser, code, amount, req.MaxRedeemCount, status, req.Remark, batchNo, req.Tag)
 		if err != nil {
 			return pojo.ExchangeCodeSetResult{}, err
 		}
@@ -312,7 +325,7 @@ func generateExchangeBatchNo() string {
 	return fmt.Sprintf("B%d%s", time.Now().UnixNano(), strings.ToUpper(utils.RandomString(4)))
 }
 
-func createSingleExchangeCode(db *gorm.DB, currentUser pojo.SysUser, code string, amount float64, maxRedeemCount int, status int8, remark string, batchNo string) (pojo.ExchangeCodeBack, error) {
+func createSingleExchangeCode(db *gorm.DB, currentUser pojo.SysUser, code string, amount float64, maxRedeemCount int, status int8, remark string, batchNo string, tag string) (pojo.ExchangeCodeBack, error) {
 	var existing int64
 	if err := db.Model(&pojo.ExchangeCode{}).Where("code = ?", code).Count(&existing).Error; err != nil {
 		return pojo.ExchangeCodeBack{}, err
@@ -326,6 +339,7 @@ func createSingleExchangeCode(db *gorm.DB, currentUser pojo.SysUser, code string
 		Amount:         amount,
 		MaxRedeemCount: maxRedeemCount,
 		BatchNo:        batchNo,
+		Tag:            tag,
 		Status:         status,
 		Remark:         remark,
 		CreatedBy:      currentUser.ID,
@@ -397,6 +411,17 @@ func hasUserRedeemedExchangeBatch(tx *gorm.DB, batchNo string, userID int64) (bo
 	return count > 0, err
 }
 
+func hasUserRedeemedExchangeTag(tx *gorm.DB, tag string, userID int64) (bool, error) {
+	if tag == "" {
+		return false, nil
+	}
+	var count int64
+	err := tx.Model(&pojo.ExchangeCodeRedeem{}).
+		Where("tag = ? AND user_id = ?", tag, userID).
+		Count(&count).Error
+	return count > 0, err
+}
+
 func exchangeCodeToBack(entity pojo.ExchangeCode) pojo.ExchangeCodeBack {
 	return pojo.ExchangeCodeBack{
 		ID:             entity.ID,
@@ -407,6 +432,7 @@ func exchangeCodeToBack(entity pojo.ExchangeCode) pojo.ExchangeCodeBack {
 		MaxRedeemCount: entity.MaxRedeemCount,
 		RedeemCount:    entity.RedeemCount,
 		BatchNo:        entity.BatchNo,
+		Tag:            entity.Tag,
 		Status:         entity.Status,
 		Remark:         entity.Remark,
 		CreatedBy:      entity.CreatedBy,

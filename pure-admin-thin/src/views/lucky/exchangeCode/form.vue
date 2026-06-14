@@ -11,6 +11,7 @@ const props = withDefaults(defineProps<FormProps>(), {
     amount: 0,
     maxRedeemCount: 1,
     generateCount: 1,
+    tag: "",
     exportAfterCreate: false,
     status: 1,
     remark: ""
@@ -84,6 +85,14 @@ defineExpose({ getRef });
           :precision="0"
           class="!w-full"
           controls-position="right"
+        />
+      </el-form-item>
+      <el-form-item label="标签">
+        <el-input
+          v-model="newFormInline.tag"
+          maxlength="64"
+          clearable
+          placeholder="同标签一个用户仅可兑换一次，留空不限"
         />
       </el-form-item>
       <el-form-item label="创建后导出">

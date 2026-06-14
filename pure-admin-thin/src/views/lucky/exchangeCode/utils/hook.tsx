@@ -64,6 +64,12 @@ export function useExchangeCode(tableRef: Ref) {
       formatter: ({ batchNo }) => batchNo || "-"
     },
     {
+      label: "标签",
+      prop: "tag",
+      minWidth: 120,
+      formatter: ({ tag }) => tag || "-"
+    },
+    {
       label: "状态",
       prop: "status",
       minWidth: 90,
@@ -177,6 +183,7 @@ export function useExchangeCode(tableRef: Ref) {
           amount: row?.amount ?? 0,
           maxRedeemCount: row?.maxRedeemCount ?? 1,
           generateCount: 1,
+          tag: row?.tag ?? "",
           exportAfterCreate: false,
           status: row?.status === 0 ? 0 : 1,
           remark: row?.remark ?? ""
@@ -208,6 +215,7 @@ export function useExchangeCode(tableRef: Ref) {
                 amount: Number(curData.amount || 0),
                 maxRedeemCount: Number(curData.maxRedeemCount || 0),
                 generateCount: code ? 1 : Number(curData.generateCount || 1),
+                tag: curData.tag?.trim() || "",
                 status: curData.status,
                 remark: curData.remark?.trim() || ""
               });

@@ -203,5 +203,6 @@
   "exchange_code_disabled": "the exchange code is disabled",
   "exchange_code_redeemed_out": "the exchange code has been fully redeemed",
   "exchange_code_already_redeemed": "you have already redeemed this exchange code",
-  "exchange_code_batch_already_redeemed": "you have already redeemed a code from this batch"
+  "exchange_code_batch_already_redeemed": "you have already redeemed a code from this batch",
+  "exchange_code_tag_already_redeemed": "you have already redeemed a code with this tag"
 }

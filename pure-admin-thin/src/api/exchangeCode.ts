@@ -12,6 +12,7 @@ export type ExchangeCode = {
   maxRedeemCount: number;
   redeemCount: number;
   batchNo: string;
+  tag: string;
   status: ExchangeCodeStatus;
   remark: string;
   createdBy: number;
@@ -30,6 +31,7 @@ export type ExchangeCodeSet = {
   amount?: number;
   maxRedeemCount?: number;
   generateCount?: number;
+  tag?: string;
   status?: 1 | 0;
   remark?: string;
 };
