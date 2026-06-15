@@ -1,15 +1,53 @@
 package services
 
 import (
+	"BaseGoUni/core/pojo"
 	"BaseGoUni/core/utils"
 	"context"
 	"fmt"
 	"log"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/go-telegram/bot"
 )
+
+var (
+	tenantNameCache   = map[int64]string{}
+	tenantNameCacheMu sync.RWMutex
+)
+
+// resolveTenantName 按租户ID查询租户名称（sys_tenant 在默认主库 utils.Db），命中后缓存。
+func resolveTenantName(tenantID int64) string {
+	if tenantID <= 0 || utils.Db == nil {
+		return ""
+	}
+	tenantNameCacheMu.RLock()
+	name, ok := tenantNameCache[tenantID]
+	tenantNameCacheMu.RUnlock()
+	if ok {
+		return name
+	}
+	var tenant pojo.SysTenant
+	if err := utils.Db.Select("tenant_name").Where("id = ?", tenantID).First(&tenant).Error; err == nil {
+		name = strings.TrimSpace(tenant.TenantName)
+	}
+	if name != "" {
+		tenantNameCacheMu.Lock()
+		tenantNameCache[tenantID] = name
+		tenantNameCacheMu.Unlock()
+	}
+	return name
+}
+
+// tenantLabel 返回用于通知展示的「所属商户」标签：有名称用名称，否则用 #ID。
+func tenantLabel(tenantID int64) string {
+	if name := resolveTenantName(tenantID); name != "" {
+		return name
+	}
+	return fmt.Sprintf("#%d", tenantID)
+}
 
 var telegramNotifyBot *bot.Bot
 
@@ -56,9 +94,11 @@ func buildTelegramNotifyText(payload utils.TelegramNotifyPayload) string {
 	if at.IsZero() {
 		at = time.Now()
 	}
+	tenant := tenantLabel(payload.TenantID)
 	switch payload.Event {
 	case utils.TelegramNotifyEventRegister:
-		return fmt.Sprintf("注册通知\n用户ID: %d\nUID: %s\n账号: %s\n姓名: %s\n国家: %s\nIP: %s\n来源渠道: %s\n时间: %s",
+		return fmt.Sprintf("注册通知\n所属商户: %s\n用户ID: %d\nUID: %s\n账号: %s\n姓名: %s\n国家: %s\nIP: %s\n来源渠道: %s\n时间: %s",
+			tenant,
 			payload.UserID,
 			payload.UID,
 			firstNonEmpty(payload.Email, payload.Phone, payload.TgName, payload.Username),
@@ -69,7 +109,8 @@ func buildTelegramNotifyText(payload utils.TelegramNotifyPayload) string {
 			at.Format("2006-01-02 15:04:05"),
 		)
 	case utils.TelegramNotifyEventRecharge:
-		return fmt.Sprintf("充值通知\n用户ID: %d\nUID: %s\n订单号: %s\n金额: %.2f %s\n入账: %.2f\n赠送: %.2f\n渠道: %s\n时间: %s",
+		return fmt.Sprintf("充值通知\n所属商户: %s\n用户ID: %d\nUID: %s\n订单号: %s\n金额: %.2f %s\n入账: %.2f\n赠送: %.2f\n渠道: %s\n时间: %s",
+			tenant,
 			payload.UserID,
 			payload.UID,
 			payload.OrderNo,
@@ -81,7 +122,8 @@ func buildTelegramNotifyText(payload utils.TelegramNotifyPayload) string {
 			at.Format("2006-01-02 15:04:05"),
 		)
 	case utils.TelegramNotifyEventWithdraw:
-		return fmt.Sprintf("提现通知\n用户ID: %d\nUID: %s\n订单号: %s\n金额: %.2f %s\n手续费: %.2f\n渠道: %s\n时间: %s",
+		return fmt.Sprintf("提现通知\n所属商户: %s\n用户ID: %d\nUID: %s\n订单号: %s\n金额: %.2f %s\n手续费: %.2f\n渠道: %s\n时间: %s",
+			tenant,
 			payload.UserID,
 			payload.UID,
 			payload.OrderNo,
