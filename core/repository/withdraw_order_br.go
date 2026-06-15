@@ -14,7 +14,10 @@ import (
 	"time"
 )
 
-const withdrawOrderSourceRebate = "rebate"
+const (
+	withdrawOrderSourceBalance = "balance"
+	withdrawOrderSourceRebate  = "rebate"
+)
 
 // GetWithdrawOrderBrs 巴西提现订单列表（分页）
 func GetWithdrawOrderBrs(db *gorm.DB, search pojo.WithdrawOrderBrSearch) (result pojo.WithdrawOrderBrResp) {
@@ -133,6 +136,7 @@ func SetWithdrawOrderBr(db *gorm.DB, req pojo.WithdrawOrderBrSet) (result pojo.W
 			}
 			oldStatus := dbOrder.Status
 			mergeWithdrawOrderUpdate(&dbOrder, req)
+			normalizeWithdrawOrderSource(&dbOrder)
 			ensureWithdrawMerchantOrderNo(&dbOrder)
 			fillWithdrawOrderNetAmount(tx, &dbOrder)
 			if oldStatus == 0 && dbOrder.Status == 1 {
@@ -158,6 +162,7 @@ func SetWithdrawOrderBr(db *gorm.DB, req pojo.WithdrawOrderBrSet) (result pojo.W
 		}
 
 		_ = copier.Copy(&dbOrder, &req)
+		normalizeWithdrawOrderSource(&dbOrder)
 		ensureWithdrawMerchantOrderNo(&dbOrder)
 		fillWithdrawOrderNetAmount(tx, &dbOrder)
 		if dbOrder.SourceChannelID == nil && dbOrder.UserId > 0 {
@@ -199,6 +204,7 @@ func SetRebateWithdrawOrder(db *gorm.DB, req pojo.WithdrawOrderBrSet) (result po
 	var dbOrder pojo.WithdrawOrderBr
 	err = db.Transaction(func(tx *gorm.DB) error {
 		_ = copier.Copy(&dbOrder, &req)
+		normalizeWithdrawOrderSource(&dbOrder)
 		ensureWithdrawMerchantOrderNo(&dbOrder)
 		fillWithdrawOrderNetAmount(tx, &dbOrder)
 		if dbOrder.SourceChannelID == nil && dbOrder.UserId > 0 {
@@ -237,6 +243,7 @@ func SetWithdrawOrderBrV2(db *gorm.DB, req pojo.WithdrawOrderBrSet) (result pojo
 	var dbOrder pojo.WithdrawOrderBr
 	err = db.Transaction(func(tx *gorm.DB) error {
 		_ = copier.Copy(&dbOrder, &req)
+		normalizeWithdrawOrderSource(&dbOrder)
 		ensureWithdrawMerchantOrderNo(&dbOrder)
 		fillWithdrawOrderNetAmount(tx, &dbOrder)
 		if dbOrder.SourceChannelID == nil && dbOrder.UserId > 0 {
@@ -285,6 +292,9 @@ func mergeWithdrawOrderUpdate(order *pojo.WithdrawOrderBr, req pojo.WithdrawOrde
 	}
 	if req.HasJSONField("sourceChannelId") {
 		order.SourceChannelID = req.SourceChannelID
+	}
+	if req.HasJSONField("withdrawSource") {
+		order.WithdrawSource = strings.TrimSpace(req.WithdrawSource)
 	}
 	if req.HasJSONField("accountId") {
 		order.AccountId = req.AccountId
@@ -1055,6 +1065,9 @@ func refundWithdrawAmount(tx *gorm.DB, order pojo.WithdrawOrderBr) error {
 }
 
 func isRebateWithdrawOrder(order pojo.WithdrawOrderBr) bool {
+	if strings.EqualFold(strings.TrimSpace(order.WithdrawSource), withdrawOrderSourceRebate) {
+		return true
+	}
 	if order.Extra == nil || strings.TrimSpace(*order.Extra) == "" {
 		return false
 	}
@@ -1068,6 +1081,22 @@ func isRebateWithdrawOrder(order pojo.WithdrawOrderBr) bool {
 		}
 	}
 	return false
+}
+
+func normalizeWithdrawOrderSource(order *pojo.WithdrawOrderBr) {
+	if order == nil {
+		return
+	}
+	source := strings.TrimSpace(order.WithdrawSource)
+	if source != "" {
+		order.WithdrawSource = source
+		return
+	}
+	if isRebateWithdrawOrder(*order) {
+		order.WithdrawSource = withdrawOrderSourceRebate
+		return
+	}
+	order.WithdrawSource = withdrawOrderSourceBalance
 }
 
 func isV2WithdrawOrder(order pojo.WithdrawOrderBr) bool {

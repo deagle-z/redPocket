@@ -5,9 +5,11 @@ import (
 	"BaseGoUni/core/repository"
 	"BaseGoUni/core/utils"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
+	"log"
 	"strconv"
 	"strings"
 	"time"
@@ -17,6 +19,7 @@ const (
 	appWithdrawMinAmount      = 50.0
 	appWithdrawFreeDailyCount = int64(1)
 	appWithdrawFeeRate        = 0.05
+	appWithdrawSourceBalance  = "balance"
 	appWithdrawSourceRebate   = "rebate"
 )
 
@@ -195,6 +198,7 @@ func AppCreateWithdrawOrder(ctx *gin.Context) {
 		TenantId:        user.TenantId,
 		UserId:          user.ID,
 		AccountId:       optionalString(accountID),
+		WithdrawSource:  appWithdrawSourceBalance,
 		OrderNo:         orderNo,
 		Currency:        country.CurrencyCode,
 		CountryCode:     countryCode,
@@ -232,19 +236,19 @@ func AppCreateWithdrawOrderV2(ctx *gin.Context) {
 
 	var req pojo.AppCreateWithdrawOrderReq
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		utils.ErrorBack(ctx, err.Error())
+		appWithdrawV2ErrorBack(ctx, userID, req.Amount, req.AccountID, req.CountryCode, "", err.Error(), nil)
 		return
 	}
 	req.Amount = utils.Truncate2(req.Amount)
 	if req.Amount < appWithdrawMinAmount {
-		utils.ErrorBack(ctx, "invalid_withdraw_amount")
+		appWithdrawV2ErrorBack(ctx, userID, req.Amount, req.AccountID, req.CountryCode, "", "invalid_withdraw_amount", nil)
 		return
 	}
 
 	db := ctx.MustGet("db").(*gorm.DB)
 	var user pojo.TgUser
 	if err := db.Where("id = ?", userID).First(&user).Error; err != nil || user.ID == 0 {
-		utils.ErrorBack(ctx, "user_not_found")
+		appWithdrawV2ErrorBack(ctx, userID, req.Amount, req.AccountID, req.CountryCode, "", "user_not_found", err)
 		return
 	}
 
@@ -253,13 +257,13 @@ func AppCreateWithdrawOrderV2(ctx *gin.Context) {
 		countryCode = pojo.NormalizeWithdrawCountryCode(*user.Country)
 	}
 	if countryCode == "" {
-		utils.ErrorBack(ctx, "country_required")
+		appWithdrawV2ErrorBack(ctx, userID, req.Amount, req.AccountID, countryCode, "", "country_required", nil)
 		return
 	}
 
 	var country pojo.SysCountry
 	if err := db.Where("country_code = ? AND status = 1", countryCode).First(&country).Error; err != nil || country.ID == 0 {
-		utils.ErrorBack(ctx, "country_not_available")
+		appWithdrawV2ErrorBack(ctx, userID, req.Amount, req.AccountID, countryCode, "", "country_not_available", err)
 		return
 	}
 
@@ -267,11 +271,11 @@ func AppCreateWithdrawOrderV2(ctx *gin.Context) {
 	if req.AccountID != nil && *req.AccountID > 0 {
 		var dbAccount pojo.SysUserWithdrawAccount
 		if err := db.Where("id = ? AND user_id = ? AND status = 1", *req.AccountID, userID).First(&dbAccount).Error; err != nil || dbAccount.ID == 0 {
-			utils.ErrorBack(ctx, "account_not_found")
+			appWithdrawV2ErrorBack(ctx, userID, req.Amount, req.AccountID, countryCode, "", "account_not_found", err)
 			return
 		}
 		if !strings.EqualFold(dbAccount.CountryCode, countryCode) {
-			utils.ErrorBack(ctx, "account_country_mismatch")
+			appWithdrawV2ErrorBack(ctx, userID, req.Amount, req.AccountID, countryCode, "", "account_country_mismatch", nil)
 			return
 		}
 		account = &dbAccount
@@ -290,7 +294,7 @@ func AppCreateWithdrawOrderV2(ctx *gin.Context) {
 	}
 	todayWithdrawCount, err := countTodayAppWithdrawOrders(db, user.ID, time.Now())
 	if err != nil {
-		utils.ErrorBack(ctx, err.Error())
+		appWithdrawV2ErrorBack(ctx, userID, req.Amount, req.AccountID, countryCode, orderNo, err.Error(), err)
 		return
 	}
 	withdrawFee := calculateAppWithdrawFee(todayWithdrawCount, req.Amount)
@@ -298,6 +302,7 @@ func AppCreateWithdrawOrderV2(ctx *gin.Context) {
 		TenantId:        user.TenantId,
 		UserId:          user.ID,
 		AccountId:       optionalString(accountID),
+		WithdrawSource:  appWithdrawSourceBalance,
 		OrderNo:         orderNo,
 		Currency:        country.CurrencyCode,
 		CountryCode:     countryCode,
@@ -313,7 +318,7 @@ func AppCreateWithdrawOrderV2(ctx *gin.Context) {
 
 	result, err := repository.SetWithdrawOrderBrV2(db, orderReq)
 	if err != nil {
-		utils.ErrorBack(ctx, err.Error())
+		appWithdrawV2ErrorBack(ctx, userID, req.Amount, req.AccountID, countryCode, orderNo, err.Error(), err)
 		return
 	}
 	notifyTelegramWithdraw(user, result)
@@ -457,6 +462,7 @@ func AppCreateRebateWithdrawOrder(ctx *gin.Context) {
 		TenantId:        user.TenantId,
 		UserId:          user.ID,
 		AccountId:       optionalString(accountID),
+		WithdrawSource:  appWithdrawSourceRebate,
 		OrderNo:         orderNo,
 		Currency:        country.CurrencyCode,
 		CountryCode:     countryCode,
@@ -514,11 +520,70 @@ func countTodayAppWithdrawOrders(db *gorm.DB, userID int64, now time.Time) (int6
 	var count int64
 	err := db.Model(&pojo.WithdrawOrderBr{}).
 		Where("user_id = ? AND created_at >= ? AND created_at < ?", userID, start, end).
-		Where(`COALESCE(JSON_UNQUOTE(JSON_EXTRACT(extra, '$.source')), '') <> ?`, appWithdrawSourceRebate).
-		Where(`COALESCE(JSON_UNQUOTE(JSON_EXTRACT(extra, '$.balanceSource')), '') <> ?`, appWithdrawSourceRebate).
-		Where(`COALESCE(JSON_UNQUOTE(JSON_EXTRACT(extra, '$.withdrawSource')), '') <> ?`, appWithdrawSourceRebate).
+		Where("COALESCE(withdraw_source, ?) <> ?", appWithdrawSourceBalance, appWithdrawSourceRebate).
 		Count(&count).Error
 	return count, err
+}
+
+func appWithdrawV2ErrorBack(ctx *gin.Context, userID int64, amount float64, accountID *int64, countryCode string, orderNo string, responseMsg string, err error) {
+	level := "error"
+	if isAppWithdrawV2BusinessError(responseMsg, err) {
+		level = "warn"
+	}
+	log.Printf(
+		"[withdraw-v2] level=%s userID=%d amount=%.2f accountID=%s countryCode=%q orderNo=%q err=%q",
+		level,
+		userID,
+		amount,
+		formatOptionalInt64(accountID),
+		strings.TrimSpace(countryCode),
+		strings.TrimSpace(orderNo),
+		appWithdrawV2LogErrorMessage(responseMsg, err),
+	)
+	utils.ErrorBack(ctx, responseMsg)
+}
+
+func appWithdrawV2LogErrorMessage(responseMsg string, err error) string {
+	if err != nil {
+		return err.Error()
+	}
+	return strings.TrimSpace(responseMsg)
+}
+
+func formatOptionalInt64(value *int64) string {
+	if value == nil {
+		return ""
+	}
+	return strconv.FormatInt(*value, 10)
+}
+
+func isAppWithdrawV2BusinessError(responseMsg string, err error) bool {
+	if err == nil {
+		return true
+	}
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return true
+	}
+	return isAppWithdrawV2BusinessMessage(err.Error())
+}
+
+func isAppWithdrawV2BusinessMessage(msg string) bool {
+	msg = strings.TrimSpace(msg)
+	if strings.Contains(msg, "withdraw_flow_insufficient") {
+		return true
+	}
+	switch msg {
+	case "invalid_withdraw_amount",
+		"user_not_found",
+		"country_required",
+		"country_not_available",
+		"account_not_found",
+		"account_country_mismatch",
+		"user_balance_insufficient":
+		return true
+	default:
+		return false
+	}
 }
 
 func applyWithdrawReceiverSnapshot(req *pojo.WithdrawOrderBrSet, countryCode string, account *pojo.SysUserWithdrawAccount, fieldValues map[string]string) {

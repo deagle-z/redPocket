@@ -114,9 +114,7 @@ func countTodayOrdinaryWithdrawOrders(db *gorm.DB, userID int64, now time.Time) 
 	var count int64
 	err := db.Model(&pojo.WithdrawOrderBr{}).
 		Where("user_id = ? AND created_at >= ? AND created_at < ?", userID, start, end).
-		Where(`COALESCE(JSON_UNQUOTE(JSON_EXTRACT(extra, '$.source')), '') <> ?`, withdrawOrderSourceRebate).
-		Where(`COALESCE(JSON_UNQUOTE(JSON_EXTRACT(extra, '$.balanceSource')), '') <> ?`, withdrawOrderSourceRebate).
-		Where(`COALESCE(JSON_UNQUOTE(JSON_EXTRACT(extra, '$.withdrawSource')), '') <> ?`, withdrawOrderSourceRebate).
+		Where("COALESCE(withdraw_source, '') <> ?", withdrawOrderSourceRebate).
 		Count(&count).Error
 	return count, err
 }

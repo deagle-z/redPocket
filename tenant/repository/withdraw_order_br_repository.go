@@ -188,6 +188,9 @@ func mergeTenantWithdrawOrderUpdate(order *pojo.WithdrawOrderBr, req pojo.Withdr
 	if req.HasJSONField("sourceChannelId") {
 		order.SourceChannelID = req.SourceChannelID
 	}
+	if req.HasJSONField("withdrawSource") {
+		order.WithdrawSource = strings.TrimSpace(req.WithdrawSource)
+	}
 	if req.HasJSONField("accountId") {
 		order.AccountId = req.AccountId
 	}

@@ -132,5 +132,27 @@ export default [
         }
       }
     ]
+  },
+  {
+    path: "/cash-history",
+    name: "CashHistoryMenu",
+    component: Layout,
+    redirect: "/cash-history/index",
+    meta: {
+      icon: "ri:exchange-funds-fill",
+      title: "金额变动记录",
+      rank: 8
+    },
+    children: [
+      {
+        path: "/cash-history/index",
+        name: "CashHistory",
+        component: () => import("@/views/lucky/cash_history/index.vue"),
+        meta: {
+          title: "金额变动记录",
+          showLink: true
+        }
+      }
+    ]
   }
 ] satisfies RouteConfigsTable[];

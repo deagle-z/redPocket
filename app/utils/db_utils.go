@@ -150,6 +150,10 @@ func InitTables(prefix string) (firstInit bool, err error) {
 	if err = ensureTgUserInviteValidSchema(db); err != nil {
 		panic(err)
 	}
+	log.Print("init tables: ensure withdraw_order_br performance schema...\n")
+	if err = ensureWithdrawOrderBrPerformanceSchema(db); err != nil {
+		panic(err)
+	}
 	log.Print("init tables: ensure trial lucky item pick index...\n")
 	if err = ensureTrialLuckyMoneyItemPickIndex(db); err != nil {
 		panic(err)
@@ -229,4 +233,54 @@ func ensureTrialLuckyMoneyItemPickIndex(db *gorm.DB) error {
 		}
 	}
 	return nil
+}
+
+func ensureWithdrawOrderBrPerformanceSchema(db *gorm.DB) error {
+	migrator := db.Migrator()
+	if !migrator.HasTable(&pojo.WithdrawOrderBr{}) {
+		return nil
+	}
+	if !migrator.HasColumn(&pojo.WithdrawOrderBr{}, "WithdrawSource") {
+		if err := migrator.AddColumn(&pojo.WithdrawOrderBr{}, "WithdrawSource"); err != nil {
+			return err
+		}
+	}
+	if err := backfillWithdrawOrderBrSource(db); err != nil {
+		return err
+	}
+	if !migrator.HasIndex(&pojo.WithdrawOrderBr{}, "idx_withdraw_order_user_created") {
+		if err := db.Exec("CREATE INDEX `idx_withdraw_order_user_created` ON `withdraw_order_br` (`user_id`, `created_at`)").Error; err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func backfillWithdrawOrderBrSource(db *gorm.DB) error {
+	const (
+		balanceSource = "balance"
+		rebateSource  = "rebate"
+	)
+	if err := db.Exec(`
+UPDATE withdraw_order_br
+SET withdraw_source = ?
+WHERE COALESCE(withdraw_source, '') = ''
+  AND (
+    COALESCE(JSON_UNQUOTE(JSON_EXTRACT(extra, '$.source')), '') = ?
+    OR COALESCE(JSON_UNQUOTE(JSON_EXTRACT(extra, '$.balanceSource')), '') = ?
+    OR COALESCE(JSON_UNQUOTE(JSON_EXTRACT(extra, '$.withdrawSource')), '') = ?
+  )`,
+		rebateSource,
+		rebateSource,
+		rebateSource,
+		rebateSource,
+	).Error; err != nil {
+		return err
+	}
+	return db.Exec(`
+UPDATE withdraw_order_br
+SET withdraw_source = ?
+WHERE COALESCE(withdraw_source, '') = ''`,
+		balanceSource,
+	).Error
 }
