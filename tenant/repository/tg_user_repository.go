@@ -225,6 +225,7 @@ type TgUsersSubStatsSummary struct {
 	SubFlowAmount     float64 `json:"subFlowAmount"`
 	SubProfitAmount   float64 `json:"subProfitAmount"`
 	SubWithdrawAmount float64 `json:"subWithdrawAmount"`
+	RechargeUsers     int64   `json:"rechargeUsers"`
 	ValidUsers        int64   `json:"validUsers"`
 }
 
@@ -571,6 +572,15 @@ func GetTgUsersWithSubStatsSummary(db *gorm.DB, tenantID int64, search pojo.TgUs
 			Where("status = ? and user_id in (?)", 1, subUsersQuery).
 			Scan(&result.SubRechargeAmount).Error
 
+		rechargeUsersQuery := db.Model(&pojo.RechargeOrder{})
+		if tenantID > 0 {
+			rechargeUsersQuery = rechargeUsersQuery.Where("tenant_id = ?", tenantID)
+		}
+		_ = rechargeUsersQuery.
+			Where("status = ? and user_id in (?)", 1, subUsersQuery).
+			Distinct("user_id").
+			Count(&result.RechargeUsers).Error
+
 		// 流水/盈利口径：遍历 user_id 查询投注记录（分表）
 		var subUserIDs []int64
 		subIDQuery := db.Model(&pojo.TgUser{}).Where("parent_id is not null")
@@ -625,6 +635,15 @@ func GetTgUsersWithSubStatsSummary(db *gorm.DB, tenantID int64, search pojo.TgUs
 		Select("coalesce(sum(amount), 0)").
 		Where("status = ? and user_id in (?)", 1, descendantIDs).
 		Scan(&result.SubRechargeAmount).Error
+
+	rechargeUsersQuery := db.Model(&pojo.RechargeOrder{})
+	if tenantID > 0 {
+		rechargeUsersQuery = rechargeUsersQuery.Where("tenant_id = ?", tenantID)
+	}
+	_ = rechargeUsersQuery.
+		Where("status = ? and user_id in (?)", 1, descendantIDs).
+		Distinct("user_id").
+		Count(&result.RechargeUsers).Error
 
 	// 流水/盈利口径：遍历 user_id 查询投注记录（分表）
 	result.SubFlowAmount, result.SubProfitAmount = tenantTgUserBetStatsTotal(db, descendantIDs)

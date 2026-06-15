@@ -48,6 +48,7 @@ const subStatsSummary = reactive({
   subFlowAmount: 0,
   subProfitAmount: 0,
   subWithdrawAmount: 0,
+  rechargeUsers: 0,
   validUsers: 0
 });
 const rebateRateFormRef = ref();
@@ -221,6 +222,7 @@ async function loadSubStatsSummary() {
     subStatsSummary.subFlowAmount = Number(data?.subFlowAmount ?? 0);
     subStatsSummary.subProfitAmount = Number(data?.subProfitAmount ?? 0);
     subStatsSummary.subWithdrawAmount = Number(data?.subWithdrawAmount ?? 0);
+    subStatsSummary.rechargeUsers = Number(data?.rechargeUsers ?? 0);
     subStatsSummary.validUsers = Number(data?.validUsers ?? 0);
   } catch (error) {
     console.error("获取下级汇总失败", error);
@@ -492,6 +494,14 @@ function handleSubStatsNextPage() {
               <div class="stat-title">提现金额之和</div>
               <div class="stat-value">
                 {{ formatMoney(subStatsSummary.subWithdrawAmount) }}
+              </div>
+            </el-card>
+          </el-col>
+          <el-col :xs="24" :sm="12" :md="8" :lg="4">
+            <el-card shadow="hover">
+              <div class="stat-title">充值人数</div>
+              <div class="stat-value">
+                {{ formatCount(subStatsSummary.rechargeUsers) }}
               </div>
             </el-card>
           </el-col>

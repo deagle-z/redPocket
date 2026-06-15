@@ -1,0 +1,25 @@
+packages:
+  - .
+shellEmulator: true
+shamefullyHoist: true
+enablePrePostScripts: false
+strictPeerDependencies: false
+allowBuilds:
+  '@parcel/watcher': true
+  esbuild: true
+  vue-demi: true
+allowedDeprecatedVersions:
+  are-we-there-yet: '*'
+  sourcemap-codec: '*'
+  domexception: '*'
+  w3c-hr-time: '*'
+  inflight: '*'
+  npmlog: '*'
+  rimraf: '*'
+  stable: '*'
+  gauge: '*'
+  abab: '*'
+  glob: '*'
+peerDependencyRules:
+  allowedVersions:
+    eslint: '9'

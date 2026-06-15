@@ -46,7 +46,9 @@ const subStatsSummary = reactive({
   subRechargeAmount: 0,
   subFlowAmount: 0,
   subProfitAmount: 0,
-  subWithdrawAmount: 0
+  subWithdrawAmount: 0,
+  rechargeUsers: 0,
+  validUsers: 0
 });
 const rebateRateDialogVisible = ref(false);
 const rebateRateSaving = ref(false);
@@ -76,6 +78,12 @@ function formatMoney(val?: number | null) {
   if (val === null || val === undefined || Number.isNaN(Number(val)))
     return "0";
   return String(val);
+}
+
+function formatCount(val?: number | null) {
+  if (val === null || val === undefined || Number.isNaN(Number(val)))
+    return "0";
+  return String(Math.trunc(Number(val)));
 }
 
 function formatName(row: {
@@ -167,6 +175,8 @@ async function loadSubStatsSummary() {
     subStatsSummary.subFlowAmount = Number(data?.subFlowAmount ?? 0);
     subStatsSummary.subProfitAmount = Number(data?.subProfitAmount ?? 0);
     subStatsSummary.subWithdrawAmount = Number(data?.subWithdrawAmount ?? 0);
+    subStatsSummary.rechargeUsers = Number(data?.rechargeUsers ?? 0);
+    subStatsSummary.validUsers = Number(data?.validUsers ?? 0);
   } catch (error) {
     console.error("获取下级汇总失败", error);
     message("获取下级汇总失败", { type: "error" });
@@ -390,7 +400,7 @@ function handleSubStatsCurrentChange(page: number) {
     >
       <el-skeleton :loading="subStatsSummaryLoading" animated :rows="2">
         <el-row :gutter="12" class="mb-3">
-          <el-col :span="6">
+          <el-col :xs="24" :sm="12" :md="8" :lg="4">
             <el-card shadow="hover">
               <div class="stat-title">充值金额之和</div>
               <div class="stat-value">
@@ -398,7 +408,7 @@ function handleSubStatsCurrentChange(page: number) {
               </div>
             </el-card>
           </el-col>
-          <el-col :span="6">
+          <el-col :xs="24" :sm="12" :md="8" :lg="4">
             <el-card shadow="hover">
               <div class="stat-title">流水之和</div>
               <div class="stat-value">
@@ -406,7 +416,7 @@ function handleSubStatsCurrentChange(page: number) {
               </div>
             </el-card>
           </el-col>
-          <el-col :span="6">
+          <el-col :xs="24" :sm="12" :md="8" :lg="4">
             <el-card shadow="hover">
               <div class="stat-title">盈利之和</div>
               <div class="stat-value">
@@ -414,11 +424,27 @@ function handleSubStatsCurrentChange(page: number) {
               </div>
             </el-card>
           </el-col>
-          <el-col :span="6">
+          <el-col :xs="24" :sm="12" :md="8" :lg="4">
             <el-card shadow="hover">
               <div class="stat-title">提现金额之和</div>
               <div class="stat-value">
                 {{ formatMoney(subStatsSummary.subWithdrawAmount) }}
+              </div>
+            </el-card>
+          </el-col>
+          <el-col :xs="24" :sm="12" :md="8" :lg="4">
+            <el-card shadow="hover">
+              <div class="stat-title">充值人数</div>
+              <div class="stat-value">
+                {{ formatCount(subStatsSummary.rechargeUsers) }}
+              </div>
+            </el-card>
+          </el-col>
+          <el-col :xs="24" :sm="12" :md="8" :lg="4">
+            <el-card shadow="hover">
+              <div class="stat-title">有效用户数</div>
+              <div class="stat-value">
+                {{ formatCount(subStatsSummary.validUsers) }}
               </div>
             </el-card>
           </el-col>
