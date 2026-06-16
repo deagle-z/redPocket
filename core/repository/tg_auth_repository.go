@@ -943,7 +943,7 @@ func GetCurrentTgUserInfo(db *gorm.DB, accessSecret string, token string) (pojo.
 	}
 
 	var rechargeCount int64
-	db.Model(&pojo.RechargeOrder{}).Where("user_id = ? AND status = 1", user.ID).Count(&rechargeCount)
+	db.Model(&pojo.RechargeOrder{}).Where("user_id = ? AND status = 1 AND coalesce(is_dev, 0) = 0", user.ID).Count(&rechargeCount)
 
 	return pojo.TgCurrentUserInfo{
 		Avatar:                    user.Avatar,

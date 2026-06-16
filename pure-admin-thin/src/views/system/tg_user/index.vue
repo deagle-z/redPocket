@@ -4,14 +4,23 @@ import { useTgUser } from "./utils/hook";
 import { PureTableBar } from "@/components/RePureTableBar";
 import { useRenderIcon } from "@/components/ReIcon/src/hooks";
 import { deviceDetection } from "@pureadmin/utils";
+import { ElMessageBox } from "element-plus";
 import { message } from "@/utils/message";
 import {
+  getAdminCountryRechargeInfo,
+  getSysCountryList,
+  type AppRechargeChannelItem,
+  type SysCountry
+} from "@/api/country";
+import {
   addTgUserRebateAmount,
+  createTgUserRechargeOrderV2,
   getTgUserListWithSubStats,
   getTgUserSubStatsSummary,
   setTgUserRebateRate,
   setTgUserRemark,
-  type TgUser
+  type TgUser,
+  type TgUserRechargeOrderAppBack
 } from "@/api/tgUser";
 
 import Refresh from "@iconify-icons/ep/refresh";
@@ -80,6 +89,46 @@ const remarkForm = reactive({
   firstName: "",
   remark: ""
 });
+type RechargeFieldOption = {
+  label: string;
+  value: string;
+};
+
+type RechargeField = {
+  fieldKey: string;
+  fieldLabel: string;
+  fieldPlaceholder?: string | null;
+  fieldType?: string | null;
+  dataType?: string | null;
+  isRequired?: number | boolean | null;
+  defaultValue?: string | null;
+  minLength?: number | null;
+  maxLength?: number | null;
+  regexRule?: string | null;
+  errorTips?: string | null;
+  optionsJson?: string | null;
+};
+
+const rechargeDialogVisible = ref(false);
+const rechargeConfigLoading = ref(false);
+const rechargeSaving = ref(false);
+const rechargeCountries = ref<SysCountry[]>([]);
+const rechargeChannels = ref<AppRechargeChannelItem[]>([]);
+const rechargeFields = ref<RechargeField[]>([]);
+const rechargeFieldValues = reactive<Record<string, string>>({});
+const rechargeResult = ref<TgUserRechargeOrderAppBack | null>(null);
+const rechargeForm = reactive({
+  userId: 0,
+  tgId: 0,
+  username: "",
+  firstName: "",
+  amount: 100,
+  countryCode: "",
+  currency: "",
+  channel: "",
+  payMethod: "",
+  merchantOrderNo: ""
+});
 const subStatsPagination = reactive({
   currentPage: 1,
   pageSize: 10,
@@ -91,6 +140,15 @@ const subStatsPageCount = computed(() =>
 const subStatsHasPrevPage = computed(() => subStatsPagination.currentPage > 1);
 const subStatsHasNextPage = computed(
   () => subStatsPagination.currentPage < subStatsPageCount.value
+);
+const selectedRechargeChannel = computed(
+  () =>
+    rechargeChannels.value.find(
+      channel => channel.channelCode === rechargeForm.channel
+    ) || null
+);
+const availablePayMethods = computed(
+  () => selectedRechargeChannel.value?.methods || []
 );
 
 function formatMoney(val?: number | null) {
@@ -136,6 +194,265 @@ function openRemarkDialog(row: TgUser) {
   remarkForm.firstName = row.firstName || "";
   remarkForm.remark = row.remark || "";
   remarkDialogVisible.value = true;
+}
+
+function normalizeOption(option: unknown): RechargeFieldOption | null {
+  if (!option || typeof option !== "object") return null;
+  const record = option as Record<string, unknown>;
+  const label = String(
+    record.label ?? record.name ?? record.value ?? ""
+  ).trim();
+  const value = String(
+    record.value ?? record.code ?? record.label ?? ""
+  ).trim();
+  return label && value ? { label, value } : null;
+}
+
+function normalizeRechargeFields(parsed: unknown): RechargeField[] {
+  if (!Array.isArray(parsed)) return [];
+  return parsed
+    .filter(item => item && typeof item === "object")
+    .map(item => item as RechargeField)
+    .filter(field => String(field.fieldKey || "").trim() !== "");
+}
+
+function parseRechargeFields(raw?: string | null | unknown[]): RechargeField[] {
+  if (Array.isArray(raw)) return normalizeRechargeFields(raw);
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    return normalizeRechargeFields(parsed);
+  } catch {
+    return [];
+  }
+}
+
+function fieldOptions(field: RechargeField) {
+  if (!field.optionsJson) return [];
+  try {
+    const parsed = JSON.parse(field.optionsJson) as unknown;
+    if (!Array.isArray(parsed)) return [];
+    return parsed.map(normalizeOption).filter(Boolean) as RechargeFieldOption[];
+  } catch {
+    return [];
+  }
+}
+
+function getFieldInputType(field: RechargeField) {
+  return field.fieldType === "number" || field.dataType === "number"
+    ? "number"
+    : "text";
+}
+
+function clearRechargeFieldValues() {
+  Object.keys(rechargeFieldValues).forEach(key => {
+    delete rechargeFieldValues[key];
+  });
+}
+
+async function syncRechargeCountryConfig() {
+  const country = rechargeCountries.value.find(
+    item => item.countryCode === rechargeForm.countryCode
+  );
+  rechargeForm.currency = country?.currencyCode || "";
+  rechargeChannels.value = [];
+  rechargeFields.value = [];
+  if (rechargeForm.countryCode) {
+    rechargeConfigLoading.value = true;
+    try {
+      const { data } = await getAdminCountryRechargeInfo(
+        rechargeForm.countryCode
+      );
+      rechargeChannels.value = [...(data?.channels || [])].sort(
+        (a, b) => a.sort - b.sort
+      );
+      rechargeFields.value = parseRechargeFields(data?.rechargeFields || []);
+    } catch (error) {
+      console.error("加载国家充值配置失败", error);
+      message("加载国家充值配置失败", { type: "error" });
+    } finally {
+      rechargeConfigLoading.value = false;
+    }
+  } else {
+    rechargeFields.value = parseRechargeFields(country?.rechargeFields);
+  }
+  clearRechargeFieldValues();
+  rechargeFields.value.forEach(field => {
+    rechargeFieldValues[field.fieldKey] = String(field.defaultValue ?? "");
+  });
+  if (
+    rechargeForm.channel &&
+    !rechargeChannels.value.some(
+      channel => channel.channelCode === rechargeForm.channel
+    )
+  ) {
+    rechargeForm.channel = "";
+  }
+  if (!rechargeForm.channel) {
+    rechargeForm.channel = rechargeChannels.value[0]?.channelCode || "";
+  }
+  rechargeForm.payMethod =
+    selectedRechargeChannel.value?.methods?.[0]?.methodCode || "";
+}
+
+async function loadRechargeConfig() {
+  if (rechargeCountries.value.length) return;
+  rechargeConfigLoading.value = true;
+  try {
+    const countryResp = await getSysCountryList({
+      currentPage: 0,
+      pageSize: 200,
+      status: 1
+    });
+    rechargeCountries.value = countryResp.data?.list || [];
+  } catch (error) {
+    console.error("加载充值配置失败", error);
+    message("加载充值配置失败", { type: "error" });
+  } finally {
+    rechargeConfigLoading.value = false;
+  }
+}
+
+function selectDefaultRechargeCountry(row: TgUser) {
+  const preferred = String(row.region || "").toUpperCase();
+  const preferredCountry = preferred
+    ? rechargeCountries.value.find(item => item.countryCode === preferred)
+    : undefined;
+  const mxCountry = rechargeCountries.value.find(
+    item => item.countryCode === "MX"
+  );
+  return (
+    preferredCountry?.countryCode ||
+    mxCountry?.countryCode ||
+    rechargeCountries.value[0]?.countryCode ||
+    ""
+  );
+}
+
+async function openRechargeDialog(row: TgUser) {
+  rechargeDialogVisible.value = true;
+  rechargeResult.value = null;
+  rechargeForm.userId = row.id;
+  rechargeForm.tgId = row.tgId;
+  rechargeForm.username = row.username || "";
+  rechargeForm.firstName = row.firstName || "";
+  rechargeForm.amount = 100;
+  rechargeForm.payMethod = "";
+  rechargeForm.merchantOrderNo = `admin_${Date.now()}_${row.id}`;
+  await loadRechargeConfig();
+  rechargeForm.countryCode = selectDefaultRechargeCountry(row);
+  await syncRechargeCountryConfig();
+}
+
+async function handleRechargeCountryChange() {
+  rechargeResult.value = null;
+  await syncRechargeCountryConfig();
+}
+
+function handleRechargeChannelChange() {
+  rechargeResult.value = null;
+  rechargeForm.payMethod =
+    selectedRechargeChannel.value?.methods?.[0]?.methodCode || "";
+}
+
+function buildRechargeExtraFields() {
+  const entries = rechargeFields.value
+    .map(field => [
+      field.fieldKey,
+      String(rechargeFieldValues[field.fieldKey] ?? "").trim()
+    ])
+    .filter(([, value]) => value);
+  return entries.length
+    ? (Object.fromEntries(entries) as Record<string, string>)
+    : undefined;
+}
+
+function validateRechargeForm() {
+  if (!rechargeForm.userId) return "请选择用户";
+  if (Number.isNaN(Number(rechargeForm.amount)) || rechargeForm.amount < 50) {
+    return "充值金额最小为 50";
+  }
+  if (!rechargeForm.countryCode) return "请选择国家";
+  if (!rechargeForm.channel) return "请选择充值通道";
+  for (const field of rechargeFields.value) {
+    const value = String(rechargeFieldValues[field.fieldKey] ?? "").trim();
+    if (field.isRequired && !value) {
+      return `${field.fieldLabel}不能为空`;
+    }
+    if (field.minLength && value && value.length < field.minLength) {
+      return field.errorTips || `${field.fieldLabel}格式不正确`;
+    }
+    if (field.maxLength && value && value.length > field.maxLength) {
+      return field.errorTips || `${field.fieldLabel}格式不正确`;
+    }
+    if (field.regexRule && value) {
+      try {
+        const regex = new RegExp(field.regexRule);
+        if (!regex.test(value)) {
+          return field.errorTips || `${field.fieldLabel}格式不正确`;
+        }
+      } catch {
+        return field.errorTips || `${field.fieldLabel}格式不正确`;
+      }
+    }
+  }
+  return "";
+}
+
+async function submitRechargeOrder(confirmUnfinishedActivityCycle = false) {
+  const errorMessage = validateRechargeForm();
+  if (errorMessage) {
+    message(errorMessage, { type: "warning" });
+    return;
+  }
+  rechargeSaving.value = true;
+  try {
+    const { data } = await createTgUserRechargeOrderV2({
+      userId: rechargeForm.userId,
+      amount: Number(rechargeForm.amount),
+      channel: rechargeForm.channel,
+      payMethod: rechargeForm.payMethod.trim() || undefined,
+      currency: rechargeForm.currency,
+      countryCode: rechargeForm.countryCode,
+      merchantOrderNo: rechargeForm.merchantOrderNo.trim() || undefined,
+      extraFields: buildRechargeExtraFields(),
+      confirmUnfinishedActivityCycle
+    });
+    if (data?.needConfirmUnfinishedActivityCycle) {
+      await ElMessageBox.confirm(
+        "该用户存在未完成活动流水，确认继续创建充值订单？",
+        "系统提示",
+        {
+          confirmButtonText: "继续创建",
+          cancelButtonText: "取消",
+          type: "warning"
+        }
+      );
+      await submitRechargeOrder(true);
+      return;
+    }
+    rechargeResult.value = data;
+    message("支付订单创建成功", { type: "success" });
+  } catch (error) {
+    if (error !== "cancel") {
+      console.error("创建支付订单失败", error);
+    }
+  } finally {
+    rechargeSaving.value = false;
+  }
+}
+
+async function copyRechargePayUrl() {
+  const url = rechargeResult.value?.payUrl || "";
+  if (!url) return;
+  await navigator.clipboard.writeText(url);
+  message("支付链接已复制", { type: "success" });
+}
+
+function openRechargePayUrl() {
+  const url = rechargeResult.value?.payUrl || "";
+  if (!url) return;
+  window.open(url, "_blank");
 }
 
 async function submitRebateAmount() {
@@ -424,6 +741,15 @@ function handleSubStatsNextPage() {
               <el-button
                 class="reset-margin"
                 link
+                type="warning"
+                :size="size"
+                @click="openRechargeDialog(row)"
+              >
+                拉起支付
+              </el-button>
+              <el-button
+                class="reset-margin"
+                link
                 type="primary"
                 :size="size"
                 @click="openSubStatsDialog(row)"
@@ -595,6 +921,189 @@ function handleSubStatsNextPage() {
           下一页
         </el-button>
       </div>
+    </el-dialog>
+
+    <el-dialog
+      v-model="rechargeDialogVisible"
+      title="手动拉起支付订单"
+      width="560px"
+      destroy-on-close
+    >
+      <el-form
+        v-loading="rechargeConfigLoading"
+        :model="rechargeForm"
+        label-width="104px"
+      >
+        <el-form-item label="用户">
+          <span>{{ formatName(rechargeForm as unknown as TgUser) }}</span>
+        </el-form-item>
+        <el-form-item label="TG用户ID">
+          <span>{{ rechargeForm.tgId || "-" }}</span>
+        </el-form-item>
+        <el-form-item label="充值金额" required>
+          <el-input-number
+            v-model="rechargeForm.amount"
+            :min="50"
+            :precision="0"
+            :step="50"
+            controls-position="right"
+            class="!w-full"
+            @change="rechargeResult = null"
+          />
+          <div class="form-tip">v2 充值最小金额 50，满 100 才赠送</div>
+        </el-form-item>
+        <el-form-item label="国家" required>
+          <el-select
+            v-model="rechargeForm.countryCode"
+            filterable
+            class="!w-full"
+            placeholder="请选择国家"
+            @change="handleRechargeCountryChange"
+          >
+            <el-option
+              v-for="country in rechargeCountries"
+              :key="country.countryCode"
+              :label="`${country.countryNameCn} (${country.countryCode})`"
+              :value="country.countryCode"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="币种">
+          <el-input v-model="rechargeForm.currency" readonly />
+        </el-form-item>
+        <el-form-item label="充值通道" required>
+          <el-select
+            v-model="rechargeForm.channel"
+            filterable
+            class="!w-full"
+            placeholder="请选择充值通道"
+            @change="handleRechargeChannelChange"
+          >
+            <el-option
+              v-for="channel in rechargeChannels"
+              :key="channel.channelCode"
+              :label="`${channel.channelName} (${channel.channelCode})`"
+              :value="channel.channelCode"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="支付方式">
+          <el-select
+            v-if="availablePayMethods.length"
+            v-model="rechargeForm.payMethod"
+            filterable
+            clearable
+            class="!w-full"
+            placeholder="请选择支付方式"
+            @change="rechargeResult = null"
+          >
+            <el-option
+              v-for="method in availablePayMethods"
+              :key="method.methodCode"
+              :label="`${method.methodName} (${method.methodCode})`"
+              :value="method.methodCode"
+            />
+          </el-select>
+          <el-input
+            v-else
+            v-model="rechargeForm.payMethod"
+            placeholder="可选，按通道要求填写"
+            clearable
+            @input="rechargeResult = null"
+          />
+        </el-form-item>
+        <el-form-item label="商户单号">
+          <el-input
+            v-model="rechargeForm.merchantOrderNo"
+            placeholder="可选"
+            clearable
+            @input="rechargeResult = null"
+          />
+        </el-form-item>
+        <template v-for="field in rechargeFields" :key="field.fieldKey">
+          <el-form-item
+            :label="field.fieldLabel"
+            :required="!!field.isRequired"
+          >
+            <el-select
+              v-if="field.fieldType === 'select'"
+              v-model="rechargeFieldValues[field.fieldKey]"
+              filterable
+              clearable
+              class="!w-full"
+              :placeholder="
+                field.fieldPlaceholder || `请选择${field.fieldLabel}`
+              "
+              @change="rechargeResult = null"
+            >
+              <el-option
+                v-for="option in fieldOptions(field)"
+                :key="option.value"
+                :label="option.label"
+                :value="option.value"
+              />
+            </el-select>
+            <el-input
+              v-else-if="field.fieldType === 'textarea'"
+              v-model="rechargeFieldValues[field.fieldKey]"
+              type="textarea"
+              :rows="3"
+              :maxlength="field.maxLength || undefined"
+              :placeholder="
+                field.fieldPlaceholder || `请输入${field.fieldLabel}`
+              "
+              @input="rechargeResult = null"
+            />
+            <el-input
+              v-else
+              v-model="rechargeFieldValues[field.fieldKey]"
+              :type="getFieldInputType(field)"
+              :maxlength="field.maxLength || undefined"
+              :placeholder="
+                field.fieldPlaceholder || `请输入${field.fieldLabel}`
+              "
+              clearable
+              @input="rechargeResult = null"
+            />
+          </el-form-item>
+        </template>
+        <template v-if="rechargeResult">
+          <el-divider>创建结果</el-divider>
+          <el-form-item label="订单号">
+            <el-input :model-value="rechargeResult.orderNo" readonly />
+          </el-form-item>
+          <el-form-item label="支付链接">
+            <el-input :model-value="rechargeResult.payUrl || ''" readonly>
+              <template #append>
+                <el-button
+                  :disabled="!rechargeResult.payUrl"
+                  @click="copyRechargePayUrl"
+                >
+                  复制
+                </el-button>
+              </template>
+            </el-input>
+          </el-form-item>
+        </template>
+      </el-form>
+      <template #footer>
+        <el-button @click="rechargeDialogVisible = false">关闭</el-button>
+        <el-button
+          v-if="rechargeResult?.payUrl"
+          type="success"
+          @click="openRechargePayUrl"
+        >
+          打开支付链接
+        </el-button>
+        <el-button
+          type="primary"
+          :loading="rechargeSaving"
+          :disabled="rechargeConfigLoading"
+          @click="submitRechargeOrder()"
+        >
+          创建支付订单
+        </el-button>
+      </template>
     </el-dialog>
 
     <el-dialog

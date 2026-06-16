@@ -138,6 +138,18 @@ func GetCountryRechargeInfo(ctx *gin.Context) {
 	utils.SuccessObjBack(ctx, result)
 }
 
+// GetAdminCountryRechargeInfo 管理后台获取国家充值信息（充值字段+通道+支付方式）
+func GetAdminCountryRechargeInfo(ctx *gin.Context) {
+	code := ctx.Param("code")
+	db := ctx.MustGet("db").(*gorm.DB)
+	result, err := repository.GetCountryRechargeInfo(db, code)
+	if err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	utils.SuccessObjBack(ctx, result)
+}
+
 // GetCountryWithdrawFields godoc
 //
 //	@Summary		App端获取国家提现字段配置

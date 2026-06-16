@@ -70,6 +70,34 @@ export type TgUserRemarkSet = {
   remark: string;
 };
 
+export type TgUserCreateRechargeOrderV2Req = {
+  userId: number;
+  amount: number;
+  channel: string;
+  payMethod?: string;
+  currency?: string;
+  countryCode?: string;
+  merchantOrderNo?: string;
+  extraFields?: Record<string, string>;
+  confirmUnfinishedActivityCycle?: boolean;
+};
+
+export type TgUserRechargeOrderAppBack = {
+  orderNo: string;
+  merchantOrderNo?: string | null;
+  channel: string;
+  payMethod?: string | null;
+  currency: string;
+  amount: number;
+  netAmount?: number;
+  status: number;
+  creditAmount?: number | null;
+  bonusAmount?: number;
+  payUrl?: string;
+  needConfirmUnfinishedActivityCycle?: boolean;
+  activeActivityMultiplier?: number;
+};
+
 export type TgUserSubStatsSummarySearch = {
   tenantId?: number;
   parentId?: number;
@@ -112,6 +140,13 @@ export type TgUserResult = {
   data: TgUser;
 };
 
+export type TgUserRechargeOrderResult = {
+  code: number;
+  message: string;
+  success: boolean;
+  data: TgUserRechargeOrderAppBack;
+};
+
 export type TgUserSubStatsSummaryResult = {
   code: number;
   message: string;
@@ -121,6 +156,7 @@ export type TgUserSubStatsSummaryResult = {
     subFlowAmount: number;
     subProfitAmount: number;
     subWithdrawAmount: number;
+    rechargeUsers: number;
     validUsers: number;
   };
 };
@@ -197,6 +233,18 @@ export const setTgUserRemark = (data: TgUserRemarkSet) => {
   return http.request<TgUserResult>("post", "/api/v1/admin/tgUser/remark", {
     data
   });
+};
+
+export const createTgUserRechargeOrderV2 = (
+  data: TgUserCreateRechargeOrderV2Req
+) => {
+  return http.request<TgUserRechargeOrderResult>(
+    "post",
+    "/api/v1/admin/tgUser/rechargeOrder/v2",
+    {
+      data
+    }
+  );
 };
 
 export const getAdminBotUserList = (data: TgUserSearch) => {

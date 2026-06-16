@@ -152,25 +152,25 @@ func GetSysSourceChannelStats(db *gorm.DB, channelID int64) (pojo.SysSourceChann
 		return result, err
 	}
 	if err := db.Model(&pojo.RechargeOrder{}).
-		Where("source_channel_id = ? AND status = ?", channelID, 1).
+		Where("source_channel_id = ? AND status = ? AND coalesce(is_dev, 0) = 0", channelID, 1).
 		Select("COUNT(DISTINCT user_id)").
 		Scan(&result.RechargeUsers).Error; err != nil {
 		return result, err
 	}
 	if err := db.Model(&pojo.RechargeOrder{}).
-		Where("source_channel_id = ? AND status = ? AND pay_time >= ? AND pay_time < ?", channelID, 1, startOfDay, endOfDay).
+		Where("source_channel_id = ? AND status = ? AND coalesce(is_dev, 0) = 0 AND pay_time >= ? AND pay_time < ?", channelID, 1, startOfDay, endOfDay).
 		Select("COUNT(DISTINCT user_id)").
 		Scan(&result.TodayRechargeUsers).Error; err != nil {
 		return result, err
 	}
 	if err := db.Model(&pojo.RechargeOrder{}).
-		Where("source_channel_id = ? AND status = ?", channelID, 1).
+		Where("source_channel_id = ? AND status = ? AND coalesce(is_dev, 0) = 0", channelID, 1).
 		Select("COALESCE(SUM(amount), 0)").
 		Scan(&result.TotalRechargeAmount).Error; err != nil {
 		return result, err
 	}
 	if err := db.Model(&pojo.RechargeOrder{}).
-		Where("source_channel_id = ? AND status = ? AND pay_time >= ? AND pay_time < ?", channelID, 1, startOfDay, endOfDay).
+		Where("source_channel_id = ? AND status = ? AND coalesce(is_dev, 0) = 0 AND pay_time >= ? AND pay_time < ?", channelID, 1, startOfDay, endOfDay).
 		Select("COALESCE(SUM(amount), 0)").
 		Scan(&result.TodayRechargeAmount).Error; err != nil {
 		return result, err

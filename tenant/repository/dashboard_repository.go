@@ -81,7 +81,7 @@ func GetDashboardRechargeUsers(db *gorm.DB, tenantID int64, search pojo.TenantDa
 	var result pojo.TenantDashboardUserDetailResp
 
 	baseQuery := db.Model(&pojo.RechargeOrder{}).
-		Where("tenant_id = ? AND status = ? AND pay_time >= ? AND pay_time < ?", tenantID, 1, start, end)
+		Where("tenant_id = ? AND status = ? AND coalesce(is_dev, 0) = 0 AND pay_time >= ? AND pay_time < ?", tenantID, 1, start, end)
 	_ = baseQuery.Distinct("user_id").Count(&result.Total).Error
 
 	type rechargeUserRow struct {
@@ -107,7 +107,7 @@ func GetDashboardRechargeUsers(db *gorm.DB, tenantID int64, search pojo.TenantDa
 			MAX(ro.pay_time) AS last_recharge_at,
 			tu.id, tu.uid, tu.tg_id, tu.username, tu.first_name, tu.phone, tu.balance, tu.status`).
 		Joins("LEFT JOIN "+pojo.TgUserTableName+" tu ON tu.id = ro.user_id AND tu.tenant_id = ?", tenantID).
-		Where("ro.tenant_id = ? AND ro.status = ? AND ro.pay_time >= ? AND ro.pay_time < ?", tenantID, 1, start, end).
+		Where("ro.tenant_id = ? AND ro.status = ? AND coalesce(ro.is_dev, 0) = 0 AND ro.pay_time >= ? AND ro.pay_time < ?", tenantID, 1, start, end).
 		Group("ro.user_id, tu.id, tu.uid, tu.tg_id, tu.username, tu.first_name, tu.phone, tu.balance, tu.status").
 		Order("recharge_amount DESC, recharge_count DESC, ro.user_id DESC").
 		Limit(search.PageSize).
@@ -203,17 +203,17 @@ func getDashboardPeriodStats(db *gorm.DB, tenantID int64, start time.Time, end t
 	var result pojo.TenantDashboardPeriodStats
 
 	result.RechargeAmount = sumDashboardAmount(db.Model(&pojo.RechargeOrder{}).
-		Where("tenant_id = ? AND status = ? AND pay_time >= ? AND pay_time < ?", tenantID, 1, start, end),
+		Where("tenant_id = ? AND status = ? AND coalesce(is_dev, 0) = 0 AND pay_time >= ? AND pay_time < ?", tenantID, 1, start, end),
 		"amount")
 
 	_ = db.Model(&pojo.RechargeOrder{}).
-		Where("tenant_id = ? AND status = ? AND pay_time >= ? AND pay_time < ?", tenantID, 1, start, end).
+		Where("tenant_id = ? AND status = ? AND coalesce(is_dev, 0) = 0 AND pay_time >= ? AND pay_time < ?", tenantID, 1, start, end).
 		Distinct("user_id").
 		Count(&result.RechargeUsers).Error
 
-	// 复充人数：成功充值且非首充的去重用户
+	// 复充人数：成功充值且非首充的去重用户（不含手动回调）
 	_ = db.Model(&pojo.RechargeOrder{}).
-		Where("tenant_id = ? AND status = ? AND is_first_recharge = ? AND pay_time >= ? AND pay_time < ?", tenantID, 1, false, start, end).
+		Where("tenant_id = ? AND status = ? AND coalesce(is_dev, 0) = 0 AND is_first_recharge = ? AND pay_time >= ? AND pay_time < ?", tenantID, 1, false, start, end).
 		Distinct("user_id").
 		Count(&result.RepeatRechargeUsers).Error
 

@@ -214,6 +214,28 @@ func AppCreateRechargeOrderV2(ctx *gin.Context) {
 	utils.SuccessObjBack(ctx, result)
 }
 
+// AdminCreateRechargeOrderV2 管理后台为指定TG用户手动拉起v2充值订单
+func AdminCreateRechargeOrderV2(ctx *gin.Context) {
+	var req pojo.AdminCreateRechargeOrderV2Req
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		utils.ErrorBack(ctx, "参数格式错误")
+		return
+	}
+	if req.UserID <= 0 {
+		utils.ErrorBack(ctx, "invalid_params")
+		return
+	}
+
+	db := ctx.MustGet("db").(*gorm.DB)
+	hostInfo := ctx.MustGet("hostInfo").(pojo.HostInfo)
+	result, err := repository.AppCreateRechargeOrderV2(db, req.UserID, req.RechargeOrderAppReq, hostInfo.TablePrefix)
+	if err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	utils.SuccessObjBack(ctx, result)
+}
+
 // GetAppRechargeOrderHistory godoc
 //
 //	@Summary		app端充值记录

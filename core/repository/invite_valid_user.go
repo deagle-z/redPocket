@@ -12,28 +12,66 @@ import (
 )
 
 const (
-	InviteValidMinRecharge float64 = 50
-	InviteValidMinBet      float64 = 1600
+	InviteValidMinRecharge float64 = 0
+	InviteValidMinBet      float64 = 850
 	InviteBetRebateRate    float64 = 0.1
 )
 
-// inviteRebateRateForValidCount 按上级当前有效用户数所在档位返回单个用户的返佣金额。
-// 档位（按运营图）：1-5→15，6-15→20，16-30→25，31-100→30，100以上→35
-func inviteRebateRateForValidCount(validUsers int64) float64 {
+type inviteRewardTier struct {
+	RechargeAmount float64
+	BetAmount      float64
+}
+
+// inviteRewardTierForCount 按对应阶段人数所在档位返回充值阶段/投注达标阶段奖励金额。
+// 档位：1-5→5+10，6-15→8+12，16-30→10+15，31-100→12+18，100以上→15+20。
+func inviteRewardTierForCount(users int64) inviteRewardTier {
 	switch {
-	case validUsers <= 0:
-		return 0
-	case validUsers <= 5:
-		return 15
-	case validUsers <= 15:
-		return 20
-	case validUsers <= 30:
-		return 25
-	case validUsers <= 100:
-		return 30
+	case users <= 0:
+		return inviteRewardTier{}
+	case users <= 5:
+		return inviteRewardTier{RechargeAmount: 5, BetAmount: 10}
+	case users <= 15:
+		return inviteRewardTier{RechargeAmount: 8, BetAmount: 12}
+	case users <= 30:
+		return inviteRewardTier{RechargeAmount: 10, BetAmount: 15}
+	case users <= 100:
+		return inviteRewardTier{RechargeAmount: 12, BetAmount: 18}
 	default:
-		return 35
+		return inviteRewardTier{RechargeAmount: 15, BetAmount: 20}
 	}
+}
+
+func hasInviteQualifyingRecharge(totalRecharge float64) bool {
+	totalRecharge = utils.Truncate2(totalRecharge)
+	if InviteValidMinRecharge <= 0 {
+		return totalRecharge > 0
+	}
+	return totalRecharge >= InviteValidMinRecharge
+}
+
+// EnsureInviteRechargeReward 在直属下级首次真实充值后，按充值用户阶段档位给上级发放第一段邀请奖励。
+func EnsureInviteRechargeReward(tx *gorm.DB, userID int64, qualifiedAt time.Time) error {
+	if tx == nil || userID <= 0 {
+		return nil
+	}
+
+	var user pojo.TgUser
+	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ?", userID).First(&user).Error; err != nil {
+		return err
+	}
+	if user.ID == 0 || user.Status == -1 || user.ParentID == nil || *user.ParentID <= 0 {
+		return nil
+	}
+
+	totalRecharge, err := GetInviteUserRechargeAmount(tx, userID)
+	if err != nil {
+		return err
+	}
+	if !hasInviteQualifyingRecharge(totalRecharge) {
+		return nil
+	}
+
+	return grantInviteRechargeRewardForUser(tx, user, totalRecharge, qualifiedAt)
 }
 
 func EnsureInviteValidUser(tx *gorm.DB, userID int64, qualifiedAt time.Time) (bool, error) {
@@ -55,16 +93,22 @@ func EnsureInviteValidUser(tx *gorm.DB, userID int64, qualifiedAt time.Time) (bo
 		return false, nil
 	}
 
-	totalRecharge := utils.Truncate2(user.RechargeAmount)
+	totalRecharge, err := GetInviteUserRechargeAmount(tx, userID)
+	if err != nil {
+		return false, err
+	}
 	totalBet, err := GetInviteValidUserBetAmount(tx, userID)
 	if err != nil {
 		return false, err
 	}
-	if totalRecharge < InviteValidMinRecharge || totalBet < InviteValidMinBet {
+	if !hasInviteQualifyingRecharge(totalRecharge) || totalBet < InviteValidMinBet {
 		return false, nil
 	}
 	if qualifiedAt.IsZero() {
 		qualifiedAt = time.Now()
+	}
+	if err := grantInviteRechargeRewardForUser(tx, user, totalRecharge, qualifiedAt); err != nil {
+		return false, err
 	}
 
 	res := tx.Model(&pojo.TgUser{}).
@@ -78,39 +122,81 @@ func EnsureInviteValidUser(tx *gorm.DB, userID int64, qualifiedAt time.Time) (bo
 	if res.Error != nil {
 		return false, res.Error
 	}
-	// 新增一名有效用户时，给上级按当前档位发放该用户的返佣
 	if res.RowsAffected > 0 {
-		if err := GrantInviteRebateForValidUser(tx, *user.ParentID, userID); err != nil {
+		validUsers, err := countInviteValidUsers(tx, *user.ParentID)
+		if err != nil {
+			return false, err
+		}
+		tier := inviteRewardTierForCount(validUsers)
+		if err := grantInviteRewardStage(tx, *user.ParentID, userID, pojo.InviteRewardStageBet, validUsers, tier.BetAmount); err != nil {
 			return false, err
 		}
 	}
 	return true, nil
 }
 
-// GrantInviteRebateForValidUser 当 subUserID 成为 parentID 的有效下级时，
-// 按上级当前有效用户数所在档位的单价，给上级发放该下级对应的返佣（每个下级仅一次）。
-func GrantInviteRebateForValidUser(tx *gorm.DB, parentID int64, subUserID int64) error {
-	if tx == nil || parentID <= 0 || subUserID <= 0 {
+func grantInviteRechargeRewardForUser(tx *gorm.DB, user pojo.TgUser, totalRecharge float64, qualifiedAt time.Time) error {
+	if tx == nil || user.ID <= 0 || user.ParentID == nil || *user.ParentID <= 0 {
 		return nil
 	}
-	var validUsers int64
-	if err := tx.Model(&pojo.TgUser{}).
-		Where("parent_id = ? AND status <> ? AND invite_valid_flag = ?", parentID, -1, 1).
-		Count(&validUsers).Error; err != nil {
+	if !hasInviteQualifyingRecharge(totalRecharge) {
+		return nil
+	}
+	rechargeUsers, err := countInviteRechargedUsers(tx, *user.ParentID)
+	if err != nil {
 		return err
 	}
-	return grantInviteRebate(tx, parentID, subUserID, validUsers)
+	tier := inviteRewardTierForCount(rechargeUsers)
+	return grantInviteRewardStage(tx, *user.ParentID, user.ID, pojo.InviteRewardStageRecharge, rechargeUsers, tier.RechargeAmount)
 }
 
-// grantInviteRebate 按给定的有效用户数(档位)给上级发放某下级的返佣。
-// 实时路径：validUsers=当前有效总数（=该下级的达标位次）；补发路径：validUsers=按达标时间升序的位次。
-func grantInviteRebate(tx *gorm.DB, parentID int64, subUserID int64, validUsers int64) error {
+func countInviteValidUsers(tx *gorm.DB, parentID int64) (int64, error) {
+	if tx == nil || parentID <= 0 {
+		return 0, nil
+	}
+	var validUsers int64
+	err := tx.Model(&pojo.TgUser{}).
+		Where("parent_id = ? AND status <> ? AND invite_valid_flag = ?", parentID, -1, 1).
+		Count(&validUsers).Error
+	return validUsers, err
+}
+
+func countInviteRechargedUsers(tx *gorm.DB, parentID int64) (int64, error) {
+	if tx == nil || parentID <= 0 {
+		return 0, nil
+	}
+	var rechargeUsers int64
+	err := tx.Table("recharge_order ro").
+		Joins("inner join tg_user tu on tu.id = ro.user_id").
+		Where("tu.parent_id = ? AND tu.status <> ? AND ro.status = ? AND COALESCE(ro.is_dev, 0) = 0", parentID, -1, 1).
+		Select("COUNT(DISTINCT ro.user_id)").
+		Scan(&rechargeUsers).Error
+	return rechargeUsers, err
+}
+
+func hasLegacyInviteReward(tx *gorm.DB, parentID int64, subUserID int64) (bool, error) {
+	if tx == nil || parentID <= 0 || subUserID <= 0 {
+		return false, nil
+	}
+	var count int64
+	err := tx.Model(&pojo.TgUserInviteRewardLog{}).
+		Where("user_id = ? AND sub_user_id = ? AND (stage IS NULL OR stage = '' OR stage = ?)", parentID, subUserID, pojo.InviteRewardStageLegacy).
+		Count(&count).Error
+	return count > 0, err
+}
+
+func grantInviteRewardStage(tx *gorm.DB, parentID int64, subUserID int64, stage string, stageUsers int64, amount float64) error {
 	if tx == nil || parentID <= 0 || subUserID <= 0 {
 		return nil
 	}
-	amount := inviteRebateRateForValidCount(validUsers)
-	if amount <= 0 {
+	stage = strings.TrimSpace(stage)
+	amount = utils.Truncate2(amount)
+	if stage == "" || amount <= 0 {
 		return nil
+	}
+	legacyExists, err := hasLegacyInviteReward(tx, parentID, subUserID)
+	if err != nil || legacyExists {
+		return err
 	}
 
 	var parent pojo.TgUser
@@ -121,12 +207,12 @@ func grantInviteRebate(tx *gorm.DB, parentID int64, subUserID int64, validUsers 
 		return nil
 	}
 
-	// 幂等：同一上级对同一下级仅发一次（唯一索引 user_id+sub_user_id）
 	logRecord := pojo.TgUserInviteRewardLog{
 		TenantID:   parent.TenantId,
 		UserID:     parentID,
 		SubUserID:  subUserID,
-		ValidUsers: int(validUsers),
+		Stage:      stage,
+		ValidUsers: int(stageUsers),
 		Amount:     amount,
 	}
 	created := tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&logRecord)
@@ -137,21 +223,26 @@ func grantInviteRebate(tx *gorm.DB, parentID int64, subUserID int64, validUsers 
 		return nil
 	}
 
-	// 仅入账余额；提现限制走 v2 流水批次
 	if err := tx.Model(&pojo.TgUser{}).Where("id = ?", parentID).Updates(map[string]any{
 		"balance": gorm.Expr("balance + ?", amount),
 	}).Error; err != nil {
 		return err
 	}
 
+	cashDesc := fmt.Sprintf("邀请返佣奖励%.2f（当前阶段用户%d人）", amount, stageUsers)
+	if stage == pojo.InviteRewardStageRecharge {
+		cashDesc = fmt.Sprintf("邀请充值奖励%.2f（当前充值用户%d人）", amount, stageUsers)
+	} else if stage == pojo.InviteRewardStageBet {
+		cashDesc = fmt.Sprintf("邀请投注达标奖励%.2f（当前有效用户%d人）", amount, stageUsers)
+	}
 	history := pojo.CashHistory{
 		UserId:          parentID,
-		AwardUni:        fmt.Sprintf("invite_rebate_%d_%d", parentID, subUserID),
+		AwardUni:        fmt.Sprintf("invite_rebate_%s_%d_%d", stage, parentID, subUserID),
 		Amount:          amount,
 		StartAmount:     utils.Truncate2(parent.Balance),
 		EndAmount:       utils.Truncate2(parent.Balance + amount),
 		CashMark:        "邀请返佣奖励",
-		CashDesc:        fmt.Sprintf("有效用户返佣%.2f（当前有效用户%d人）", amount, validUsers),
+		CashDesc:        cashDesc,
 		Type:            pojo.CashHistoryTypeInviteRebateTierReward,
 		IsGift:          1,
 		FromUserId:      subUserID,
@@ -165,7 +256,7 @@ func grantInviteRebate(tx *gorm.DB, parentID int64, subUserID int64, validUsers 
 		tx, parent,
 		pojo.WithdrawFlowBatchSourceInviteRebate,
 		logRecord.ID,
-		fmt.Sprintf("invite_rebate_%d", logRecord.ID),
+		fmt.Sprintf("invite_rebate_%s_%d", stage, logRecord.ID),
 		pojo.WithdrawFlowBatchSourceInviteRebate,
 		amount,
 	)
@@ -173,7 +264,7 @@ func grantInviteRebate(tx *gorm.DB, parentID int64, subUserID int64, validUsers 
 
 // BackfillInviteRebateTiers 对历史存量有效用户补发邀请返佣（一次性脚本，幂等可重复执行）。
 // 传入带表前缀的 db（如 utils.NewPrefixDb(prefix)）。逐个上级单独事务处理，返回处理的上级数量。
-// 口径：每个上级的有效下级按达标时间(invite_valid_at)升序，第 k 个按当前有效数 k 所在档位单价发放。
+// 兼容旧规则：已有 legacy 发放记录的下级不会重复发放拆分后的两段奖励。
 func BackfillInviteRebateTiers(db *gorm.DB) (int, error) {
 	if db == nil {
 		return 0, nil
@@ -200,7 +291,6 @@ func BackfillInviteRebateTiers(db *gorm.DB) (int, error) {
 	return processed, nil
 }
 
-// backfillInviteRebateForParent 按有效下级达标时间升序，逐个补发（幂等，已发过的下级跳过）。
 func backfillInviteRebateForParent(tx *gorm.DB, parentID int64) error {
 	var subUserIDs []int64
 	if err := tx.Model(&pojo.TgUser{}).
@@ -210,11 +300,31 @@ func backfillInviteRebateForParent(tx *gorm.DB, parentID int64) error {
 		return err
 	}
 	for idx, subUserID := range subUserIDs {
-		if err := grantInviteRebate(tx, parentID, subUserID, int64(idx+1)); err != nil {
+		stageUsers := int64(idx + 1)
+		tier := inviteRewardTierForCount(stageUsers)
+		if err := grantInviteRewardStage(tx, parentID, subUserID, pojo.InviteRewardStageRecharge, stageUsers, tier.RechargeAmount); err != nil {
+			return err
+		}
+		if err := grantInviteRewardStage(tx, parentID, subUserID, pojo.InviteRewardStageBet, stageUsers, tier.BetAmount); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+func GetInviteUserRechargeAmount(db *gorm.DB, userID int64) (float64, error) {
+	if db == nil || userID <= 0 {
+		return 0, nil
+	}
+	var totalRecharge float64
+	err := db.Model(&pojo.RechargeOrder{}).
+		Where("user_id = ? AND status = ? AND COALESCE(is_dev, 0) = 0", userID, 1).
+		Select("COALESCE(SUM(COALESCE(amount, 0)), 0)").
+		Scan(&totalRecharge).Error
+	if err != nil {
+		return 0, err
+	}
+	return utils.Truncate2(totalRecharge), nil
 }
 
 func GetInviteValidUserBetAmount(db *gorm.DB, userID int64) (float64, error) {

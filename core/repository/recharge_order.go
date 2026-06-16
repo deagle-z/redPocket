@@ -274,10 +274,10 @@ func GetCurrentUserPendingRechargeNotifications(db *gorm.DB, userID int64) ([]po
 	return result, nil
 }
 
-// GetUserRechargeCount 统计当前用户成功充值次数（status=1）
+// GetUserRechargeCount 统计当前用户成功充值次数（status=1，不含手动回调）
 func GetUserRechargeCount(db *gorm.DB, userID int64) pojo.UserRechargeCountBack {
 	var count int64
-	db.Model(&pojo.RechargeOrder{}).Where("user_id = ? AND status = 1", userID).Count(&count)
+	db.Model(&pojo.RechargeOrder{}).Where("user_id = ? AND status = 1 AND coalesce(is_dev, 0) = 0", userID).Count(&count)
 	return pojo.UserRechargeCountBack{RechargeCount: count}
 }
 
@@ -617,6 +617,9 @@ func ProcessRechargeOrderSuccess(db *gorm.DB, orderNo string, providerTradeNo st
 		}
 		log.Printf("[recharge] pay callback user credited orderNo=%s userID=%d tablePrefix=%q rechargeCredit=%.2f activityBaseGift=%.2f startBalance=%.2f",
 			order.OrderNo, user.ID, tablePrefix, creditAmount, bonusAmount, user.Balance)
+		if err := EnsureInviteRechargeReward(tx, user.ID, now); err != nil {
+			return err
+		}
 		if _, err := EnsureInviteValidUser(tx, user.ID, now); err != nil {
 			return err
 		}
@@ -826,9 +829,6 @@ func rechargeOrderDevCallback(db *gorm.DB, orderNo string, tablePrefix string) e
 				"gift_total":      gorm.Expr("gift_total + ?", bonusAmount),
 				"recharge_amount": gorm.Expr("recharge_amount + ?", order.Amount),
 			}).Error; err != nil {
-			return err
-		}
-		if _, err := EnsureInviteValidUser(tx, user.ID, now); err != nil {
 			return err
 		}
 		if order.ActivityType == nil || *order.ActivityType != rechargeActivityTypeV2Gift {

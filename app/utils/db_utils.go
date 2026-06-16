@@ -119,6 +119,7 @@ func InitTables(prefix string) (firstInit bool, err error) {
 			&pojo.TgUserWithdrawFlowEvent{},
 			&pojo.TgUserWithdrawFlowAllocation{},
 			&pojo.TgUserCheckInRecord{},
+			&pojo.TgUserInviteRewardLog{},
 			&pojo.ExchangeCode{},
 			&pojo.ExchangeCodeRedeem{},
 			&pojo.RechargeOrder{},
@@ -148,6 +149,10 @@ func InitTables(prefix string) (firstInit bool, err error) {
 	}
 	log.Print("init tables: ensure tg_user invite valid schema...\n")
 	if err = ensureTgUserInviteValidSchema(db); err != nil {
+		panic(err)
+	}
+	log.Print("init tables: ensure tg_user invite reward log schema...\n")
+	if err = ensureTgUserInviteRewardLogSchema(db); err != nil {
 		panic(err)
 	}
 	log.Print("init tables: ensure withdraw_order_br performance schema...\n")
@@ -216,6 +221,24 @@ func ensureTgUserInviteValidSchema(db *gorm.DB) error {
 	}
 	if !migrator.HasIndex(&pojo.TgUser{}, "idx_tg_user_invite_valid") {
 		if err := migrator.CreateIndex(&pojo.TgUser{}, "idx_tg_user_invite_valid"); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func ensureTgUserInviteRewardLogSchema(db *gorm.DB) error {
+	if err := db.AutoMigrate(&pojo.TgUserInviteRewardLog{}); err != nil {
+		return err
+	}
+	migrator := db.Migrator()
+	if migrator.HasIndex(&pojo.TgUserInviteRewardLog{}, "idx_invite_reward_user_sub") {
+		if err := migrator.DropIndex(&pojo.TgUserInviteRewardLog{}, "idx_invite_reward_user_sub"); err != nil {
+			return err
+		}
+	}
+	if !migrator.HasIndex(&pojo.TgUserInviteRewardLog{}, "idx_invite_reward_user_sub_stage") {
+		if err := migrator.CreateIndex(&pojo.TgUserInviteRewardLog{}, "idx_invite_reward_user_sub_stage"); err != nil {
 			return err
 		}
 	}

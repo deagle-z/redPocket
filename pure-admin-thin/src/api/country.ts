@@ -45,6 +45,29 @@ export type SysCountrySet = {
   remark?: string | null;
 };
 
+export type AppPayMethodItem = {
+  id: number;
+  methodCode: string;
+  methodName: string;
+  icon?: string | null;
+  sort: number;
+};
+
+export type AppRechargeChannelItem = {
+  id: number;
+  channelCode: string;
+  channelName: string;
+  providerType: string;
+  icon?: string | null;
+  sort: number;
+  methods: AppPayMethodItem[];
+};
+
+export type AppCountryRechargeInfo = {
+  rechargeFields: unknown[];
+  channels: AppRechargeChannelItem[];
+};
+
 type SysCountryListResult = {
   code: number;
   message: string;
@@ -65,13 +88,20 @@ type SysCountryResult = {
 };
 
 export const getSysCountryList = (data: SysCountrySearch) => {
-  return http.request<SysCountryListResult>("post", "/api/v1/admin/sysCountry/list", {
-    data
-  });
+  return http.request<SysCountryListResult>(
+    "post",
+    "/api/v1/admin/sysCountry/list",
+    {
+      data
+    }
+  );
 };
 
 export const getSysCountryById = (id: number) => {
-  return http.request<SysCountryResult>("get", `/api/v1/admin/sysCountry/${id}`);
+  return http.request<SysCountryResult>(
+    "get",
+    `/api/v1/admin/sysCountry/${id}`
+  );
 };
 
 export const setSysCountry = (data: SysCountrySet) => {
@@ -81,5 +111,17 @@ export const setSysCountry = (data: SysCountrySet) => {
 };
 
 export const delSysCountry = (id: number) => {
-  return http.request<SysCountryResult>("delete", `/api/v1/admin/sysCountry/${id}`);
+  return http.request<SysCountryResult>(
+    "delete",
+    `/api/v1/admin/sysCountry/${id}`
+  );
+};
+
+export const getAdminCountryRechargeInfo = (code: string) => {
+  return http.request<{
+    code: number;
+    message: string;
+    success: boolean;
+    data: AppCountryRechargeInfo;
+  }>("get", `/api/v1/admin/sysCountryRecharge/${code}`);
 };

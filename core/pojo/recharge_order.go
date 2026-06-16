@@ -154,6 +154,11 @@ type RechargeOrderAppReq struct {
 	ConfirmUnfinishedActivityCycle bool              `json:"confirmUnfinishedActivityCycle"` // 是否确认在未结束活动周期内继续普通充值
 }
 
+type AdminCreateRechargeOrderV2Req struct {
+	UserID int64 `json:"userId"` // TG用户ID
+	RechargeOrderAppReq
+}
+
 type RechargePromotionStatusResp struct {
 	FirstRecharge3Day  RechargeFirstRecharge3DayPromotion `json:"firstRecharge3Day"`
 	TodayFirstRecharge RechargeTodayFirstPromotion        `json:"todayFirstRecharge"`

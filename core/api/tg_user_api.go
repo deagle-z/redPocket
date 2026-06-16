@@ -913,14 +913,16 @@ func GetCurrentTgInviteStats(ctx *gin.Context) {
 		Count(&validUsers).Error
 
 	var rechargeUsers int64
-	_ = db.Model(&pojo.TgUser{}).
-		Where("parent_id = ? AND status <> ? AND recharge_amount > 0", userID, -1).
-		Count(&rechargeUsers).Error
+	_ = db.Table("recharge_order ro").
+		Joins("inner join tg_user tu on tu.id = ro.user_id").
+		Where("tu.parent_id = ? AND tu.status <> ? AND ro.status = ? AND coalesce(ro.is_dev, 0) = 0", userID, -1, 1).
+		Select("COUNT(DISTINCT ro.user_id)").
+		Scan(&rechargeUsers).Error
 
 	var todayRechargeUsers int64
 	_ = db.Table("recharge_order ro").
 		Joins("inner join tg_user tu on tu.id = ro.user_id").
-		Where("tu.parent_id = ? AND tu.status <> ? AND ro.status = ? AND ro.pay_time >= ? AND ro.pay_time < ?", userID, -1, 1, startOfDay, endOfDay).
+		Where("tu.parent_id = ? AND tu.status <> ? AND ro.status = ? AND coalesce(ro.is_dev, 0) = 0 AND ro.pay_time >= ? AND ro.pay_time < ?", userID, -1, 1, startOfDay, endOfDay).
 		Select("COUNT(DISTINCT ro.user_id)").
 		Scan(&todayRechargeUsers).Error
 

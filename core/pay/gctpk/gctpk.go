@@ -4,6 +4,7 @@ import (
 	"BaseGoUni/core/base"
 	"BaseGoUni/core/pay"
 	"BaseGoUni/core/utils"
+	"bytes"
 	"crypto"
 	"crypto/hmac"
 	"crypto/rand"
@@ -82,8 +83,8 @@ func (g *Provider) CreateOrder(req pay.PayRequest) (pay.PayResponse, error) {
 	if apiResp.Data.Status != 2 {
 		return pay.PayResponse{}, fmt.Errorf("GCTPK 下单失败 status=%d code=%s msg=%s",
 			apiResp.Data.Status,
-			strings.TrimSpace(apiResp.Data.SubCode),
-			createOrderDataErrorMessage(apiResp.Msg, apiResp.Data.SubMsg),
+			apiResp.Data.SubCode.String(),
+			createOrderDataErrorMessage(apiResp.Msg, apiResp.Data.SubMsg.String()),
 		)
 	}
 
@@ -258,15 +259,36 @@ type createOrderResp struct {
 }
 
 type createOrderData struct {
-	MerOrderNo string `json:"merOrderNo"`
-	OrderNo    string `json:"orderNo"`
-	SubCode    string `json:"subCode"`
-	SubMsg     string `json:"subMsg"`
-	Status     int    `json:"status"`
-	PayURL     string `json:"payUrl"`
-	OrderData  string `json:"orderData"`
-	Common     string `json:"common"`
-	Sign       string `json:"sign"`
+	MerOrderNo string     `json:"merOrderNo"`
+	OrderNo    string     `json:"orderNo"`
+	SubCode    flexString `json:"subCode"`
+	SubMsg     flexString `json:"subMsg"`
+	Status     int        `json:"status"`
+	PayURL     string     `json:"payUrl"`
+	OrderData  string     `json:"orderData"`
+	Common     string     `json:"common"`
+	Sign       string     `json:"sign"`
+}
+
+type flexString string
+
+func (v *flexString) UnmarshalJSON(data []byte) error {
+	data = bytes.TrimSpace(data)
+	if bytes.Equal(data, []byte("null")) {
+		*v = ""
+		return nil
+	}
+	var text string
+	if err := json.Unmarshal(data, &text); err == nil {
+		*v = flexString(text)
+		return nil
+	}
+	*v = flexString(string(data))
+	return nil
+}
+
+func (v flexString) String() string {
+	return strings.TrimSpace(string(v))
 }
 
 func createOrderDataErrorMessage(apiMsg string, subMsg string) string {

@@ -359,7 +359,7 @@ func GetTgUsersWithSubStats(db *gorm.DB, tenantID int64, search pojo.TgUserSearc
 	// 按充值金额倒序：LEFT JOIN 充值汇总子查询（status=1 成功充值）
 	rechargeSub := db.Model(&pojo.RechargeOrder{}).
 		Select("user_id, sum(amount) as recharge_amt").
-		Where("status = ?", 1)
+		Where("status = ? and coalesce(is_dev, 0) = 0", 1)
 	if tenantID > 0 {
 		rechargeSub = rechargeSub.Where("tenant_id = ?", tenantID)
 	}
@@ -389,7 +389,7 @@ func GetTgUsersWithSubStats(db *gorm.DB, tenantID int64, search pojo.TgUserSearc
 		}
 		_ = rechargeQuery.
 			Select("user_id as user_id, sum(amount) as amount").
-			Where("status = ? and user_id in (?)", 1, metricUserIDs).
+			Where("status = ? and coalesce(is_dev, 0) = 0 and user_id in (?)", 1, metricUserIDs).
 			Group("user_id").
 			Scan(&rechargeSums).Error
 		for _, item := range rechargeSums {
@@ -569,7 +569,7 @@ func GetTgUsersWithSubStatsSummary(db *gorm.DB, tenantID int64, search pojo.TgUs
 		}
 		_ = rechargeQuery.
 			Select("coalesce(sum(amount), 0)").
-			Where("status = ? and user_id in (?)", 1, subUsersQuery).
+			Where("status = ? and coalesce(is_dev, 0) = 0 and user_id in (?)", 1, subUsersQuery).
 			Scan(&result.SubRechargeAmount).Error
 
 		rechargeUsersQuery := db.Model(&pojo.RechargeOrder{})
@@ -577,7 +577,7 @@ func GetTgUsersWithSubStatsSummary(db *gorm.DB, tenantID int64, search pojo.TgUs
 			rechargeUsersQuery = rechargeUsersQuery.Where("tenant_id = ?", tenantID)
 		}
 		_ = rechargeUsersQuery.
-			Where("status = ? and user_id in (?)", 1, subUsersQuery).
+			Where("status = ? and coalesce(is_dev, 0) = 0 and user_id in (?)", 1, subUsersQuery).
 			Distinct("user_id").
 			Count(&result.RechargeUsers).Error
 
@@ -633,7 +633,7 @@ func GetTgUsersWithSubStatsSummary(db *gorm.DB, tenantID int64, search pojo.TgUs
 	}
 	_ = rechargeQuery.
 		Select("coalesce(sum(amount), 0)").
-		Where("status = ? and user_id in (?)", 1, descendantIDs).
+		Where("status = ? and coalesce(is_dev, 0) = 0 and user_id in (?)", 1, descendantIDs).
 		Scan(&result.SubRechargeAmount).Error
 
 	rechargeUsersQuery := db.Model(&pojo.RechargeOrder{})
@@ -641,7 +641,7 @@ func GetTgUsersWithSubStatsSummary(db *gorm.DB, tenantID int64, search pojo.TgUs
 		rechargeUsersQuery = rechargeUsersQuery.Where("tenant_id = ?", tenantID)
 	}
 	_ = rechargeUsersQuery.
-		Where("status = ? and user_id in (?)", 1, descendantIDs).
+		Where("status = ? and coalesce(is_dev, 0) = 0 and user_id in (?)", 1, descendantIDs).
 		Distinct("user_id").
 		Count(&result.RechargeUsers).Error
 
