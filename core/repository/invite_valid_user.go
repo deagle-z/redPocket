@@ -3,6 +3,7 @@ package repository
 import (
 	"BaseGoUni/core/pojo"
 	"BaseGoUni/core/utils"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -123,16 +124,40 @@ func EnsureInviteValidUser(tx *gorm.DB, userID int64, qualifiedAt time.Time) (bo
 		return false, res.Error
 	}
 	if res.RowsAffected > 0 {
-		validUsers, err := countInviteValidUsers(tx, *user.ParentID)
+		// 第二笔（投注达标）档位锁定为该下级充值时的档位
+		position, err := inviteRechargeStagePosition(tx, *user.ParentID, userID)
 		if err != nil {
 			return false, err
 		}
-		tier := inviteRewardTierForCount(validUsers)
-		if err := grantInviteRewardStage(tx, *user.ParentID, userID, pojo.InviteRewardStageBet, validUsers, tier.BetAmount); err != nil {
+		if position <= 0 {
+			// 理论上充值段已先发放；兜底用当前充值用户数
+			position, err = countInviteRechargedUsers(tx, *user.ParentID)
+			if err != nil {
+				return false, err
+			}
+		}
+		tier := inviteRewardTierForCount(position)
+		if err := grantInviteRewardStage(tx, *user.ParentID, userID, pojo.InviteRewardStageBet, position, tier.BetAmount); err != nil {
 			return false, err
 		}
 	}
 	return true, nil
+}
+
+// inviteRechargeStagePosition 读取该下级充值段(stage=recharge)记录里的档位位次（无记录返回 0）。
+func inviteRechargeStagePosition(tx *gorm.DB, parentID int64, subUserID int64) (int64, error) {
+	if tx == nil || parentID <= 0 || subUserID <= 0 {
+		return 0, nil
+	}
+	var rec pojo.TgUserInviteRewardLog
+	if err := tx.Where("user_id = ? AND sub_user_id = ? AND stage = ?", parentID, subUserID, pojo.InviteRewardStageRecharge).
+		First(&rec).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return 0, nil
+		}
+		return 0, err
+	}
+	return int64(rec.ValidUsers), nil
 }
 
 func grantInviteRechargeRewardForUser(tx *gorm.DB, user pojo.TgUser, totalRecharge float64, qualifiedAt time.Time) error {
@@ -223,43 +248,34 @@ func grantInviteRewardStage(tx *gorm.DB, parentID int64, subUserID int64, stage 
 		return nil
 	}
 
-	if err := tx.Model(&pojo.TgUser{}).Where("id = ?", parentID).Updates(map[string]any{
-		"balance": gorm.Expr("balance + ?", amount),
-	}).Error; err != nil {
-		return err
-	}
-
-	cashDesc := fmt.Sprintf("邀请返佣奖励%.2f（当前阶段用户%d人）", amount, stageUsers)
-	if stage == pojo.InviteRewardStageRecharge {
-		cashDesc = fmt.Sprintf("邀请充值奖励%.2f（当前充值用户%d人）", amount, stageUsers)
-	} else if stage == pojo.InviteRewardStageBet {
-		cashDesc = fmt.Sprintf("邀请投注达标奖励%.2f（当前有效用户%d人）", amount, stageUsers)
-	}
-	history := pojo.CashHistory{
-		UserId:          parentID,
-		AwardUni:        fmt.Sprintf("invite_rebate_%s_%d_%d", stage, parentID, subUserID),
-		Amount:          amount,
-		StartAmount:     utils.Truncate2(parent.Balance),
-		EndAmount:       utils.Truncate2(parent.Balance + amount),
-		CashMark:        "邀请返佣奖励",
-		CashDesc:        cashDesc,
-		Type:            pojo.CashHistoryTypeInviteRebateTierReward,
-		IsGift:          1,
-		FromUserId:      subUserID,
+	// 阶梯奖励计入上级「返水余额」(rebate_amount/rebate_total_amount)，
+	// 走佣金转余额提现，不进 balance、不挂赠送流水批次。
+	now := time.Now()
+	remark := fmt.Sprintf("invite_tier_%s_reward", stage)
+	rebateRecord := pojo.TgUserRebateRecord{
+		TenantId:        &parent.TenantId,
+		SubUserId:       subUserID,
+		ParentUserId:    parentID,
 		SourceChannelID: parent.SourceChannelID,
+		SourceType:      pojo.TgUserRebateSourceTypeInviteTier,
+		SourceOrderId:   fmt.Sprintf("invite_tier_%s_%d_%d", stage, parentID, subUserID),
+		SourceAmount:    0,
+		RebateRate:      0,
+		RebateAmount:    amount,
+		Currency:        "USDT",
+		Status:          1,
+		SettledAt:       &now,
+		IdempotencyKey:  fmt.Sprintf("invite_tier:%s:%d:%d", stage, parentID, subUserID),
+		Remark:          &remark,
 	}
-	if err := tx.Create(&history).Error; err != nil {
+	if err := tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&rebateRecord).Error; err != nil {
 		return err
 	}
 
-	return EnsureWithdrawFlowBatchForGift(
-		tx, parent,
-		pojo.WithdrawFlowBatchSourceInviteRebate,
-		logRecord.ID,
-		fmt.Sprintf("invite_rebate_%s_%d", stage, logRecord.ID),
-		pojo.WithdrawFlowBatchSourceInviteRebate,
-		amount,
-	)
+	return tx.Model(&pojo.TgUser{}).Where("id = ?", parentID).Updates(map[string]any{
+		"rebate_amount":       gorm.Expr("rebate_amount + ?", amount),
+		"rebate_total_amount": gorm.Expr("rebate_total_amount + ?", amount),
+	}).Error
 }
 
 // BackfillInviteRebateTiers 对历史存量有效用户补发邀请返佣（一次性脚本，幂等可重复执行）。

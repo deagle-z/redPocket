@@ -8,6 +8,7 @@ const (
 	TgUserRebateSourceTypeLucky         = 3
 	TgUserRebateSourceTypeManual        = 4
 	TgUserRebateSourceTypeFirstRecharge = 5
+	TgUserRebateSourceTypeInviteTier    = 6 // 邀请阶梯奖励（充值/投注达标）
 )
 
 // TgUserRebateRecord 下级给上级反水/返佣记录表
