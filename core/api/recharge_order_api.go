@@ -228,7 +228,7 @@ func AdminCreateRechargeOrderV2(ctx *gin.Context) {
 
 	db := ctx.MustGet("db").(*gorm.DB)
 	hostInfo := ctx.MustGet("hostInfo").(pojo.HostInfo)
-	result, err := repository.AppCreateRechargeOrderV2(db, req.UserID, req.RechargeOrderAppReq, hostInfo.TablePrefix)
+	result, err := repository.AdminCreateRechargeOrderV2(db, req.UserID, req.RechargeOrderAppReq, hostInfo.TablePrefix)
 	if err != nil {
 		utils.ErrorBack(ctx, err.Error())
 		return

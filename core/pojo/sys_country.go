@@ -107,4 +107,5 @@ type AppRechargeChannelItem struct {
 type AppCountryRechargeInfo struct {
 	RechargeFields interface{}              `json:"rechargeFields"`
 	Channels       []AppRechargeChannelItem `json:"channels"`
+	MinAmount      float64                  `json:"minAmount"`
 }

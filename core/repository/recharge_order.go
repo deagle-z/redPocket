@@ -58,8 +58,9 @@ const (
 	rechargeActivityTypeTodayFirst        int8 = 2
 	rechargeActivityTypeV2Gift            int8 = 3
 
-	rechargeV2MinAmount     float64 = 50  // v2版本充值最低金额
-	rechargeV2GiftMinAmount float64 = 100 // v2版本充值赠送门槛（满此金额才赠送）
+	rechargeV2MinAmount      float64 = 50  // v2版本充值最低金额
+	AdminRechargeV2MinAmount float64 = 1   // 后台手动拉起v2充值最低金额
+	rechargeV2GiftMinAmount  float64 = 100 // v2版本充值赠送门槛（满此金额才赠送）
 )
 
 var (
@@ -303,16 +304,21 @@ func AckRechargeFrontendNotification(db *gorm.DB, userID int64, orderNo string) 
 }
 
 func AppCreateRechargeOrder(db *gorm.DB, userID int64, req pojo.RechargeOrderAppReq, tablePrefix string) (result pojo.RechargeOrderAppBack, err error) {
-	return appCreateRechargeOrder(db, userID, req, tablePrefix, nil)
+	return appCreateRechargeOrder(db, userID, req, tablePrefix, nil, 0)
 }
 
 func AppCreateRechargeOrderV2(db *gorm.DB, userID int64, req pojo.RechargeOrderAppReq, tablePrefix string) (result pojo.RechargeOrderAppBack, err error) {
 	activityType := rechargeActivityTypeV2Gift
-	return appCreateRechargeOrder(db, userID, req, tablePrefix, &activityType)
+	return appCreateRechargeOrder(db, userID, req, tablePrefix, &activityType, rechargeV2MinAmount)
+}
+
+func AdminCreateRechargeOrderV2(db *gorm.DB, userID int64, req pojo.RechargeOrderAppReq, tablePrefix string) (result pojo.RechargeOrderAppBack, err error) {
+	activityType := rechargeActivityTypeV2Gift
+	return appCreateRechargeOrder(db, userID, req, tablePrefix, &activityType, AdminRechargeV2MinAmount)
 }
 
 // appCreateRechargeOrder app端创建充值订单（dev环境自动回调）
-func appCreateRechargeOrder(db *gorm.DB, userID int64, req pojo.RechargeOrderAppReq, tablePrefix string, forcedActivityType *int8) (result pojo.RechargeOrderAppBack, err error) {
+func appCreateRechargeOrder(db *gorm.DB, userID int64, req pojo.RechargeOrderAppReq, tablePrefix string, forcedActivityType *int8, minAmount float64) (result pojo.RechargeOrderAppBack, err error) {
 	req.Channel = strings.TrimSpace(req.Channel)
 	req.PayMethod = strings.TrimSpace(req.PayMethod)
 	req.Currency = strings.ToUpper(strings.TrimSpace(req.Currency))
@@ -321,9 +327,9 @@ func appCreateRechargeOrder(db *gorm.DB, userID int64, req pojo.RechargeOrderApp
 	if req.Amount <= 0 {
 		return result, errors.New("recharge_amount_positive")
 	}
-	if forcedActivityType != nil && *forcedActivityType == rechargeActivityTypeV2Gift && req.Amount < rechargeV2MinAmount {
+	if forcedActivityType != nil && *forcedActivityType == rechargeActivityTypeV2Gift && minAmount > 0 && req.Amount < minAmount {
 		return result, errors.New(utils.I18nMessage("recharge_v2_min_amount", map[string]interface{}{
-			"min": fmt.Sprintf("%.0f", rechargeV2MinAmount),
+			"min": fmt.Sprintf("%.0f", minAmount),
 		}))
 	}
 	if req.Channel == "" {

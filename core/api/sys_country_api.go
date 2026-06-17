@@ -147,6 +147,7 @@ func GetAdminCountryRechargeInfo(ctx *gin.Context) {
 		utils.ErrorBack(ctx, err.Error())
 		return
 	}
+	result.MinAmount = repository.AdminRechargeV2MinAmount
 	utils.SuccessObjBack(ctx, result)
 }
 

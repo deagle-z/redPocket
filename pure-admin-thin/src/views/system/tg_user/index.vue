@@ -117,6 +117,7 @@ const rechargeChannels = ref<AppRechargeChannelItem[]>([]);
 const rechargeFields = ref<RechargeField[]>([]);
 const rechargeFieldValues = reactive<Record<string, string>>({});
 const rechargeResult = ref<TgUserRechargeOrderAppBack | null>(null);
+const rechargeMinAmount = ref(1);
 const rechargeForm = reactive({
   userId: 0,
   tgId: 0,
@@ -257,6 +258,7 @@ async function syncRechargeCountryConfig() {
   rechargeForm.currency = country?.currencyCode || "";
   rechargeChannels.value = [];
   rechargeFields.value = [];
+  rechargeMinAmount.value = 1;
   if (rechargeForm.countryCode) {
     rechargeConfigLoading.value = true;
     try {
@@ -267,6 +269,7 @@ async function syncRechargeCountryConfig() {
         (a, b) => a.sort - b.sort
       );
       rechargeFields.value = parseRechargeFields(data?.rechargeFields || []);
+      rechargeMinAmount.value = Math.max(1, Number(data?.minAmount || 1));
     } catch (error) {
       console.error("加载国家充值配置失败", error);
       message("加载国家充值配置失败", { type: "error" });
@@ -369,8 +372,11 @@ function buildRechargeExtraFields() {
 
 function validateRechargeForm() {
   if (!rechargeForm.userId) return "请选择用户";
-  if (Number.isNaN(Number(rechargeForm.amount)) || rechargeForm.amount < 50) {
-    return "充值金额最小为 50";
+  if (
+    Number.isNaN(Number(rechargeForm.amount)) ||
+    rechargeForm.amount < rechargeMinAmount.value
+  ) {
+    return `充值金额最小为 ${rechargeMinAmount.value}`;
   }
   if (!rechargeForm.countryCode) return "请选择国家";
   if (!rechargeForm.channel) return "请选择充值通道";
@@ -943,14 +949,16 @@ function handleSubStatsNextPage() {
         <el-form-item label="充值金额" required>
           <el-input-number
             v-model="rechargeForm.amount"
-            :min="50"
+            :min="rechargeMinAmount"
             :precision="0"
-            :step="50"
+            :step="1"
             controls-position="right"
             class="!w-full"
             @change="rechargeResult = null"
           />
-          <div class="form-tip">v2 充值最小金额 50，满 100 才赠送</div>
+          <div class="form-tip">
+            后台拉起支付最小金额 {{ rechargeMinAmount }}，满 100 才赠送
+          </div>
         </el-form-item>
         <el-form-item label="国家" required>
           <el-select

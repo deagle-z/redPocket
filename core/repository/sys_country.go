@@ -131,6 +131,7 @@ func GetAppCountries(db *gorm.DB, detectedCode string) []pojo.AppCountryItem {
 // GetCountryRechargeInfo App端获取国家充值信息（充值字段 + 通道 + 支付方式）
 func GetCountryRechargeInfo(db *gorm.DB, countryCode string) (result pojo.AppCountryRechargeInfo, err error) {
 	result.Channels = []pojo.AppRechargeChannelItem{}
+	result.MinAmount = rechargeV2MinAmount
 
 	// 1. 验证国家存在且启用
 	var country pojo.SysCountry

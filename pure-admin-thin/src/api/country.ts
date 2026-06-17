@@ -66,6 +66,7 @@ export type AppRechargeChannelItem = {
 export type AppCountryRechargeInfo = {
   rechargeFields: unknown[];
   channels: AppRechargeChannelItem[];
+  minAmount?: number;
 };
 
 type SysCountryListResult = {
