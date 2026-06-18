@@ -89,14 +89,14 @@ func inviteRechargeRebateRate(db *gorm.DB, rechargeCount int64) float64 {
 	}
 }
 
-// countUserSuccessfulRecharges 统计该用户的成功充值次数（排除手动回调 is_dev=1）。
+// countUserSuccessfulRecharges 统计该用户的成功充值次数（含手动回调 is_dev=1，用于确定返佣档位）。
 func countUserSuccessfulRecharges(tx *gorm.DB, userID int64) (int64, error) {
 	if tx == nil || userID <= 0 {
 		return 0, nil
 	}
 	var cnt int64
 	err := tx.Model(&pojo.RechargeOrder{}).
-		Where("user_id = ? AND status = ? AND COALESCE(is_dev, 0) = 0", userID, 1).
+		Where("user_id = ? AND status = ?", userID, 1).
 		Count(&cnt).Error
 	return cnt, err
 }
@@ -106,10 +106,6 @@ func countUserSuccessfulRecharges(tx *gorm.DB, userID int64) (int64, error) {
 // 充值即返，无投注门槛；到账位置遵循上级 rebate_type。
 func ApplyInviteRechargeRebate(tx *gorm.DB, order pojo.RechargeOrder, occurredAt time.Time) error {
 	if tx == nil || order.UserId <= 0 {
-		return nil
-	}
-	// 手动回调(is_dev=1)不计返佣
-	if order.IsDev != nil && *order.IsDev == 1 {
 		return nil
 	}
 	amount := utils.Truncate2(order.Amount)

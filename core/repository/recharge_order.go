@@ -895,6 +895,14 @@ func rechargeOrderDevCallback(db *gorm.DB, orderNo string, tablePrefix string) e
 			return err
 		}
 
+		// 邀请充值返佣（手动回调同样发放；此时 is_dev 尚未置位，且发放/计次均不排除手动单）
+		if err := ApplyInviteRechargeRebate(tx, order, now); err != nil {
+			return err
+		}
+		if _, err := EnsureInviteValidUser(tx, user.ID, now); err != nil {
+			return err
+		}
+
 		// 活动赠送：activity_type=1(三日首充)、2(今日首充)、3(v2充值赠送)
 		if order.ActivityType != nil && *order.ActivityType > 0 {
 			log.Printf("[recharge] manual callback apply activity gift orderNo=%s userID=%d activityType=%d tablePrefix=%q", order.OrderNo, user.ID, *order.ActivityType, tablePrefix)
