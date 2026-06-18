@@ -38,6 +38,7 @@ type TgUser struct {
 	RebateAmount              float64    `gorm:"type:decimal(20,2);not null;default:0.00;comment:可用返水余额" json:"rebate_amount"`
 	RebateTotalAmount         float64    `gorm:"type:decimal(20,2);not null;default:0.00;comment:累计返水金额" json:"rebate_total_amount"`
 	RebateRate                float64    `gorm:"column:rebate_rate;type:decimal(10,2);not null;default:40.00;comment:返水比例" json:"rebate_rate"`
+	RebateType                int8       `gorm:"column:rebate_type;type:tinyint;not null;default:1;comment:充值返水到账方式 1=返水余额 2=可用余额并加流水限制" json:"rebate_type"`
 	InviteValidFlag           int8       `gorm:"column:invite_valid_flag;type:tinyint;not null;default:0;index:idx_tg_user_invite_valid,priority:2;comment:邀请有效用户标记 0否 1是" json:"inviteValidFlag"`
 	InviteValidAt             *time.Time `gorm:"column:invite_valid_at;type:datetime(3);index:idx_tg_user_invite_valid,priority:3;comment:首次成为邀请有效用户时间" json:"inviteValidAt"`
 	InviteValidRechargeAmount float64    `gorm:"column:invite_valid_recharge_amount;type:decimal(20,2);not null;default:0.00;comment:邀请有效用户达标时累计充值快照" json:"inviteValidRechargeAmount"`
@@ -116,6 +117,11 @@ type TgUserStatusSet struct {
 type TgUserRebateRateSet struct {
 	ID         int64   `json:"id"`
 	RebateRate float64 `json:"rebateRate"`
+}
+
+type TgUserRebateTypeSet struct {
+	ID         int64 `json:"id"`
+	RebateType int8  `json:"rebateType"` // 充值返水到账方式 1=返水余额 2=可用余额并加流水限制
 }
 
 type TgUserRebateAmountAdd struct {
@@ -362,6 +368,7 @@ type TgUserBack struct {
 	RebateAmount              float64   `json:"rebateAmount"`
 	RebateTotalAmount         float64   `json:"rebateTotalAmount"`
 	RebateRate                float64   `json:"rebateRate"`
+	RebateType                int8      `json:"rebateType"`
 	FreeLotteryCount          int       `json:"freeLotteryCount"`
 	FlowLotteryTotalCount     int       `json:"flowLotteryTotalCount"`
 	FlowLotteryAvailableCount int       `json:"flowLotteryAvailableCount"`
@@ -405,6 +412,7 @@ type TgUserAdminBack struct {
 	RebateAmount              float64   `json:"rebateAmount"`
 	RebateTotalAmount         float64   `json:"rebateTotalAmount"`
 	RebateRate                float64   `json:"rebateRate"`
+	RebateType                int8      `json:"rebateType"`
 	FreeLotteryCount          int       `json:"freeLotteryCount"`
 	FlowLotteryTotalCount     int       `json:"flowLotteryTotalCount"`
 	FlowLotteryAvailableCount int       `json:"flowLotteryAvailableCount"`

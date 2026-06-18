@@ -172,6 +172,34 @@ func SetTgUserRebateRate(ctx *gin.Context) {
 	utils.SuccessObjBack(ctx, result)
 }
 
+// SetTgUserRebateType godoc
+//
+//	@Summary		修改Telegram用户充值返水到账方式
+//	@Tags			Telegram用户
+//	@Accept			json
+//	@Produce		json
+//	@Param			data body		pojo.TgUserRebateTypeSet	true	"返水到账方式 1=返水余额 2=可用余额并加流水限制"
+//	@Success		200	{object}		pojo.TgUserAdminBack
+//	@Router			/api/v1/admin/tgUser/rebateType [post]
+func SetTgUserRebateType(ctx *gin.Context) {
+	var req pojo.TgUserRebateTypeSet
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	if req.ID <= 0 || (req.RebateType != 1 && req.RebateType != 2) {
+		utils.ErrorBack(ctx, "invalid_params")
+		return
+	}
+	db := ctx.MustGet("db").(*gorm.DB)
+	result, err := repository.SetTgUserRebateType(db, req.ID, req.RebateType)
+	if err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	utils.SuccessObjBack(ctx, result)
+}
+
 // AddTgUserRebateAmount godoc
 //
 //	@Summary		后台给Telegram用户增加佣金金额

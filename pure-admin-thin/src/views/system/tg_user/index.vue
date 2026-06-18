@@ -18,6 +18,7 @@ import {
   getTgUserListWithSubStats,
   getTgUserSubStatsSummary,
   setTgUserRebateRate,
+  setTgUserRebateType,
   setTgUserRemark,
   type TgUser,
   type TgUserRechargeOrderAppBack
@@ -69,6 +70,16 @@ const rebateRateForm = reactive({
   username: "",
   firstName: "",
   rebateRate: 0
+});
+const rebateTypeFormRef = ref();
+const rebateTypeDialogVisible = ref(false);
+const rebateTypeSaving = ref(false);
+const rebateTypeForm = reactive({
+  id: 0,
+  tgId: 0,
+  username: "",
+  firstName: "",
+  rebateType: 1
 });
 const rebateAmountDialogVisible = ref(false);
 const rebateAmountSaving = ref(false);
@@ -176,6 +187,15 @@ function openRebateRateDialog(row: TgUser) {
   rebateRateForm.firstName = row.firstName || "";
   rebateRateForm.rebateRate = Number(row.rebateRate ?? 0);
   rebateRateDialogVisible.value = true;
+}
+
+function openRebateTypeDialog(row: TgUser) {
+  rebateTypeForm.id = row.id;
+  rebateTypeForm.tgId = row.tgId;
+  rebateTypeForm.username = row.username || "";
+  rebateTypeForm.firstName = row.firstName || "";
+  rebateTypeForm.rebateType = Number(row.rebateType ?? 1) === 2 ? 2 : 1;
+  rebateTypeDialogVisible.value = true;
 }
 
 function openRebateAmountDialog(row: TgUser) {
@@ -533,6 +553,26 @@ async function submitRebateRate() {
   }
 }
 
+async function submitRebateType() {
+  if (!rebateTypeForm.id) return;
+  const rebateType = Number(rebateTypeForm.rebateType) === 2 ? 2 : 1;
+  rebateTypeSaving.value = true;
+  try {
+    await setTgUserRebateType({
+      id: rebateTypeForm.id,
+      rebateType
+    });
+    message("返水方式修改成功", { type: "success" });
+    rebateTypeDialogVisible.value = false;
+    onSearch();
+  } catch (error) {
+    console.error("修改返水方式失败", error);
+    message("修改返水方式失败", { type: "error" });
+  } finally {
+    rebateTypeSaving.value = false;
+  }
+}
+
 async function loadSubStatsSummary() {
   if (!currentUser.value) return;
   subStatsSummaryLoading.value = true;
@@ -725,6 +765,15 @@ function handleSubStatsNextPage() {
                 @click="openRebateRateDialog(row)"
               >
                 修改返佣
+              </el-button>
+              <el-button
+                class="reset-margin"
+                link
+                type="primary"
+                :size="size"
+                @click="openRebateTypeDialog(row)"
+              >
+                返水方式
               </el-button>
               <el-button
                 class="reset-margin"
@@ -1150,6 +1199,45 @@ function handleSubStatsNextPage() {
           type="primary"
           :loading="rebateRateSaving"
           @click="submitRebateRate"
+        >
+          保存
+        </el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog
+      v-model="rebateTypeDialogVisible"
+      title="修改充值返水方式"
+      width="460px"
+      destroy-on-close
+    >
+      <el-form
+        ref="rebateTypeFormRef"
+        :model="rebateTypeForm"
+        label-width="96px"
+      >
+        <el-form-item label="用户">
+          <span>{{ formatName(rebateTypeForm as unknown as TgUser) }}</span>
+        </el-form-item>
+        <el-form-item label="TG用户ID">
+          <span>{{ rebateTypeForm.tgId || "-" }}</span>
+        </el-form-item>
+        <el-form-item label="返水方式">
+          <el-radio-group v-model="rebateTypeForm.rebateType">
+            <el-radio :value="1">返水余额</el-radio>
+            <el-radio :value="2">可用余额</el-radio>
+          </el-radio-group>
+          <div class="form-tip">
+            返水余额：充值返水进可用返水余额，走佣金转余额提现；可用余额：充值返水直接进可用余额，并附加 v2 提现流水批次限制。仅影响“充值返水”，不影响投注返水/红包返水。
+          </div>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="rebateTypeDialogVisible = false">取消</el-button>
+        <el-button
+          type="primary"
+          :loading="rebateTypeSaving"
+          @click="submitRebateType"
         >
           保存
         </el-button>

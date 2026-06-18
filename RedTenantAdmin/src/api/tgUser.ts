@@ -22,6 +22,7 @@ export type TgUser = {
   rebateAmount: number;
   rebateTotalAmount: number;
   rebateRate: number;
+  rebateType: number;
   status: number;
   parentId?: number | null;
   parentUid?: string | null;
@@ -54,6 +55,11 @@ export type TgUserStatusSet = {
 export type TgUserRebateRateSet = {
   id: number;
   rebateRate: number;
+};
+
+export type TgUserRebateTypeSet = {
+  id: number;
+  rebateType: number;
 };
 
 export type TgUserRemarkSet = {
@@ -152,6 +158,16 @@ export const setTgUserRebateRate = (data: TgUserRebateRateSet) => {
   return http.request<TgUserResult>(
     "post",
     "/api/v1/tenant/tgUser/rebateRate",
+    {
+      data
+    }
+  );
+};
+
+export const setTgUserRebateType = (data: TgUserRebateTypeSet) => {
+  return http.request<TgUserResult>(
+    "post",
+    "/api/v1/tenant/tgUser/rebateType",
     {
       data
     }

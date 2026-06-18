@@ -172,6 +172,21 @@ func SetTgUserRebateRate(db *gorm.DB, tenantID int64, id int64, rebateRate float
 	return result, nil
 }
 
+func SetTgUserRebateType(db *gorm.DB, tenantID int64, id int64, rebateType int8) (result pojo.TgUserBack, err error) {
+	var dbUser pojo.TgUser
+	db.Where("id = ? and tenant_id = ?", id, tenantID).First(&dbUser)
+	if dbUser.ID == 0 {
+		return result, errors.New("数据不存在")
+	}
+	err = db.Model(&dbUser).Update("rebate_type", rebateType).Error
+	if err != nil {
+		return result, err
+	}
+	_ = copier.Copy(&result, &dbUser)
+	result.RebateType = rebateType
+	return result, nil
+}
+
 func SetTgUserRemark(db *gorm.DB, tenantID int64, id int64, remark string) (result pojo.TgUserBack, err error) {
 	var dbUser pojo.TgUser
 	db.Where("id = ? and tenant_id = ?", id, tenantID).First(&dbUser)

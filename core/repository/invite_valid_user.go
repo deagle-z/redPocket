@@ -18,6 +18,29 @@ const (
 	InviteBetRebateRate    float64 = 0.1
 )
 
+// BetRebateDisabledConfigKey 下注返佣开关：0=正常返佣 1=关闭(所有下注返佣都不返)
+const BetRebateDisabledConfigKey = "bet_rebate_disabled"
+
+// isBetRebateDisabled 读取下注返佣开关；记录缺失时自动初始化为 0（默认正常返佣）。
+func isBetRebateDisabled(db *gorm.DB) bool {
+	if db == nil {
+		return false
+	}
+	var cfg pojo.SysConfig
+	err := db.Where("config_key = ?", BetRebateDisabledConfigKey).First(&cfg).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			_ = db.Create(&pojo.SysConfig{
+				ConfigKey:   BetRebateDisabledConfigKey,
+				ConfigValue: "0",
+				ConfigDesc:  "下注返佣开关 0=正常返佣 1=关闭(所有下注返佣都不返)",
+			}).Error
+		}
+		return false
+	}
+	return strings.TrimSpace(cfg.ConfigValue) == "1"
+}
+
 type inviteRewardTier struct {
 	RechargeAmount float64
 	BetAmount      float64
@@ -219,6 +242,10 @@ func grantInviteRewardStage(tx *gorm.DB, parentID int64, subUserID int64, stage 
 	if stage == "" || amount <= 0 {
 		return nil
 	}
+	// 下注返佣开关：开启(=1)时投注达标段的邀请奖励也一并停发（充值段不受影响）。
+	if stage == pojo.InviteRewardStageBet && isBetRebateDisabled(tx) {
+		return nil
+	}
 	legacyExists, err := hasLegacyInviteReward(tx, parentID, subUserID)
 	if err != nil || legacyExists {
 		return err
@@ -248,8 +275,42 @@ func grantInviteRewardStage(tx *gorm.DB, parentID int64, subUserID int64, stage 
 		return nil
 	}
 
-	// 阶梯奖励计入上级「返水余额」(rebate_amount/rebate_total_amount)，
-	// 走佣金转余额提现，不进 balance、不挂赠送流水批次。
+	// 充值返水(stage=recharge)且上级 rebate_type=2 时：返到可用余额(balance)并挂 v2 提现流水批次限制。
+	// 其余情况（含投注达标段、rebate_type=1）：计入上级「返水余额」(rebate_amount/rebate_total_amount)，走佣金转余额提现。
+	if stage == pojo.InviteRewardStageRecharge && parent.RebateType == 2 {
+		if err := tx.Model(&pojo.TgUser{}).Where("id = ?", parentID).Updates(map[string]any{
+			"balance": gorm.Expr("balance + ?", amount),
+		}).Error; err != nil {
+			return err
+		}
+
+		history := pojo.CashHistory{
+			UserId:          parentID,
+			AwardUni:        fmt.Sprintf("invite_rebate_%s_%d_%d", stage, parentID, subUserID),
+			Amount:          amount,
+			StartAmount:     utils.Truncate2(parent.Balance),
+			EndAmount:       utils.Truncate2(parent.Balance + amount),
+			CashMark:        "邀请充值返水",
+			CashDesc:        fmt.Sprintf("邀请充值奖励%.2f（当前充值用户%d人）", amount, stageUsers),
+			Type:            pojo.CashHistoryTypeInviteRebateTierReward,
+			IsGift:          1,
+			FromUserId:      subUserID,
+			SourceChannelID: parent.SourceChannelID,
+		}
+		if err := tx.Create(&history).Error; err != nil {
+			return err
+		}
+
+		return EnsureWithdrawFlowBatchForGift(
+			tx, parent,
+			pojo.WithdrawFlowBatchSourceInviteRebate,
+			logRecord.ID,
+			fmt.Sprintf("invite_rebate_%s_%d", stage, logRecord.ID),
+			pojo.WithdrawFlowBatchSourceInviteRebate,
+			amount,
+		)
+	}
+
 	now := time.Now()
 	remark := fmt.Sprintf("invite_tier_%s_reward", stage)
 	rebateRecord := pojo.TgUserRebateRecord{
@@ -379,6 +440,11 @@ func ApplyInviteBetRebate(tx *gorm.DB, subUser pojo.TgUser, betAmount float64, t
 	valid, err := EnsureInviteValidUser(tx, subUser.ID, occurredAt)
 	if err != nil || !valid {
 		return err
+	}
+
+	// 下注返佣开关：开启(=1)时所有下注返佣都不返（不影响邀请有效用户/阶梯奖励）。
+	if isBetRebateDisabled(tx) {
+		return nil
 	}
 
 	parentID := *subUser.ParentID

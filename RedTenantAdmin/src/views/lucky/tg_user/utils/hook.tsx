@@ -129,6 +129,13 @@ export function useTgUser(_tableRef: Ref) {
       formatter: ({ rebateRate }) => formatPercent(rebateRate)
     },
     {
+      label: "充值返水方式",
+      prop: "rebateType",
+      minWidth: 120,
+      formatter: ({ rebateType }) =>
+        Number(rebateType) === 2 ? "可用余额" : "返水余额"
+    },
+    {
       label: "上级UID",
       prop: "parentUid",
       minWidth: 100,

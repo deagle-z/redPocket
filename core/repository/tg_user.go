@@ -244,6 +244,21 @@ func SetTgUserRebateRate(db *gorm.DB, id int64, rebateRate float64) (result pojo
 	return result, nil
 }
 
+func SetTgUserRebateType(db *gorm.DB, id int64, rebateType int8) (result pojo.TgUserAdminBack, err error) {
+	var dbUser pojo.TgUser
+	db.Where("id = ?", id).First(&dbUser)
+	if dbUser.ID == 0 {
+		return result, errors.New("record_not_found")
+	}
+	err = db.Model(&dbUser).Update("rebate_type", rebateType).Error
+	if err != nil {
+		return result, err
+	}
+	_ = copier.Copy(&result, &dbUser)
+	result.RebateType = rebateType
+	return result, nil
+}
+
 func AddTgUserRebateAmount(db *gorm.DB, id int64, amount float64) (result pojo.TgUserAdminBack, err error) {
 	amount = utils.Truncate2(amount)
 	if amount <= 0 {
