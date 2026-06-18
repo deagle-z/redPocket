@@ -124,9 +124,8 @@ func InitGin() {
 		adminGroup.POST("/withdrawalTask", api.SendWithdrawalTask)
 		adminGroup.POST("/verifyCodeTask", api.SendVerifyCodeTask)
 		adminGroup.POST("/tgUser/list", api.GetTgUsers)                               // 获取Telegram用户列表
-		adminGroup.GET("/tgUser/:id", api.GetTgUserById)                              // 获取Telegram用户详情
-		adminGroup.POST("/invite/backfillRebateTiers", api.BackfillInviteRebateTiers) // 临时：补发历史存量邀请返佣阶梯奖励（用完移除）
-		adminGroup.POST("/tgUserRebate/list", api.GetTgUserRebateRecords)             // 获取Telegram反水记录列表
+		adminGroup.GET("/tgUser/:id", api.GetTgUserById)                  // 获取Telegram用户详情
+		adminGroup.POST("/tgUserRebate/list", api.GetTgUserRebateRecords) // 获取Telegram反水记录列表
 		adminGroup.GET("/tgUserRebate/:id", api.GetTgUserRebateRecordById)            // 获取Telegram反水记录详情
 		adminGroup.POST("/lucky/list", api.GetLuckyMoneyListAdmin)                    // 管理员获取红包列表
 		adminGroup.POST("/lucky/history", api.GetLuckyHistoryListAdmin)               // 管理员获取领取历史

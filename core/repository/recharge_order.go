@@ -623,7 +623,7 @@ func ProcessRechargeOrderSuccess(db *gorm.DB, orderNo string, providerTradeNo st
 		}
 		log.Printf("[recharge] pay callback user credited orderNo=%s userID=%d tablePrefix=%q rechargeCredit=%.2f activityBaseGift=%.2f startBalance=%.2f",
 			order.OrderNo, user.ID, tablePrefix, creditAmount, bonusAmount, user.Balance)
-		if err := EnsureInviteRechargeReward(tx, user.ID, now); err != nil {
+		if err := ApplyInviteRechargeRebate(tx, order, now); err != nil {
 			return err
 		}
 		if _, err := EnsureInviteValidUser(tx, user.ID, now); err != nil {

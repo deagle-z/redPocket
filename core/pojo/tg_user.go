@@ -343,6 +343,8 @@ type TgInviteRuleConfigBack struct {
 	InviteValidMinBet         float64 `json:"inviteValidMinBet"`
 	SendMinAmount             float64 `json:"sendMinAmount"`
 	SendMaxAmount             float64 `json:"sendMaxAmount"`
+	// InviteRechargeRebateRates 充值返佣比例档位(%)：[第1次, 第2次, 第3次及以上]，前后端统一取此值。
+	InviteRechargeRebateRates []float64 `json:"inviteRechargeRebateRates"`
 }
 
 type TgUserBack struct {

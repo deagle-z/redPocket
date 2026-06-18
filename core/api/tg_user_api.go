@@ -979,17 +979,6 @@ func GetCurrentTgInviteStats(ctx *gin.Context) {
 	})
 }
 
-// BackfillInviteRebateTiers 一次性补发历史存量有效用户的邀请返佣阶梯奖励（超管，幂等可重复执行，用完可移除）
-func BackfillInviteRebateTiers(ctx *gin.Context) {
-	db := ctx.MustGet("db").(*gorm.DB)
-	processed, err := repository.BackfillInviteRebateTiers(db)
-	if err != nil {
-		utils.ErrorBack(ctx, err.Error())
-		return
-	}
-	utils.SuccessObjBack(ctx, gin.H{"parents": processed})
-}
-
 // GetCurrentTgInviteRuleConfig 获取邀请规则配置
 func GetCurrentTgInviteRuleConfig(ctx *gin.Context) {
 	userIDRaw, ok := ctx.Get("userId")
@@ -1049,6 +1038,7 @@ func GetCurrentTgInviteRuleConfig(ctx *gin.Context) {
 	}
 
 	firstLevelRebate := parseConfigFloat("first_level_rebate", "0")
+	rechargeRebateRates := repository.GetInviteRechargeRebateRates(db)
 	utils.SuccessObjBack(ctx, pojo.TgInviteRuleConfigBack{
 		LuckySendCommission:       parseConfigFloat("lucky_send_commission", "5"),
 		LuckyGrabbingCommission:   parseConfigFloat("lucky_grabbing_commission", "5"),
@@ -1060,6 +1050,7 @@ func GetCurrentTgInviteRuleConfig(ctx *gin.Context) {
 		InviteValidMinBet:         repository.InviteValidMinBet,
 		SendMinAmount:             sendMinAmount,
 		SendMaxAmount:             sendMaxAmount,
+		InviteRechargeRebateRates: rechargeRebateRates[:],
 	})
 }
 
