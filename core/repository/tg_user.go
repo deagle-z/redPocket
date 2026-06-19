@@ -256,6 +256,7 @@ func SetTgUserRebateType(db *gorm.DB, id int64, rebateType int8) (result pojo.Tg
 	}
 	_ = copier.Copy(&result, &dbUser)
 	result.RebateType = rebateType
+
 	return result, nil
 }
 
