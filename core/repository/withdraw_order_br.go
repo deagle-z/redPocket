@@ -10,6 +10,7 @@ import (
 	"github.com/jinzhu/copier"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -18,6 +19,47 @@ const (
 	withdrawOrderSourceBalance = "balance"
 	withdrawOrderSourceRebate  = "rebate"
 )
+
+// RebateWithdrawFeeRateConfigKey 佣金提现手续费率配置键（sys_config，单位 %）。
+const RebateWithdrawFeeRateConfigKey = "rebate_withdraw_fee_rate"
+
+// defaultRebateWithdrawFeeRate 默认佣金提现手续费率(%)：5，即提现 100 到账 95。
+const defaultRebateWithdrawFeeRate = 5.0
+
+// RebateWithdrawFeeRate 读取佣金提现手续费率(%)；配置缺失自动初始化默认值，非法值回退默认。
+func RebateWithdrawFeeRate(db *gorm.DB) float64 {
+	if db == nil {
+		return defaultRebateWithdrawFeeRate
+	}
+	var cfg pojo.SysConfig
+	db.Where("config_key = ?", RebateWithdrawFeeRateConfigKey).First(&cfg)
+	if cfg.ID == 0 {
+		_ = db.Create(&pojo.SysConfig{
+			ConfigKey:   RebateWithdrawFeeRateConfigKey,
+			ConfigValue: strconv.FormatFloat(defaultRebateWithdrawFeeRate, 'f', -1, 64),
+			ConfigDesc:  "佣金提现手续费率(%)，例如 5 表示提现100到账95",
+		}).Error
+		return defaultRebateWithdrawFeeRate
+	}
+	v, err := strconv.ParseFloat(strings.TrimSpace(cfg.ConfigValue), 64)
+	if err != nil || v < 0 || v >= 100 {
+		return defaultRebateWithdrawFeeRate
+	}
+	return v
+}
+
+// applyRebateWithdrawFee 按配置的费率对佣金提现订单设置手续费（服务端权威，覆盖前端传入的 Fee）。
+func applyRebateWithdrawFee(db *gorm.DB, order *pojo.WithdrawOrderBr) {
+	if order == nil || order.Amount <= 0 {
+		return
+	}
+	rate := RebateWithdrawFeeRate(db)
+	if rate <= 0 {
+		order.Fee = 0
+		return
+	}
+	order.Fee = utils.Truncate2(order.Amount * rate / 100)
+}
 
 // GetWithdrawOrderBrs 巴西提现订单列表（分页）
 func GetWithdrawOrderBrs(db *gorm.DB, search pojo.WithdrawOrderBrSearch) (result pojo.WithdrawOrderBrResp) {
@@ -206,6 +248,7 @@ func SetRebateWithdrawOrder(db *gorm.DB, req pojo.WithdrawOrderBrSet) (result po
 		_ = copier.Copy(&dbOrder, &req)
 		normalizeWithdrawOrderSource(&dbOrder)
 		ensureWithdrawMerchantOrderNo(&dbOrder)
+		applyRebateWithdrawFee(tx, &dbOrder)
 		fillWithdrawOrderNetAmount(tx, &dbOrder)
 		if dbOrder.SourceChannelID == nil && dbOrder.UserId > 0 {
 			sourceChannelID, _, sourceErr := LoadUserSourceChannelSnapshot(tx, dbOrder.UserId)

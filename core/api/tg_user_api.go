@@ -1051,6 +1051,7 @@ func GetCurrentTgInviteRuleConfig(ctx *gin.Context) {
 		SendMinAmount:             sendMinAmount,
 		SendMaxAmount:             sendMaxAmount,
 		InviteRechargeRebateRates: rechargeRebateRates[:],
+		RebateWithdrawFeeRate:     repository.RebateWithdrawFeeRate(db),
 	})
 }
 

@@ -345,6 +345,8 @@ type TgInviteRuleConfigBack struct {
 	SendMaxAmount             float64 `json:"sendMaxAmount"`
 	// InviteRechargeRebateRates 充值返佣比例档位(%)：[第1次, 第2次, 第3次及以上]，前后端统一取此值。
 	InviteRechargeRebateRates []float64 `json:"inviteRechargeRebateRates"`
+	// RebateWithdrawFeeRate 佣金提现手续费率(%)，例如 5 表示提现100到账95。
+	RebateWithdrawFeeRate float64 `json:"rebateWithdrawFeeRate"`
 }
 
 type TgUserBack struct {
