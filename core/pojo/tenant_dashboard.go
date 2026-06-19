@@ -48,3 +48,27 @@ type TenantDashboardUserDetailBack struct {
 type TenantDashboardUserDetailResp struct {
 	BasePageResponse[TenantDashboardUserDetailBack]
 }
+
+// TenantDashboardOrderDetailBack 充值/提现订单明细行
+type TenantDashboardOrderDetailBack struct {
+	ID        int64      `json:"id"`
+	OrderNo   string     `json:"orderNo"`
+	TenantId  int64      `json:"tenantId"`
+	UserID    int64      `json:"userId"`
+	Uid       string     `json:"uid"`
+	Username  *string    `json:"username"`
+	FirstName *string    `json:"firstName"`
+	Phone     *string    `json:"phone"`
+	Amount    float64    `json:"amount"`
+	Fee       float64    `json:"fee"`
+	NetAmount float64    `json:"netAmount"`
+	Channel   string     `json:"channel"`
+	Status    int        `json:"status"`
+	Time      *time.Time `json:"time"`
+}
+
+// TenantDashboardOrderDetailResp 订单明细分页响应，附带区间汇总金额
+type TenantDashboardOrderDetailResp struct {
+	BasePageResponse[TenantDashboardOrderDetailBack]
+	TotalAmount float64 `json:"totalAmount"`
+}

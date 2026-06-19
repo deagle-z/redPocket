@@ -100,3 +100,53 @@ export const getAdminDashboardRegisterUsers = (
     { data }
   );
 };
+
+export type AdminDashboardOrderDetail = {
+  id: number;
+  orderNo: string;
+  tenantId: number;
+  userId: number;
+  uid: string;
+  username?: string | null;
+  firstName?: string | null;
+  phone?: string | null;
+  amount: number;
+  fee: number;
+  netAmount: number;
+  channel: string;
+  status: number;
+  time?: string | null;
+};
+
+export type AdminDashboardOrderDetailResult = {
+  code: number;
+  message: string;
+  success: boolean;
+  data: {
+    list: AdminDashboardOrderDetail[];
+    total: number;
+    pageSize: number;
+    currentPage: number;
+    totalAmount: number;
+  };
+};
+
+export const getAdminDashboardRechargeOrders = (
+  data: AdminDashboardDetailSearch
+) => {
+  return http.request<AdminDashboardOrderDetailResult>(
+    "post",
+    "/api/v1/admin/dashboard/rechargeOrders",
+    { data }
+  );
+};
+
+export const getAdminDashboardWithdrawOrders = (
+  data: AdminDashboardDetailSearch
+) => {
+  return http.request<AdminDashboardOrderDetailResult>(
+    "post",
+    "/api/v1/admin/dashboard/withdrawOrders",
+    { data }
+  );
+};

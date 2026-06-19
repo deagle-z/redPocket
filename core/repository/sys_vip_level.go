@@ -114,7 +114,8 @@ func GetAppVipProgress(db *gorm.DB, userID int64) (pojo.AppVipProgressBack, erro
 		Select("COALESCE(SUM(amount + lose_money), 0)").
 		Where("user_id = ?", userID).
 		Scan(&totalBetAmount)
-	totalBetAmount = utils.Truncate2(totalBetAmount)
+	// 合并游戏投注流水（app_user_bet_record 分表 bet_amount），与红包流水(lucky_history)一起计入 VIP 投注口径
+	totalBetAmount = utils.Truncate2(totalBetAmount + vipGameBetFlow(db, userID))
 
 	var monthBetAmount float64
 	db.Model(&pojo.LuckyHistory{}).
@@ -251,6 +252,15 @@ func getActiveVipLevels(db *gorm.DB, tenantID int64) []pojo.SysVipLevel {
 	return levels
 }
 
+// vipGameBetFlow 返回用户游戏投注流水（app_user_bet_record 分表 bet_amount 之和），无记录返回 0。
+func vipGameBetFlow(db *gorm.DB, userID int64) float64 {
+	bet, err := GetInviteValidUserBetAmount(db, userID)
+	if err != nil {
+		return 0
+	}
+	return bet
+}
+
 type vipProgressMetric struct {
 	current float64
 	target  float64
@@ -337,7 +347,8 @@ func CheckAndUpgradeVipLevel(db *gorm.DB, userID int64) {
 		Select("COALESCE(SUM(amount + lose_money), 0)").
 		Where("user_id = ?", userID).
 		Scan(&totalBetAmount)
-	totalBetAmount = utils.Truncate2(totalBetAmount)
+	// 合并游戏投注流水（app_user_bet_record 分表 bet_amount），与红包流水(lucky_history)一起计入 VIP 投注口径
+	totalBetAmount = utils.Truncate2(totalBetAmount + vipGameBetFlow(db, userID))
 
 	// 6. 找出用户能达到的最高等级
 	currentLevel := 0

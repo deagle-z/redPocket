@@ -7,9 +7,12 @@ import {
   getAdminDashboardOnlineUsers,
   getAdminDashboardRegisterUsers,
   getAdminDashboardRechargeUsers,
+  getAdminDashboardRechargeOrders,
+  getAdminDashboardWithdrawOrders,
   getAdminDashboardStats,
   type AdminDashboardStats,
-  type AdminDashboardUserDetail
+  type AdminDashboardUserDetail,
+  type AdminDashboardOrderDetail
 } from "@/api/dashboard";
 import { getSysTenantList, type SysTenant } from "@/api/tenant";
 
@@ -61,6 +64,26 @@ const detailPagination = reactive({
   total: 0
 });
 
+type OrderType = "recharge" | "withdraw";
+type OrderPeriod = "today" | "yesterday";
+
+const orderDialogVisible = ref(false);
+const orderLoading = ref(false);
+const orderType = ref<OrderType>("recharge");
+const orderPeriod = ref<OrderPeriod>("today");
+const orderTotalAmount = ref(0);
+const orderList = ref<AdminDashboardOrderDetail[]>([]);
+const orderPagination = reactive({
+  currentPage: 1,
+  pageSize: 10,
+  total: 0
+});
+
+const orderDialogTitle = computed(() =>
+  orderType.value === "recharge" ? "充值总额明细" : "提现总额明细"
+);
+const isWithdrawOrder = computed(() => orderType.value === "withdraw");
+
 const formatAmount = (value?: number) => {
   return Number(value || 0).toLocaleString("zh-CN", {
     minimumFractionDigits: 2,
@@ -91,7 +114,8 @@ const metricCards = computed(() => [
     title: "当日充值总额",
     value: formatAmount(stats.value.today.rechargeAmount),
     unit: "",
-    tone: "green"
+    tone: "green",
+    orderType: "recharge" as OrderType
   },
   {
     title: "当月充值总额",
@@ -115,7 +139,8 @@ const metricCards = computed(() => [
     title: "当日提现总额",
     value: formatAmount(stats.value.today.withdrawAmount),
     unit: "",
-    tone: "orange"
+    tone: "orange",
+    orderType: "withdraw" as OrderType
   },
   {
     title: "当月提现总额",
@@ -320,6 +345,10 @@ async function handleTenantChange() {
     detailPagination.total = getDetailExpectedTotal(detailType.value);
     await loadDetail();
   }
+  if (orderDialogVisible.value) {
+    orderPagination.currentPage = 1;
+    await loadOrderDetail();
+  }
 }
 
 async function openDetail(item: { title: string; detailType?: DetailType }) {
@@ -332,6 +361,67 @@ async function openDetail(item: { title: string; detailType?: DetailType }) {
   detailPagination.total = getDetailExpectedTotal(item.detailType);
   detailDialogVisible.value = true;
   await loadDetail();
+}
+
+async function loadOrderDetail() {
+  orderLoading.value = true;
+  try {
+    const payload = {
+      currentPage: orderPagination.currentPage - 1,
+      pageSize: orderPagination.pageSize,
+      period: orderPeriod.value,
+      tenantId: currentTenantId.value || undefined
+    };
+    const res =
+      orderType.value === "recharge"
+        ? await getAdminDashboardRechargeOrders(payload)
+        : await getAdminDashboardWithdrawOrders(payload);
+    orderList.value = res.data?.list || [];
+    orderTotalAmount.value = Number(res.data?.totalAmount ?? 0);
+    orderPagination.total = Number(res.data?.total ?? 0);
+    orderPagination.pageSize = res.data?.pageSize || orderPagination.pageSize;
+    orderPagination.currentPage = (res.data?.currentPage || 0) + 1;
+  } finally {
+    orderLoading.value = false;
+  }
+}
+
+async function openOrderDetail(type: OrderType) {
+  orderType.value = type;
+  orderPeriod.value = "today";
+  orderPagination.currentPage = 1;
+  orderPagination.total = 0;
+  orderTotalAmount.value = 0;
+  orderDialogVisible.value = true;
+  await loadOrderDetail();
+}
+
+async function handleOrderPeriodChange() {
+  orderPagination.currentPage = 1;
+  await loadOrderDetail();
+}
+
+function handleOrderSizeChange(size: number) {
+  orderPagination.pageSize = size;
+  orderPagination.currentPage = 1;
+  loadOrderDetail();
+}
+
+function handleOrderCurrentChange(page: number) {
+  orderPagination.currentPage = page;
+  loadOrderDetail();
+}
+
+function handleCardClick(item: {
+  title: string;
+  detailType?: DetailType;
+  orderType?: OrderType;
+}) {
+  if (item.orderType) {
+    openOrderDetail(item.orderType);
+    return;
+  }
+  openDetail(item);
 }
 
 function handleDetailSizeChange(size: number) {
@@ -408,9 +498,9 @@ onMounted(() => {
           class="metric-card"
           :class="[
             `metric-card--${item.tone}`,
-            item.detailType && 'metric-card--clickable'
+            (item.detailType || item.orderType) && 'metric-card--clickable'
           ]"
-          @click="openDetail(item)"
+          @click="handleCardClick(item)"
         >
           <div class="metric-card__label">{{ item.title }}</div>
           <div class="metric-card__value">
@@ -552,6 +642,102 @@ onMounted(() => {
           :total="detailPagination.total"
           @size-change="handleDetailSizeChange"
           @current-change="handleDetailCurrentChange"
+        />
+      </div>
+    </el-dialog>
+
+    <el-dialog
+      v-model="orderDialogVisible"
+      :title="orderDialogTitle"
+      width="80%"
+    >
+      <div class="order-toolbar">
+        <el-radio-group
+          v-model="orderPeriod"
+          :disabled="orderLoading"
+          @change="handleOrderPeriodChange"
+        >
+          <el-radio-button value="today">今天</el-radio-button>
+          <el-radio-button value="yesterday">昨天</el-radio-button>
+        </el-radio-group>
+        <div class="order-toolbar__total">
+          {{ orderPeriod === "today" ? "今日" : "昨日" }}合计：
+          <strong>{{ formatAmount(orderTotalAmount) }}</strong>
+          <span>（{{ orderPagination.total }} 笔）</span>
+        </div>
+      </div>
+
+      <el-table v-loading="orderLoading" :data="orderList" border stripe>
+        <el-table-column prop="orderNo" label="订单号" min-width="200" />
+        <el-table-column prop="uid" label="UID" min-width="110">
+          <template #default="{ row }">{{ formatNullable(row.uid) }}</template>
+        </el-table-column>
+        <el-table-column prop="tenantId" label="商户ID" min-width="90">
+          <template #default="{ row }">
+            {{ formatNullable(row.tenantId) }}
+          </template>
+        </el-table-column>
+        <el-table-column prop="username" label="用户名" min-width="120">
+          <template #default="{ row }">
+            {{ formatNullable(row.username) }}
+          </template>
+        </el-table-column>
+        <el-table-column prop="firstName" label="昵称" min-width="120">
+          <template #default="{ row }">
+            {{ formatNullable(row.firstName) }}
+          </template>
+        </el-table-column>
+        <el-table-column prop="amount" label="金额" min-width="120">
+          <template #default="{ row }">
+            {{ formatAmount(row.amount) }}
+          </template>
+        </el-table-column>
+        <el-table-column
+          v-if="isWithdrawOrder"
+          prop="fee"
+          label="手续费"
+          min-width="110"
+        >
+          <template #default="{ row }">{{ formatAmount(row.fee) }}</template>
+        </el-table-column>
+        <el-table-column
+          v-if="isWithdrawOrder"
+          prop="netAmount"
+          label="到账金额"
+          min-width="120"
+        >
+          <template #default="{ row }">
+            {{ formatAmount(row.netAmount) }}
+          </template>
+        </el-table-column>
+        <el-table-column prop="channel" label="渠道" min-width="100">
+          <template #default="{ row }">
+            {{ formatNullable(row.channel) }}
+          </template>
+        </el-table-column>
+        <el-table-column
+          prop="time"
+          :label="isWithdrawOrder ? '打款时间' : '支付时间'"
+          min-width="170"
+        >
+          <template #default="{ row }">
+            {{ formatDateTime(row.time) }}
+          </template>
+        </el-table-column>
+      </el-table>
+
+      <div class="detail-pagination">
+        <el-pagination
+          v-model:current-page="orderPagination.currentPage"
+          v-model:page-size="orderPagination.pageSize"
+          :page-sizes="[10, 20, 50, 100]"
+          :background="true"
+          :disabled="orderLoading"
+          :hide-on-single-page="false"
+          layout="total, sizes, prev, pager, next, jumper"
+          :total="orderPagination.total"
+          @size-change="handleOrderSizeChange"
+          @current-change="handleOrderCurrentChange"
         />
       </div>
     </el-dialog>
@@ -716,5 +902,28 @@ onMounted(() => {
 
 .detail-pager__size {
   width: 86px;
+}
+
+.order-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.order-toolbar__total {
+  color: #606266;
+  font-size: 14px;
+}
+
+.order-toolbar__total strong {
+  color: #101828;
+  font-size: 18px;
+}
+
+.order-toolbar__total span {
+  color: #98a2b3;
 }
 </style>

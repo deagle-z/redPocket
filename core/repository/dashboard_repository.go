@@ -192,6 +192,138 @@ func GetAdminDashboardRegisterUsers(db *gorm.DB, search pojo.TenantDashboardDeta
 	return result
 }
 
+// GetAdminDashboardRechargeOrders 充值总额明细：成功充值订单（不含手动回调），按支付时间倒序。
+func GetAdminDashboardRechargeOrders(db *gorm.DB, search pojo.TenantDashboardDetailSearch) pojo.TenantDashboardOrderDetailResp {
+	start, end := adminDashboardPeriodRange(search.Period)
+	var result pojo.TenantDashboardOrderDetailResp
+
+	countQuery := db.Model(&pojo.RechargeOrder{}).
+		Where("status = ? AND coalesce(is_dev, 0) = 0 AND pay_time >= ? AND pay_time < ?", 1, start, end)
+	countQuery = filterAdminDashboardTenant(countQuery, "tenant_id", search.TenantId)
+	_ = countQuery.Count(&result.Total).Error
+
+	amountQuery := db.Model(&pojo.RechargeOrder{}).
+		Where("status = ? AND coalesce(is_dev, 0) = 0 AND pay_time >= ? AND pay_time < ?", 1, start, end)
+	amountQuery = filterAdminDashboardTenant(amountQuery, "tenant_id", search.TenantId)
+	result.TotalAmount = sumAdminDashboardAmount(amountQuery, "amount")
+
+	type orderRow struct {
+		ID        int64      `gorm:"column:id"`
+		OrderNo   string     `gorm:"column:order_no"`
+		TenantId  int64      `gorm:"column:tenant_id"`
+		UserID    int64      `gorm:"column:user_id"`
+		Amount    float64    `gorm:"column:amount"`
+		Fee       float64    `gorm:"column:fee"`
+		Channel   string     `gorm:"column:channel"`
+		Status    int        `gorm:"column:status"`
+		PayTime   *time.Time `gorm:"column:pay_time"`
+		Uid       string     `gorm:"column:uid"`
+		Username  *string    `gorm:"column:username"`
+		FirstName *string    `gorm:"column:first_name"`
+		Phone     *string    `gorm:"column:phone"`
+	}
+	var rows []orderRow
+	rowQuery := db.Table(pojo.RechargeOrderTableName+" ro").
+		Select(`ro.id, ro.order_no, ro.tenant_id, ro.user_id, ro.amount, ro.fee, ro.channel, ro.status, ro.pay_time,
+			tu.uid, tu.username, tu.first_name, tu.phone`).
+		Joins("LEFT JOIN "+pojo.TgUserTableName+" tu ON tu.id = ro.user_id").
+		Where("ro.status = ? AND coalesce(ro.is_dev, 0) = 0 AND ro.pay_time >= ? AND ro.pay_time < ?", 1, start, end)
+	rowQuery = filterAdminDashboardTenant(rowQuery, "ro.tenant_id", search.TenantId)
+	_ = rowQuery.Order("ro.pay_time DESC, ro.id DESC").
+		Limit(search.PageSize).
+		Offset(search.PageSize * search.CurrentPage).
+		Scan(&rows).Error
+
+	result.PageSize = search.PageSize
+	result.CurrentPage = search.CurrentPage
+	result.List = make([]pojo.TenantDashboardOrderDetailBack, 0, len(rows))
+	for _, row := range rows {
+		result.List = append(result.List, pojo.TenantDashboardOrderDetailBack{
+			ID:        row.ID,
+			OrderNo:   row.OrderNo,
+			TenantId:  row.TenantId,
+			UserID:    row.UserID,
+			Uid:       row.Uid,
+			Username:  row.Username,
+			FirstName: row.FirstName,
+			Phone:     row.Phone,
+			Amount:    utils.Truncate2(row.Amount),
+			Fee:       utils.Truncate2(row.Fee),
+			Channel:   row.Channel,
+			Status:    row.Status,
+			Time:      row.PayTime,
+		})
+	}
+	return result
+}
+
+// GetAdminDashboardWithdrawOrders 提现总额明细：已打款成功订单（status=3），按打款时间倒序。
+func GetAdminDashboardWithdrawOrders(db *gorm.DB, search pojo.TenantDashboardDetailSearch) pojo.TenantDashboardOrderDetailResp {
+	start, end := adminDashboardPeriodRange(search.Period)
+	var result pojo.TenantDashboardOrderDetailResp
+
+	countQuery := db.Model(&pojo.WithdrawOrderBr{}).
+		Where("status = ? AND paid_at >= ? AND paid_at < ?", 3, start, end)
+	countQuery = filterAdminDashboardTenant(countQuery, "tenant_id", search.TenantId)
+	_ = countQuery.Count(&result.Total).Error
+
+	amountQuery := db.Model(&pojo.WithdrawOrderBr{}).
+		Where("status = ? AND paid_at >= ? AND paid_at < ?", 3, start, end)
+	amountQuery = filterAdminDashboardTenant(amountQuery, "tenant_id", search.TenantId)
+	result.TotalAmount = sumAdminDashboardAmount(amountQuery, "amount")
+
+	type orderRow struct {
+		ID        int64      `gorm:"column:id"`
+		OrderNo   string     `gorm:"column:order_no"`
+		TenantId  int64      `gorm:"column:tenant_id"`
+		UserID    int64      `gorm:"column:user_id"`
+		Amount    float64    `gorm:"column:amount"`
+		Fee       float64    `gorm:"column:fee"`
+		NetAmount float64    `gorm:"column:net_amount"`
+		Channel   string     `gorm:"column:channel"`
+		Status    int        `gorm:"column:status"`
+		PaidAt    *time.Time `gorm:"column:paid_at"`
+		Uid       string     `gorm:"column:uid"`
+		Username  *string    `gorm:"column:username"`
+		FirstName *string    `gorm:"column:first_name"`
+		Phone     *string    `gorm:"column:phone"`
+	}
+	var rows []orderRow
+	rowQuery := db.Table(pojo.WithdrawOrderBrTableName+" wo").
+		Select(`wo.id, wo.order_no, wo.tenant_id, wo.user_id, wo.amount, wo.fee, wo.net_amount, wo.channel, wo.status, wo.paid_at,
+			tu.uid, tu.username, tu.first_name, tu.phone`).
+		Joins("LEFT JOIN "+pojo.TgUserTableName+" tu ON tu.id = wo.user_id").
+		Where("wo.status = ? AND wo.paid_at >= ? AND wo.paid_at < ?", 3, start, end)
+	rowQuery = filterAdminDashboardTenant(rowQuery, "wo.tenant_id", search.TenantId)
+	_ = rowQuery.Order("wo.paid_at DESC, wo.id DESC").
+		Limit(search.PageSize).
+		Offset(search.PageSize * search.CurrentPage).
+		Scan(&rows).Error
+
+	result.PageSize = search.PageSize
+	result.CurrentPage = search.CurrentPage
+	result.List = make([]pojo.TenantDashboardOrderDetailBack, 0, len(rows))
+	for _, row := range rows {
+		result.List = append(result.List, pojo.TenantDashboardOrderDetailBack{
+			ID:        row.ID,
+			OrderNo:   row.OrderNo,
+			TenantId:  row.TenantId,
+			UserID:    row.UserID,
+			Uid:       row.Uid,
+			Username:  row.Username,
+			FirstName: row.FirstName,
+			Phone:     row.Phone,
+			Amount:    utils.Truncate2(row.Amount),
+			Fee:       utils.Truncate2(row.Fee),
+			NetAmount: utils.Truncate2(row.NetAmount),
+			Channel:   row.Channel,
+			Status:    row.Status,
+			Time:      row.PaidAt,
+		})
+	}
+	return result
+}
+
 func adminDashboardPeriodRange(period string) (time.Time, time.Time) {
 	now := time.Now()
 	todayStart := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())

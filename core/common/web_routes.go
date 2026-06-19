@@ -121,6 +121,8 @@ func InitGin() {
 		adminGroup.POST("/dashboard/onlineUsers", api.GetAdminDashboardOnlineUsers)
 		adminGroup.POST("/dashboard/rechargeUsers", api.GetAdminDashboardRechargeUsers)
 		adminGroup.POST("/dashboard/registerUsers", api.GetAdminDashboardRegisterUsers)
+		adminGroup.POST("/dashboard/rechargeOrders", api.GetAdminDashboardRechargeOrders) // 充值总额明细（今天/昨天）
+		adminGroup.POST("/dashboard/withdrawOrders", api.GetAdminDashboardWithdrawOrders) // 提现总额明细（今天/昨天）
 		adminGroup.POST("/withdrawalTask", api.SendWithdrawalTask)
 		adminGroup.POST("/verifyCodeTask", api.SendVerifyCodeTask)
 		adminGroup.POST("/tgUser/list", api.GetTgUsers)                               // 获取Telegram用户列表

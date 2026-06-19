@@ -212,11 +212,17 @@ func writeGameCashTransferError(ctx *gin.Context, err error) {
 	gameErrorBack(ctx, game.GameCodeInvalidMerchantCode, err.Error())
 }
 
+// vipUpgradeCheckThrottle 游戏投注触发 VIP 升级检查的每用户节流窗口
+const vipUpgradeCheckThrottle = 10 * time.Second
+
 func handleGameCashTransfer(db *gorm.DB, req pojo.GameCashTransferInOutReq) (float64, error) {
 	userID := strings.TrimSpace(req.UserID)
 	tid := strings.TrimSpace(req.TID)
 	awardUni := gameCashTransferAwardUni(tid)
 	var balance float64
+	var vipUserID int64
+	var vipTenantID int64
+	var vipBetFlow float64
 
 	err := db.Transaction(func(tx *gorm.DB) error {
 		var user pojo.TgUser
@@ -269,6 +275,9 @@ func handleGameCashTransfer(db *gorm.DB, req pojo.GameCashTransferInOutReq) (flo
 		}
 		betAmount, _ := gameBetRecordAmounts(req, amount, gameInfo.IsFishing)
 		if betAmount > 0 {
+			vipUserID = user.ID
+			vipTenantID = user.TenantId
+			vipBetFlow = betAmount
 			occurredAt := time.Now()
 			if req.ReqTime > 0 {
 				occurredAt = time.UnixMilli(req.ReqTime)
@@ -308,6 +317,14 @@ func handleGameCashTransfer(db *gorm.DB, req pojo.GameCashTransferInOutReq) (flo
 	})
 	if err != nil {
 		return 0, err
+	}
+	// 游戏投注结算后触发 VIP 升级检查（投注流水已计入 VIP total_valid_bet 口径）。
+	// 每用户短 TTL 节流：高频投注下同一用户在 vipUpgradeCheckThrottle 窗口内只检查一次。
+	if vipBetFlow > 0 && vipUserID > 0 {
+		throttleKey := fmt.Sprintf("vip_upgrade_check_throttle:%d:%d", vipTenantID, vipUserID)
+		if acquired, _ := utils.AcquireLock(throttleKey, vipUpgradeCheckThrottle); acquired {
+			go repository.CheckAndUpgradeVipLevel(db, vipUserID)
+		}
 	}
 	return balance, nil
 }
