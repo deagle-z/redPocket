@@ -206,6 +206,33 @@ func GetSysTenantById(db *gorm.DB, id int64) (result pojo.SysTenantBack, err err
 }
 
 func GetCurrentTenantServiceLinks(db *gorm.DB, tenantID int64, host string) (result pojo.SysTenantServiceLinksBack, err error) {
+	// 已登录（tenantID>0）：优先返回该用户所属商户配置的客服链接，不按域名匹配（避免跨域名串到其它商户）。
+	if tenantID > 0 {
+		tenantCacheKey := tenantServiceLinksCacheKey(tenantID, "")
+		if cached, ok := getTenantServiceLinksCache(tenantCacheKey); ok {
+			return cached, nil
+		}
+		var dbTenant pojo.SysTenant
+		if dbErr := db.Model(&pojo.SysTenant{}).
+			Where("status = ? AND id = ?", 1, tenantID).
+			First(&dbTenant).Error; dbErr == nil && dbTenant.ID > 0 {
+			result = pojo.SysTenantServiceLinksBack{
+				TgServiceURL: dbTenant.TgServiceURL,
+				WsServiceURL: dbTenant.WsServiceURL,
+			}
+			if serviceLinksNonEmpty(result) {
+				setTenantServiceLinksCache(tenantCacheKey, result)
+				return result, nil
+			}
+		}
+		// 商户不存在或未配置客服 → 回退默认 cs_url（已登录不落到域名匹配）
+		if fallback, ok := tenantServiceLinksFromCsURLConfig(db); ok {
+			return fallback, nil
+		}
+		return result, nil
+	}
+
+	// 未登录：按访问域名匹配商户客服
 	host = normalizeTenantHost(host)
 	if host != "" {
 		hostCacheKey := tenantServiceLinksCacheKey(0, host)
@@ -230,30 +257,17 @@ func GetCurrentTenantServiceLinks(db *gorm.DB, tenantID int64, host string) (res
 		}
 	}
 
-	if tenantID <= 0 {
-		// 未匹配到租户时，回退到 sys_config 的 cs_url 默认客服配置
-		if fallback, ok := tenantServiceLinksFromCsURLConfig(db); ok {
-			return fallback, nil
-		}
-		return result, nil
+	// 域名未匹配到租户 → 回退到 sys_config 的 cs_url 默认客服配置
+	if fallback, ok := tenantServiceLinksFromCsURLConfig(db); ok {
+		return fallback, nil
 	}
-	tenantCacheKey := tenantServiceLinksCacheKey(tenantID, "")
-	if cached, ok := getTenantServiceLinksCache(tenantCacheKey); ok {
-		return cached, nil
-	}
-
-	var dbTenant pojo.SysTenant
-	if err = db.Model(&pojo.SysTenant{}).
-		Where("status = ? AND id = ?", 1, tenantID).
-		First(&dbTenant).Error; err != nil {
-		return result, errors.New("tenant_not_found")
-	}
-	result = pojo.SysTenantServiceLinksBack{
-		TgServiceURL: dbTenant.TgServiceURL,
-		WsServiceURL: dbTenant.WsServiceURL,
-	}
-	setTenantServiceLinksCache(tenantCacheKey, result)
 	return result, nil
+}
+
+// serviceLinksNonEmpty 判断客服链接是否至少配置了一项（TG/WS）。
+func serviceLinksNonEmpty(r pojo.SysTenantServiceLinksBack) bool {
+	return (r.TgServiceURL != nil && strings.TrimSpace(*r.TgServiceURL) != "") ||
+		(r.WsServiceURL != nil && strings.TrimSpace(*r.WsServiceURL) != "")
 }
 
 // tenantServiceLinksFromCsURLConfig 读取 sys_config 的 cs_url 默认客服配置，

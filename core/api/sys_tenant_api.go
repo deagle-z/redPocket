@@ -115,12 +115,30 @@ func GetSysTenantById(ctx *gin.Context) {
 //	@Router			/api/v1/app/domain/serviceLinks [get]
 func GetAppTenantServiceLinks(ctx *gin.Context) {
 	db := ctx.MustGet("db").(*gorm.DB)
-	result, err := repository.GetCurrentTenantServiceLinks(db, 0, getAppServiceLinksHost(ctx))
+	// 已登录：用其所属商户配置的客服；未登录：按域名匹配商户客服
+	tenantID := appServiceLinksLoginTenantID(ctx)
+	result, err := repository.GetCurrentTenantServiceLinks(db, tenantID, getAppServiceLinksHost(ctx))
 	if err != nil {
 		utils.ErrorBack(ctx, err.Error())
 		return
 	}
 	utils.SuccessObjBack(ctx, result)
+}
+
+// appServiceLinksLoginTenantID 可选解析 App token（该接口本身不校验登录）：
+// 已登录且 token 有效返回其商户ID；未登录或 token 无效返回 0（回退按域名查）。
+func appServiceLinksLoginTenantID(ctx *gin.Context) int64 {
+	authHeader := strings.TrimSpace(ctx.GetHeader("Authorization"))
+	if authHeader == "" {
+		return 0
+	}
+	authHeader = strings.TrimPrefix(authHeader, "Bearer ")
+	hostInfo := utils.GetTempHostInfo(utils.GetRequestHost(ctx))
+	userID, hostName, tenantID, parseErr := utils.ParseAppToken(hostInfo.AccessSecret, authHeader)
+	if parseErr != nil || userID == 0 || hostInfo.HostName != hostName {
+		return 0
+	}
+	return tenantID
 }
 
 func getAppServiceLinksHost(ctx *gin.Context) string {

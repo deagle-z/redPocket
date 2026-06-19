@@ -275,6 +275,8 @@ func InitGin() {
 		tenantGroup.POST("/dashboard/onlineUsers", tenantApi.GetDashboardOnlineUsers)
 		tenantGroup.POST("/dashboard/rechargeUsers", tenantApi.GetDashboardRechargeUsers)
 		tenantGroup.POST("/dashboard/registerUsers", tenantApi.GetDashboardRegisterUsers)
+		tenantGroup.POST("/dashboard/rechargeOrders", tenantApi.GetDashboardRechargeOrders) // 充值总额明细（今天/昨天）
+		tenantGroup.POST("/dashboard/withdrawOrders", tenantApi.GetDashboardWithdrawOrders) // 提现总额明细（今天/昨天）
 
 		tenantGroup.POST("/authGroup/list", tenantApi.GetAuthGroups)
 		tenantGroup.POST("/authGroup", tenantApi.SetAuthGroup)

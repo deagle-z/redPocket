@@ -97,3 +97,53 @@ export const getTenantDashboardRegisterUsers = (
     { data }
   );
 };
+
+export type TenantDashboardOrderDetail = {
+  id: number;
+  orderNo: string;
+  tenantId: number;
+  userId: number;
+  uid: string;
+  username?: string | null;
+  firstName?: string | null;
+  phone?: string | null;
+  amount: number;
+  fee: number;
+  netAmount: number;
+  channel: string;
+  status: number;
+  time?: string | null;
+};
+
+export type TenantDashboardOrderDetailResult = {
+  code: number;
+  message: string;
+  success: boolean;
+  data: {
+    list: TenantDashboardOrderDetail[];
+    total: number;
+    pageSize: number;
+    currentPage: number;
+    totalAmount: number;
+  };
+};
+
+export const getTenantDashboardRechargeOrders = (
+  data: TenantDashboardDetailSearch
+) => {
+  return http.request<TenantDashboardOrderDetailResult>(
+    "post",
+    "/api/v1/tenant/dashboard/rechargeOrders",
+    { data }
+  );
+};
+
+export const getTenantDashboardWithdrawOrders = (
+  data: TenantDashboardDetailSearch
+) => {
+  return http.request<TenantDashboardOrderDetailResult>(
+    "post",
+    "/api/v1/tenant/dashboard/withdrawOrders",
+    { data }
+  );
+};

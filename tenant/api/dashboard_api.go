@@ -47,6 +47,36 @@ func GetDashboardRechargeUsers(ctx *gin.Context) {
 	utils.SuccessObjBack(ctx, result)
 }
 
+func GetDashboardRechargeOrders(ctx *gin.Context) {
+	tenantID, ok := getTenantID(ctx)
+	if !ok {
+		return
+	}
+	var search pojo.TenantDashboardDetailSearch
+	search.SetPageDefaults()
+	if err := ctx.ShouldBindJSON(&search); err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	result := tenantRepo.GetDashboardRechargeOrders(getDB(ctx), tenantID, search)
+	utils.SuccessObjBack(ctx, result)
+}
+
+func GetDashboardWithdrawOrders(ctx *gin.Context) {
+	tenantID, ok := getTenantID(ctx)
+	if !ok {
+		return
+	}
+	var search pojo.TenantDashboardDetailSearch
+	search.SetPageDefaults()
+	if err := ctx.ShouldBindJSON(&search); err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	result := tenantRepo.GetDashboardWithdrawOrders(getDB(ctx), tenantID, search)
+	utils.SuccessObjBack(ctx, result)
+}
+
 func GetDashboardRegisterUsers(ctx *gin.Context) {
 	tenantID, ok := getTenantID(ctx)
 	if !ok {
