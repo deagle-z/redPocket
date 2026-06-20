@@ -260,6 +260,31 @@ func SetTgUserRebateType(db *gorm.DB, id int64, rebateType int8) (result pojo.Tg
 	return result, nil
 }
 
+// SetTgUserRechargeRebateRates 设置用户单独的充值返佣档位（逗号分隔 第1次,第2次,第3次及以上；空=用默认配置）。
+func SetTgUserRechargeRebateRates(db *gorm.DB, id int64, rates string) (result pojo.TgUserAdminBack, err error) {
+	var dbUser pojo.TgUser
+	db.Where("id = ?", id).First(&dbUser)
+	if dbUser.ID == 0 {
+		return result, errors.New("record_not_found")
+	}
+	rates = strings.TrimSpace(rates)
+	if rates != "" {
+		parsed, ok := parseInviteRechargeRebateRates(rates)
+		if !ok {
+			return result, errors.New("invalid_recharge_rebate_rates")
+		}
+		rates = fmt.Sprintf("%g,%g,%g", parsed[0], parsed[1], parsed[2])
+	}
+	err = db.Model(&dbUser).Update("recharge_rebate_rates", rates).Error
+	if err != nil {
+		return result, err
+	}
+	_ = copier.Copy(&result, &dbUser)
+	result.RechargeRebateRates = rates
+
+	return result, nil
+}
+
 func AddTgUserRebateAmount(db *gorm.DB, id int64, amount float64) (result pojo.TgUserAdminBack, err error) {
 	amount = utils.Truncate2(amount)
 	if amount <= 0 {

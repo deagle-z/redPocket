@@ -74,13 +74,16 @@ func hasInviteQualifyingRecharge(totalRecharge float64) bool {
 	return totalRecharge > InviteValidMinRecharge
 }
 
-// inviteRechargeRebateRate 按"该下级自己的成功充值次数"返回充值返佣比例(%)。
-// 档位比例从 sys_config（InviteRechargeRebateRatesConfigKey）读取：第1次 / 第2次 / 第3次及以上。
-func inviteRechargeRebateRate(db *gorm.DB, rechargeCount int64) float64 {
+// resolveInviteRechargeRebateRate 按"该下级自己的成功充值次数"返回充值返佣比例(%)。
+// 优先使用上级用户单独配置的档位(userRates，逗号分隔)，未配置/非法则回退 sys_config 默认。
+func resolveInviteRechargeRebateRate(db *gorm.DB, userRates string, rechargeCount int64) float64 {
 	if rechargeCount <= 0 {
 		return 0
 	}
 	rates := GetInviteRechargeRebateRates(db)
+	if parsed, ok := parseInviteRechargeRebateRates(userRates); ok {
+		rates = parsed
+	}
 	switch {
 	case rechargeCount == 1:
 		return rates[0]
@@ -128,25 +131,21 @@ func ApplyInviteRechargeRebate(tx *gorm.DB, order pojo.RechargeOrder, occurredAt
 	if err != nil {
 		return err
 	}
-	rate := inviteRechargeRebateRate(tx, rechargeCount)
-	if rate <= 0 {
-		return nil
-	}
-	rebateAmount := utils.Truncate2(utils.ToMoney(amount).Multiply(rate / 100).ToDollars())
-	if rebateAmount < 0.01 {
+	if rechargeCount <= 0 {
 		return nil
 	}
 	if occurredAt.IsZero() {
 		occurredAt = time.Now()
 	}
 
-	return grantInviteRechargeRebate(tx, *user.ParentID, user, order, rate, rebateAmount, rechargeCount, occurredAt)
+	// 比例取自上级用户单独配置(优先)或 sys_config 默认，在 grant 内加载上级后计算
+	return grantInviteRechargeRebate(tx, *user.ParentID, user, order, rechargeCount, occurredAt)
 }
 
 // grantInviteRechargeRebate 把一笔充值返佣发放给上级，按订单幂等。
 // rebate_type=2：进可用余额(balance)并挂 v2 提现流水批次；否则(=1)进返水余额并写返水记录。
-func grantInviteRechargeRebate(tx *gorm.DB, parentID int64, subUser pojo.TgUser, order pojo.RechargeOrder, rate float64, rebateAmount float64, rechargeCount int64, occurredAt time.Time) error {
-	if tx == nil || parentID <= 0 || rebateAmount <= 0 {
+func grantInviteRechargeRebate(tx *gorm.DB, parentID int64, subUser pojo.TgUser, order pojo.RechargeOrder, rechargeCount int64, occurredAt time.Time) error {
+	if tx == nil || parentID <= 0 {
 		return nil
 	}
 
@@ -155,6 +154,16 @@ func grantInviteRechargeRebate(tx *gorm.DB, parentID int64, subUser pojo.TgUser,
 		return nil
 	}
 	if parent.Status != 1 {
+		return nil
+	}
+
+	// 比例：优先上级单独配置(recharge_rebate_rates)，否则 sys_config 默认
+	rate := resolveInviteRechargeRebateRate(tx, parent.RechargeRebateRates, rechargeCount)
+	if rate <= 0 {
+		return nil
+	}
+	rebateAmount := utils.Truncate2(utils.ToMoney(utils.Truncate2(order.Amount)).Multiply(rate / 100).ToDollars())
+	if rebateAmount < 0.01 {
 		return nil
 	}
 

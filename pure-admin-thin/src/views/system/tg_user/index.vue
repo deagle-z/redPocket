@@ -19,6 +19,7 @@ import {
   getTgUserSubStatsSummary,
   setTgUserRebateRate,
   setTgUserRebateType,
+  setTgUserRechargeRebateRates,
   setTgUserRemark,
   type TgUser,
   type TgUserRechargeOrderAppBack
@@ -80,6 +81,18 @@ const rebateTypeForm = reactive({
   username: "",
   firstName: "",
   rebateType: 1
+});
+const rechargeRatesDialogVisible = ref(false);
+const rechargeRatesSaving = ref(false);
+const rechargeRatesForm = reactive({
+  id: 0,
+  tgId: 0,
+  username: "",
+  firstName: "",
+  useDefault: true,
+  r1: 40,
+  r2: 45,
+  r3: 50
 });
 const rebateAmountDialogVisible = ref(false);
 const rebateAmountSaving = ref(false);
@@ -196,6 +209,59 @@ function openRebateTypeDialog(row: TgUser) {
   rebateTypeForm.firstName = row.firstName || "";
   rebateTypeForm.rebateType = Number(row.rebateType ?? 1) === 2 ? 2 : 1;
   rebateTypeDialogVisible.value = true;
+}
+
+function openRechargeRatesDialog(row: TgUser) {
+  rechargeRatesForm.id = row.id;
+  rechargeRatesForm.tgId = row.tgId;
+  rechargeRatesForm.username = row.username || "";
+  rechargeRatesForm.firstName = row.firstName || "";
+  const raw = String(row.rechargeRebateRates || "").trim();
+  const parts = raw ? raw.split(",").map(s => Number(s.trim())) : [];
+  if (parts.length >= 3 && parts.every(n => Number.isFinite(n) && n >= 0)) {
+    rechargeRatesForm.useDefault = false;
+    rechargeRatesForm.r1 = parts[0];
+    rechargeRatesForm.r2 = parts[1];
+    rechargeRatesForm.r3 = parts[2];
+  } else {
+    rechargeRatesForm.useDefault = true;
+    rechargeRatesForm.r1 = 40;
+    rechargeRatesForm.r2 = 45;
+    rechargeRatesForm.r3 = 50;
+  }
+  rechargeRatesDialogVisible.value = true;
+}
+
+async function submitRechargeRates() {
+  if (!rechargeRatesForm.id) return;
+  let rechargeRebateRates = "";
+  if (!rechargeRatesForm.useDefault) {
+    const vals = [
+      rechargeRatesForm.r1,
+      rechargeRatesForm.r2,
+      rechargeRatesForm.r3
+    ].map(Number);
+    if (vals.some(n => Number.isNaN(n) || n < 0 || n > 100)) {
+      message("各档位比例必须在 0 到 100 之间", { type: "warning" });
+      return;
+    }
+    rechargeRebateRates = vals.join(",");
+  }
+  rechargeRatesSaving.value = true;
+  try {
+    await setTgUserRechargeRebateRates({
+      id: rechargeRatesForm.id,
+      rechargeRebateRates
+    });
+    message("充值返佣档位修改成功", { type: "success" });
+    rechargeRatesDialogVisible.value = false;
+    onSearch();
+  } catch (error) {
+    console.error("修改充值返佣档位失败", error);
+    message("修改充值返佣档位失败", { type: "error" });
+  } finally {
+    rechargeRatesSaving.value = false;
+  }
 }
 
 function openRebateAmountDialog(row: TgUser) {
@@ -786,6 +852,15 @@ function handleSubStatsNextPage() {
                 <el-button
                   class="reset-margin"
                   link
+                  type="primary"
+                  :size="size"
+                  @click="openRechargeRatesDialog(row)"
+                >
+                  充值档位
+                </el-button>
+                <el-button
+                  class="reset-margin"
+                  link
                   type="success"
                   :size="size"
                   @click="openRebateAmountDialog(row)"
@@ -1248,6 +1323,73 @@ function handleSubStatsNextPage() {
           type="primary"
           :loading="rebateTypeSaving"
           @click="submitRebateType"
+        >
+          保存
+        </el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog
+      v-model="rechargeRatesDialogVisible"
+      title="修改充值返佣档位"
+      width="460px"
+      destroy-on-close
+    >
+      <el-form :model="rechargeRatesForm" label-width="120px">
+        <el-form-item label="用户">
+          <span>{{ formatName(rechargeRatesForm as unknown as TgUser) }}</span>
+        </el-form-item>
+        <el-form-item label="TG用户ID">
+          <span>{{ rechargeRatesForm.tgId || "-" }}</span>
+        </el-form-item>
+        <el-form-item label="使用默认配置">
+          <el-switch v-model="rechargeRatesForm.useDefault" />
+          <div class="form-tip">
+            开启=使用系统默认档位（sys_config），关闭=为该用户单独配置；只影响充值返佣比例。
+          </div>
+        </el-form-item>
+        <template v-if="!rechargeRatesForm.useDefault">
+          <el-form-item label="第1次充值(%)">
+            <el-input-number
+              v-model="rechargeRatesForm.r1"
+              :min="0"
+              :max="100"
+              :precision="2"
+              :step="1"
+              controls-position="right"
+              class="!w-full"
+            />
+          </el-form-item>
+          <el-form-item label="第2次充值(%)">
+            <el-input-number
+              v-model="rechargeRatesForm.r2"
+              :min="0"
+              :max="100"
+              :precision="2"
+              :step="1"
+              controls-position="right"
+              class="!w-full"
+            />
+          </el-form-item>
+          <el-form-item label="第3次及以上(%)">
+            <el-input-number
+              v-model="rechargeRatesForm.r3"
+              :min="0"
+              :max="100"
+              :precision="2"
+              :step="1"
+              controls-position="right"
+              class="!w-full"
+            />
+          </el-form-item>
+        </template>
+      </el-form>
+      <template #footer>
+        <el-button @click="rechargeRatesDialogVisible = false">取消</el-button>
+        <el-button
+          type="primary"
+          :loading="rechargeRatesSaving"
+          @click="submitRechargeRates"
         >
           保存
         </el-button>

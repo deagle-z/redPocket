@@ -200,6 +200,34 @@ func SetTgUserRebateType(ctx *gin.Context) {
 	utils.SuccessObjBack(ctx, result)
 }
 
+// SetTgUserRechargeRebateRates godoc
+//
+//	@Summary		修改Telegram用户充值返佣档位（每用户单独配置，空=用默认）
+//	@Tags			Telegram用户
+//	@Accept			json
+//	@Produce		json
+//	@Param			data body		pojo.TgUserRechargeRebateRatesSet	true	"充值返佣档位 逗号分隔 第1次,第2次,第3次及以上"
+//	@Success		200	{object}		pojo.TgUserAdminBack
+//	@Router			/api/v1/admin/tgUser/rechargeRebateRates [post]
+func SetTgUserRechargeRebateRates(ctx *gin.Context) {
+	var req pojo.TgUserRechargeRebateRatesSet
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	if req.ID <= 0 {
+		utils.ErrorBack(ctx, "invalid_params")
+		return
+	}
+	db := ctx.MustGet("db").(*gorm.DB)
+	result, err := repository.SetTgUserRechargeRebateRates(db, req.ID, req.RechargeRebateRates)
+	if err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	utils.SuccessObjBack(ctx, result)
+}
+
 // AddTgUserRebateAmount godoc
 //
 //	@Summary		后台给Telegram用户增加佣金金额

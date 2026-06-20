@@ -208,7 +208,8 @@ func InitGin() {
 		adminGroupLog.POST("/tgUser/batchUpdateBot", api.BatchUpdateBotTgUsers)
 		adminGroupLog.POST("/tgUser/status", api.SetTgUserStatus)         // 封禁/解封Telegram用户
 		adminGroupLog.POST("/tgUser/rebateRate", api.SetTgUserRebateRate) // 修改Telegram用户返佣比例
-		adminGroupLog.POST("/tgUser/rebateType", api.SetTgUserRebateType) // 修改Telegram用户充值返水到账方式
+		adminGroupLog.POST("/tgUser/rebateType", api.SetTgUserRebateType)                   // 修改Telegram用户充值返水到账方式
+		adminGroupLog.POST("/tgUser/rechargeRebateRates", api.SetTgUserRechargeRebateRates) // 修改Telegram用户充值返佣档位(每用户单独)
 		adminGroupLog.POST("/tgUser/rebateAmount", api.AddTgUserRebateAmount)
 		adminGroupLog.POST("/tgUser/rechargeOrder/v2", api.AdminCreateRechargeOrderV2) // 手动拉起TG用户v2充值订单
 		adminGroupLog.POST("/tgUser/remark", api.SetTgUserRemark)                      // 修改Telegram用户备注
