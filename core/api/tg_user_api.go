@@ -1033,8 +1033,17 @@ func GetCurrentTgInviteRuleConfig(ctx *gin.Context) {
 	sendMinAmount, sendMaxAmount := parseSendMinMax("5|5000")
 	inviteLuckyRebateRate := parseConfigFloat("invite_lucky_rebate_rate", "40")
 	var user pojo.TgUser
-	if err := db.Select("id", "rebate_rate").Where("id = ?", userID).First(&user).Error; err == nil && user.RebateRate > 0 {
+	if err := db.Select("id", "rebate_rate", "tenant_id").Where("id = ?", userID).First(&user).Error; err == nil && user.RebateRate > 0 {
 		inviteLuckyRebateRate = user.RebateRate
+	}
+
+	// 当前登录商户绑定域名（分享链接用）
+	bindDomain := ""
+	if user.TenantId > 0 {
+		var tenant pojo.SysTenant
+		if err := db.Select("bind_domain").Where("id = ? AND status = ?", user.TenantId, 1).First(&tenant).Error; err == nil && tenant.BindDomain != nil {
+			bindDomain = strings.TrimSpace(*tenant.BindDomain)
+		}
 	}
 
 	firstLevelRebate := parseConfigFloat("first_level_rebate", "0")
@@ -1052,6 +1061,7 @@ func GetCurrentTgInviteRuleConfig(ctx *gin.Context) {
 		SendMaxAmount:             sendMaxAmount,
 		InviteRechargeRebateRates: rechargeRebateRates[:],
 		RebateWithdrawFeeRate:     repository.RebateWithdrawFeeRate(db),
+		BindDomain:                bindDomain,
 	})
 }
 

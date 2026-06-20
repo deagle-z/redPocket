@@ -95,6 +95,10 @@ type TgWithdrawFlowBatchSummaryBack struct {
 	CompletedFlow        float64 `json:"completedFlow"`
 	RemainingFlow        float64 `json:"remainingFlow"`
 	UnfinishedBatchCount int64   `json:"unfinishedBatchCount"`
+	// WithdrawMultiplier 充值到账(本金)金额提现所需流水倍数（withdraw_limit）
+	WithdrawMultiplier float64 `json:"withdrawMultiplier"`
+	// GiftMultiplier 赠送金额提现所需流水倍数（withdraw_gift_limit）
+	GiftMultiplier float64 `json:"giftMultiplier"`
 }
 
 type TgWithdrawFlowBatchOverviewBack struct {

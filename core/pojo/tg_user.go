@@ -347,6 +347,8 @@ type TgInviteRuleConfigBack struct {
 	InviteRechargeRebateRates []float64 `json:"inviteRechargeRebateRates"`
 	// RebateWithdrawFeeRate 佣金提现手续费率(%)，例如 5 表示提现100到账95。
 	RebateWithdrawFeeRate float64 `json:"rebateWithdrawFeeRate"`
+	// BindDomain 当前登录商户绑定域名（sys_tenant.bind_domain），分享链接用；为空则前端回退当前 location。
+	BindDomain string `json:"bindDomain"`
 }
 
 type TgUserBack struct {

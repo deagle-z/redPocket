@@ -13,7 +13,8 @@ import (
 )
 
 const (
-	InviteValidMinRecharge float64 = 0
+	// InviteValidMinRecharge 有效用户门槛：累计充值 > 此金额即算有效用户（无投注门槛）
+	InviteValidMinRecharge float64 = 50
 	InviteValidMinBet      float64 = 850
 	InviteBetRebateRate    float64 = 0.1
 )
@@ -21,8 +22,8 @@ const (
 // InviteRechargeRebateRatesConfigKey 邀请充值返佣比例配置键（sys_config，逗号分隔：第1次,第2次,第3次及以上）。
 const InviteRechargeRebateRatesConfigKey = "invite_recharge_rebate_rates"
 
-// defaultInviteRechargeRebateRates 默认充值返佣比例(%)：第1次40 第2次45 第3次及以上60。
-var defaultInviteRechargeRebateRates = [3]float64{40, 45, 60}
+// defaultInviteRechargeRebateRates 默认充值返佣比例(%)：第1次40 第2次45 第3次及以上50。
+var defaultInviteRechargeRebateRates = [3]float64{40, 45, 50}
 
 // GetInviteRechargeRebateRates 读取充值返佣比例 [第1次, 第2次, 第3次及以上]；
 // 配置缺失时自动初始化默认值，解析失败回退默认值。前后端统一从此配置取值。
@@ -69,7 +70,8 @@ func hasInviteQualifyingRecharge(totalRecharge float64) bool {
 	if InviteValidMinRecharge <= 0 {
 		return totalRecharge > 0
 	}
-	return totalRecharge >= InviteValidMinRecharge
+	// 累计充值「大于」门槛即算达标（如 >50）
+	return totalRecharge > InviteValidMinRecharge
 }
 
 // inviteRechargeRebateRate 按"该下级自己的成功充值次数"返回充值返佣比例(%)。
@@ -102,7 +104,7 @@ func countUserSuccessfulRecharges(tx *gorm.DB, userID int64) (int64, error) {
 }
 
 // ApplyInviteRechargeRebate 下级每次成功充值后，按"该下级自己的充值次数"档位
-// （默认第1次40% / 第2次45% / 第3次及以上60%，比例可在 sys_config 配置）把该次充值额对应比例返给直属上级。
+// （默认第1次40% / 第2次45% / 第3次及以上50%，比例可在 sys_config 配置）把该次充值额对应比例返给直属上级。
 // 充值即返，无投注门槛；到账位置遵循上级 rebate_type。
 func ApplyInviteRechargeRebate(tx *gorm.DB, order pojo.RechargeOrder, occurredAt time.Time) error {
 	if tx == nil || order.UserId <= 0 {
@@ -254,7 +256,8 @@ func EnsureInviteValidUser(tx *gorm.DB, userID int64, qualifiedAt time.Time) (bo
 	if err != nil {
 		return false, err
 	}
-	if !hasInviteQualifyingRecharge(totalRecharge) || totalBet < InviteValidMinBet {
+	// 有效用户门槛：累计充值 > InviteValidMinRecharge（默认>50）即可，不再要求投注流水。
+	if !hasInviteQualifyingRecharge(totalRecharge) {
 		return false, nil
 	}
 	if qualifiedAt.IsZero() {
@@ -262,7 +265,7 @@ func EnsureInviteValidUser(tx *gorm.DB, userID int64, qualifiedAt time.Time) (bo
 	}
 
 	// 仅翻转「有效用户」标记用于统计；邀请返佣已改为按下级充值次数即时返佣，
-	// 投注达标段奖励与下注流水返佣均已停用。
+	// 投注达标段奖励与下注流水返佣均已停用。totalBet 仅作快照记录。
 	res := tx.Model(&pojo.TgUser{}).
 		Where("id = ? AND invite_valid_flag = ?", userID, 0).
 		Updates(map[string]any{

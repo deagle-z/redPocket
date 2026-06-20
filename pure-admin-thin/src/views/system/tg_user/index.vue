@@ -757,80 +757,89 @@ function handleSubStatsNextPage() {
             @selection-change="handleSelectionChange"
           >
             <template #operation="{ row }">
-              <el-button
-                class="reset-margin"
-                link
-                type="primary"
-                :size="size"
-                @click="openRebateRateDialog(row)"
+              <div
+                style="
+                  display: flex;
+                  flex-wrap: wrap;
+                  gap: 4px 8px;
+                  align-items: center;
+                "
               >
-                修改返佣
-              </el-button>
-              <el-button
-                class="reset-margin"
-                link
-                type="primary"
-                :size="size"
-                @click="openRebateTypeDialog(row)"
-              >
-                返水方式
-              </el-button>
-              <el-button
-                class="reset-margin"
-                link
-                type="success"
-                :size="size"
-                @click="openRebateAmountDialog(row)"
-              >
-                加佣金
-              </el-button>
-              <el-button
-                class="reset-margin"
-                link
-                type="primary"
-                :size="size"
-                @click="openRemarkDialog(row)"
-              >
-                修改备注
-              </el-button>
-              <el-button
-                class="reset-margin"
-                link
-                type="warning"
-                :size="size"
-                @click="openRechargeDialog(row)"
-              >
-                拉起支付
-              </el-button>
-              <el-button
-                class="reset-margin"
-                link
-                type="primary"
-                :size="size"
-                @click="openSubStatsDialog(row)"
-              >
-                下级统计
-              </el-button>
-              <el-button
-                v-if="row.status !== 1"
-                class="reset-margin"
-                link
-                type="primary"
-                :size="size"
-                @click="updateStatus(row, 1)"
-              >
-                启用
-              </el-button>
-              <el-button
-                v-if="row.status === 1"
-                class="reset-margin"
-                link
-                type="danger"
-                :size="size"
-                @click="updateStatus(row, 0)"
-              >
-                禁用
-              </el-button>
+                <el-button
+                  class="reset-margin"
+                  link
+                  type="primary"
+                  :size="size"
+                  @click="openRebateRateDialog(row)"
+                >
+                  修改返佣
+                </el-button>
+                <el-button
+                  class="reset-margin"
+                  link
+                  type="primary"
+                  :size="size"
+                  @click="openRebateTypeDialog(row)"
+                >
+                  返水方式
+                </el-button>
+                <el-button
+                  class="reset-margin"
+                  link
+                  type="success"
+                  :size="size"
+                  @click="openRebateAmountDialog(row)"
+                >
+                  加佣金
+                </el-button>
+                <el-button
+                  class="reset-margin"
+                  link
+                  type="primary"
+                  :size="size"
+                  @click="openRemarkDialog(row)"
+                >
+                  修改备注
+                </el-button>
+                <el-button
+                  class="reset-margin"
+                  link
+                  type="warning"
+                  :size="size"
+                  @click="openRechargeDialog(row)"
+                >
+                  拉起支付
+                </el-button>
+                <el-button
+                  class="reset-margin"
+                  link
+                  type="primary"
+                  :size="size"
+                  @click="openSubStatsDialog(row)"
+                >
+                  下级统计
+                </el-button>
+                <el-button
+                  v-if="row.status !== 1"
+                  class="reset-margin"
+                  link
+                  type="primary"
+                  :size="size"
+                  @click="updateStatus(row, 1)"
+                >
+                  启用
+                </el-button>
+                <el-button
+                  v-if="row.status === 1"
+                  class="reset-margin"
+                  link
+                  type="danger"
+                  :size="size"
+                  @click="updateStatus(row, 0)"
+                >
+                  禁用
+                </el-button>
+              </div>
             </template>
           </pure-table>
         </template>
@@ -1228,7 +1237,8 @@ function handleSubStatsNextPage() {
             <el-radio :value="2">可用余额</el-radio>
           </el-radio-group>
           <div class="form-tip">
-            返水余额：充值返水进可用返水余额，走佣金转余额提现；可用余额：充值返水直接进可用余额，并附加 v2 提现流水批次限制。仅影响“充值返水”，不影响投注返水/红包返水。
+            返水余额：充值返水进可用返水余额，走佣金转余额提现；可用余额：充值返水直接进可用余额，并附加
+            v2 提现流水批次限制。仅影响“充值返水”，不影响投注返水/红包返水。
           </div>
         </el-form-item>
       </el-form>

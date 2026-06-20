@@ -236,6 +236,8 @@ func GetUserWithdrawFlowBatchSummary(db *gorm.DB, userID int64) (pojo.TgWithdraw
 	result.CompletedFlow = summary.CompletedFlow
 	result.RemainingFlow = summary.RemainingFlow
 	result.UnfinishedBatchCount = summary.Count
+	result.WithdrawMultiplier = loadWithdrawFlowBatchMultiplier(db, "withdraw_limit", 2, "v2充值到账金额提现所需流水倍数")
+	result.GiftMultiplier = loadWithdrawFlowBatchMultiplier(db, "withdraw_gift_limit", 5, "v2充值赠送金额提现所需流水倍数")
 	return result, nil
 }
 
