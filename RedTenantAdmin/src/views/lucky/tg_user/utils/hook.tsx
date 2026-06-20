@@ -3,7 +3,12 @@ import { message } from "@/utils/message";
 import type { PaginationProps } from "@pureadmin/table";
 import { type Ref, reactive, ref, onMounted, toRaw } from "vue";
 import { ElTag, ElMessageBox } from "element-plus";
-import { getTgUserList, setTgUserStatus, type TgUser } from "@/api/tgUser";
+import {
+  getTgUserList,
+  setTgUserRebateWithdrawDisabled,
+  setTgUserStatus,
+  type TgUser
+} from "@/api/tgUser";
 
 const statusOptions = [
   { label: "正常", value: 1 },
@@ -21,6 +26,14 @@ function getStatusType(status: number) {
   if (status === 0) return "warning";
   if (status === -1) return "info";
   return "info";
+}
+
+function getWithdrawDisabledType(disabled: number) {
+  return Number(disabled) === 1 ? "danger" : "success";
+}
+
+function getWithdrawDisabledLabel(disabled: number) {
+  return Number(disabled) === 1 ? "禁止" : "允许";
 }
 
 function formatNullable(val?: string | null) {
@@ -136,6 +149,19 @@ export function useTgUser(_tableRef: Ref) {
         Number(rebateType) === 2 ? "可用余额" : "返水余额"
     },
     {
+      label: "提现",
+      prop: "rebateWithdrawDisabled",
+      minWidth: 90,
+      cellRenderer: scope => (
+        <ElTag
+          type={getWithdrawDisabledType(scope.row.rebateWithdrawDisabled)}
+          effect="plain"
+        >
+          {getWithdrawDisabledLabel(scope.row.rebateWithdrawDisabled)}
+        </ElTag>
+      )
+    },
+    {
       label: "上级UID",
       prop: "parentUid",
       minWidth: 100,
@@ -191,7 +217,7 @@ export function useTgUser(_tableRef: Ref) {
     {
       label: "操作",
       fixed: "right",
-      width: 340,
+      width: 420,
       slot: "operation"
     }
   ];
@@ -232,6 +258,35 @@ export function useTgUser(_tableRef: Ref) {
     } catch (error) {
       if (error !== "cancel") {
         message(`${actionText}用户失败`, { type: "error" });
+      }
+    }
+  }
+
+  async function updateRebateWithdrawDisabled(row: TgUser, disabled: number) {
+    const actionText = disabled === 1 ? "禁止" : "允许";
+    try {
+      await ElMessageBox.confirm(
+        `确认要${actionText}用户 <strong>${formatNullable(
+          row.username
+        )}</strong> 提现吗?`,
+        "系统提示",
+        {
+          confirmButtonText: "确定",
+          cancelButtonText: "取消",
+          type: "warning",
+          dangerouslyUseHTMLString: true,
+          draggable: true
+        }
+      );
+      await setTgUserRebateWithdrawDisabled({
+        id: row.id,
+        rebateWithdrawDisabled: disabled
+      });
+      message(`已${actionText}提现`, { type: "success" });
+      onSearch();
+    } catch (error) {
+      if (error !== "cancel") {
+        message("修改提现状态失败", { type: "error" });
       }
     }
   }
@@ -280,6 +335,7 @@ export function useTgUser(_tableRef: Ref) {
     handleSizeChange,
     handleCurrentChange,
     handleSelectionChange,
-    updateStatus
+    updateStatus,
+    updateRebateWithdrawDisabled
   };
 }

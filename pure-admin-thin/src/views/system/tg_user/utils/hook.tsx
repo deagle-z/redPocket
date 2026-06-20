@@ -41,6 +41,12 @@ function formatMoney(val?: number | null) {
   return String(val);
 }
 
+function formatCount(val?: number | null) {
+  if (val === null || val === undefined || Number.isNaN(Number(val)))
+    return "0";
+  return String(Math.trunc(Number(val)));
+}
+
 function formatPercent(val?: number | null) {
   if (typeof val !== "number" || Number.isNaN(val)) return "0.00%";
   return `${val.toFixed(2)}%`;
@@ -119,6 +125,12 @@ export function useTgUser(_tableRef: Ref) {
       formatter: ({ totalFlow }) => formatMoney(totalFlow ?? 0)
     },
     {
+      label: "下级数",
+      prop: "subUserCount",
+      minWidth: 100,
+      formatter: ({ subUserCount }) => formatCount(subUserCount ?? 0)
+    },
+    {
       label: "赠送余额",
       prop: "giftAmount",
       minWidth: 120,
@@ -156,7 +168,7 @@ export function useTgUser(_tableRef: Ref) {
         Number(rebateType) === 2 ? "可用余额" : "返水余额"
     },
     {
-      label: "佣金提现",
+      label: "提现",
       prop: "rebateWithdrawDisabled",
       minWidth: 100,
       cellRenderer: scope => (

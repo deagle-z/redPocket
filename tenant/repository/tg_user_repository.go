@@ -187,6 +187,21 @@ func SetTgUserRebateType(db *gorm.DB, tenantID int64, id int64, rebateType int8)
 	return result, nil
 }
 
+func SetTgUserRebateWithdrawDisabled(db *gorm.DB, tenantID int64, id int64, disabled int8) (result pojo.TgUserBack, err error) {
+	var dbUser pojo.TgUser
+	db.Where("id = ? and tenant_id = ?", id, tenantID).First(&dbUser)
+	if dbUser.ID == 0 {
+		return result, errors.New("数据不存在")
+	}
+	err = db.Model(&dbUser).Update("rebate_withdraw_disabled", disabled).Error
+	if err != nil {
+		return result, err
+	}
+	_ = copier.Copy(&result, &dbUser)
+	result.RebateWithdrawDisabled = disabled
+	return result, nil
+}
+
 func SetTgUserRemark(db *gorm.DB, tenantID int64, id int64, remark string) (result pojo.TgUserBack, err error) {
 	var dbUser pojo.TgUser
 	db.Where("id = ? and tenant_id = ?", id, tenantID).First(&dbUser)
@@ -291,8 +306,8 @@ func tenantTgUserBetStatsByUser(db *gorm.DB, userIDs []int64) map[int64]tgUserBe
 		}
 		var rows []betRow
 		_ = db.Table(table).
-			Select("user_id as user_id, " +
-				"coalesce(sum(coalesce(bet_amount, 0)), 0) as flow, " +
+			Select("user_id as user_id, "+
+				"coalesce(sum(coalesce(bet_amount, 0)), 0) as flow, "+
 				"coalesce(sum(coalesce(bet_amount, 0) - coalesce(win_amount, 0)), 0) as profit").
 			Where("user_id in (?) and coalesce(deleted_flag, 0) = 0", ids).
 			Group("user_id").

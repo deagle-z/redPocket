@@ -145,6 +145,28 @@ func SetTgUserRebateType(ctx *gin.Context) {
 	utils.SuccessObjBack(ctx, result)
 }
 
+func SetTgUserRebateWithdrawDisabled(ctx *gin.Context) {
+	tenantID, ok := getTenantID(ctx)
+	if !ok {
+		return
+	}
+	var req pojo.TgUserRebateWithdrawDisabledSet
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	if req.ID <= 0 || (req.RebateWithdrawDisabled != 0 && req.RebateWithdrawDisabled != 1) {
+		utils.ErrorBack(ctx, "参数格式错误")
+		return
+	}
+	result, err := tenantRepo.SetTgUserRebateWithdrawDisabled(getDB(ctx), tenantID, req.ID, req.RebateWithdrawDisabled)
+	if err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	utils.SuccessObjBack(ctx, result)
+}
+
 func SetTgUserRemark(ctx *gin.Context) {
 	tenantID, ok := getTenantID(ctx)
 	if !ok {

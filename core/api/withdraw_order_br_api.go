@@ -148,6 +148,10 @@ func AppCreateWithdrawOrder(ctx *gin.Context) {
 		utils.ErrorBack(ctx, "user_not_found")
 		return
 	}
+	if user.RebateWithdrawDisabled == 1 {
+		utils.ErrorBack(ctx, "withdraw_disabled")
+		return
+	}
 
 	countryCode := pojo.NormalizeWithdrawCountryCode(req.CountryCode)
 	if countryCode == "" && user.Country != nil {
@@ -249,6 +253,10 @@ func AppCreateWithdrawOrderV2(ctx *gin.Context) {
 	var user pojo.TgUser
 	if err := db.Where("id = ?", userID).First(&user).Error; err != nil || user.ID == 0 {
 		appWithdrawV2ErrorBack(ctx, userID, req.Amount, req.AccountID, req.CountryCode, "", "user_not_found", err)
+		return
+	}
+	if user.RebateWithdrawDisabled == 1 {
+		appWithdrawV2ErrorBack(ctx, userID, req.Amount, req.AccountID, req.CountryCode, "", "withdraw_disabled", nil)
 		return
 	}
 
@@ -579,6 +587,7 @@ func isAppWithdrawV2BusinessMessage(msg string) bool {
 	switch msg {
 	case "invalid_withdraw_amount",
 		"user_not_found",
+		"withdraw_disabled",
 		"country_required",
 		"country_not_available",
 		"account_not_found",

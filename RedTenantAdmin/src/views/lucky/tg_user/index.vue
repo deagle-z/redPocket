@@ -35,7 +35,8 @@ const {
   handleSizeChange,
   handleCurrentChange,
   handleSelectionChange,
-  updateStatus
+  updateStatus,
+  updateRebateWithdrawDisabled
 } = useTgUser(tableRef);
 
 const subStatsDialogVisible = ref(false);
@@ -415,6 +416,20 @@ function handleSubStatsCurrentChange(page: number) {
                 下级统计
               </el-button>
               <el-button
+                class="reset-margin"
+                link
+                :type="row.rebateWithdrawDisabled === 1 ? 'success' : 'danger'"
+                :size="size"
+                @click="
+                  updateRebateWithdrawDisabled(
+                    row,
+                    row.rebateWithdrawDisabled === 1 ? 0 : 1
+                  )
+                "
+              >
+                {{ row.rebateWithdrawDisabled === 1 ? "允许提现" : "禁止提现" }}
+              </el-button>
+              <el-button
                 v-if="row.status !== 1"
                 class="reset-margin"
                 link
@@ -611,7 +626,8 @@ function handleSubStatsCurrentChange(page: number) {
             <el-radio :value="2">可用余额</el-radio>
           </el-radio-group>
           <div class="form-tip">
-            返水余额：充值返水进可用返水余额，走佣金转余额提现；可用余额：充值返水直接进可用余额，并附加 v2 提现流水批次限制。仅影响“充值返水”，不影响投注返水/红包返水。
+            返水余额：充值返水进可用返水余额，走佣金转余额提现；可用余额：充值返水直接进可用余额，并附加
+            v2 提现流水批次限制。仅影响“充值返水”，不影响投注返水/红包返水。
           </div>
         </el-form-item>
       </el-form>

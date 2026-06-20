@@ -202,11 +202,11 @@ func SetTgUserRebateType(ctx *gin.Context) {
 
 // SetTgUserRebateWithdrawDisabled godoc
 //
-//	@Summary		修改Telegram用户佣金提现开关
+//	@Summary		修改Telegram用户提现开关
 //	@Tags			Telegram用户
 //	@Accept			json
 //	@Produce		json
-//	@Param			data body		pojo.TgUserRebateWithdrawDisabledSet	true	"禁止佣金提现 0否 1是"
+//	@Param			data body		pojo.TgUserRebateWithdrawDisabledSet	true	"禁止提现 0否 1是"
 //	@Success		200	{object}		pojo.TgUserAdminBack
 //	@Router			/api/v1/admin/tgUser/rebateWithdrawDisabled [post]
 func SetTgUserRebateWithdrawDisabled(ctx *gin.Context) {

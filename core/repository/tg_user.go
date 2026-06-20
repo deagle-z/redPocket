@@ -16,56 +16,70 @@ import (
 
 // GetTgUsers Telegram用户列表（分页）
 func GetTgUsers(db *gorm.DB, search pojo.TgUserSearch) (result pojo.TgUserAdminResp) {
-	var users []pojo.TgUser
-	query := db.Model(&pojo.TgUser{})
+	type tgUserAdminListRow struct {
+		pojo.TgUser
+		SubUserCount int64 `gorm:"column:sub_user_count"`
+	}
+
+	var users []tgUserAdminListRow
+	query := db.Model(&pojo.TgUser{}).Table(pojo.TgUserTableName + " AS u")
 
 	if search.TgID > 0 {
-		query = query.Where("tg_id = ?", search.TgID)
+		query = query.Where("u.tg_id = ?", search.TgID)
 	}
 	if uid := strings.TrimSpace(search.Uid); uid != "" {
-		query = query.Where("uid = ?", uid)
+		query = query.Where("u.uid = ?", uid)
 	}
 	if search.Username != "" {
-		query = query.Where("username like ?", "%"+search.Username+"%")
+		query = query.Where("u.username like ?", "%"+search.Username+"%")
 	}
 	if search.TgName != "" {
-		query = query.Where("tg_name like ?", "%"+strings.TrimSpace(search.TgName)+"%")
+		query = query.Where("u.tg_name like ?", "%"+strings.TrimSpace(search.TgName)+"%")
 	}
 	if search.FirstName != "" {
-		query = query.Where("first_name like ?", "%"+search.FirstName+"%")
+		query = query.Where("u.first_name like ?", "%"+search.FirstName+"%")
 	}
 	if search.Phone != "" {
-		query = query.Where("phone like ?", "%"+search.Phone+"%")
+		query = query.Where("u.phone like ?", "%"+search.Phone+"%")
 	}
 	if search.Country != "" {
-		query = query.Where("country = ?", search.Country)
+		query = query.Where("u.country = ?", search.Country)
 	}
 	if search.Ip != "" {
-		query = query.Where("ip = ?", strings.TrimSpace(search.Ip))
+		query = query.Where("u.ip = ?", strings.TrimSpace(search.Ip))
 	}
 	if search.Region != "" {
-		query = query.Where("region = ?", strings.TrimSpace(strings.ToUpper(search.Region)))
+		query = query.Where("u.region = ?", strings.TrimSpace(strings.ToUpper(search.Region)))
 	}
 	if search.IsBot != nil {
-		query = query.Where("is_bot = ?", *search.IsBot)
+		query = query.Where("u.is_bot = ?", *search.IsBot)
 	}
 	if search.Status != nil {
-		query = query.Where("status = ?", *search.Status)
+		query = query.Where("u.status = ?", *search.Status)
 	}
 	if search.ParentID != nil {
-		query = query.Where("parent_id = ?", *search.ParentID)
+		query = query.Where("u.parent_id = ?", *search.ParentID)
 	}
 	if search.ParentUid != "" {
-		query = query.Where("parent_id IN (?)", db.Model(&pojo.TgUser{}).
+		query = query.Where("u.parent_id IN (?)", db.Model(&pojo.TgUser{}).
 			Select("id").
 			Where("uid = ?", strings.TrimSpace(search.ParentUid)))
 	}
 	if search.InviteCode != "" {
-		query = query.Where("invite_code = ?", search.InviteCode)
+		query = query.Where("u.invite_code = ?", search.InviteCode)
 	}
 
 	query.Count(&result.Total)
-	query = query.Order("id desc").Limit(search.PageSize).Offset(search.PageSize * search.CurrentPage)
+	subUserCountQuery := db.Model(&pojo.TgUser{}).
+		Select("parent_id, count(*) as sub_user_count").
+		Where("parent_id IS NOT NULL AND status <> ?", -1).
+		Group("parent_id")
+	query = query.
+		Select("u.*, COALESCE(sub_user_counts.sub_user_count, 0) AS sub_user_count").
+		Joins("LEFT JOIN (?) AS sub_user_counts ON sub_user_counts.parent_id = u.id", subUserCountQuery).
+		Order("COALESCE(sub_user_counts.sub_user_count, 0) DESC").
+		Order("u.id DESC").
+		Limit(search.PageSize).Offset(search.PageSize * search.CurrentPage)
 	query.Find(&users)
 
 	// 遍历页内用户ID，查询各自投注流水总额（投注记录分表）
@@ -77,7 +91,8 @@ func GetTgUsers(db *gorm.DB, search pojo.TgUserSearch) (result pojo.TgUserAdminR
 
 	for _, user := range users {
 		var temp pojo.TgUserAdminBack
-		_ = copier.Copy(&temp, &user)
+		_ = copier.Copy(&temp, &user.TgUser)
+		temp.SubUserCount = user.SubUserCount
 		temp.TotalFlow = flowByUser[user.ID]
 		result.List = append(result.List, temp)
 	}

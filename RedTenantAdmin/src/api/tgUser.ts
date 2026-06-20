@@ -23,6 +23,7 @@ export type TgUser = {
   rebateTotalAmount: number;
   rebateRate: number;
   rebateType: number;
+  rebateWithdrawDisabled: number;
   status: number;
   parentId?: number | null;
   parentUid?: string | null;
@@ -60,6 +61,11 @@ export type TgUserRebateRateSet = {
 export type TgUserRebateTypeSet = {
   id: number;
   rebateType: number;
+};
+
+export type TgUserRebateWithdrawDisabledSet = {
+  id: number;
+  rebateWithdrawDisabled: number;
 };
 
 export type TgUserRemarkSet = {
@@ -115,6 +121,8 @@ export type TgUserSubStatsSummaryResult = {
     subFlowAmount: number;
     subProfitAmount: number;
     subWithdrawAmount: number;
+    rechargeUsers: number;
+    validUsers: number;
   };
 };
 
@@ -168,6 +176,18 @@ export const setTgUserRebateType = (data: TgUserRebateTypeSet) => {
   return http.request<TgUserResult>(
     "post",
     "/api/v1/tenant/tgUser/rebateType",
+    {
+      data
+    }
+  );
+};
+
+export const setTgUserRebateWithdrawDisabled = (
+  data: TgUserRebateWithdrawDisabledSet
+) => {
+  return http.request<TgUserResult>(
+    "post",
+    "/api/v1/tenant/tgUser/rebateWithdrawDisabled",
     {
       data
     }

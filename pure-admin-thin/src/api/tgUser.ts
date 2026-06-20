@@ -15,6 +15,7 @@ export type TgUser = {
   balance: number;
   trialBalance: number;
   totalFlow?: number;
+  subUserCount?: number;
   giftAmount: number;
   giftTotal: number;
   subRechargeAmount?: number;

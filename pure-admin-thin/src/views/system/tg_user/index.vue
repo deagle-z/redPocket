@@ -645,7 +645,7 @@ async function updateRebateWithdrawDisabled(row: TgUser, disabled: number) {
   const actionText = disabledFlag === 1 ? "禁止" : "允许";
   try {
     await ElMessageBox.confirm(
-      `确认要${actionText}用户 <strong>${formatName(row)}</strong> 佣金提现吗?`,
+      `确认要${actionText}用户 <strong>${formatName(row)}</strong> 提现吗?`,
       "系统提示",
       {
         confirmButtonText: "确定",
@@ -659,12 +659,12 @@ async function updateRebateWithdrawDisabled(row: TgUser, disabled: number) {
       id: row.id,
       rebateWithdrawDisabled: disabledFlag
     });
-    message(`已${actionText}佣金提现`, { type: "success" });
+    message(`已${actionText}提现`, { type: "success" });
     onSearch();
   } catch (error) {
     if (error !== "cancel") {
-      console.error("修改佣金提现状态失败", error);
-      message("修改佣金提现状态失败", { type: "error" });
+      console.error("修改提现状态失败", error);
+      message("修改提现状态失败", { type: "error" });
     }
   }
 }
@@ -915,8 +915,8 @@ function handleSubStatsNextPage() {
                 >
                   {{
                     Number(row.rebateWithdrawDisabled) === 1
-                      ? "允许佣金提现"
-                      : "禁止佣金提现"
+                      ? "允许提现"
+                      : "禁止提现"
                   }}
                 </el-button>
                 <el-button
