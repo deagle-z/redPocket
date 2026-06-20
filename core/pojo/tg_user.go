@@ -351,8 +351,10 @@ type TgInviteRuleConfigBack struct {
 	SendMaxAmount             float64 `json:"sendMaxAmount"`
 	// InviteRechargeRebateRates 充值返佣比例档位(%)：[第1次, 第2次, 第3次及以上]，前后端统一取此值。
 	InviteRechargeRebateRates []float64 `json:"inviteRechargeRebateRates"`
-	// RebateWithdrawFeeRate 佣金提现手续费率(%)，例如 5 表示提现100到账95。
-	RebateWithdrawFeeRate float64 `json:"rebateWithdrawFeeRate"`
+	// RebateWithdrawFeeFixed 佣金提现固定手续费（如 4.25）。
+	RebateWithdrawFeeFixed float64 `json:"rebateWithdrawFeeFixed"`
+	// RebateWithdrawFeePercent 佣金提现百分比手续费(%)（如 1.5）。手续费=固定+金额×百分比。
+	RebateWithdrawFeePercent float64 `json:"rebateWithdrawFeePercent"`
 	// BindDomain 当前登录商户绑定域名（sys_tenant.bind_domain），分享链接用；为空则前端回退当前 location。
 	BindDomain string `json:"bindDomain"`
 }

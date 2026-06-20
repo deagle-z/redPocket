@@ -20,45 +20,75 @@ const (
 	withdrawOrderSourceRebate  = "rebate"
 )
 
-// RebateWithdrawFeeRateConfigKey 佣金提现手续费率配置键（sys_config，单位 %）。
+// RebateWithdrawFeeRateConfigKey 佣金提现手续费配置键（sys_config，格式：固定费,百分比 如 4.25,1.5）。
 const RebateWithdrawFeeRateConfigKey = "rebate_withdraw_fee_rate"
 
-// defaultRebateWithdrawFeeRate 默认佣金提现手续费率(%)：5，即提现 100 到账 95。
-const defaultRebateWithdrawFeeRate = 5.0
+// 默认佣金提现手续费：固定 4.25 + 1.5%（提现 100 到账 94.25）。
+const (
+	defaultRebateWithdrawFeeFixed   = 4.25
+	defaultRebateWithdrawFeePercent = 1.5
+)
 
-// RebateWithdrawFeeRate 读取佣金提现手续费率(%)；配置缺失自动初始化默认值，非法值回退默认。
-func RebateWithdrawFeeRate(db *gorm.DB) float64 {
+// RebateWithdrawFee 读取佣金提现手续费（固定费, 百分比）；缺失自动初始化默认值，非法回退默认。
+// 配置值格式 "固定,百分比"（兼容旧的单值，单值按百分比处理、固定为 0）。
+func RebateWithdrawFee(db *gorm.DB) (fixedFee float64, percentRate float64) {
 	if db == nil {
-		return defaultRebateWithdrawFeeRate
+		return defaultRebateWithdrawFeeFixed, defaultRebateWithdrawFeePercent
 	}
 	var cfg pojo.SysConfig
 	db.Where("config_key = ?", RebateWithdrawFeeRateConfigKey).First(&cfg)
 	if cfg.ID == 0 {
 		_ = db.Create(&pojo.SysConfig{
 			ConfigKey:   RebateWithdrawFeeRateConfigKey,
-			ConfigValue: strconv.FormatFloat(defaultRebateWithdrawFeeRate, 'f', -1, 64),
-			ConfigDesc:  "佣金提现手续费率(%)，例如 5 表示提现100到账95",
+			ConfigValue: fmt.Sprintf("%g,%g", defaultRebateWithdrawFeeFixed, defaultRebateWithdrawFeePercent),
+			ConfigDesc:  "佣金提现手续费：固定费,百分比(%)，例如 4.25,1.5 表示固定4.25+1.5%",
 		}).Error
-		return defaultRebateWithdrawFeeRate
+		return defaultRebateWithdrawFeeFixed, defaultRebateWithdrawFeePercent
 	}
-	v, err := strconv.ParseFloat(strings.TrimSpace(cfg.ConfigValue), 64)
-	if err != nil || v < 0 || v >= 100 {
-		return defaultRebateWithdrawFeeRate
+	if f, p, ok := parseRebateWithdrawFee(cfg.ConfigValue); ok {
+		return f, p
 	}
-	return v
+	return defaultRebateWithdrawFeeFixed, defaultRebateWithdrawFeePercent
 }
 
-// applyRebateWithdrawFee 按配置的费率对佣金提现订单设置手续费（服务端权威，覆盖前端传入的 Fee）。
+// parseRebateWithdrawFee 解析 "固定,百分比"（或 "固定+百分比"、带 %）；单值兼容为百分比、固定=0。
+func parseRebateWithdrawFee(raw string) (fixedFee float64, percentRate float64, ok bool) {
+	raw = strings.ReplaceAll(strings.TrimSpace(raw), "%", "")
+	if raw == "" {
+		return 0, 0, false
+	}
+	var parts []string
+	if strings.Contains(raw, "+") {
+		parts = strings.Split(raw, "+")
+	} else {
+		parts = strings.Split(raw, ",")
+	}
+	if len(parts) == 1 {
+		p, err := strconv.ParseFloat(strings.TrimSpace(parts[0]), 64)
+		if err != nil || p < 0 {
+			return 0, 0, false
+		}
+		return 0, p, true
+	}
+	f, err1 := strconv.ParseFloat(strings.TrimSpace(parts[0]), 64)
+	p, err2 := strconv.ParseFloat(strings.TrimSpace(parts[1]), 64)
+	if err1 != nil || err2 != nil || f < 0 || p < 0 {
+		return 0, 0, false
+	}
+	return f, p, true
+}
+
+// applyRebateWithdrawFee 按配置的手续费(固定+百分比)对佣金提现订单设置手续费（服务端权威，覆盖前端传入的 Fee）。
 func applyRebateWithdrawFee(db *gorm.DB, order *pojo.WithdrawOrderBr) {
 	if order == nil || order.Amount <= 0 {
 		return
 	}
-	rate := RebateWithdrawFeeRate(db)
-	if rate <= 0 {
-		order.Fee = 0
-		return
+	fixedFee, percentRate := RebateWithdrawFee(db)
+	fee := fixedFee
+	if percentRate > 0 {
+		fee += order.Amount * percentRate / 100
 	}
-	order.Fee = utils.Truncate2(order.Amount * rate / 100)
+	order.Fee = utils.Truncate2(fee)
 }
 
 // GetWithdrawOrderBrs 巴西提现订单列表（分页）
