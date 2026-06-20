@@ -200,6 +200,34 @@ func SetTgUserRebateType(ctx *gin.Context) {
 	utils.SuccessObjBack(ctx, result)
 }
 
+// SetTgUserRebateWithdrawDisabled godoc
+//
+//	@Summary		修改Telegram用户佣金提现开关
+//	@Tags			Telegram用户
+//	@Accept			json
+//	@Produce		json
+//	@Param			data body		pojo.TgUserRebateWithdrawDisabledSet	true	"禁止佣金提现 0否 1是"
+//	@Success		200	{object}		pojo.TgUserAdminBack
+//	@Router			/api/v1/admin/tgUser/rebateWithdrawDisabled [post]
+func SetTgUserRebateWithdrawDisabled(ctx *gin.Context) {
+	var req pojo.TgUserRebateWithdrawDisabledSet
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	if req.ID <= 0 || (req.RebateWithdrawDisabled != 0 && req.RebateWithdrawDisabled != 1) {
+		utils.ErrorBack(ctx, "invalid_params")
+		return
+	}
+	db := ctx.MustGet("db").(*gorm.DB)
+	result, err := repository.SetTgUserRebateWithdrawDisabled(db, req.ID, req.RebateWithdrawDisabled)
+	if err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	utils.SuccessObjBack(ctx, result)
+}
+
 // SetTgUserRechargeRebateRates godoc
 //
 //	@Summary		修改Telegram用户充值返佣档位（每用户单独配置，空=用默认）
@@ -994,16 +1022,17 @@ func GetCurrentTgInviteStats(ctx *gin.Context) {
 	}
 
 	utils.SuccessObjBack(ctx, pojo.TgInviteStatsBack{
-		InviteCode:          inviteCode,
-		InviteCount:         inviteCount,
-		TodayInviteCount:    todayValidUsers,
-		ValidUsers:          validUsers,
-		TodayValidUsers:     todayValidUsers,
-		RechargeUsers:       rechargeUsers,
-		TodayRechargeUsers:  todayRechargeUsers,
-		TotalCommission:     utils.Truncate2(user.RebateTotalAmount),
-		AvailableCommission: utils.Truncate2(user.RebateAmount),
-		TodayCommission:     utils.Truncate2(todayCommission),
+		InviteCode:             inviteCode,
+		InviteCount:            inviteCount,
+		TodayInviteCount:       todayValidUsers,
+		ValidUsers:             validUsers,
+		TodayValidUsers:        todayValidUsers,
+		RechargeUsers:          rechargeUsers,
+		TodayRechargeUsers:     todayRechargeUsers,
+		TotalCommission:        utils.Truncate2(user.RebateTotalAmount),
+		AvailableCommission:    utils.Truncate2(user.RebateAmount),
+		TodayCommission:        utils.Truncate2(todayCommission),
+		RebateWithdrawDisabled: user.RebateWithdrawDisabled,
 	})
 }
 

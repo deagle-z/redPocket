@@ -19,6 +19,7 @@ import {
   getTgUserSubStatsSummary,
   setTgUserRebateRate,
   setTgUserRebateType,
+  setTgUserRebateWithdrawDisabled,
   setTgUserRechargeRebateRates,
   setTgUserRemark,
   type TgUser,
@@ -639,6 +640,35 @@ async function submitRebateType() {
   }
 }
 
+async function updateRebateWithdrawDisabled(row: TgUser, disabled: number) {
+  const disabledFlag = Number(disabled) === 1 ? 1 : 0;
+  const actionText = disabledFlag === 1 ? "禁止" : "允许";
+  try {
+    await ElMessageBox.confirm(
+      `确认要${actionText}用户 <strong>${formatName(row)}</strong> 佣金提现吗?`,
+      "系统提示",
+      {
+        confirmButtonText: "确定",
+        cancelButtonText: "取消",
+        type: "warning",
+        dangerouslyUseHTMLString: true,
+        draggable: true
+      }
+    );
+    await setTgUserRebateWithdrawDisabled({
+      id: row.id,
+      rebateWithdrawDisabled: disabledFlag
+    });
+    message(`已${actionText}佣金提现`, { type: "success" });
+    onSearch();
+  } catch (error) {
+    if (error !== "cancel") {
+      console.error("修改佣金提现状态失败", error);
+      message("修改佣金提现状态失败", { type: "error" });
+    }
+  }
+}
+
 async function loadSubStatsSummary() {
   if (!currentUser.value) return;
   subStatsSummaryLoading.value = true;
@@ -866,6 +896,28 @@ function handleSubStatsNextPage() {
                   @click="openRebateAmountDialog(row)"
                 >
                   加佣金
+                </el-button>
+                <el-button
+                  class="reset-margin"
+                  link
+                  :type="
+                    Number(row.rebateWithdrawDisabled) === 1
+                      ? 'success'
+                      : 'danger'
+                  "
+                  :size="size"
+                  @click="
+                    updateRebateWithdrawDisabled(
+                      row,
+                      Number(row.rebateWithdrawDisabled) === 1 ? 0 : 1
+                    )
+                  "
+                >
+                  {{
+                    Number(row.rebateWithdrawDisabled) === 1
+                      ? "允许佣金提现"
+                      : "禁止佣金提现"
+                  }}
                 </el-button>
                 <el-button
                   class="reset-margin"

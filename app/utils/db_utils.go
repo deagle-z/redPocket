@@ -151,6 +151,10 @@ func InitTables(prefix string) (firstInit bool, err error) {
 	if err = ensureTgUserInviteValidSchema(db); err != nil {
 		panic(err)
 	}
+	log.Print("init tables: ensure tg_user rebate withdraw schema...\n")
+	if err = ensureTgUserRebateWithdrawSchema(db); err != nil {
+		panic(err)
+	}
 	log.Print("init tables: ensure tg_user invite reward log schema...\n")
 	if err = ensureTgUserInviteRewardLogSchema(db); err != nil {
 		panic(err)
@@ -221,6 +225,16 @@ func ensureTgUserInviteValidSchema(db *gorm.DB) error {
 	}
 	if !migrator.HasIndex(&pojo.TgUser{}, "idx_tg_user_invite_valid") {
 		if err := migrator.CreateIndex(&pojo.TgUser{}, "idx_tg_user_invite_valid"); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func ensureTgUserRebateWithdrawSchema(db *gorm.DB) error {
+	migrator := db.Migrator()
+	if !migrator.HasColumn(&pojo.TgUser{}, "RebateWithdrawDisabled") {
+		if err := migrator.AddColumn(&pojo.TgUser{}, "RebateWithdrawDisabled"); err != nil {
 			return err
 		}
 	}

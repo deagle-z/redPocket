@@ -260,6 +260,21 @@ func SetTgUserRebateType(db *gorm.DB, id int64, rebateType int8) (result pojo.Tg
 	return result, nil
 }
 
+func SetTgUserRebateWithdrawDisabled(db *gorm.DB, id int64, disabled int8) (result pojo.TgUserAdminBack, err error) {
+	var dbUser pojo.TgUser
+	db.Where("id = ?", id).First(&dbUser)
+	if dbUser.ID == 0 {
+		return result, errors.New("record_not_found")
+	}
+	err = db.Model(&dbUser).Update("rebate_withdraw_disabled", disabled).Error
+	if err != nil {
+		return result, err
+	}
+	_ = copier.Copy(&result, &dbUser)
+	result.RebateWithdrawDisabled = disabled
+	return result, nil
+}
+
 // SetTgUserRechargeRebateRates 设置用户单独的充值返佣档位（逗号分隔 第1次,第2次,第3次及以上；空=用默认配置）。
 func SetTgUserRechargeRebateRates(db *gorm.DB, id int64, rates string) (result pojo.TgUserAdminBack, err error) {
 	var dbUser pojo.TgUser

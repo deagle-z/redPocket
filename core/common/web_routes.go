@@ -125,19 +125,19 @@ func InitGin() {
 		adminGroup.POST("/dashboard/withdrawOrders", api.GetAdminDashboardWithdrawOrders) // 提现总额明细（今天/昨天）
 		adminGroup.POST("/withdrawalTask", api.SendWithdrawalTask)
 		adminGroup.POST("/verifyCodeTask", api.SendVerifyCodeTask)
-		adminGroup.POST("/tgUser/list", api.GetTgUsers)                               // 获取Telegram用户列表
-		adminGroup.GET("/tgUser/:id", api.GetTgUserById)                  // 获取Telegram用户详情
-		adminGroup.POST("/tgUserRebate/list", api.GetTgUserRebateRecords) // 获取Telegram反水记录列表
-		adminGroup.GET("/tgUserRebate/:id", api.GetTgUserRebateRecordById)            // 获取Telegram反水记录详情
-		adminGroup.POST("/lucky/list", api.GetLuckyMoneyListAdmin)                    // 管理员获取红包列表
-		adminGroup.POST("/lucky/history", api.GetLuckyHistoryListAdmin)               // 管理员获取领取历史
-		adminGroup.GET("/lucky/:id", api.GetLuckyMoneyDetailAdmin)                    // 管理员获取红包详情
-		adminGroup.POST("/luckyItem/list", api.GetLuckyMoneyItems)                    // 管理员获取红包明细列表
-		adminGroup.GET("/luckyItem/:id", api.GetLuckyMoneyItemById)                   // 管理员获取红包明细详情
-		adminGroup.POST("/cashHistory/list", api.GetCashHistoryListAdmin)             // 管理员获取余额变动记录列表
-		adminGroup.POST("/exchangeCode/list", api.GetExchangeCodeListAdmin)           // 管理员获取兑换码列表
-		adminGroup.POST("/exchangeCode/tags", api.GetExchangeCodeTagsAdmin)           // 管理员获取已有兑换码标签列表
-		adminGroup.GET("/exchangeCode/:id", api.GetExchangeCodeByIDAdmin)             // 管理员获取兑换码详情
+		adminGroup.POST("/tgUser/list", api.GetTgUsers)                     // 获取Telegram用户列表
+		adminGroup.GET("/tgUser/:id", api.GetTgUserById)                    // 获取Telegram用户详情
+		adminGroup.POST("/tgUserRebate/list", api.GetTgUserRebateRecords)   // 获取Telegram反水记录列表
+		adminGroup.GET("/tgUserRebate/:id", api.GetTgUserRebateRecordById)  // 获取Telegram反水记录详情
+		adminGroup.POST("/lucky/list", api.GetLuckyMoneyListAdmin)          // 管理员获取红包列表
+		adminGroup.POST("/lucky/history", api.GetLuckyHistoryListAdmin)     // 管理员获取领取历史
+		adminGroup.GET("/lucky/:id", api.GetLuckyMoneyDetailAdmin)          // 管理员获取红包详情
+		adminGroup.POST("/luckyItem/list", api.GetLuckyMoneyItems)          // 管理员获取红包明细列表
+		adminGroup.GET("/luckyItem/:id", api.GetLuckyMoneyItemById)         // 管理员获取红包明细详情
+		adminGroup.POST("/cashHistory/list", api.GetCashHistoryListAdmin)   // 管理员获取余额变动记录列表
+		adminGroup.POST("/exchangeCode/list", api.GetExchangeCodeListAdmin) // 管理员获取兑换码列表
+		adminGroup.POST("/exchangeCode/tags", api.GetExchangeCodeTagsAdmin) // 管理员获取已有兑换码标签列表
+		adminGroup.GET("/exchangeCode/:id", api.GetExchangeCodeByIDAdmin)   // 管理员获取兑换码详情
 		adminGroup.POST("/trialBot/list", api.GetTrialBotUsers)
 		adminGroup.POST("/trial/lucky/list", api.GetTrialLuckyListAdmin)
 		adminGroup.POST("/authGroup/list", api.GetAuthGroups)                                         // 获取授权群组列表
@@ -206,10 +206,11 @@ func InitGin() {
 		adminGroupLog.POST("/tgUser", api.SetTgUser)   // 创建或更新Telegram用户
 		adminGroupLog.POST("/tgUser/batchCreateBot", api.BatchCreateBotTgUsers)
 		adminGroupLog.POST("/tgUser/batchUpdateBot", api.BatchUpdateBotTgUsers)
-		adminGroupLog.POST("/tgUser/status", api.SetTgUserStatus)         // 封禁/解封Telegram用户
-		adminGroupLog.POST("/tgUser/rebateRate", api.SetTgUserRebateRate) // 修改Telegram用户返佣比例
-		adminGroupLog.POST("/tgUser/rebateType", api.SetTgUserRebateType)                   // 修改Telegram用户充值返水到账方式
-		adminGroupLog.POST("/tgUser/rechargeRebateRates", api.SetTgUserRechargeRebateRates) // 修改Telegram用户充值返佣档位(每用户单独)
+		adminGroupLog.POST("/tgUser/status", api.SetTgUserStatus)                                 // 封禁/解封Telegram用户
+		adminGroupLog.POST("/tgUser/rebateRate", api.SetTgUserRebateRate)                         // 修改Telegram用户返佣比例
+		adminGroupLog.POST("/tgUser/rebateType", api.SetTgUserRebateType)                         // 修改Telegram用户充值返水到账方式
+		adminGroupLog.POST("/tgUser/rebateWithdrawDisabled", api.SetTgUserRebateWithdrawDisabled) // 修改Telegram用户佣金提现开关
+		adminGroupLog.POST("/tgUser/rechargeRebateRates", api.SetTgUserRechargeRebateRates)       // 修改Telegram用户充值返佣档位(每用户单独)
 		adminGroupLog.POST("/tgUser/rebateAmount", api.AddTgUserRebateAmount)
 		adminGroupLog.POST("/tgUser/rechargeOrder/v2", api.AdminCreateRechargeOrderV2) // 手动拉起TG用户v2充值订单
 		adminGroupLog.POST("/tgUser/remark", api.SetTgUserRemark)                      // 修改Telegram用户备注

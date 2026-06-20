@@ -39,6 +39,7 @@ type TgUser struct {
 	RebateTotalAmount         float64    `gorm:"type:decimal(20,2);not null;default:0.00;comment:累计返水金额" json:"rebate_total_amount"`
 	RebateRate                float64    `gorm:"column:rebate_rate;type:decimal(10,2);not null;default:40.00;comment:返水比例" json:"rebate_rate"`
 	RebateType                int8       `gorm:"column:rebate_type;type:tinyint;not null;default:1;comment:充值返水到账方式 1=返水余额 2=可用余额并加流水限制" json:"rebate_type"`
+	RebateWithdrawDisabled    int8       `gorm:"column:rebate_withdraw_disabled;type:tinyint;not null;default:0;comment:禁止佣金提现 0否 1是" json:"rebateWithdrawDisabled"`
 	RechargeRebateRates       string     `gorm:"column:recharge_rebate_rates;type:varchar(64);not null;default:'';comment:充值返佣比例(逗号分隔 第1次,第2次,第3次及以上;空=用默认配置)" json:"recharge_rebate_rates"`
 	InviteValidFlag           int8       `gorm:"column:invite_valid_flag;type:tinyint;not null;default:0;index:idx_tg_user_invite_valid,priority:2;comment:邀请有效用户标记 0否 1是" json:"inviteValidFlag"`
 	InviteValidAt             *time.Time `gorm:"column:invite_valid_at;type:datetime(3);index:idx_tg_user_invite_valid,priority:3;comment:首次成为邀请有效用户时间" json:"inviteValidAt"`
@@ -123,6 +124,11 @@ type TgUserRebateRateSet struct {
 type TgUserRebateTypeSet struct {
 	ID         int64 `json:"id"`
 	RebateType int8  `json:"rebateType"` // 充值返水到账方式 1=返水余额 2=可用余额并加流水限制
+}
+
+type TgUserRebateWithdrawDisabledSet struct {
+	ID                     int64 `json:"id"`
+	RebateWithdrawDisabled int8  `json:"rebateWithdrawDisabled"` // 禁止佣金提现 0否 1是
 }
 
 type TgUserRechargeRebateRatesSet struct {
@@ -272,6 +278,7 @@ type TgCurrentUserInfo struct {
 	GiftAmount                float64 `json:"gift_amount"`
 	RebateAmount              float64 `json:"rebate_amount"`
 	RebateRate                float64 `json:"rebate_rate"`
+	RebateWithdrawDisabled    int8    `json:"rebateWithdrawDisabled"`
 	FreeLotteryCount          int     `json:"freeLotteryCount"`
 	FlowLotteryTotalCount     int     `json:"flowLotteryTotalCount"`
 	FlowLotteryAvailableCount int     `json:"flowLotteryAvailableCount"`
@@ -326,16 +333,17 @@ type TgWithdrawActivityFlowCycleBack struct {
 }
 
 type TgInviteStatsBack struct {
-	InviteCode          string  `json:"inviteCode"`
-	InviteCount         int64   `json:"inviteCount"`
-	TodayInviteCount    int64   `json:"todayInviteCount"`
-	ValidUsers          int64   `json:"validUsers"`
-	TodayValidUsers     int64   `json:"todayValidUsers"`
-	RechargeUsers       int64   `json:"rechargeUsers"`
-	TodayRechargeUsers  int64   `json:"todayRechargeUsers"`
-	TotalCommission     float64 `json:"totalCommission"`
-	AvailableCommission float64 `json:"availableCommission"`
-	TodayCommission     float64 `json:"todayCommission"`
+	InviteCode             string  `json:"inviteCode"`
+	InviteCount            int64   `json:"inviteCount"`
+	TodayInviteCount       int64   `json:"todayInviteCount"`
+	ValidUsers             int64   `json:"validUsers"`
+	TodayValidUsers        int64   `json:"todayValidUsers"`
+	RechargeUsers          int64   `json:"rechargeUsers"`
+	TodayRechargeUsers     int64   `json:"todayRechargeUsers"`
+	TotalCommission        float64 `json:"totalCommission"`
+	AvailableCommission    float64 `json:"availableCommission"`
+	TodayCommission        float64 `json:"todayCommission"`
+	RebateWithdrawDisabled int8    `json:"rebateWithdrawDisabled"`
 }
 
 type TgInviteRuleConfigBack struct {
@@ -383,6 +391,7 @@ type TgUserBack struct {
 	RebateTotalAmount         float64   `json:"rebateTotalAmount"`
 	RebateRate                float64   `json:"rebateRate"`
 	RebateType                int8      `json:"rebateType"`
+	RebateWithdrawDisabled    int8      `json:"rebateWithdrawDisabled"`
 	RechargeRebateRates       string    `json:"rechargeRebateRates"`
 	FreeLotteryCount          int       `json:"freeLotteryCount"`
 	FlowLotteryTotalCount     int       `json:"flowLotteryTotalCount"`
@@ -428,6 +437,7 @@ type TgUserAdminBack struct {
 	RebateTotalAmount         float64   `json:"rebateTotalAmount"`
 	RebateRate                float64   `json:"rebateRate"`
 	RebateType                int8      `json:"rebateType"`
+	RebateWithdrawDisabled    int8      `json:"rebateWithdrawDisabled"`
 	RechargeRebateRates       string    `json:"rechargeRebateRates"`
 	FreeLotteryCount          int       `json:"freeLotteryCount"`
 	FlowLotteryTotalCount     int       `json:"flowLotteryTotalCount"`

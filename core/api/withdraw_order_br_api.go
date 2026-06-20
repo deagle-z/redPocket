@@ -411,6 +411,10 @@ func AppCreateRebateWithdrawOrder(ctx *gin.Context) {
 		utils.ErrorBack(ctx, "user_disabled_contact_admin")
 		return
 	}
+	if user.RebateWithdrawDisabled == 1 {
+		utils.ErrorBack(ctx, "rebate_withdraw_disabled")
+		return
+	}
 	if req.Amount > utils.Truncate2(user.RebateAmount) {
 		utils.ErrorBack(ctx, "rebate_amount_insufficient")
 		return

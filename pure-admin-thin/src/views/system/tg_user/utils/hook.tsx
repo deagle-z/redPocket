@@ -23,6 +23,14 @@ function getStatusType(status: number) {
   return "info";
 }
 
+function getRebateWithdrawDisabledLabel(disabled?: number | null) {
+  return Number(disabled) === 1 ? "禁止" : "允许";
+}
+
+function getRebateWithdrawDisabledType(disabled?: number | null) {
+  return Number(disabled) === 1 ? "danger" : "success";
+}
+
 function formatNullable(val?: string | null) {
   return val && val !== "" ? val : "-";
 }
@@ -146,6 +154,19 @@ export function useTgUser(_tableRef: Ref) {
       minWidth: 120,
       formatter: ({ rebateType }) =>
         Number(rebateType) === 2 ? "可用余额" : "返水余额"
+    },
+    {
+      label: "佣金提现",
+      prop: "rebateWithdrawDisabled",
+      minWidth: 100,
+      cellRenderer: scope => (
+        <ElTag
+          type={getRebateWithdrawDisabledType(scope.row.rebateWithdrawDisabled)}
+          effect="plain"
+        >
+          {getRebateWithdrawDisabledLabel(scope.row.rebateWithdrawDisabled)}
+        </ElTag>
+      )
     },
     {
       label: "上级UID",
