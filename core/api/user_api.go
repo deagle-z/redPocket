@@ -137,6 +137,80 @@ func ChangePass(ctx *gin.Context) {
 	utils.SuccessObjBack(ctx, result)
 }
 
+// ChangeOwnPass 当前管理员修改自己密码（校验旧密码）
+func ChangeOwnPass(ctx *gin.Context) {
+	currentUser, err := utils.GetCurrentUser(ctx)
+	if err != nil {
+		utils.UnauthorizedBack(ctx, err.Error())
+		return
+	}
+	var req struct {
+		OldPassword string `json:"oldPassword"`
+		NewPassword string `json:"newPassword"`
+	}
+	if err = ctx.ShouldBindJSON(&req); err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	db := ctx.MustGet("db").(*gorm.DB)
+	hostInfo := ctx.MustGet("hostInfo").(pojo.HostInfo)
+	if err = repository.ChangeOwnPassword(db, hostInfo, currentUser, req.OldPassword, req.NewPassword); err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	utils.SuccessObjBack(ctx, "success")
+}
+
+// TwofaStatus 当前管理员谷歌验证绑定状态
+func TwofaStatus(ctx *gin.Context) {
+	currentUser, err := utils.GetCurrentUser(ctx)
+	if err != nil {
+		utils.UnauthorizedBack(ctx, err.Error())
+		return
+	}
+	bound := currentUser.BindCode && currentUser.GoogleCode != ""
+	utils.SuccessObjBack(ctx, gin.H{"bound": bound})
+}
+
+// TwofaSetup 生成待绑定的谷歌验证密钥与 otpauth 链接
+func TwofaSetup(ctx *gin.Context) {
+	currentUser, err := utils.GetCurrentUser(ctx)
+	if err != nil {
+		utils.UnauthorizedBack(ctx, err.Error())
+		return
+	}
+	secret, otpauthURL, err := repository.GenerateUserTwofa(currentUser)
+	if err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	utils.SuccessObjBack(ctx, gin.H{"secret": secret, "otpauthUrl": otpauthURL})
+}
+
+// TwofaBind 校验动态码并绑定谷歌验证
+func TwofaBind(ctx *gin.Context) {
+	currentUser, err := utils.GetCurrentUser(ctx)
+	if err != nil {
+		utils.UnauthorizedBack(ctx, err.Error())
+		return
+	}
+	var req struct {
+		Secret string `json:"secret"`
+		Code   string `json:"code"`
+	}
+	if err = ctx.ShouldBindJSON(&req); err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	db := ctx.MustGet("db").(*gorm.DB)
+	hostInfo := ctx.MustGet("hostInfo").(pojo.HostInfo)
+	if err = repository.BindUserTwofa(db, hostInfo, currentUser, req.Secret, req.Code); err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	utils.SuccessObjBack(ctx, "success")
+}
+
 func GetUsers(ctx *gin.Context) {
 	var userSearch pojo.UserSearch
 	userSearch.SetPageDefaults()

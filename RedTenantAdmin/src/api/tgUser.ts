@@ -13,6 +13,7 @@ export type TgUser = {
   uid?: string;
   balance: number;
   trialBalance: number;
+  subUserCount?: number;
   giftAmount: number;
   giftTotal: number;
   subRechargeAmount?: number;

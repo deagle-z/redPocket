@@ -43,7 +43,8 @@ const { locale, translationCh, translationEn } = useTranslationLang();
 
 const ruleForm = reactive({
   username: "admin",
-  password: "admin123"
+  password: "admin123",
+  code: ""
 });
 
 
@@ -55,7 +56,8 @@ const onLogin = async (formEl: FormInstance | undefined) => {
       useUserStoreHook()
         .loginByUsername({
           username: ruleForm.username,
-          password: encrypt(ruleForm.password)
+          password: encrypt(ruleForm.password),
+          code: ruleForm.code.trim()
         })
         .then(res => {
           if (res.code === 200) {
@@ -70,9 +72,14 @@ const onLogin = async (formEl: FormInstance | undefined) => {
           }
         })
         .catch((err) => {
-          message(err?.response?.data?.message || err.message, {
-            type: "error"
-          });
+          const raw = err?.response?.data?.message || err.message || "";
+          let tip = raw;
+          if (raw === "2fa_code_required") {
+            tip = "该账号已绑定 Google 验证码，请输入 6 位动态码";
+          } else if (raw === "2fa_code_incorrect") {
+            tip = "Google 验证码错误，请重试";
+          }
+          message(tip, { type: "error" });
         })
         .finally(() => (loading.value = false));
     }
@@ -153,6 +160,13 @@ onBeforeUnmount(() => {
               <el-form-item prop="password">
                 <el-input v-model="ruleForm.password" clearable show-password :placeholder="t('login.purePassword')"
                   :prefix-icon="useRenderIcon(Lock)" />
+              </el-form-item>
+            </Motion>
+
+            <Motion :delay="200">
+              <el-form-item prop="code">
+                <el-input v-model="ruleForm.code" clearable maxlength="6"
+                  placeholder="Google 验证码（未绑定可留空）" :prefix-icon="useRenderIcon(Lock)" />
               </el-form-item>
             </Motion>
 

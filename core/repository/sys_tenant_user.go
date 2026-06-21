@@ -6,10 +6,13 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"strings"
+	"time"
+
 	"github.com/jinzhu/copier"
+	"github.com/pquerna/otp/totp"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
-	"time"
 )
 
 // GetSysTenantUsers 租户用户列表（分页）
@@ -133,6 +136,17 @@ func SysTenantUserLogin(db *gorm.DB, hostInfo pojo.HostInfo, req pojo.SysTenantU
 	if err = bcrypt.CompareHashAndPassword([]byte(dbUser.PasswordHash), []byte(req.Password)); err != nil {
 		_ = db.Model(&pojo.SysTenantUser{}).Where("id = ?", dbUser.ID).Update("login_fail_count", gorm.Expr("login_fail_count + 1")).Error
 		return result, errors.New("user_login_error")
+	}
+
+	// Google 2FA：已绑定(require_2fa 且有密钥)则校验 6 位动态码
+	if dbUser.Require2fa && dbUser.TwofaSecret != nil && strings.TrimSpace(*dbUser.TwofaSecret) != "" {
+		code := strings.TrimSpace(req.Code)
+		if code == "" {
+			return result, errors.New("2fa_code_required")
+		}
+		if !totp.Validate(code, strings.TrimSpace(*dbUser.TwofaSecret)) {
+			return result, errors.New("2fa_code_incorrect")
+		}
 	}
 
 	now := time.Now()

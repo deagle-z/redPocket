@@ -240,6 +240,7 @@ func DelTgUser(db *gorm.DB, tenantID int64, id int64) (result string, err error)
 
 type TgUserWithSubStats struct {
 	pojo.TgUserBack
+	SubUserCount      int64   `json:"subUserCount"`
 	SubRechargeAmount float64 `json:"subRechargeAmount"`
 	SubFlowAmount     float64 `json:"subFlowAmount"`
 	SubProfitAmount   float64 `json:"subProfitAmount"`
@@ -410,8 +411,26 @@ func GetTgUsersWithSubStats(db *gorm.DB, tenantID int64, search pojo.TgUserSearc
 
 	rechargeSumsByUser := make(map[int64]float64)
 	withdrawSumsByUser := make(map[int64]float64)
+	subUserCountsByUser := make(map[int64]int64)
 
 	if len(metricUserIDs) > 0 {
+		var subUserCounts []struct {
+			UserID       int64 `gorm:"column:user_id"`
+			SubUserCount int64 `gorm:"column:sub_user_count"`
+		}
+		subUserQuery := db.Model(&pojo.TgUser{})
+		if tenantID > 0 {
+			subUserQuery = subUserQuery.Where("tenant_id = ?", tenantID)
+		}
+		_ = subUserQuery.
+			Select("parent_id as user_id, count(*) as sub_user_count").
+			Where("parent_id in (?) and status <> ?", metricUserIDs, -1).
+			Group("parent_id").
+			Scan(&subUserCounts).Error
+		for _, item := range subUserCounts {
+			subUserCountsByUser[item.UserID] = item.SubUserCount
+		}
+
 		var rechargeSums []tgUserMetricRow
 		rechargeQuery := db.Model(&pojo.RechargeOrder{})
 		if tenantID > 0 {
@@ -447,6 +466,7 @@ func GetTgUsersWithSubStats(db *gorm.DB, tenantID int64, search pojo.TgUserSearc
 	for _, user := range users {
 		var temp TgUserWithSubStats
 		_ = copier.Copy(&temp, &user)
+		temp.SubUserCount = subUserCountsByUser[user.ID]
 		temp.SubRechargeAmount = utils.Truncate2(rechargeSumsByUser[user.ID])
 		temp.SubWithdrawAmount = utils.Truncate2(withdrawSumsByUser[user.ID])
 		temp.SubFlowAmount = betStatByUser[user.ID].Flow

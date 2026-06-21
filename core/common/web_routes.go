@@ -87,6 +87,10 @@ func InitGin() {
 	{
 		commonGroupLog.GET("/user/unbind/gauth", api.UnBindGAuth) // 解绑自己谷歌验证
 		commonGroupLog.PUT("/user/pass", api.ChangePass)          // 修改密码
+		commonGroupLog.PUT("/user/changeOwnPass", api.ChangeOwnPass) // 修改自己密码(校验旧密码)
+		commonGroupLog.GET("/user/twofa/status", api.TwofaStatus)    // 谷歌验证绑定状态
+		commonGroupLog.GET("/user/twofa/setup", api.TwofaSetup)      // 生成待绑定密钥
+		commonGroupLog.POST("/user/twofa/bind", api.TwofaBind)       // 绑定谷歌验证
 		commonGroupLog.POST("/resetPwd", api.ResetPassword)
 	}
 	// 管理员接口
@@ -277,6 +281,11 @@ func InitGin() {
 		tenantGroup.POST("/dashboard/onlineUsers", tenantApi.GetDashboardOnlineUsers)
 		tenantGroup.POST("/dashboard/rechargeUsers", tenantApi.GetDashboardRechargeUsers)
 		tenantGroup.POST("/dashboard/registerUsers", tenantApi.GetDashboardRegisterUsers)
+		tenantGroup.POST("/account/changePassword", tenantApi.ChangeTenantPassword) // 修改当前账号密码
+		tenantGroup.GET("/account/twofa/status", tenantApi.GetTenantTwofaStatus)    // Google验证码绑定状态
+		tenantGroup.GET("/account/twofa/setup", tenantApi.SetupTenantTwofa)         // 生成待绑定密钥
+		tenantGroup.POST("/account/twofa/bind", tenantApi.BindTenantTwofa)          // 绑定Google验证码
+		tenantGroup.POST("/account/twofa/unbind", tenantApi.UnbindTenantTwofa)      // 解绑Google验证码
 		tenantGroup.POST("/dashboard/rechargeOrders", tenantApi.GetDashboardRechargeOrders) // 充值总额明细（今天/昨天）
 		tenantGroup.POST("/dashboard/withdrawOrders", tenantApi.GetDashboardWithdrawOrders) // 提现总额明细（今天/昨天）
 

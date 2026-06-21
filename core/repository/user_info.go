@@ -237,6 +237,62 @@ func ChangePass(db *gorm.DB, hostInfo pojo.HostInfo, currentUser pojo.SysUser, u
 	return result, err
 }
 
+// ChangeOwnPassword 当前管理员修改自己密码（校验旧密码）。
+func ChangeOwnPassword(db *gorm.DB, hostInfo pojo.HostInfo, currentUser pojo.SysUser, oldPwd string, newPwd string) error {
+	if len(newPwd) < 6 || len(newPwd) > 18 {
+		return errors.New("password_length_6_18")
+	}
+	dbUser := utils.GetTempUser(hostInfo.TablePrefix, currentUser.ID)
+	if dbUser.ID == 0 {
+		return errors.New("operator_data_not_found")
+	}
+	// 与登录一致：密码用 bcrypt 存储，必须用 CheckPasswordHash 校验（EncodePass 每次结果不同，不能直接比对）
+	if !utils.CheckPasswordHash(oldPwd, dbUser.Password, hostInfo.Salt) {
+		return errors.New("old_password_incorrect")
+	}
+	dbUser.Password = utils.EncodePass(hostInfo.Salt, newPwd)
+	if err := db.Save(&dbUser).Error; err != nil {
+		return err
+	}
+	utils.UpdateTempUser(hostInfo.TablePrefix, dbUser)
+	return nil
+}
+
+// GenerateUserTwofa 生成待绑定的 TOTP 密钥与 otpauth 链接（未保存，绑定时再写入）。
+func GenerateUserTwofa(currentUser pojo.SysUser) (secret string, otpauthURL string, err error) {
+	key, err := totp.Generate(totp.GenerateOpts{
+		Issuer:      "gg",
+		AccountName: currentUser.Username,
+	})
+	if err != nil {
+		return "", "", err
+	}
+	return key.Secret(), key.URL(), nil
+}
+
+// BindUserTwofa 校验动态码后绑定谷歌验证（写入 google_code 并置 bind_code=true）。
+func BindUserTwofa(db *gorm.DB, hostInfo pojo.HostInfo, currentUser pojo.SysUser, secret string, code string) error {
+	secret = strings.TrimSpace(secret)
+	code = strings.TrimSpace(code)
+	if secret == "" || code == "" {
+		return errors.New("invalid_params")
+	}
+	if !totp.Validate(code, secret) {
+		return errors.New("code_incorrect")
+	}
+	dbUser := utils.GetTempUser(hostInfo.TablePrefix, currentUser.ID)
+	if dbUser.ID == 0 {
+		return errors.New("operator_data_not_found")
+	}
+	dbUser.GoogleCode = secret
+	dbUser.BindCode = true
+	if err := db.Save(&dbUser).Error; err != nil {
+		return err
+	}
+	utils.UpdateTempUser(hostInfo.TablePrefix, dbUser)
+	return nil
+}
+
 func SetUser(db *gorm.DB, hostInfo pojo.HostInfo, userAdd pojo.UserAdd, currentUserId int64) (result pojo.UserBack, err error) {
 	dbUser := utils.GetTempUser(hostInfo.TablePrefix, userAdd.ID)
 	if dbUser.ID == 0 {

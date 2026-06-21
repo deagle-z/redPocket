@@ -85,6 +85,7 @@ type SysTenantUserResp struct {
 type SysTenantUserLogin struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
+	Code     string `json:"code"` // Google 2FA 动态码（已绑定时必填）
 }
 
 type SysTenantUserLoginBack struct {
