@@ -27,6 +27,12 @@ type TelegramBotService struct {
 	Bot         *bot.Bot
 }
 
+const (
+	telegramBotStartAttempts = 3
+	telegramBotRetryDelay    = 500 * time.Millisecond
+	telegramBotGetMeTimeout  = 8 * time.Second
+)
+
 // InitTelegramBot 初始化 Telegram Bot
 func InitTelegramBot(db *gorm.DB, tablePrefix string, botToken string) error {
 	log.Println("旧 Telegram Bot 消息监听/命令处理已停用，仅保留 core/services.InitTelegramNotifier 群通知")
@@ -49,7 +55,8 @@ func InitTelegramBot(db *gorm.DB, tablePrefix string, botToken string) error {
 	ctx := context.Background()
 
 	// 创建 Bot 实例
-	b, err := bot.New(botToken,
+	b, err := newTelegramBotWithRetry(botToken,
+		bot.WithSkipGetMe(),
 		bot.WithDefaultHandler(botService.handleDefault),
 		bot.WithAllowedUpdates(bot.AllowedUpdates{
 			models.AllowedUpdateMessage,
@@ -85,7 +92,7 @@ func InitTelegramBot(db *gorm.DB, tablePrefix string, botToken string) error {
 	repository.RegisterTgChannelMembershipChecker(botService.CheckChannelMembership)
 
 	// 获取 Bot 信息
-	botUser, err := b.GetMe(ctx)
+	botUser, err := getTelegramBotUserWithRetry(ctx, b)
 	if err != nil {
 		return fmt.Errorf("获取 Bot 信息失败: %v", err)
 	}
@@ -100,6 +107,44 @@ func InitTelegramBot(db *gorm.DB, tablePrefix string, botToken string) error {
 
 	log.Printf("Telegram Bot 服务初始化完成 (Token: %s...)", botToken[:10])
 	return nil
+}
+
+func newTelegramBotWithRetry(botToken string, options ...bot.Option) (*bot.Bot, error) {
+	var lastErr error
+	for attempt := 1; attempt <= telegramBotStartAttempts; attempt++ {
+		b, err := bot.New(botToken, options...)
+		if err == nil {
+			return b, nil
+		}
+
+		lastErr = err
+		if attempt < telegramBotStartAttempts {
+			log.Printf("[telegram-bot] init retry attempt=%d/%d err=%v", attempt, telegramBotStartAttempts, err)
+			time.Sleep(time.Duration(attempt) * telegramBotRetryDelay)
+		}
+	}
+
+	return nil, lastErr
+}
+
+func getTelegramBotUserWithRetry(parent context.Context, b *bot.Bot) (*models.User, error) {
+	var lastErr error
+	for attempt := 1; attempt <= telegramBotStartAttempts; attempt++ {
+		ctx, cancel := context.WithTimeout(parent, telegramBotGetMeTimeout)
+		botUser, err := b.GetMe(ctx)
+		cancel()
+		if err == nil {
+			return botUser, nil
+		}
+
+		lastErr = err
+		if attempt < telegramBotStartAttempts {
+			log.Printf("[telegram-bot] getMe retry attempt=%d/%d err=%v", attempt, telegramBotStartAttempts, err)
+			time.Sleep(time.Duration(attempt) * telegramBotRetryDelay)
+		}
+	}
+
+	return nil, lastErr
 }
 
 // handleDefault 默认处理器

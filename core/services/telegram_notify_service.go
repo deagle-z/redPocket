@@ -51,6 +51,13 @@ func tenantLabel(tenantID int64) string {
 
 var telegramNotifyBot *bot.Bot
 
+const (
+	telegramNotifyInitAttempts = 3
+	telegramNotifySendAttempts = 3
+	telegramNotifyRetryDelay   = 500 * time.Millisecond
+	telegramNotifySendTimeout  = 8 * time.Second
+)
+
 func InitTelegramNotifier(botToken string) error {
 	if strings.TrimSpace(botToken) == "" {
 		log.Println("Telegram Bot Token 未配置，跳过通知初始化")
@@ -61,14 +68,24 @@ func InitTelegramNotifier(botToken string) error {
 		return nil
 	}
 
-	b, err := bot.New(botToken)
-	if err != nil {
-		return fmt.Errorf("初始化 Telegram 通知失败: %v", err)
+	var lastErr error
+	for attempt := 1; attempt <= telegramNotifyInitAttempts; attempt++ {
+		b, err := bot.New(botToken, bot.WithSkipGetMe())
+		if err == nil {
+			telegramNotifyBot = b
+			utils.RegisterTelegramNotify(sendTelegramNotify)
+			log.Printf("Telegram 通知初始化完成 notifyGroupId=%d", utils.GlobalConfig.Telegram.NotifyGroupID)
+			return nil
+		}
+
+		lastErr = err
+		if attempt < telegramNotifyInitAttempts {
+			log.Printf("[telegram-notify] init retry attempt=%d/%d err=%v", attempt, telegramNotifyInitAttempts, err)
+			time.Sleep(time.Duration(attempt) * telegramNotifyRetryDelay)
+		}
 	}
-	telegramNotifyBot = b
-	utils.RegisterTelegramNotify(sendTelegramNotify)
-	log.Printf("Telegram 通知初始化完成 notifyGroupId=%d", utils.GlobalConfig.Telegram.NotifyGroupID)
-	return nil
+
+	return fmt.Errorf("初始化 Telegram 通知失败: %v", lastErr)
 }
 
 func sendTelegramNotify(payload utils.TelegramNotifyPayload) {
@@ -79,13 +96,28 @@ func sendTelegramNotify(payload utils.TelegramNotifyPayload) {
 	if strings.TrimSpace(text) == "" {
 		return
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
-	defer cancel()
-	if _, err := telegramNotifyBot.SendMessage(ctx, &bot.SendMessageParams{
-		ChatID: utils.GlobalConfig.Telegram.NotifyGroupID,
-		Text:   text,
-	}); err != nil {
-		log.Printf("[telegram-notify] send failed event=%s userID=%d orderNo=%s err=%v", payload.Event, payload.UserID, payload.OrderNo, err)
+
+	var lastErr error
+	for attempt := 1; attempt <= telegramNotifySendAttempts; attempt++ {
+		ctx, cancel := context.WithTimeout(context.Background(), telegramNotifySendTimeout)
+		_, err := telegramNotifyBot.SendMessage(ctx, &bot.SendMessageParams{
+			ChatID: utils.GlobalConfig.Telegram.NotifyGroupID,
+			Text:   text,
+		})
+		cancel()
+		if err == nil {
+			return
+		}
+
+		lastErr = err
+		if attempt < telegramNotifySendAttempts {
+			log.Printf("[telegram-notify] send retry event=%s userID=%d orderNo=%s attempt=%d/%d err=%v", payload.Event, payload.UserID, payload.OrderNo, attempt, telegramNotifySendAttempts, err)
+			time.Sleep(time.Duration(attempt) * telegramNotifyRetryDelay)
+		}
+	}
+
+	if lastErr != nil {
+		log.Printf("[telegram-notify] send failed event=%s userID=%d orderNo=%s attempts=%d err=%v", payload.Event, payload.UserID, payload.OrderNo, telegramNotifySendAttempts, lastErr)
 	}
 }
 

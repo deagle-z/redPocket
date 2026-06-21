@@ -256,18 +256,7 @@ func UpsertAppGameByThirdID(db *gorm.DB, req pojo.AppGameSet) (created bool, err
 	var entity pojo.AppGame
 	err = db.Where("platform_code = ? AND third_game_id = ?", platformCode, thirdGameID).First(&entity).Error
 	if err == nil {
-		updates := map[string]any{
-			"game_name":           req.GameName,
-			"category_code":       req.CategoryCode,
-			"type":                req.Type,
-			"third_game_name":     req.ThirdGameName,
-			"third_game_category": req.ThirdGameCategory,
-			"game_icon":           req.GameIcon,
-			"horizontal_image":    req.HorizontalImage,
-			"deleted_flag":        0,
-			"update_time":         now,
-		}
-		return false, db.Model(&pojo.AppGame{}).Where("game_id = ?", entity.GameID).Updates(updates).Error
+		return false, nil
 	}
 	if err != gorm.ErrRecordNotFound {
 		return false, err

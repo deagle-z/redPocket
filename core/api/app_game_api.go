@@ -273,7 +273,7 @@ func SyncAppGames(ctx *gin.Context) {
 			if created {
 				result.Created++
 			} else {
-				result.Updated++
+				result.Skipped++
 			}
 		}
 		return nil
