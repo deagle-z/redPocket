@@ -275,10 +275,10 @@ func GetCurrentUserPendingRechargeNotifications(db *gorm.DB, userID int64) ([]po
 	return result, nil
 }
 
-// GetUserRechargeCount 统计当前用户成功充值次数（status=1，不含手动回调）
+// GetUserRechargeCount 统计当前用户成功充值次数（status=1，包含手动回调）
 func GetUserRechargeCount(db *gorm.DB, userID int64) pojo.UserRechargeCountBack {
 	var count int64
-	db.Model(&pojo.RechargeOrder{}).Where("user_id = ? AND status = 1 AND coalesce(is_dev, 0) = 0", userID).Count(&count)
+	db.Model(&pojo.RechargeOrder{}).Where("user_id = ? AND status = 1", userID).Count(&count)
 	return pojo.UserRechargeCountBack{RechargeCount: count}
 }
 
