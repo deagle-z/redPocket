@@ -228,6 +228,8 @@ type RechargeOrderFrontendNotifyItem struct {
 // UserRechargeCountBack 用户充值次数响应
 type UserRechargeCountBack struct {
 	RechargeCount int64 `json:"rechargeCount"`
+	// RebateTransferred 是否曾把佣金转入余额（用于游戏解锁：佣金转账可解锁，赠送余额不算）
+	RebateTransferred bool `json:"rebateTransferred"`
 }
 
 var RechargeOrderTableName = "recharge_order"

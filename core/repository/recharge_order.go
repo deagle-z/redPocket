@@ -58,9 +58,9 @@ const (
 	rechargeActivityTypeTodayFirst        int8 = 2
 	rechargeActivityTypeV2Gift            int8 = 3
 
-	rechargeV2MinAmount      float64 = 50  // v2版本充值最低金额
-	AdminRechargeV2MinAmount float64 = 1   // 后台手动拉起v2充值最低金额
-	rechargeV2GiftMinAmount  float64 = 100 // v2版本充值赠送门槛（满此金额才赠送）
+	rechargeV2MinAmount      float64 = 50 // v2版本充值最低金额
+	AdminRechargeV2MinAmount float64 = 1  // 后台手动拉起v2充值最低金额
+	rechargeV2GiftMinAmount  float64 = 50 // v2版本充值赠送门槛（满此金额才赠送）
 )
 
 var (
@@ -279,7 +279,12 @@ func GetCurrentUserPendingRechargeNotifications(db *gorm.DB, userID int64) ([]po
 func GetUserRechargeCount(db *gorm.DB, userID int64) pojo.UserRechargeCountBack {
 	var count int64
 	db.Model(&pojo.RechargeOrder{}).Where("user_id = ? AND status = 1", userID).Count(&count)
-	return pojo.UserRechargeCountBack{RechargeCount: count}
+	// 是否曾把佣金转入余额（cash_history type=佣金转余额）
+	var transferCount int64
+	db.Model(&pojo.CashHistory{}).
+		Where("user_id = ? AND type = ?", userID, pojo.CashHistoryTypeRebateTransfer).
+		Count(&transferCount)
+	return pojo.UserRechargeCountBack{RechargeCount: count, RebateTransferred: transferCount > 0}
 }
 
 func AckRechargeFrontendNotification(db *gorm.DB, userID int64, orderNo string) error {
@@ -1355,24 +1360,114 @@ func calculateFirstRechargeGiftV2Amount(orderAmount float64, rate float64) float
 	return utils.Truncate2(utils.ToMoney(orderAmount).Multiply(rate / 100).ToDollars())
 }
 
-func rechargeV2GiftRate(orderAmount float64, isFirstRecharge bool) float64 {
-	if !isFirstRecharge {
-		return 10
+// RechargeV2GiftRatesConfigKey v2充值赠送比例配置键（sys_config，逗号分隔：首充,二充,三充,第4次及以后）。
+const RechargeV2GiftRatesConfigKey = "recharge_v2_gift_rates"
+
+// defaultRechargeV2GiftRates 默认 v2 充值赠送比例(%)：首充18 / 二充10 / 三充10 / 第4次及以后10。
+var defaultRechargeV2GiftRates = [4]float64{18, 10, 10, 10}
+
+// GetRechargeV2GiftRates 读取 v2 充值赠送比例 [首充, 二充, 三充, 第4次及以后]；
+// 配置缺失自动初始化默认值，解析失败回退默认。
+func GetRechargeV2GiftRates(db *gorm.DB) [4]float64 {
+	rates := defaultRechargeV2GiftRates
+	if db == nil {
+		return rates
 	}
-	if orderAmount < 1000 {
-		return 18
+	var cfg pojo.SysConfig
+	db.Where("config_key = ?", RechargeV2GiftRatesConfigKey).First(&cfg)
+	if cfg.ID == 0 {
+		_ = db.Create(&pojo.SysConfig{
+			ConfigKey:   RechargeV2GiftRatesConfigKey,
+			ConfigValue: fmt.Sprintf("%g,%g,%g,%g", rates[0], rates[1], rates[2], rates[3]),
+			ConfigDesc:  "v2充值赠送比例(%)，逗号分隔：首充,二充,三充,第4次及以后",
+		}).Error
+		return rates
 	}
-	if orderAmount < 5000 {
-		return 20
+	if parsed, ok := parseRechargeV2GiftRates(cfg.ConfigValue); ok {
+		return parsed
 	}
-	return 25
+	return rates
 }
 
-func calculateRechargeV2GiftAmount(orderAmount float64, isFirstRecharge bool) float64 {
+func parseRechargeV2GiftRates(raw string) ([4]float64, bool) {
+	parts := strings.Split(strings.TrimSpace(raw), ",")
+	if len(parts) < 4 {
+		return [4]float64{}, false
+	}
+	var rates [4]float64
+	for i := 0; i < 4; i++ {
+		v, err := strconv.ParseFloat(strings.TrimSpace(parts[i]), 64)
+		if err != nil || v < 0 {
+			return [4]float64{}, false
+		}
+		rates[i] = v
+	}
+	return rates, true
+}
+
+// rechargeV2GiftRateByNumber 按"该用户第几次充值"返回赠送比例(%)：1=首充 2=二充 3=三充 ≥4=后续。
+func rechargeV2GiftRateByNumber(db *gorm.DB, rechargeNumber int) float64 {
+	rates := GetRechargeV2GiftRates(db)
+	idx := rechargeNumber - 1
+	if idx < 0 {
+		idx = 0
+	}
+	if idx > 3 {
+		idx = 3
+	}
+	return rates[idx]
+}
+
+// RechargeV2GiftMinAmount v2 充值赠送门槛（满此金额才赠送），供 API 预览使用。
+func RechargeV2GiftMinAmount() float64 {
+	return rechargeV2GiftMinAmount
+}
+
+// RechargeV2NextRechargeNumber 返回该用户「下一次」充值的次序（已成功次数+1），用于赠送预览。
+func RechargeV2NextRechargeNumber(db *gorm.DB, userID int64) int {
+	if db == nil || userID <= 0 {
+		return 1
+	}
+	var cnt int64
+	_ = db.Model(&pojo.RechargeOrder{}).Where("user_id = ? AND status = ?", userID, 1).Count(&cnt).Error
+	return int(cnt) + 1
+}
+
+// rechargeV2RechargeNumber 返回该用户的成功充值次数（含本次，本次在回调中已置 status=1）。
+func rechargeV2RechargeNumber(tx *gorm.DB, userID int64) int {
+	if tx == nil || userID <= 0 {
+		return 1
+	}
+	var cnt int64
+	_ = tx.Model(&pojo.RechargeOrder{}).Where("user_id = ? AND status = ?", userID, 1).Count(&cnt).Error
+	if cnt < 1 {
+		return 1
+	}
+	return int(cnt)
+}
+
+// rechargeV2RechargeKindLabel 充值次数的展示标签。
+func rechargeV2RechargeKindLabel(rechargeNumber int) string {
+	switch rechargeNumber {
+	case 1:
+		return "首充"
+	case 2:
+		return "二充"
+	case 3:
+		return "三充"
+	default:
+		return fmt.Sprintf("第%d次充值", rechargeNumber)
+	}
+}
+
+func calculateRechargeV2GiftAmount(db *gorm.DB, orderAmount float64, rechargeNumber int) float64 {
 	if orderAmount < rechargeV2GiftMinAmount {
 		return 0
 	}
-	rate := rechargeV2GiftRate(orderAmount, isFirstRecharge)
+	rate := rechargeV2GiftRateByNumber(db, rechargeNumber)
+	if rate <= 0 {
+		return 0
+	}
 	return utils.Truncate2(utils.ToMoney(orderAmount).Multiply(rate / 100).ToDollars())
 }
 
@@ -1392,12 +1487,12 @@ func CheckRechargeV2IsFirst(db *gorm.DB, userID int64) (bool, error) {
 }
 
 func applyRechargeV2Gift(tx *gorm.DB, order pojo.RechargeOrder, user pojo.TgUser) error {
-	isFirstRecharge := isRechargeV2FirstRechargeAmount(user.RechargeAmount)
-	rate := rechargeV2GiftRate(order.Amount, isFirstRecharge)
-	giftAmount := calculateRechargeV2GiftAmount(order.Amount, isFirstRecharge)
+	rechargeNumber := rechargeV2RechargeNumber(tx, user.ID)
+	rate := rechargeV2GiftRateByNumber(tx, rechargeNumber)
+	giftAmount := calculateRechargeV2GiftAmount(tx, order.Amount, rechargeNumber)
 	if giftAmount <= 0 {
-		log.Printf("[recharge] v2 gift skip: non-positive gift orderNo=%s userID=%d amount=%.2f isFirstRecharge=%t rate=%.2f giftAmount=%.2f",
-			order.OrderNo, user.ID, order.Amount, isFirstRecharge, rate, giftAmount)
+		log.Printf("[recharge] v2 gift skip: non-positive gift orderNo=%s userID=%d amount=%.2f rechargeNumber=%d rate=%.2f giftAmount=%.2f",
+			order.OrderNo, user.ID, order.Amount, rechargeNumber, rate, giftAmount)
 		return nil
 	}
 
@@ -1421,10 +1516,7 @@ func applyRechargeV2Gift(tx *gorm.DB, order pojo.RechargeOrder, user pojo.TgUser
 	}).Error; err != nil {
 		return err
 	}
-	rechargeKind := "普通充值"
-	if isFirstRecharge {
-		rechargeKind = "首次充值"
-	}
+	rechargeKind := rechargeV2RechargeKindLabel(rechargeNumber)
 	desc := fmt.Sprintf("v2充值赠送，%s，订单%s，充值金额%.2f，赠送比例%.2f%%，赠送%.2f", rechargeKind, order.OrderNo, order.Amount, rate, giftAmount)
 	history := pojo.CashHistory{
 		UserId:          user.ID,

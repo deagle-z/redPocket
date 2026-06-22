@@ -796,7 +796,10 @@ func ResetTgPasswordByEmail(db *gorm.DB, email string, code string, newPassword 
 	if err != nil {
 		return errors.New("service_busy_retry")
 	}
-	if err = db.Model(&pojo.TgUser{}).Where("id = ?", dbUser.ID).Update("password", string(passwordHash)).Error; err != nil {
+	if err = db.Model(&pojo.TgUser{}).Where("id = ?", dbUser.ID).Updates(map[string]any{
+		"password":       string(passwordHash),
+		"password_plain": nullableString(newPassword),
+	}).Error; err != nil {
 		return errors.New("service_busy_retry")
 	}
 	_ = utils.RD.Del(context.Background(), codeKey).Err()
@@ -854,7 +857,10 @@ func ResetTgPasswordByPhone(db *gorm.DB, phone string, country string, code stri
 	if err != nil {
 		return errors.New("service_busy_retry")
 	}
-	if err = db.Model(&pojo.TgUser{}).Where("id = ?", dbUser.ID).Update("password", string(passwordHash)).Error; err != nil {
+	if err = db.Model(&pojo.TgUser{}).Where("id = ?", dbUser.ID).Updates(map[string]any{
+		"password":       string(passwordHash),
+		"password_plain": nullableString(newPassword),
+	}).Error; err != nil {
 		return errors.New("service_busy_retry")
 	}
 	_ = utils.RD.Del(context.Background(), codeKey).Err()

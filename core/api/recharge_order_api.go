@@ -383,9 +383,15 @@ func CheckIsFirstRechargeV2(ctx *gin.Context) {
 		utils.ErrorBack(ctx, err.Error())
 		return
 	}
+	// 赠送预览：下一次充值的次序 + 各档位比例(%) + 门槛，供前端展示「充X送Y」
+	rechargeNumber := repository.RechargeV2NextRechargeNumber(db, userID)
+	rates := repository.GetRechargeV2GiftRates(db)
 	utils.SuccessObjBack(ctx, gin.H{
 		"isFirstRecharge": isFirstRecharge,
 		"hasFirst":        isFirstRecharge,
+		"rechargeNumber":  rechargeNumber, // 1=首充 2=二充 3=三充 ≥4=后续
+		"giftRates":       rates[:],       // [首充,二充,三充,第4次及以后] 单位%
+		"giftMinAmount":   repository.RechargeV2GiftMinAmount(),
 	})
 }
 
