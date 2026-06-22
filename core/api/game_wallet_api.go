@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -215,6 +216,11 @@ func writeGameCashTransferError(ctx *gin.Context, err error) {
 // vipUpgradeCheckThrottle 游戏投注触发 VIP 升级检查的每用户节流窗口
 const vipUpgradeCheckThrottle = 10 * time.Second
 
+// gameTransferSlowThreshold 超过该耗时则打印各步骤分解的慢日志（设为 0 可记录每一笔）
+const gameTransferSlowThreshold = 300 * time.Millisecond
+
+func msOf(d time.Duration) int64 { return d.Milliseconds() }
+
 func handleGameCashTransfer(db *gorm.DB, req pojo.GameCashTransferInOutReq) (float64, error) {
 	userID := strings.TrimSpace(req.UserID)
 	tid := strings.TrimSpace(req.TID)
@@ -224,11 +230,24 @@ func handleGameCashTransfer(db *gorm.DB, req pojo.GameCashTransferInOutReq) (flo
 	var vipTenantID int64
 	var vipBetFlow float64
 
+	// ===== 耗时打点 =====
+	reqStart := time.Now()
+	var tGameInfo, tTx, tLock, tIdem, tBalance, tBetRec, tFlow, tCash time.Duration
+	idempotent := false
+
+	// 游戏元数据查询(带缓存)放在事务外，避免占用行锁时间
+	g0 := time.Now()
+	gameInfo := getGameCashTransferGameInfo(db, req.GameID)
+	tGameInfo = time.Since(g0)
+
+	txStart := time.Now()
 	err := db.Transaction(func(tx *gorm.DB) error {
+		s := time.Now()
 		var user pojo.TgUser
 		err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
 			Where("uid = ? AND status <> ?", userID, int8(-1)).
 			First(&user).Error
+		tLock = time.Since(s)
 		if err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				log.Printf("[game_wallet] TransferInOut user not found userid=%s tid=%s", userID, tid)
@@ -236,10 +255,13 @@ func handleGameCashTransfer(db *gorm.DB, req pojo.GameCashTransferInOutReq) (flo
 			}
 			return err
 		}
+		s = time.Now()
 		var history pojo.CashHistory
 		err = tx.Where("user_id = ? AND award_uni = ?", user.ID, awardUni).First(&history).Error
+		tIdem = time.Since(s)
 		if err == nil {
 			balance = utils.Truncate2(history.EndAmount)
+			idempotent = true
 			return nil
 		}
 		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
@@ -252,7 +274,6 @@ func handleGameCashTransfer(db *gorm.DB, req pojo.GameCashTransferInOutReq) (flo
 		}
 
 		amount := utils.Truncate2(req.Amount)
-		gameInfo := lookupGameCashTransferGameInfo(tx, req.GameID)
 		if code, msg := validateGameCashTransferAmount(req, amount, gameInfo.IsFishing); code != game.GameCodeSuccess {
 			return newGameCashTransferError(code, msg)
 		}
@@ -264,15 +285,19 @@ func handleGameCashTransfer(db *gorm.DB, req pojo.GameCashTransferInOutReq) (flo
 
 		startBalance := utils.Truncate2(user.Balance)
 		endBalance := utils.Truncate2(startBalance + amount)
+		s = time.Now()
 		if err := tx.Model(&pojo.TgUser{}).
 			Where("id = ?", user.ID).
 			Update("balance", endBalance).Error; err != nil {
 			return err
 		}
+		tBalance = time.Since(s)
 
+		s = time.Now()
 		if err := createGameBetRecord(tx, user, req, amount, gameInfo); err != nil {
 			return err
 		}
+		tBetRec = time.Since(s)
 		betAmount, _ := gameBetRecordAmounts(req, amount, gameInfo.IsFishing)
 		if betAmount > 0 {
 			vipUserID = user.ID
@@ -282,6 +307,7 @@ func handleGameCashTransfer(db *gorm.DB, req pojo.GameCashTransferInOutReq) (flo
 			if req.ReqTime > 0 {
 				occurredAt = time.UnixMilli(req.ReqTime)
 			}
+			s = time.Now()
 			if err := repository.RecordWithdrawFlowEvent(
 				tx,
 				user.ID,
@@ -295,10 +321,10 @@ func handleGameCashTransfer(db *gorm.DB, req pojo.GameCashTransferInOutReq) (flo
 			); err != nil {
 				return err
 			}
-			if err := repository.ApplyInviteBetRebate(tx, user, betAmount, tid, occurredAt); err != nil {
-				return err
-			}
+			tFlow = time.Since(s)
+			// 邀请有效用户标记不再同步发生（仅统计用、非资金关键），移到事务提交后异步处理
 		}
+		s = time.Now()
 		if err := tx.Create(&pojo.CashHistory{
 			UserId:      user.ID,
 			AwardUni:    awardUni,
@@ -311,19 +337,35 @@ func handleGameCashTransfer(db *gorm.DB, req pojo.GameCashTransferInOutReq) (flo
 		}).Error; err != nil {
 			return err
 		}
+		tCash = time.Since(s)
 
 		balance = endBalance
 		return nil
 	})
+	tTx = time.Since(txStart)
+	// 慢日志：定位各步骤耗时（lock=行锁+读用户, idem=幂等查, balance=改余额, betRec=下注记录, flow=提现流水, cash=账变）
+	if total := time.Since(reqStart); total >= gameTransferSlowThreshold {
+		log.Printf("[game_wallet][slow] TransferInOut tid=%s userid=%s reason=%s idempotent=%t total=%dms gameInfo=%dms tx=%dms lock=%dms idem=%dms balance=%dms betRec=%dms flow=%dms cash=%dms",
+			tid, userID, strings.ToLower(strings.TrimSpace(req.Reason)), idempotent,
+			msOf(total), msOf(tGameInfo), msOf(tTx), msOf(tLock), msOf(tIdem), msOf(tBalance), msOf(tBetRec), msOf(tFlow), msOf(tCash))
+	}
 	if err != nil {
 		return 0, err
 	}
-	// 游戏投注结算后触发 VIP 升级检查（投注流水已计入 VIP total_valid_bet 口径）。
-	// 每用户短 TTL 节流：高频投注下同一用户在 vipUpgradeCheckThrottle 窗口内只检查一次。
+	// 投注结算后的非资金关键处理（VIP 升级检查 + 邀请有效用户标记）异步执行，不阻塞下注响应。
+	// 每用户短 TTL 节流：高频投注下同一用户在 vipUpgradeCheckThrottle 窗口内只跑一次，降低 DB 压力。
 	if vipBetFlow > 0 && vipUserID > 0 {
-		throttleKey := fmt.Sprintf("vip_upgrade_check_throttle:%d:%d", vipTenantID, vipUserID)
+		throttleKey := fmt.Sprintf("game_bet_post_throttle:%d:%d", vipTenantID, vipUserID)
 		if acquired, _ := utils.AcquireLock(throttleKey, vipUpgradeCheckThrottle); acquired {
-			go repository.CheckAndUpgradeVipLevel(db, vipUserID)
+			uid := vipUserID
+			go func() {
+				// 邀请有效用户标记（含分表流水/充值聚合查询，原本在同步事务里，移出热点路径）
+				_ = db.Transaction(func(tx2 *gorm.DB) error {
+					_, e := repository.EnsureInviteValidUser(tx2, uid, time.Now())
+					return e
+				})
+				repository.CheckAndUpgradeVipLevel(db, uid)
+			}()
 		}
 	}
 	return balance, nil
@@ -342,21 +384,49 @@ type gameCashTransferGameInfo struct {
 	IsFishing bool
 }
 
-func lookupGameCashTransferGameInfo(tx *gorm.DB, thirdGameID string) gameCashTransferGameInfo {
+type cachedGameInfo struct {
+	info gameCashTransferGameInfo
+	at   time.Time
+}
+
+var gameInfoCache sync.Map // thirdGameID(string) -> cachedGameInfo
+
+const gameInfoCacheTTL = 5 * time.Minute
+
+// getGameCashTransferGameInfo 带 TTL 缓存的游戏信息查询（游戏元数据基本不变，避免每次下注都查库）。
+// 仅缓存命中(找到)的结果，未找到不缓存以便新游戏及时生效。
+func getGameCashTransferGameInfo(db *gorm.DB, thirdGameID string) gameCashTransferGameInfo {
+	key := strings.TrimSpace(thirdGameID)
+	if key == "" {
+		return gameCashTransferGameInfo{}
+	}
+	if v, ok := gameInfoCache.Load(key); ok {
+		if c, ok2 := v.(cachedGameInfo); ok2 && time.Since(c.at) < gameInfoCacheTTL {
+			return c.info
+		}
+	}
+	info, found := lookupGameCashTransferGameInfo(db, key)
+	if found {
+		gameInfoCache.Store(key, cachedGameInfo{info: info, at: time.Now()})
+	}
+	return info
+}
+
+func lookupGameCashTransferGameInfo(db *gorm.DB, thirdGameID string) (gameCashTransferGameInfo, bool) {
 	var appGame pojo.AppGame
-	err := tx.Model(&pojo.AppGame{}).
+	err := db.Model(&pojo.AppGame{}).
 		Select("game_name, category_code, type").
 		Where("third_game_id = ? AND COALESCE(deleted_flag, 0) = 0", strings.TrimSpace(thirdGameID)).
 		First(&appGame).Error
 	if err != nil {
-		return gameCashTransferGameInfo{}
+		return gameCashTransferGameInfo{}, false
 	}
 	categoryCode := strings.ToLower(strings.TrimSpace(appGameStringValue(appGame.CategoryCode)))
 	isFishing := categoryCode == "fishing" || (appGame.Type != nil && *appGame.Type == 3)
 	return gameCashTransferGameInfo{
 		GameName:  appGameStringValue(appGame.GameName),
 		IsFishing: isFishing,
-	}
+	}, true
 }
 
 func createGameBetRecord(tx *gorm.DB, user pojo.TgUser, req pojo.GameCashTransferInOutReq, amount float64, gameInfo gameCashTransferGameInfo) error {

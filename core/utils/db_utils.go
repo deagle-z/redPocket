@@ -49,14 +49,35 @@ func NewPrefixDb(prefix string) (db *gorm.DB) {
 		log.Printf("连接数据库错误 %s", err.Error())
 		return nil
 	}
+	// 连接池参数（可在 core.yaml mysql 下配置；0 用默认）。原值 5/2 过小，高并发下请求排队等连接导致接口变慢。
+	maxOpen := GlobalConfig.Mysql.MaxOpenConns
+	if maxOpen <= 0 {
+		maxOpen = 30
+	}
+	maxIdle := GlobalConfig.Mysql.MaxIdleConns
+	if maxIdle <= 0 {
+		maxIdle = 10
+	}
+	if maxIdle > maxOpen {
+		maxIdle = maxOpen
+	}
+	connMaxLifetime := time.Duration(GlobalConfig.Mysql.ConnMaxLifetimeMinutes) * time.Minute
+	if connMaxLifetime <= 0 {
+		connMaxLifetime = 30 * time.Minute
+	}
+	connMaxIdleTime := time.Duration(GlobalConfig.Mysql.ConnMaxIdleTimeMinutes) * time.Minute
+	if connMaxIdleTime <= 0 {
+		connMaxIdleTime = 5 * time.Minute
+	}
+
 	err = newDb.Use(dbresolver.Register(dbresolver.Config{
 		Sources:  []gorm.Dialector{mysql.Open(masterStr)}, // 主库，写操作
 		Replicas: []gorm.Dialector{mysql.Open(slaveStr)},  // 从库，读操作
 		Policy:   dbresolver.RandomPolicy{},               // 读库负载均衡策略
-	}).SetConnMaxIdleTime(30 * time.Second).
-		SetConnMaxLifetime(5 * time.Minute).
-		SetMaxIdleConns(2).
-		SetMaxOpenConns(5))
+	}).SetConnMaxIdleTime(connMaxIdleTime).
+		SetConnMaxLifetime(connMaxLifetime).
+		SetMaxIdleConns(maxIdle).
+		SetMaxOpenConns(maxOpen))
 	if err != nil {
 		panic(err)
 		return
@@ -65,10 +86,10 @@ func NewPrefixDb(prefix string) (db *gorm.DB) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	sqlDB.SetMaxIdleConns(2)                   // 设置最大空闲连接数
-	sqlDB.SetMaxOpenConns(5)                   // 设置最大连接数
-	sqlDB.SetConnMaxLifetime(5 * time.Minute)  // 设置连接保持时间
-	sqlDB.SetConnMaxIdleTime(30 * time.Second) // 设置闲置保持时间
+	sqlDB.SetMaxIdleConns(maxIdle)              // 设置最大空闲连接数
+	sqlDB.SetMaxOpenConns(maxOpen)             // 设置最大连接数
+	sqlDB.SetConnMaxLifetime(connMaxLifetime)  // 设置连接保持时间
+	sqlDB.SetConnMaxIdleTime(connMaxIdleTime)  // 设置闲置保持时间
 	ctx := context.WithValue(context.Background(), KeyDbPrefix, prefix)
 	newDb = newDb.WithContext(ctx)
 	dbPool[prefix] = newDb

@@ -15,6 +15,12 @@ type Config struct {
 		DataSource string `yaml:"dataSource"`
 		Master     string `yaml:"master"`
 		Slave      string `yaml:"slave"`
+		// 连接池（每个租户库一套；0 表示用默认值）。注意：总连接数 ≈ 活跃租户数 × MaxOpenConns，
+		// 需与 MySQL 的 max_connections 匹配。
+		MaxOpenConns           int `yaml:"maxOpenConns"`           // 默认 30
+		MaxIdleConns           int `yaml:"maxIdleConns"`           // 默认 10
+		ConnMaxLifetimeMinutes int `yaml:"connMaxLifetimeMinutes"` // 默认 30
+		ConnMaxIdleTimeMinutes int `yaml:"connMaxIdleTimeMinutes"` // 默认 5
 	} `yaml:"mysql"`
 	Redis    Redis          `yaml:"redis"`
 	RabbitMq RabbitMq       `yaml:"rabbitMq"`
