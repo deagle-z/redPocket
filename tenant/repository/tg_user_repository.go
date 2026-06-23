@@ -202,6 +202,33 @@ func SetTgUserRebateWithdrawDisabled(db *gorm.DB, tenantID int64, id int64, disa
 	return result, nil
 }
 
+func SetTgUserRechargeRebateRates(db *gorm.DB, tenantID int64, id int64, rates string) (result pojo.TgUserAdminBack, err error) {
+	var dbUser pojo.TgUser
+	db.Select("id").Where("id = ? and tenant_id = ?", id, tenantID).First(&dbUser)
+	if dbUser.ID == 0 {
+		return result, errors.New("数据不存在")
+	}
+	return coreRepo.SetTgUserRechargeRebateRates(db, id, rates)
+}
+
+func AddTgUserRebateAmount(db *gorm.DB, tenantID int64, id int64, amount float64) (result pojo.TgUserAdminBack, err error) {
+	var dbUser pojo.TgUser
+	db.Select("id").Where("id = ? and tenant_id = ?", id, tenantID).First(&dbUser)
+	if dbUser.ID == 0 {
+		return result, errors.New("数据不存在")
+	}
+	return coreRepo.AddTgUserRebateAmount(db, id, amount)
+}
+
+func AdminCreateRechargeOrderV2(db *gorm.DB, tenantID int64, req pojo.AdminCreateRechargeOrderV2Req, tablePrefix string) (pojo.RechargeOrderAppBack, error) {
+	var dbUser pojo.TgUser
+	db.Select("id").Where("id = ? and tenant_id = ?", req.UserID, tenantID).First(&dbUser)
+	if dbUser.ID == 0 {
+		return pojo.RechargeOrderAppBack{}, errors.New("数据不存在")
+	}
+	return coreRepo.AdminCreateRechargeOrderV2(db, req.UserID, req.RechargeOrderAppReq, tablePrefix)
+}
+
 func SetTgUserRemark(db *gorm.DB, tenantID int64, id int64, remark string) (result pojo.TgUserBack, err error) {
 	var dbUser pojo.TgUser
 	db.Where("id = ? and tenant_id = ?", id, tenantID).First(&dbUser)

@@ -25,6 +25,7 @@ export type TgUser = {
   rebateRate: number;
   rebateType: number;
   rebateWithdrawDisabled: number;
+  rechargeRebateRates?: string;
   status: number;
   parentId?: number | null;
   parentUid?: string | null;
@@ -69,9 +70,47 @@ export type TgUserRebateWithdrawDisabledSet = {
   rebateWithdrawDisabled: number;
 };
 
+export type TgUserRechargeRebateRatesSet = {
+  id: number;
+  rechargeRebateRates: string;
+};
+
+export type TgUserRebateAmountAdd = {
+  id: number;
+  amount: number;
+};
+
 export type TgUserRemarkSet = {
   id: number;
   remark: string;
+};
+
+export type TgUserCreateRechargeOrderV2Req = {
+  userId: number;
+  amount: number;
+  channel: string;
+  payMethod?: string;
+  currency?: string;
+  countryCode?: string;
+  merchantOrderNo?: string;
+  extraFields?: Record<string, string>;
+  confirmUnfinishedActivityCycle?: boolean;
+};
+
+export type TgUserRechargeOrderAppBack = {
+  orderNo: string;
+  merchantOrderNo?: string | null;
+  channel: string;
+  payMethod?: string | null;
+  currency: string;
+  amount: number;
+  netAmount?: number;
+  status: number;
+  creditAmount?: number | null;
+  bonusAmount?: number;
+  payUrl?: string;
+  needConfirmUnfinishedActivityCycle?: boolean;
+  activeActivityMultiplier?: number;
 };
 
 export type TgUserSubStatsSummarySearch = {
@@ -111,6 +150,13 @@ export type TgUserResult = {
   message: string;
   success: boolean;
   data: TgUser;
+};
+
+export type TgUserRechargeOrderResult = {
+  code: number;
+  message: string;
+  success: boolean;
+  data: TgUserRechargeOrderAppBack;
 };
 
 export type TgUserSubStatsSummaryResult = {
@@ -195,10 +241,44 @@ export const setTgUserRebateWithdrawDisabled = (
   );
 };
 
+export const setTgUserRechargeRebateRates = (
+  data: TgUserRechargeRebateRatesSet
+) => {
+  return http.request<TgUserResult>(
+    "post",
+    "/api/v1/tenant/tgUser/rechargeRebateRates",
+    {
+      data
+    }
+  );
+};
+
+export const addTgUserRebateAmount = (data: TgUserRebateAmountAdd) => {
+  return http.request<TgUserResult>(
+    "post",
+    "/api/v1/tenant/tgUser/rebateAmount",
+    {
+      data
+    }
+  );
+};
+
 export const setTgUserRemark = (data: TgUserRemarkSet) => {
   return http.request<TgUserResult>("post", "/api/v1/tenant/tgUser/remark", {
     data
   });
+};
+
+export const createTgUserRechargeOrderV2 = (
+  data: TgUserCreateRechargeOrderV2Req
+) => {
+  return http.request<TgUserRechargeOrderResult>(
+    "post",
+    "/api/v1/tenant/tgUser/rechargeOrder/v2",
+    {
+      data
+    }
+  );
 };
 
 export const getAdminBotUserList = (data: TgUserSearch) => {

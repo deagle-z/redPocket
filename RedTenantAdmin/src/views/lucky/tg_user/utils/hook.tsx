@@ -229,7 +229,7 @@ export function useTgUser(_tableRef: Ref) {
     {
       label: "操作",
       fixed: "right",
-      width: 420,
+      width: 480,
       slot: "operation"
     }
   ];

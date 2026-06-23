@@ -17,6 +17,7 @@ import (
 	"encoding/pem"
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -259,6 +260,64 @@ func (g *Provider) CreatePayoutOrder(req pay.PayoutRequest) (pay.PayoutResponse,
 	return resp, nil
 }
 
+// QueryPayoutOrder 调用 GCTPKMXN 代付单笔查询接口
+// POST https://taslk.gctpk.com/payout/singleQuery
+func (g *Provider) QueryPayoutOrder(req pay.PayoutQueryRequest) (pay.PayoutQueryResponse, error) {
+	cfg := utils.GlobalConfig.Pay.Gctpkmxn
+	missingConfig := missingPayoutConfigFields(cfg)
+	if len(missingConfig) > 0 {
+		return pay.PayoutQueryResponse{}, fmt.Errorf("GCTPKMXN 代付查询配置不完整，core.yaml pay.gctpkmxn 缺少: %s", strings.Join(missingConfig, ", "))
+	}
+	if strings.TrimSpace(req.OrderNo) == "" {
+		return pay.PayoutQueryResponse{}, fmt.Errorf("GCTPKMXN 代付查询参数缺少 merOrderNo")
+	}
+
+	baseURL := strings.TrimRight(cfg.PayoutBaseURL, "/")
+	if baseURL == "" {
+		baseURL = "https://taslk.gctpk.com"
+	}
+
+	timestamp := fmt.Sprintf("%d", time.Now().UnixMilli())
+	requestNo := strings.TrimSpace(req.RequestNo)
+	if requestNo == "" {
+		requestNo = defaultPayoutQueryRequestNo(timestamp)
+	}
+	params := buildPayoutQueryParams(cfg, req, timestamp, requestNo)
+
+	signA := BuildSign(params, cfg.Secret)
+	rsaSign, err := rsaPrivateKeyEncrypt([]byte(signA), cfg.PrivateKey)
+	if err != nil {
+		return pay.PayoutQueryResponse{}, fmt.Errorf("GCTPKMXN 代付查询签名失败: %w", err)
+	}
+	params["sign"] = rsaSign
+
+	respBody, err := postJSON(baseURL+"/payout/singleQuery", params)
+	if err != nil {
+		return pay.PayoutQueryResponse{}, fmt.Errorf("GCTPKMXN 代付查询请求失败: %w", err)
+	}
+
+	var apiResp payoutQueryResp
+	if err = json.Unmarshal(respBody, &apiResp); err != nil {
+		return pay.PayoutQueryResponse{}, fmt.Errorf("GCTPKMXN 代付查询响应解析失败: %w", err)
+	}
+	if apiResp.Code != 200 {
+		return pay.PayoutQueryResponse{}, fmt.Errorf("GCTPKMXN 代付查询失败 code=%d msg=%s", apiResp.Code, apiResp.Msg)
+	}
+	if apiResp.Data == nil {
+		return pay.PayoutQueryResponse{}, fmt.Errorf("GCTPKMXN 代付查询失败: data is empty")
+	}
+
+	return pay.PayoutQueryResponse{
+		ProviderOrderNo: apiResp.Data.OrderNo,
+		OrderNo:         apiResp.Data.MerOrderNo,
+		Status:          apiResp.Data.Status,
+		Amount:          apiResp.Data.OrderAmount.Float64(),
+		SubMsg:          apiResp.Data.SubMsg,
+		SubCode:         apiResp.Data.SubCode.String(),
+		PayTime:         apiResp.Data.PayTime,
+	}, nil
+}
+
 func missingPayoutConfigFields(cfg base.GctpkPayConfig) []string {
 	missing := make([]string, 0, 3)
 	if strings.TrimSpace(cfg.MerNo) == "" {
@@ -271,6 +330,27 @@ func missingPayoutConfigFields(cfg base.GctpkPayConfig) []string {
 		missing = append(missing, "privateKey")
 	}
 	return missing
+}
+
+func buildPayoutQueryParams(cfg base.GctpkPayConfig, req pay.PayoutQueryRequest, timestamp string, requestNo string) map[string]string {
+	params := map[string]string{
+		"merNo":      cfg.MerNo,
+		"requestNo":  requestNo,
+		"merOrderNo": strings.TrimSpace(req.OrderNo),
+		"timestamp":  timestamp,
+	}
+	if providerOrderNo := strings.TrimSpace(req.ProviderOrderNo); providerOrderNo != "" {
+		params["orderNo"] = providerOrderNo
+	}
+	return params
+}
+
+func defaultPayoutQueryRequestNo(timestamp string) string {
+	var suffix [4]byte
+	if _, err := rand.Read(suffix[:]); err == nil {
+		return "Q" + timestamp + hex.EncodeToString(suffix[:])
+	}
+	return "Q" + timestamp
 }
 
 func buildPayoutParams(cfg base.GctpkPayConfig, req pay.PayoutRequest, notifyURL string, timestamp string, identityType string) map[string]string {
@@ -378,6 +458,11 @@ func (v flexString) String() string {
 	return strings.TrimSpace(string(v))
 }
 
+func (v flexString) Float64() float64 {
+	amount, _ := strconv.ParseFloat(v.String(), 64)
+	return amount
+}
+
 func createOrderDataErrorMessage(apiMsg string, subMsg string) string {
 	if v := strings.TrimSpace(subMsg); v != "" {
 		return v
@@ -394,4 +479,21 @@ type payoutOrderResp struct {
 type payoutOrderData struct {
 	OrderNo string `json:"orderNo"`
 	Status  int    `json:"status"`
+}
+
+type payoutQueryResp struct {
+	Code int              `json:"code"`
+	Msg  string           `json:"msg"`
+	Data *payoutQueryData `json:"data"`
+}
+
+type payoutQueryData struct {
+	OrderNo     string     `json:"orderNo"`
+	MerOrderNo  string     `json:"merOrderNo"`
+	Status      int        `json:"status"`
+	OrderAmount flexString `json:"orderAmount"`
+	SubMsg      string     `json:"subMsg"`
+	SubCode     flexString `json:"subCode"`
+	PayTime     string     `json:"payTime"`
+	Sign        string     `json:"sign"`
 }

@@ -72,11 +72,36 @@ type PayoutResponse struct {
 	Status          int    // 三方返回的订单状态
 }
 
+// PayoutQueryRequest 代付查单请求参数。
+type PayoutQueryRequest struct {
+	OrderNo         string // 商户订单号
+	ProviderOrderNo string // 三方平台订单号（可空）
+	RequestNo       string // 请求流水号（可空，provider 可自动生成）
+}
+
+// PayoutQueryResponse 代付查单响应。
+type PayoutQueryResponse struct {
+	ProviderOrderNo string  // 三方平台订单号
+	OrderNo         string  // 商户订单号
+	Status          int     // 三方订单状态
+	Amount          float64 // 订单金额
+	SubMsg          string  // 渠道返回信息
+	SubCode         string  // 渠道响应码
+	PayTime         string  // 交易时间
+}
+
 // PayoutProvider 代付渠道策略接口（可选实现，代收渠道不必实现此接口）
 type PayoutProvider interface {
 	Provider
 	// CreatePayoutOrder 调用三方创建代付订单
 	CreatePayoutOrder(req PayoutRequest) (PayoutResponse, error)
+}
+
+// PayoutQueryProvider 代付查单渠道策略接口（可选实现）。
+type PayoutQueryProvider interface {
+	Provider
+	// QueryPayoutOrder 调用三方查询代付订单
+	QueryPayoutOrder(req PayoutQueryRequest) (PayoutQueryResponse, error)
 }
 
 // GetPayout 根据渠道名称获取 PayoutProvider；不支持代付则返回 nil
@@ -87,6 +112,16 @@ func GetPayout(channel string) PayoutProvider {
 	}
 	pp, _ := p.(PayoutProvider)
 	return pp
+}
+
+// GetPayoutQuery 根据渠道名称获取 PayoutQueryProvider；不支持查单则返回 nil。
+func GetPayoutQuery(channel string) PayoutQueryProvider {
+	p := Get(channel)
+	if p == nil {
+		return nil
+	}
+	pq, _ := p.(PayoutQueryProvider)
+	return pq
 }
 
 var (

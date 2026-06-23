@@ -85,8 +85,8 @@ func InitGin() {
 	commonGroupLog := router.Group("/api/v1/outside")
 	commonGroupLog.Use(authMiddleware([]int{1, 2, 3}, false, true), manageLog())
 	{
-		commonGroupLog.GET("/user/unbind/gauth", api.UnBindGAuth) // 解绑自己谷歌验证
-		commonGroupLog.PUT("/user/pass", api.ChangePass)          // 修改密码
+		commonGroupLog.GET("/user/unbind/gauth", api.UnBindGAuth)    // 解绑自己谷歌验证
+		commonGroupLog.PUT("/user/pass", api.ChangePass)             // 修改密码
 		commonGroupLog.PUT("/user/changeOwnPass", api.ChangeOwnPass) // 修改自己密码(校验旧密码)
 		commonGroupLog.GET("/user/twofa/status", api.TwofaStatus)    // 谷歌验证绑定状态
 		commonGroupLog.GET("/user/twofa/setup", api.TwofaSetup)      // 生成待绑定密钥
@@ -281,11 +281,11 @@ func InitGin() {
 		tenantGroup.POST("/dashboard/onlineUsers", tenantApi.GetDashboardOnlineUsers)
 		tenantGroup.POST("/dashboard/rechargeUsers", tenantApi.GetDashboardRechargeUsers)
 		tenantGroup.POST("/dashboard/registerUsers", tenantApi.GetDashboardRegisterUsers)
-		tenantGroup.POST("/account/changePassword", tenantApi.ChangeTenantPassword) // 修改当前账号密码
-		tenantGroup.GET("/account/twofa/status", tenantApi.GetTenantTwofaStatus)    // Google验证码绑定状态
-		tenantGroup.GET("/account/twofa/setup", tenantApi.SetupTenantTwofa)         // 生成待绑定密钥
-		tenantGroup.POST("/account/twofa/bind", tenantApi.BindTenantTwofa)          // 绑定Google验证码
-		tenantGroup.POST("/account/twofa/unbind", tenantApi.UnbindTenantTwofa)      // 解绑Google验证码
+		tenantGroup.POST("/account/changePassword", tenantApi.ChangeTenantPassword)         // 修改当前账号密码
+		tenantGroup.GET("/account/twofa/status", tenantApi.GetTenantTwofaStatus)            // Google验证码绑定状态
+		tenantGroup.GET("/account/twofa/setup", tenantApi.SetupTenantTwofa)                 // 生成待绑定密钥
+		tenantGroup.POST("/account/twofa/bind", tenantApi.BindTenantTwofa)                  // 绑定Google验证码
+		tenantGroup.POST("/account/twofa/unbind", tenantApi.UnbindTenantTwofa)              // 解绑Google验证码
 		tenantGroup.POST("/dashboard/rechargeOrders", tenantApi.GetDashboardRechargeOrders) // 充值总额明细（今天/昨天）
 		tenantGroup.POST("/dashboard/withdrawOrders", tenantApi.GetDashboardWithdrawOrders) // 提现总额明细（今天/昨天）
 
@@ -302,6 +302,8 @@ func InitGin() {
 		tenantGroup.GET("/rechargeOrder/:id", tenantApi.GetRechargeOrderById)
 		tenantGroup.POST("/rechargeOrder", tenantApi.SetRechargeOrder)
 		tenantGroup.DELETE("/rechargeOrder/:id", tenantApi.DelRechargeOrder)
+		tenantGroup.POST("/sysCountry/list", api.GetSysCountries)
+		tenantGroup.GET("/sysCountryRecharge/:code", api.GetAdminCountryRechargeInfo)
 
 		tenantGroup.POST("/tgUser/list", tenantApi.GetTgUsers)
 		tenantGroup.POST("/tgUser/listWithSubStats", tenantApi.GetTgUsersWithSubStats)
@@ -313,6 +315,9 @@ func InitGin() {
 		tenantGroup.POST("/tgUser/rebateRate", tenantApi.SetTgUserRebateRate)
 		tenantGroup.POST("/tgUser/rebateType", tenantApi.SetTgUserRebateType)
 		tenantGroup.POST("/tgUser/rebateWithdrawDisabled", tenantApi.SetTgUserRebateWithdrawDisabled)
+		tenantGroup.POST("/tgUser/rechargeRebateRates", tenantApi.SetTgUserRechargeRebateRates)
+		tenantGroup.POST("/tgUser/rebateAmount", tenantApi.AddTgUserRebateAmount)
+		tenantGroup.POST("/tgUser/rechargeOrder/v2", tenantApi.TenantCreateRechargeOrderV2)
 		tenantGroup.POST("/tgUser/remark", tenantApi.SetTgUserRemark)
 		tenantGroup.DELETE("/tgUser/:id", tenantApi.DelTgUser)
 

@@ -167,6 +167,74 @@ func SetTgUserRebateWithdrawDisabled(ctx *gin.Context) {
 	utils.SuccessObjBack(ctx, result)
 }
 
+func SetTgUserRechargeRebateRates(ctx *gin.Context) {
+	tenantID, ok := getTenantID(ctx)
+	if !ok {
+		return
+	}
+	var req pojo.TgUserRechargeRebateRatesSet
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	if req.ID <= 0 {
+		utils.ErrorBack(ctx, "参数格式错误")
+		return
+	}
+	result, err := tenantRepo.SetTgUserRechargeRebateRates(getDB(ctx), tenantID, req.ID, req.RechargeRebateRates)
+	if err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	utils.SuccessObjBack(ctx, result)
+}
+
+func AddTgUserRebateAmount(ctx *gin.Context) {
+	tenantID, ok := getTenantID(ctx)
+	if !ok {
+		return
+	}
+	var req pojo.TgUserRebateAmountAdd
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	req.Amount = utils.Truncate2(req.Amount)
+	if req.ID <= 0 || req.Amount <= 0 {
+		utils.ErrorBack(ctx, "参数格式错误")
+		return
+	}
+	result, err := tenantRepo.AddTgUserRebateAmount(getDB(ctx), tenantID, req.ID, req.Amount)
+	if err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	utils.SuccessObjBack(ctx, result)
+}
+
+func TenantCreateRechargeOrderV2(ctx *gin.Context) {
+	tenantID, ok := getTenantID(ctx)
+	if !ok {
+		return
+	}
+	var req pojo.AdminCreateRechargeOrderV2Req
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		utils.ErrorBack(ctx, "参数格式错误")
+		return
+	}
+	if req.UserID <= 0 {
+		utils.ErrorBack(ctx, "参数格式错误")
+		return
+	}
+	hostInfo := ctx.MustGet("hostInfo").(pojo.HostInfo)
+	result, err := tenantRepo.AdminCreateRechargeOrderV2(getDB(ctx), tenantID, req, hostInfo.TablePrefix)
+	if err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	utils.SuccessObjBack(ctx, result)
+}
+
 func SetTgUserRemark(ctx *gin.Context) {
 	tenantID, ok := getTenantID(ctx)
 	if !ok {

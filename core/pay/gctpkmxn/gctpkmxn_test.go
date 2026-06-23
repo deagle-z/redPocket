@@ -3,6 +3,7 @@ package gctpk
 import (
 	"BaseGoUni/core/base"
 	"BaseGoUni/core/pay"
+	"encoding/json"
 	"testing"
 )
 
@@ -58,5 +59,82 @@ func TestResolveNotifyURLUsesConfigNotifyURL(t *testing.T) {
 
 	if got := resolveNotifyURL(cfg); got != cfg.NotifyURL {
 		t.Fatalf("resolveNotifyURL = %q, want config notify URL", got)
+	}
+}
+
+func TestBuildPayoutQueryParamsIncludesDocumentFields(t *testing.T) {
+	req := pay.PayoutQueryRequest{
+		OrderNo:         "WD202606230001",
+		ProviderOrderNo: "PAYOUT202606230001",
+		RequestNo:       "REQ202606230001",
+	}
+
+	params := buildPayoutQueryParams(
+		base.GctpkPayConfig{MerNo: "merchant"},
+		req,
+		"1760000000000",
+		"REQ202606230001",
+	)
+
+	expected := map[string]string{
+		"merNo":      "merchant",
+		"requestNo":  "REQ202606230001",
+		"merOrderNo": "WD202606230001",
+		"orderNo":    "PAYOUT202606230001",
+		"timestamp":  "1760000000000",
+	}
+	for key, want := range expected {
+		if got := params[key]; got != want {
+			t.Fatalf("params[%q] = %q, want %q", key, got, want)
+		}
+	}
+}
+
+func TestBuildPayoutQueryParamsOmitsEmptyProviderOrderNo(t *testing.T) {
+	req := pay.PayoutQueryRequest{
+		OrderNo:   "WD202606230001",
+		RequestNo: "REQ202606230001",
+	}
+
+	params := buildPayoutQueryParams(
+		base.GctpkPayConfig{MerNo: "merchant"},
+		req,
+		"1760000000000",
+		"REQ202606230001",
+	)
+
+	if _, exists := params["orderNo"]; exists {
+		t.Fatalf("params should omit empty orderNo, got %q", params["orderNo"])
+	}
+}
+
+func TestPayoutQueryRespParsesAmountAndFlexibleSubCode(t *testing.T) {
+	body := []byte(`{
+		"code": 200,
+		"msg": "success",
+		"data": {
+			"orderNo": "PAYOUT202606230001",
+			"merOrderNo": "WD202606230001",
+			"status": 7,
+			"orderAmount": "123.45",
+			"subMsg": "paid",
+			"subCode": 1001,
+			"payTime": "2026-06-23 12:30:00",
+			"sign": "abc"
+		}
+	}`)
+
+	var parsed payoutQueryResp
+	if err := json.Unmarshal(body, &parsed); err != nil {
+		t.Fatalf("json.Unmarshal payoutQueryResp error = %v", err)
+	}
+	if parsed.Data == nil {
+		t.Fatal("parsed.Data is nil")
+	}
+	if got := parsed.Data.OrderAmount.Float64(); got != 123.45 {
+		t.Fatalf("orderAmount = %v, want 123.45", got)
+	}
+	if got := parsed.Data.SubCode.String(); got != "1001" {
+		t.Fatalf("subCode = %q, want 1001", got)
 	}
 }
