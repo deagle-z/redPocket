@@ -21,6 +21,8 @@ const (
 	appWithdrawFeeRate        = 0.05
 	appWithdrawSourceBalance  = "balance"
 	appWithdrawSourceRebate   = "rebate"
+	appWithdrawDefaultChannel = "pix"
+	appWithdrawVcpayMxn       = "VCPAYMXN"
 )
 
 // GetWithdrawOrderBrs godoc
@@ -306,6 +308,8 @@ func AppCreateWithdrawOrderV2(ctx *gin.Context) {
 		return
 	}
 	withdrawFee := calculateAppWithdrawFee(todayWithdrawCount, req.Amount)
+	withdrawProvider := resolveAppWithdrawV2Provider(countryCode)
+	withdrawChannel := resolveAppWithdrawV2Channel(countryCode)
 	orderReq := pojo.WithdrawOrderBrSet{
 		TenantId:        user.TenantId,
 		UserId:          user.ID,
@@ -316,7 +320,8 @@ func AppCreateWithdrawOrderV2(ctx *gin.Context) {
 		CountryCode:     countryCode,
 		Amount:          req.Amount,
 		Fee:             withdrawFee,
-		Channel:         "pix",
+		Channel:         withdrawChannel,
+		Provider:        optionalString(withdrawProvider),
 		Status:          0,
 		Extra:           &extra,
 		IdempotencyKey:  optionalString(orderNo),
@@ -567,6 +572,20 @@ func formatOptionalInt64(value *int64) string {
 		return ""
 	}
 	return strconv.FormatInt(*value, 10)
+}
+
+func resolveAppWithdrawV2Provider(countryCode string) string {
+	if pojo.NormalizeWithdrawCountryCode(countryCode) == "MX" {
+		return appWithdrawVcpayMxn
+	}
+	return ""
+}
+
+func resolveAppWithdrawV2Channel(countryCode string) string {
+	if provider := resolveAppWithdrawV2Provider(countryCode); provider != "" {
+		return provider
+	}
+	return appWithdrawDefaultChannel
 }
 
 func isAppWithdrawV2BusinessError(responseMsg string, err error) bool {

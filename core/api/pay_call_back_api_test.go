@@ -3,6 +3,8 @@ package api
 import (
 	"BaseGoUni/core/base"
 	"BaseGoUni/core/pay/gctpk"
+	"BaseGoUni/core/pay/vcpaymxn"
+	"BaseGoUni/core/utils"
 	"testing"
 )
 
@@ -99,5 +101,35 @@ func TestGctpkPayinCallbackConfigDoesNotRequireMerchantOrSignMatch(t *testing.T)
 
 	if _, _, err := validateGctpkPayConfig(req, cfg, "GCTPKMXN"); err != nil {
 		t.Fatalf("validateGctpkPayConfig() error = %v", err)
+	}
+}
+
+func TestValidateVcpayMxnNotifyConfigAcceptsCallbackSignWithoutCodeMsg(t *testing.T) {
+	oldConfig := utils.GlobalConfig
+	defer func() {
+		utils.GlobalConfig = oldConfig
+	}()
+
+	utils.GlobalConfig.Pay.Vcpaymxn = base.VcpayMxnPayConfig{
+		AppID:  "app123",
+		AppKey: "secret",
+	}
+	req := vcpayMxnNotifyReq{
+		Code:        "200",
+		Msg:         "SUCCESS",
+		AppID:       "app123",
+		NonceStr:    "nonce123",
+		NotifyURL:   "https://merchant.test/wd/notify",
+		OrderAmount: 10000,
+		OrderFee:    0,
+		OutTradeNo:  "WD123456",
+		TradeNo:     "8888888888888888",
+		TradeState:  1,
+		TradeType:   "MX0001",
+	}
+	req.Sign = vcpaymxn.BuildCallbackSignAny(buildVcpayMxnNotifyParams(req), "secret")
+
+	if _, err := validateVcpayMxnNotifyConfig(req); err != nil {
+		t.Fatalf("validateVcpayMxnNotifyConfig() error = %v", err)
 	}
 }

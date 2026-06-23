@@ -7,6 +7,7 @@ import (
 	_ "BaseGoUni/core/pay/gctpk" // 注册 GCTPK 支付渠道
 	_ "BaseGoUni/core/pay/gctpkBRL"
 	_ "BaseGoUni/core/pay/gctpkmxn"
+	_ "BaseGoUni/core/pay/vcpaymxn"
 	"BaseGoUni/core/pojo"
 	"BaseGoUni/core/services"
 	"BaseGoUni/core/utils"

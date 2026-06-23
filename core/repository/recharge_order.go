@@ -314,12 +314,28 @@ func AppCreateRechargeOrder(db *gorm.DB, userID int64, req pojo.RechargeOrderApp
 
 func AppCreateRechargeOrderV2(db *gorm.DB, userID int64, req pojo.RechargeOrderAppReq, tablePrefix string) (result pojo.RechargeOrderAppBack, err error) {
 	activityType := rechargeActivityTypeV2Gift
+	req = applyRechargeV2DefaultProvider(req)
 	return appCreateRechargeOrder(db, userID, req, tablePrefix, &activityType, rechargeV2MinAmount)
 }
 
 func AdminCreateRechargeOrderV2(db *gorm.DB, userID int64, req pojo.RechargeOrderAppReq, tablePrefix string) (result pojo.RechargeOrderAppBack, err error) {
 	activityType := rechargeActivityTypeV2Gift
+	req = applyRechargeV2DefaultProvider(req)
 	return appCreateRechargeOrder(db, userID, req, tablePrefix, &activityType, AdminRechargeV2MinAmount)
+}
+
+func applyRechargeV2DefaultProvider(req pojo.RechargeOrderAppReq) pojo.RechargeOrderAppReq {
+	if strings.TrimSpace(req.Channel) != "" {
+		return req
+	}
+	if pojo.NormalizeWithdrawCountryCode(req.CountryCode) != "MX" {
+		return req
+	}
+	req.Channel = "VCPAYMXN"
+	if strings.TrimSpace(req.Currency) == "" {
+		req.Currency = "MXN"
+	}
+	return req
 }
 
 // appCreateRechargeOrder app端创建充值订单（dev环境自动回调）

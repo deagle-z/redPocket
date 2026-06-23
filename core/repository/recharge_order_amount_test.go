@@ -1,6 +1,9 @@
 package repository
 
-import "testing"
+import (
+	"BaseGoUni/core/pojo"
+	"testing"
+)
 
 func TestFloorRechargeAmount(t *testing.T) {
 	tests := []struct {
@@ -41,5 +44,29 @@ func TestCalculateRechargeProviderAmount(t *testing.T) {
 				t.Fatalf("calculateRechargeProviderAmount(%v, %v) = %v, want %v", tt.amount, tt.rate, got, tt.want)
 			}
 		})
+	}
+}
+
+func TestApplyRechargeV2DefaultProviderUsesVcpayForMexico(t *testing.T) {
+	req := applyRechargeV2DefaultProvider(pojo.RechargeOrderAppReq{
+		CountryCode: " mx ",
+	})
+
+	if req.Channel != "VCPAYMXN" {
+		t.Fatalf("Channel = %q, want VCPAYMXN", req.Channel)
+	}
+	if req.Currency != "MXN" {
+		t.Fatalf("Currency = %q, want MXN", req.Currency)
+	}
+}
+
+func TestApplyRechargeV2DefaultProviderKeepsExplicitChannel(t *testing.T) {
+	req := applyRechargeV2DefaultProvider(pojo.RechargeOrderAppReq{
+		CountryCode: "MX",
+		Channel:     "GCTPKMXN",
+	})
+
+	if req.Channel != "GCTPKMXN" {
+		t.Fatalf("Channel = %q, want GCTPKMXN", req.Channel)
 	}
 }

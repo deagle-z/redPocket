@@ -38,9 +38,10 @@ type GameConfig struct {
 }
 
 type PayConfig struct {
-	Gctpk    GctpkPayConfig `yaml:"gctpk"`
-	Gctpkmxn GctpkPayConfig `yaml:"gctpkmxn"`
-	Gctpkbrl GctpkPayConfig `yaml:"gctpkbrl"`
+	Gctpk    GctpkPayConfig    `yaml:"gctpk"`
+	Gctpkmxn GctpkPayConfig    `yaml:"gctpkmxn"`
+	Gctpkbrl GctpkPayConfig    `yaml:"gctpkbrl"`
+	Vcpaymxn VcpayMxnPayConfig `yaml:"vcpaymxn"`
 }
 
 type GctpkPayConfig struct {
@@ -52,6 +53,15 @@ type GctpkPayConfig struct {
 	PayoutBaseURL   string `yaml:"payoutBaseUrl"`   // 代付 API 根地址，如 https://taslk.gctpk.com
 	PayoutNotifyURL string `yaml:"payoutNotifyUrl"` // 代付异步回调地址
 	PrivateKey      string `yaml:"privateKey"`      // RSA-1024 PKCS#8 私钥（PEM，用于代付签名）
+}
+
+type VcpayMxnPayConfig struct {
+	AppID           string `yaml:"appId"`           // APP ID
+	AppKey          string `yaml:"appKey"`          // MD5 签名 key
+	BaseURL         string `yaml:"baseUrl"`         // API 根地址
+	NotifyURL       string `yaml:"notifyUrl"`       // 代收异步回调地址
+	PageURL         string `yaml:"pageUrl"`         // 支付完成跳转地址
+	PayoutNotifyURL string `yaml:"payoutNotifyUrl"` // 代付异步回调地址
 }
 
 type TelegramConfig struct {

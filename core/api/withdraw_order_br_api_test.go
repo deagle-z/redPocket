@@ -23,3 +23,21 @@ func TestCalculateAppWithdrawFeeFreeFirstThreeWithdrawals(t *testing.T) {
 		})
 	}
 }
+
+func TestResolveAppWithdrawV2ChannelUsesVcpayForMexico(t *testing.T) {
+	if got := resolveAppWithdrawV2Channel(" mx "); got != "VCPAYMXN" {
+		t.Fatalf("resolveAppWithdrawV2Channel() = %q, want VCPAYMXN", got)
+	}
+	if got := resolveAppWithdrawV2Provider("MX"); got != "VCPAYMXN" {
+		t.Fatalf("resolveAppWithdrawV2Provider() = %q, want VCPAYMXN", got)
+	}
+}
+
+func TestResolveAppWithdrawV2ChannelKeepsPixForOtherCountries(t *testing.T) {
+	if got := resolveAppWithdrawV2Channel("BR"); got != "pix" {
+		t.Fatalf("resolveAppWithdrawV2Channel() = %q, want pix", got)
+	}
+	if got := resolveAppWithdrawV2Provider("BR"); got != "" {
+		t.Fatalf("resolveAppWithdrawV2Provider() = %q, want empty", got)
+	}
+}
