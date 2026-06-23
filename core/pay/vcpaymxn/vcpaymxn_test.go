@@ -40,7 +40,7 @@ func TestBuildPayinParams(t *testing.T) {
 	if params["notify_url"] != "https://merchant.test/pay/notify" {
 		t.Fatalf("notify_url = %v", params["notify_url"])
 	}
-	if params["back_url"] != "https://merchant.test/return" {
+	if params["back_url"] != "https://request.test/return" {
 		t.Fatalf("back_url = %v", params["back_url"])
 	}
 	if params["identity_type"] != defaultIdentityType {

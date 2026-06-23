@@ -149,6 +149,7 @@ type RechargeOrderAppReq struct {
 	CountryCode                    string            `json:"countryCode"`                    // 国家编码（可选，用于校验额外字段）
 	MerchantOrderNo                string            `json:"merchantOrderNo"`                // 商户订单号（可选）
 	ExtraFields                    map[string]string `json:"extraFields"`                    // 国家自定义字段
+	ReturnURL                      string            `json:"-"`                              // 内部字段：同步跳转URL
 	ActivityType                   int8              `json:"activityType"`                   // 活动类型 0无 1首充 2今日首充
 	ActivityCode                   string            `json:"activityCode"`                   // 活动编码：first_recharge_3day / today_first_recharge
 	ConfirmUnfinishedActivityCycle bool              `json:"confirmUnfinishedActivityCycle"` // 是否确认在未结束活动周期内继续普通充值

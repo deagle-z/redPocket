@@ -281,8 +281,8 @@ func resolvePayinNotifyURL(cfg base.VcpayMxnPayConfig, _ pay.PayRequest) string 
 	return strings.TrimSpace(cfg.NotifyURL)
 }
 
-func resolvePayinBackURL(cfg base.VcpayMxnPayConfig, _ pay.PayRequest) string {
-	return strings.TrimSpace(cfg.PageURL)
+func resolvePayinBackURL(cfg base.VcpayMxnPayConfig, req pay.PayRequest) string {
+	return firstNonEmpty(strings.TrimSpace(req.ReturnURL), strings.TrimSpace(cfg.PageURL))
 }
 
 func resolvePayoutNotifyURL(cfg base.VcpayMxnPayConfig, _ pay.PayoutRequest) string {

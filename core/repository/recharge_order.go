@@ -465,6 +465,7 @@ func appCreateRechargeOrder(db *gorm.DB, userID int64, req pojo.RechargeOrderApp
 			PayMethod:      req.PayMethod,
 			CountryCode:    req.CountryCode,
 			ExtraFields:    req.ExtraFields,
+			ReturnURL:      req.ReturnURL,
 		})
 		if err != nil {
 			log.Printf("[AppCreateRechargeOrder] 三方创建订单失败 userID=%d orderNo=%s channel=%s amount=%.2f providerAmount=%.2f currency=%s country=%s err=%v", userID, orderNo, req.Channel, req.Amount, providerAmount, req.Currency, req.CountryCode, err)
