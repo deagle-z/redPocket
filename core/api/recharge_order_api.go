@@ -157,7 +157,6 @@ func AppCreateRechargeOrder(ctx *gin.Context) {
 		utils.ErrorBack(ctx, "参数格式错误")
 		return
 	}
-	req.ReturnURL = ctx.GetHeader("Referer")
 	userIDRaw, ok := ctx.Get("userId")
 	if !ok {
 		utils.UnauthorizedBack(ctx, "token is invalid")
@@ -194,6 +193,7 @@ func AppCreateRechargeOrderV2(ctx *gin.Context) {
 		utils.ErrorBack(ctx, "参数格式错误")
 		return
 	}
+	req.ReturnURL = ctx.GetHeader("Referer")
 	userIDRaw, ok := ctx.Get("userId")
 	if !ok {
 		utils.UnauthorizedBack(ctx, "token is invalid")
