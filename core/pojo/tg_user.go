@@ -344,6 +344,7 @@ type TgInviteStatsBack struct {
 	AvailableCommission    float64 `json:"availableCommission"`
 	TodayCommission        float64 `json:"todayCommission"`
 	RebateWithdrawDisabled int8    `json:"rebateWithdrawDisabled"`
+	RechargeRebateRates    string  `json:"rechargeRebateRates"`
 }
 
 type TgInviteRuleConfigBack struct {

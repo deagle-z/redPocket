@@ -1033,6 +1033,7 @@ func GetCurrentTgInviteStats(ctx *gin.Context) {
 		AvailableCommission:    utils.Truncate2(user.RebateAmount),
 		TodayCommission:        utils.Truncate2(todayCommission),
 		RebateWithdrawDisabled: user.RebateWithdrawDisabled,
+		RechargeRebateRates:    strings.TrimSpace(user.RechargeRebateRates),
 	})
 }
 

@@ -1,6 +1,9 @@
 package api
 
-import "testing"
+import (
+	"BaseGoUni/core/pojo"
+	"testing"
+)
 
 func TestCalculateAppWithdrawFeeFreeFirstThreeWithdrawals(t *testing.T) {
 	tests := []struct {
@@ -39,5 +42,23 @@ func TestResolveAppWithdrawV2ChannelKeepsPixForOtherCountries(t *testing.T) {
 	}
 	if got := resolveAppWithdrawV2Provider("BR"); got != "" {
 		t.Fatalf("resolveAppWithdrawV2Provider() = %q, want empty", got)
+	}
+}
+
+func TestApplyWithdrawReceiverSnapshotDoesNotStoreMexicoIdentityTypeAsDocumentType(t *testing.T) {
+	var req pojo.WithdrawOrderBrSet
+
+	applyWithdrawReceiverSnapshot(&req, "MX", nil, map[string]string{
+		"accNameMxnW":      "Ernesto Morales",
+		"accNoMXNW":        "137835103778065956",
+		"bankCodeMXNW":     "MXNBANCOPPEL",
+		"identityTypeMXNW": "BANK_ACCOUNT",
+	})
+
+	if req.ReceiverDocumentType != nil {
+		t.Fatalf("ReceiverDocumentType = %q, want nil", *req.ReceiverDocumentType)
+	}
+	if req.PixKeyType == nil || *req.PixKeyType != "BANK_ACCOUNT" {
+		t.Fatalf("PixKeyType = %v, want BANK_ACCOUNT", req.PixKeyType)
 	}
 }
