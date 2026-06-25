@@ -5,6 +5,7 @@ interface FormItemProps {
   tenantName: string;
   tenantType: number;
   status: number;
+  enableWithdraw: number;
   loginPassword?: string;
   ownerUserId?: number;
   planCode?: string;

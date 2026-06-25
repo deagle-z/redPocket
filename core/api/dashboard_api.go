@@ -17,6 +17,14 @@ func GetAdminDashboardStats(ctx *gin.Context) {
 	utils.SuccessObjBack(ctx, result)
 }
 
+func GetAdminDashboardMonthlyBalances(ctx *gin.Context) {
+	db := ctx.MustGet("db").(*gorm.DB)
+	tenantID, _ := strconv.ParseInt(ctx.Query("tenantId"), 10, 64)
+	year, _ := strconv.Atoi(ctx.Query("year"))
+	result := repository.GetAdminDashboardMonthlyBalances(db, tenantID, year)
+	utils.SuccessObjBack(ctx, result)
+}
+
 func GetAdminDashboardOnlineUsers(ctx *gin.Context) {
 	var search pojo.TenantDashboardDetailSearch
 	search.SetPageDefaults()

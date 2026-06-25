@@ -89,14 +89,15 @@ type SysTenantUserLogin struct {
 }
 
 type SysTenantUserLoginBack struct {
-	UserId       int64  `json:"userId"`
-	TenantId     int64  `json:"tenantId"`
-	Username     string `json:"username"`
-	RoleCode     string `json:"roleCode"`
-	IsOwner      bool   `json:"isOwner"`
-	UserType     int    `json:"userType"`
-	AccessToken  string `json:"accessToken"`
-	PasswordAlgo string `json:"passwordAlgo"`
+	UserId         int64  `json:"userId"`
+	TenantId       int64  `json:"tenantId"`
+	Username       string `json:"username"`
+	RoleCode       string `json:"roleCode"`
+	IsOwner        bool   `json:"isOwner"`
+	UserType       int    `json:"userType"`
+	EnableWithdraw int    `json:"enableWithdraw"`
+	AccessToken    string `json:"accessToken"`
+	PasswordAlgo   string `json:"passwordAlgo"`
 }
 
 var SysTenantUserTableName = "sys_tenant_user"

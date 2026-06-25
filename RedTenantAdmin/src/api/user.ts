@@ -16,6 +16,8 @@ export type UserResult = {
     roleCode: string;
     /** 当前登录用户角色数组（前端权限兼容） */
     roles: Array<string>;
+    /** 是否允许二级后台审核通过提现：0=关闭 1=开启 */
+    enableWithdraw?: number;
     /** `token` */
     accessToken: string;
     /** 兼容前端token结构 */

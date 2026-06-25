@@ -27,6 +27,26 @@ export type AdminDashboardStatsResult = {
   data: AdminDashboardStats;
 };
 
+export type AdminDashboardMonthlyBalance = {
+  month: string;
+  rechargeAmount: number;
+  withdrawAmount: number;
+  balanceAmount: number;
+};
+
+export type AdminDashboardMonthlyBalanceResult = {
+  code: number;
+  message: string;
+  success: boolean;
+  data: {
+    year: number;
+    list: AdminDashboardMonthlyBalance[];
+    totalRechargeAmount: number;
+    totalWithdrawAmount: number;
+    totalBalanceAmount: number;
+  };
+};
+
 export type AdminDashboardDetailSearch = {
   currentPage: number;
   pageSize: number;
@@ -68,6 +88,17 @@ export const getAdminDashboardStats = (tenantId?: number) => {
     "get",
     "/api/v1/admin/dashboard/stats",
     tenantId ? { params: { tenantId } } : undefined
+  );
+};
+
+export const getAdminDashboardMonthlyBalances = (
+  year?: number,
+  tenantId?: number
+) => {
+  return http.request<AdminDashboardMonthlyBalanceResult>(
+    "get",
+    "/api/v1/admin/dashboard/monthlyBalances",
+    { params: { year, tenantId } }
   );
 };
 

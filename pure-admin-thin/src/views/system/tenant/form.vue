@@ -13,6 +13,7 @@ const props = withDefaults(defineProps<FormProps>(), {
     tenantName: "",
     tenantType: 1,
     status: 1,
+    enableWithdraw: 0,
     loginPassword: "",
     ownerUserId: undefined,
     planCode: "",
@@ -106,6 +107,18 @@ defineExpose({ getRef });
               :value="item.value"
             />
           </el-select>
+        </el-form-item>
+      </re-col>
+
+      <re-col :value="12" :xs="24" :sm="24">
+        <el-form-item label="开启提现" prop="enableWithdraw">
+          <el-switch
+            v-model="newFormInline.enableWithdraw"
+            :active-value="1"
+            :inactive-value="0"
+            active-text="开启"
+            inactive-text="关闭"
+          />
         </el-form-item>
       </re-col>
 

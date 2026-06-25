@@ -127,6 +127,11 @@ func SetWithdrawOrderBr(db *gorm.DB, tenantID int64, req pojo.WithdrawOrderBrSet
 			}
 			oldStatus := dbOrder.Status
 			mergeTenantWithdrawOrderUpdate(&dbOrder, req)
+			if oldStatus == 0 && dbOrder.Status == 1 {
+				if err := ensureTenantWithdrawEnabled(tx, tenantID); err != nil {
+					return err
+				}
+			}
 			ensureTenantWithdrawMerchantOrderNo(&dbOrder)
 			fillTenantWithdrawOrderNetAmount(tx, &dbOrder)
 			if err := applyTenantWithdrawStatusSideEffects(tx, oldStatus, &dbOrder); err != nil {
@@ -153,6 +158,17 @@ func SetWithdrawOrderBr(db *gorm.DB, tenantID int64, req pojo.WithdrawOrderBrSet
 	}
 	_ = copier.Copy(&result, &dbOrder)
 	return result, nil
+}
+
+func ensureTenantWithdrawEnabled(db *gorm.DB, tenantID int64) error {
+	var tenant pojo.SysTenant
+	if err := db.Select("id", "enable_withdraw").Where("id = ?", tenantID).First(&tenant).Error; err != nil {
+		return err
+	}
+	if tenant.EnableWithdraw != 1 {
+		return errors.New("tenant_withdraw_disabled")
+	}
+	return nil
 }
 
 func applyTenantWithdrawStatusSideEffects(tx *gorm.DB, oldStatus int, order *pojo.WithdrawOrderBr) error {

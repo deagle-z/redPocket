@@ -21,6 +21,8 @@ export interface DataInfo<T> {
   roles?: Array<string>;
   /** 当前登录用户的按钮级别权限 */
   permissions?: Array<string>;
+  /** 是否允许二级后台审核通过提现：0=关闭 1=开启 */
+  enableWithdraw?: number;
 }
 
 export const userKey = "user-info";
@@ -70,7 +72,15 @@ export function setToken(data: DataInfo<Date>) {
       : {}
   );
 
-  function setUserKey({ avatar, username, nickname, country, roles, permissions }) {
+  function setUserKey({
+    avatar,
+    username,
+    nickname,
+    country,
+    roles,
+    permissions,
+    enableWithdraw
+  }) {
     useUserStoreHook().SET_AVATAR(avatar);
     useUserStoreHook().SET_USERNAME(username);
     useUserStoreHook().SET_NICKNAME(nickname);
@@ -85,7 +95,8 @@ export function setToken(data: DataInfo<Date>) {
       nickname,
       country,
       roles,
-      permissions
+      permissions,
+      enableWithdraw
     });
   }
 
@@ -97,7 +108,8 @@ export function setToken(data: DataInfo<Date>) {
       nickname: data?.nickname ?? "",
       country: data?.country ?? "",
       roles,
-      permissions: data?.permissions ?? []
+      permissions: data?.permissions ?? [],
+      enableWithdraw: data?.enableWithdraw ?? 0
     });
   } else {
     const avatar =
@@ -112,13 +124,16 @@ export function setToken(data: DataInfo<Date>) {
       storageLocal().getItem<DataInfo<number>>(userKey)?.roles ?? [];
     const permissions =
       storageLocal().getItem<DataInfo<number>>(userKey)?.permissions ?? [];
+    const enableWithdraw =
+      storageLocal().getItem<DataInfo<number>>(userKey)?.enableWithdraw ?? 0;
     setUserKey({
       avatar,
       username,
       nickname,
       country,
       roles,
-      permissions
+      permissions,
+      enableWithdraw
     });
   }
 }

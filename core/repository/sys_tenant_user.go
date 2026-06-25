@@ -160,13 +160,14 @@ func SysTenantUserLogin(db *gorm.DB, hostInfo pojo.HostInfo, req pojo.SysTenantU
 	}).Error
 
 	result = pojo.SysTenantUserLoginBack{
-		UserId:       dbUser.ID,
-		TenantId:     dbUser.TenantId,
-		Username:     dbUser.Username,
-		RoleCode:     dbUser.RoleCode,
-		IsOwner:      dbUser.IsOwner,
-		UserType:     4,
-		PasswordAlgo: dbUser.PasswordAlgo,
+		UserId:         dbUser.ID,
+		TenantId:       dbUser.TenantId,
+		Username:       dbUser.Username,
+		RoleCode:       dbUser.RoleCode,
+		IsOwner:        dbUser.IsOwner,
+		UserType:       4,
+		EnableWithdraw: dbTenant.EnableWithdraw,
+		PasswordAlgo:   dbUser.PasswordAlgo,
 	}
 	token, err := utils.GetJwtToken(hostInfo.AccessSecret, hostInfo.AccessExpire, dbUser.Username, dbUser.ID, result.UserType, hostInfo.HostName)
 	if err != nil {

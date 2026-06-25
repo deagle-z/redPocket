@@ -11,7 +11,8 @@ import {
   type WithdrawOrderBr
 } from "@/api/withdrawOrderBr";
 import { getSysPayChannelList, type SysPayChannel } from "@/api/sysPayChannel";
-import { type Ref, reactive, ref, onMounted, toRaw } from "vue";
+import { getToken } from "@/utils/auth";
+import { type Ref, computed, reactive, ref, onMounted, toRaw } from "vue";
 import {
   ElAlert,
   ElDescriptions,
@@ -161,6 +162,9 @@ function activityTableRows(data: WithdrawActivityFlow) {
 }
 
 export function useWithdrawOrderBr(tableRef: Ref) {
+  const canApproveWithdraw = computed(
+    () => Number(getToken()?.enableWithdraw ?? 0) === 1
+  );
   const form = reactive({
     userUid: "",
     orderNo: "",
@@ -371,6 +375,10 @@ export function useWithdrawOrderBr(tableRef: Ref) {
   }
 
   async function approveOrder(row: WithdrawOrderBr) {
+    if (!canApproveWithdraw.value) {
+      message("当前商户未开启提现审核", { type: "warning" });
+      return;
+    }
     const countryCode = getOrderCountryCode(row);
     approveForm.channelCode = "";
     approveChannelOptions.value = [];
@@ -642,6 +650,7 @@ export function useWithdrawOrderBr(tableRef: Ref) {
     handleSelectionChange,
     approveOrder,
     rejectOrder,
-    showWithdrawActivityFlow
+    showWithdrawActivityFlow,
+    canApproveWithdraw
   };
 }

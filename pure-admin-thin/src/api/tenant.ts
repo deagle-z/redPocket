@@ -9,6 +9,7 @@ export type SysTenant = {
   tenantName: string;
   tenantType: number;
   status: number;
+  enableWithdraw: number;
   ownerUserId?: number | null;
   planCode?: string | null;
   bindDomain?: string | null;
@@ -37,6 +38,7 @@ export type SysTenantSet = {
   tenantName: string;
   tenantType: number;
   status: number;
+  enableWithdraw: number;
   loginPassword?: string;
   ownerUserId?: number | null;
   planCode?: string | null;

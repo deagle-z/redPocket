@@ -4,6 +4,7 @@ import (
 	"BaseGoUni/core/pojo"
 	"BaseGoUni/core/utils"
 	tenantRepo "BaseGoUni/tenant/repository"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
@@ -14,6 +15,16 @@ func GetDashboardStats(ctx *gin.Context) {
 		return
 	}
 	result := tenantRepo.GetDashboardStats(getDB(ctx), tenantID)
+	utils.SuccessObjBack(ctx, result)
+}
+
+func GetDashboardMonthlyBalances(ctx *gin.Context) {
+	tenantID, ok := getTenantID(ctx)
+	if !ok {
+		return
+	}
+	year, _ := strconv.Atoi(ctx.Query("year"))
+	result := tenantRepo.GetDashboardMonthlyBalances(getDB(ctx), tenantID, year)
 	utils.SuccessObjBack(ctx, result)
 }
 

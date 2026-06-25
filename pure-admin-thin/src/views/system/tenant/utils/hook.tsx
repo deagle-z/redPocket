@@ -103,6 +103,19 @@ export function useTenant(_tableRef: Ref) {
       formatter: ({ planCode }) => planCode || "-"
     },
     {
+      label: "开启提现",
+      prop: "enableWithdraw",
+      minWidth: 100,
+      cellRenderer: scope => (
+        <ElTag
+          type={Number(scope.row.enableWithdraw) === 1 ? "success" : "info"}
+          effect="plain"
+        >
+          {Number(scope.row.enableWithdraw) === 1 ? "开启" : "关闭"}
+        </ElTag>
+      )
+    },
+    {
       label: "TG客服链接",
       prop: "tgServiceUrl",
       minWidth: 180,
@@ -266,6 +279,7 @@ export function useTenant(_tableRef: Ref) {
           tenantName: row?.tenantName ?? "",
           tenantType: row?.tenantType ?? 1,
           status: row?.status ?? 1,
+          enableWithdraw: row?.enableWithdraw ?? 0,
           loginPassword: title === "新增" ? "" : undefined,
           ownerUserId: row?.ownerUserId ?? undefined,
           planCode: row?.planCode ?? "",

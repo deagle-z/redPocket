@@ -30,7 +30,8 @@ const {
   handleSelectionChange,
   approveOrder,
   rejectOrder,
-  showWithdrawActivityFlow
+  showWithdrawActivityFlow,
+  canApproveWithdraw
 } = useWithdrawOrderBr(tableRef);
 </script>
 
@@ -163,7 +164,7 @@ const {
                 活动流水
               </el-button>
               <el-button
-                v-if="row.status === 0"
+                v-if="row.status === 0 && canApproveWithdraw"
                 class="reset-margin"
                 link
                 type="primary"

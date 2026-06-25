@@ -2,6 +2,7 @@ package repository
 
 import (
 	"BaseGoUni/core/pojo"
+	coreRepo "BaseGoUni/core/repository"
 	"BaseGoUni/core/utils"
 	"time"
 
@@ -24,6 +25,10 @@ func GetDashboardStats(db *gorm.DB, tenantID int64) pojo.TenantDashboardStatsBac
 		TotalRegisterUsers:      countDashboardRegisterUsers(db, tenantID, nil, nil),
 		OnlineUsers:             utils.CountOnlineUsers(utils.OnlineTgUsersKey(tenantID)),
 	}
+}
+
+func GetDashboardMonthlyBalances(db *gorm.DB, tenantID int64, year int) pojo.TenantDashboardMonthlyBalanceResp {
+	return coreRepo.GetAdminDashboardMonthlyBalances(db, tenantID, year)
 }
 
 func GetDashboardOnlineUsers(db *gorm.DB, tenantID int64, search pojo.TenantDashboardDetailSearch) pojo.TenantDashboardUserDetailResp {

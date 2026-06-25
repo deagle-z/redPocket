@@ -122,6 +122,7 @@ func InitGin() {
 		adminGroup.GET("/onlineDevices", api.GetOnlineDevices)
 		adminGroup.GET("/onlineUsers/stats", api.GetAdminOnlineUserStats)
 		adminGroup.GET("/dashboard/stats", api.GetAdminDashboardStats)
+		adminGroup.GET("/dashboard/monthlyBalances", api.GetAdminDashboardMonthlyBalances)
 		adminGroup.POST("/dashboard/onlineUsers", api.GetAdminDashboardOnlineUsers)
 		adminGroup.POST("/dashboard/rechargeUsers", api.GetAdminDashboardRechargeUsers)
 		adminGroup.POST("/dashboard/registerUsers", api.GetAdminDashboardRegisterUsers)
@@ -278,6 +279,7 @@ func InitGin() {
 	tenantGroup.Use(tenantAuthMiddleware(false), manageLog())
 	{
 		tenantGroup.GET("/dashboard/stats", tenantApi.GetDashboardStats)
+		tenantGroup.GET("/dashboard/monthlyBalances", tenantApi.GetDashboardMonthlyBalances)
 		tenantGroup.POST("/dashboard/onlineUsers", tenantApi.GetDashboardOnlineUsers)
 		tenantGroup.POST("/dashboard/rechargeUsers", tenantApi.GetDashboardRechargeUsers)
 		tenantGroup.POST("/dashboard/registerUsers", tenantApi.GetDashboardRegisterUsers)

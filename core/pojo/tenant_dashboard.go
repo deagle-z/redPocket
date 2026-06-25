@@ -3,14 +3,14 @@ package pojo
 import "time"
 
 type TenantDashboardPeriodStats struct {
-	RechargeAmount     float64 `json:"rechargeAmount"`
-	BetAmount          float64 `json:"betAmount"`
-	WithdrawAmount     float64 `json:"withdrawAmount"`
-	RebateAmount       float64 `json:"rebateAmount"`
-	PlatformPumpAmount float64 `json:"platformPumpAmount"`
-	RechargeUsers       int64 `json:"rechargeUsers"`
-	RepeatRechargeUsers int64 `json:"repeatRechargeUsers"`
-	RegisterUsers       int64 `json:"registerUsers"`
+	RechargeAmount      float64 `json:"rechargeAmount"`
+	BetAmount           float64 `json:"betAmount"`
+	WithdrawAmount      float64 `json:"withdrawAmount"`
+	RebateAmount        float64 `json:"rebateAmount"`
+	PlatformPumpAmount  float64 `json:"platformPumpAmount"`
+	RechargeUsers       int64   `json:"rechargeUsers"`
+	RepeatRechargeUsers int64   `json:"repeatRechargeUsers"`
+	RegisterUsers       int64   `json:"registerUsers"`
 }
 
 type TenantDashboardStatsBack struct {
@@ -20,6 +20,21 @@ type TenantDashboardStatsBack struct {
 	TotalPlatformPumpAmount float64                    `json:"totalPlatformPumpAmount"`
 	TotalRegisterUsers      int64                      `json:"totalRegisterUsers"`
 	OnlineUsers             int64                      `json:"onlineUsers"`
+}
+
+type TenantDashboardMonthlyBalanceBack struct {
+	Month          string  `json:"month"`
+	RechargeAmount float64 `json:"rechargeAmount"`
+	WithdrawAmount float64 `json:"withdrawAmount"`
+	BalanceAmount  float64 `json:"balanceAmount"`
+}
+
+type TenantDashboardMonthlyBalanceResp struct {
+	Year                int                                 `json:"year"`
+	List                []TenantDashboardMonthlyBalanceBack `json:"list"`
+	TotalRechargeAmount float64                             `json:"totalRechargeAmount"`
+	TotalWithdrawAmount float64                             `json:"totalWithdrawAmount"`
+	TotalBalanceAmount  float64                             `json:"totalBalanceAmount"`
 }
 
 type TenantDashboardDetailSearch struct {

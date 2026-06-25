@@ -852,15 +852,6 @@ function handleSubStatsCurrentChange(page: number) {
                 <el-button
                   class="reset-margin"
                   link
-                  type="success"
-                  :size="size"
-                  @click="openRebateAmountDialog(row)"
-                >
-                  加佣金
-                </el-button>
-                <el-button
-                  class="reset-margin"
-                  link
                   :type="
                     Number(row.rebateWithdrawDisabled) === 1
                       ? 'success'
@@ -888,15 +879,6 @@ function handleSubStatsCurrentChange(page: number) {
                   @click="openRemarkDialog(row)"
                 >
                   修改备注
-                </el-button>
-                <el-button
-                  class="reset-margin"
-                  link
-                  type="warning"
-                  :size="size"
-                  @click="openRechargeDialog(row)"
-                >
-                  拉起支付
                 </el-button>
                 <el-button
                   class="reset-margin"

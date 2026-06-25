@@ -8,6 +8,11 @@ import (
 	"gorm.io/gorm"
 )
 
+type dashboardMonthlyAmountRow struct {
+	Month  string  `gorm:"column:month"`
+	Amount float64 `gorm:"column:amount"`
+}
+
 func GetAdminDashboardStats(db *gorm.DB, tenantID int64) pojo.TenantDashboardStatsBack {
 	now := time.Now()
 	todayStart := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
@@ -28,6 +33,37 @@ func GetAdminDashboardStats(db *gorm.DB, tenantID int64) pojo.TenantDashboardSta
 		TotalRegisterUsers:      countAdminDashboardRegisterUsers(db, tenantID, nil, nil),
 		OnlineUsers:             utils.CountOnlineUsers(onlineKey),
 	}
+}
+
+func GetAdminDashboardMonthlyBalances(db *gorm.DB, tenantID int64, year int) pojo.TenantDashboardMonthlyBalanceResp {
+	if year <= 0 {
+		year = time.Now().Year()
+	}
+	start := time.Date(year, 1, 1, 0, 0, 0, 0, time.Local)
+	end := start.AddDate(1, 0, 0)
+	rechargeAmounts := getAdminDashboardMonthlyRechargeAmounts(db, tenantID, start, end)
+	withdrawAmounts := getAdminDashboardMonthlyWithdrawAmounts(db, tenantID, start, end)
+
+	result := pojo.TenantDashboardMonthlyBalanceResp{
+		Year: year,
+		List: make([]pojo.TenantDashboardMonthlyBalanceBack, 0, 12),
+	}
+	for month := 1; month <= 12; month++ {
+		monthKey := time.Date(year, time.Month(month), 1, 0, 0, 0, 0, time.Local).Format("2006-01")
+		rechargeAmount := utils.Truncate2(rechargeAmounts[monthKey])
+		withdrawAmount := utils.Truncate2(withdrawAmounts[monthKey])
+		balanceAmount := utils.Truncate2(rechargeAmount - withdrawAmount)
+		result.List = append(result.List, pojo.TenantDashboardMonthlyBalanceBack{
+			Month:          monthKey,
+			RechargeAmount: rechargeAmount,
+			WithdrawAmount: withdrawAmount,
+			BalanceAmount:  balanceAmount,
+		})
+		result.TotalRechargeAmount = utils.Truncate2(result.TotalRechargeAmount + rechargeAmount)
+		result.TotalWithdrawAmount = utils.Truncate2(result.TotalWithdrawAmount + withdrawAmount)
+		result.TotalBalanceAmount = utils.Truncate2(result.TotalBalanceAmount + balanceAmount)
+	}
+	return result
 }
 
 func GetAdminDashboardOnlineUsers(db *gorm.DB, search pojo.TenantDashboardDetailSearch) pojo.TenantDashboardUserDetailResp {
@@ -408,6 +444,34 @@ func sumAdminDashboardAmount(query *gorm.DB, expr string) float64 {
 	}
 	_ = query.Select("COALESCE(SUM(" + expr + "), 0) AS value").Scan(&row).Error
 	return utils.Truncate2(row.Value)
+}
+
+func getAdminDashboardMonthlyRechargeAmounts(db *gorm.DB, tenantID int64, start time.Time, end time.Time) map[string]float64 {
+	var rows []dashboardMonthlyAmountRow
+	query := db.Model(&pojo.RechargeOrder{}).
+		Select("DATE_FORMAT(pay_time, '%Y-%m') AS month, COALESCE(SUM(amount), 0) AS amount").
+		Where("status = ? AND coalesce(is_dev, 0) = 0 AND pay_time >= ? AND pay_time < ?", 1, start, end)
+	query = filterAdminDashboardTenant(query, "tenant_id", tenantID)
+	_ = query.Group("DATE_FORMAT(pay_time, '%Y-%m')").Scan(&rows).Error
+	return monthlyAmountRowsToMap(rows)
+}
+
+func getAdminDashboardMonthlyWithdrawAmounts(db *gorm.DB, tenantID int64, start time.Time, end time.Time) map[string]float64 {
+	var rows []dashboardMonthlyAmountRow
+	query := db.Model(&pojo.WithdrawOrderBr{}).
+		Select("DATE_FORMAT(paid_at, '%Y-%m') AS month, COALESCE(SUM(amount), 0) AS amount").
+		Where("status = ? AND paid_at >= ? AND paid_at < ?", 3, start, end)
+	query = filterAdminDashboardTenant(query, "tenant_id", tenantID)
+	_ = query.Group("DATE_FORMAT(paid_at, '%Y-%m')").Scan(&rows).Error
+	return monthlyAmountRowsToMap(rows)
+}
+
+func monthlyAmountRowsToMap(rows []dashboardMonthlyAmountRow) map[string]float64 {
+	result := make(map[string]float64, len(rows))
+	for _, row := range rows {
+		result[row.Month] = utils.Truncate2(row.Amount)
+	}
+	return result
 }
 
 func getAdminDashboardPlatformPumpAmount(db *gorm.DB, tenantID int64, start *time.Time, end *time.Time) float64 {

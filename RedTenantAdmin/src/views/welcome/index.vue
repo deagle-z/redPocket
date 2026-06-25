@@ -9,10 +9,12 @@ import {
   getTenantDashboardRechargeUsers,
   getTenantDashboardRechargeOrders,
   getTenantDashboardWithdrawOrders,
+  getTenantDashboardMonthlyBalances,
   getTenantDashboardStats,
   type TenantDashboardStats,
   type TenantDashboardUserDetail,
-  type TenantDashboardOrderDetail
+  type TenantDashboardOrderDetail,
+  type TenantDashboardMonthlyBalance
 } from "@/api/dashboard";
 
 defineOptions({
@@ -75,10 +77,25 @@ const orderPagination = reactive({
   total: 0
 });
 
+const monthlyBalanceDialogVisible = ref(false);
+const monthlyBalanceLoading = ref(false);
+const monthlyBalanceYear = ref(String(dayjs().year()));
+const monthlyBalanceList = ref<TenantDashboardMonthlyBalance[]>([]);
+const monthlyBalanceTotal = reactive({
+  rechargeAmount: 0,
+  withdrawAmount: 0,
+  balanceAmount: 0
+});
+
 const orderDialogTitle = computed(() =>
   orderType.value === "recharge" ? "充值总额明细" : "提现总额明细"
 );
 const isWithdrawOrder = computed(() => orderType.value === "withdraw");
+const monthBalanceAmount = computed(
+  () =>
+    Number(stats.value.month.rechargeAmount || 0) -
+    Number(stats.value.month.withdrawAmount || 0)
+);
 
 const formatAmount = (value?: number) => {
   return Number(value || 0).toLocaleString("zh-CN", {
@@ -133,6 +150,13 @@ const metricCards = computed(() => [
     value: formatAmount(stats.value.month.withdrawAmount),
     unit: "",
     tone: "orange"
+  },
+  {
+    title: "余额统计",
+    value: formatAmount(monthBalanceAmount.value),
+    unit: "",
+    tone: "indigo",
+    monthlyBalance: true
   },
   {
     title: "当月返佣总额",
@@ -246,14 +270,18 @@ const detailPageCount = computed(() => {
 
 function getDetailExpectedTotal(type: DetailType) {
   if (type === "online") return stats.value.onlineUsers || 0;
-  if (type === "todayRegisterUsers") return stats.value.today.registerUsers || 0;
+  if (type === "todayRegisterUsers")
+    return stats.value.today.registerUsers || 0;
   if (type === "yesterdayRegisterUsers") {
     return stats.value.yesterday.registerUsers || 0;
   }
-  if (type === "monthRegisterUsers") return stats.value.month.registerUsers || 0;
+  if (type === "monthRegisterUsers")
+    return stats.value.month.registerUsers || 0;
   if (type === "totalRegisterUsers") return stats.value.totalRegisterUsers || 0;
-  if (type === "todayRechargeUsers") return stats.value.today.rechargeUsers || 0;
-  if (type === "monthRechargeUsers") return stats.value.month.rechargeUsers || 0;
+  if (type === "todayRechargeUsers")
+    return stats.value.today.rechargeUsers || 0;
+  if (type === "monthRechargeUsers")
+    return stats.value.month.rechargeUsers || 0;
   return 0;
 }
 
@@ -367,7 +395,12 @@ function handleCardClick(item: {
   title: string;
   detailType?: DetailType;
   orderType?: OrderType;
+  monthlyBalance?: boolean;
 }) {
+  if (item.monthlyBalance) {
+    openMonthlyBalance();
+    return;
+  }
   if (item.orderType) {
     openOrderDetail(item.orderType);
     return;
@@ -401,6 +434,36 @@ function handleDetailNextPage() {
   handleDetailCurrentChange(detailPagination.currentPage + 1);
 }
 
+async function loadMonthlyBalance() {
+  monthlyBalanceLoading.value = true;
+  try {
+    const res = await getTenantDashboardMonthlyBalances(
+      Number(monthlyBalanceYear.value)
+    );
+    monthlyBalanceList.value = res.data?.list || [];
+    monthlyBalanceTotal.rechargeAmount = Number(
+      res.data?.totalRechargeAmount ?? 0
+    );
+    monthlyBalanceTotal.withdrawAmount = Number(
+      res.data?.totalWithdrawAmount ?? 0
+    );
+    monthlyBalanceTotal.balanceAmount = Number(
+      res.data?.totalBalanceAmount ?? 0
+    );
+  } finally {
+    monthlyBalanceLoading.value = false;
+  }
+}
+
+async function openMonthlyBalance() {
+  monthlyBalanceDialogVisible.value = true;
+  await loadMonthlyBalance();
+}
+
+async function handleMonthlyBalanceYearChange() {
+  await loadMonthlyBalance();
+}
+
 onMounted(() => {
   loadStats();
 });
@@ -430,7 +493,8 @@ onMounted(() => {
           class="metric-card"
           :class="[
             `metric-card--${item.tone}`,
-            (item.detailType || item.orderType) && 'metric-card--clickable'
+            (item.detailType || item.orderType || item.monthlyBalance) &&
+              'metric-card--clickable'
           ]"
           @click="handleCardClick(item)"
         >
@@ -500,7 +564,9 @@ onMounted(() => {
           </template>
         </el-table-column>
         <el-table-column prop="phone" label="手机号" min-width="130">
-          <template #default="{ row }">{{ formatNullable(row.phone) }}</template>
+          <template #default="{ row }">{{
+            formatNullable(row.phone)
+          }}</template>
         </el-table-column>
         <el-table-column prop="balance" label="余额" min-width="120">
           <template #default="{ row }">
@@ -568,6 +634,68 @@ onMounted(() => {
           @size-change="handleDetailSizeChange"
           @current-change="handleDetailCurrentChange"
         />
+      </div>
+    </el-dialog>
+
+    <el-dialog
+      v-model="monthlyBalanceDialogVisible"
+      title="余额统计"
+      width="720px"
+    >
+      <div class="order-toolbar">
+        <el-date-picker
+          v-model="monthlyBalanceYear"
+          type="year"
+          value-format="YYYY"
+          placeholder="选择年份"
+          :clearable="false"
+          :disabled="monthlyBalanceLoading"
+          @change="handleMonthlyBalanceYearChange"
+        />
+        <div class="order-toolbar__total">
+          年度结余：
+          <strong>{{ formatAmount(monthlyBalanceTotal.balanceAmount) }}</strong>
+        </div>
+      </div>
+
+      <el-table
+        :data="monthlyBalanceList"
+        border
+        stripe
+        v-loading="monthlyBalanceLoading"
+      >
+        <el-table-column prop="month" label="月份" min-width="120" />
+        <el-table-column prop="rechargeAmount" label="充值金额" min-width="150">
+          <template #default="{ row }">
+            {{ formatAmount(row.rechargeAmount) }}
+          </template>
+        </el-table-column>
+        <el-table-column prop="withdrawAmount" label="提现金额" min-width="150">
+          <template #default="{ row }">
+            {{ formatAmount(row.withdrawAmount) }}
+          </template>
+        </el-table-column>
+        <el-table-column prop="balanceAmount" label="结余" min-width="150">
+          <template #default="{ row }">
+            {{ formatAmount(row.balanceAmount) }}
+          </template>
+        </el-table-column>
+      </el-table>
+
+      <div class="order-toolbar__total monthly-balance-total">
+        <span
+          >充值合计：{{
+            formatAmount(monthlyBalanceTotal.rechargeAmount)
+          }}</span
+        >
+        <span
+          >提现合计：{{
+            formatAmount(monthlyBalanceTotal.withdrawAmount)
+          }}</span
+        >
+        <span
+          >结余合计：{{ formatAmount(monthlyBalanceTotal.balanceAmount) }}</span
+        >
       </div>
     </el-dialog>
 
@@ -778,6 +906,10 @@ onMounted(() => {
   border-top: 3px solid #475467;
 }
 
+.metric-card--indigo {
+  border-top: 3px solid #6172f3;
+}
+
 .detail-pagination {
   display: flex;
   justify-content: flex-end;
@@ -831,5 +963,13 @@ onMounted(() => {
 
 .order-toolbar__total span {
   color: #98a2b3;
+}
+
+.monthly-balance-total {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  justify-content: flex-end;
+  margin-top: 12px;
 }
 </style>

@@ -27,6 +27,26 @@ export type TenantDashboardStatsResult = {
   data: TenantDashboardStats;
 };
 
+export type TenantDashboardMonthlyBalance = {
+  month: string;
+  rechargeAmount: number;
+  withdrawAmount: number;
+  balanceAmount: number;
+};
+
+export type TenantDashboardMonthlyBalanceResult = {
+  code: number;
+  message: string;
+  success: boolean;
+  data: {
+    year: number;
+    list: TenantDashboardMonthlyBalance[];
+    totalRechargeAmount: number;
+    totalWithdrawAmount: number;
+    totalBalanceAmount: number;
+  };
+};
+
 export type TenantDashboardDetailSearch = {
   currentPage: number;
   pageSize: number;
@@ -65,6 +85,14 @@ export const getTenantDashboardStats = () => {
   return http.request<TenantDashboardStatsResult>(
     "get",
     "/api/v1/tenant/dashboard/stats"
+  );
+};
+
+export const getTenantDashboardMonthlyBalances = (year?: number) => {
+  return http.request<TenantDashboardMonthlyBalanceResult>(
+    "get",
+    "/api/v1/tenant/dashboard/monthlyBalances",
+    { params: { year } }
   );
 };
 
