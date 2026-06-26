@@ -4,9 +4,13 @@ import (
 	"BaseGoUni/core/pojo"
 	"BaseGoUni/core/utils"
 	tenantRepo "BaseGoUni/tenant/repository"
-	"github.com/gin-gonic/gin"
 	"io"
+	"strings"
+
+	"github.com/gin-gonic/gin"
 )
+
+const defaultTenantRechargeReturnURL = "https://example.com"
 
 func GetTgUsers(ctx *gin.Context) {
 	tenantID, ok := getTenantID(ctx)
@@ -225,6 +229,9 @@ func TenantCreateRechargeOrderV2(ctx *gin.Context) {
 	if req.UserID <= 0 {
 		utils.ErrorBack(ctx, "参数格式错误")
 		return
+	}
+	if strings.TrimSpace(req.ReturnURL) == "" {
+		req.ReturnURL = defaultTenantRechargeReturnURL
 	}
 	hostInfo := ctx.MustGet("hostInfo").(pojo.HostInfo)
 	result, err := tenantRepo.AdminCreateRechargeOrderV2(getDB(ctx), tenantID, req, hostInfo.TablePrefix)
