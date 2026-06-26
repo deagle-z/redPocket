@@ -88,6 +88,35 @@ func (TgUserWithdrawFlowAllocation) TableName() string {
 	return TgUserWithdrawFlowAllocationTableName
 }
 
+const (
+	WithdrawFlowOutboxStatusPending = 1
+	WithdrawFlowOutboxStatusDone    = 2
+	WithdrawFlowOutboxStatusFailed  = 3
+)
+
+type TgUserWithdrawFlowOutbox struct {
+	BaseModel
+	TenantID      int64      `json:"tenantId" gorm:"column:tenant_id;type:bigint;index:idx_withdraw_flow_outbox_user,priority:1"`
+	UserID        int64      `json:"userId" gorm:"column:user_id;type:bigint;index:idx_withdraw_flow_outbox_user,priority:2"`
+	EventType     string     `json:"eventType" gorm:"column:event_type;type:varchar(32);not null;default:''"`
+	EventKey      string     `json:"eventKey" gorm:"column:event_key;type:varchar(128);not null;default:'';uniqueIndex"`
+	SourceID      int64      `json:"sourceId" gorm:"column:source_id;type:bigint;not null;default:0"`
+	SourceOrderNo string     `json:"sourceOrderNo" gorm:"column:source_order_no;type:varchar(64);not null;default:''"`
+	FlowAmount    float64    `json:"flowAmount" gorm:"column:flow_amount;type:decimal(20,2);not null;default:0"`
+	OccurredAt    time.Time  `json:"occurredAt" gorm:"column:occurred_at;type:datetime(3)"`
+	Status        int        `json:"status" gorm:"column:status;type:tinyint;not null;default:1;index:idx_withdraw_flow_outbox_poll,priority:1"`
+	Attempts      int        `json:"attempts" gorm:"column:attempts;type:int;not null;default:0"`
+	NextRetryAt   *time.Time `json:"nextRetryAt" gorm:"column:next_retry_at;type:datetime(3);index:idx_withdraw_flow_outbox_poll,priority:2"`
+	ProcessedAt   *time.Time `json:"processedAt" gorm:"column:processed_at;type:datetime(3)"`
+	LastError     string     `json:"lastError" gorm:"column:last_error;type:varchar(512);not null;default:''"`
+}
+
+var TgUserWithdrawFlowOutboxTableName = "tg_user_withdraw_flow_outbox"
+
+func (TgUserWithdrawFlowOutbox) TableName() string {
+	return TgUserWithdrawFlowOutboxTableName
+}
+
 type TgWithdrawFlowBatchSummaryBack struct {
 	Balance              float64 `json:"balance"`
 	HasUnfinishedBatch   bool    `json:"hasUnfinishedBatch"`

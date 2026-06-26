@@ -118,6 +118,7 @@ func InitTables(prefix string) (firstInit bool, err error) {
 			&pojo.TgUserWithdrawFlowBatch{},
 			&pojo.TgUserWithdrawFlowEvent{},
 			&pojo.TgUserWithdrawFlowAllocation{},
+			&pojo.TgUserWithdrawFlowOutbox{},
 			&pojo.TgUserCheckInRecord{},
 			&pojo.TgUserInviteRewardLog{},
 			&pojo.ExchangeCode{},
@@ -153,6 +154,10 @@ func InitTables(prefix string) (firstInit bool, err error) {
 	}
 	log.Print("init tables: ensure tg_user rebate withdraw schema...\n")
 	if err = ensureTgUserRebateWithdrawSchema(db); err != nil {
+		panic(err)
+	}
+	log.Print("init tables: ensure tg_user withdraw flow outbox schema...\n")
+	if err = ensureTgUserWithdrawFlowOutboxSchema(db); err != nil {
 		panic(err)
 	}
 	log.Print("init tables: ensure tg_user invite reward log schema...\n")
@@ -239,6 +244,10 @@ func ensureTgUserRebateWithdrawSchema(db *gorm.DB) error {
 		}
 	}
 	return nil
+}
+
+func ensureTgUserWithdrawFlowOutboxSchema(db *gorm.DB) error {
+	return db.AutoMigrate(&pojo.TgUserWithdrawFlowOutbox{})
 }
 
 func ensureTgUserInviteRewardLogSchema(db *gorm.DB) error {

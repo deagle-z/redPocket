@@ -136,7 +136,7 @@ func RecordWithdrawFlowEvent(tx *gorm.DB, userID int64, tenantID int64, eventTyp
 		occurredAt = time.Now()
 	}
 
-	event := pojo.TgUserWithdrawFlowEvent{
+	outbox := pojo.TgUserWithdrawFlowOutbox{
 		TenantID:      tenantID,
 		UserID:        userID,
 		EventType:     eventType,
@@ -145,6 +145,138 @@ func RecordWithdrawFlowEvent(tx *gorm.DB, userID int64, tenantID int64, eventTyp
 		SourceOrderNo: strings.TrimSpace(sourceOrderNo),
 		FlowAmount:    utils.Truncate2(amount),
 		OccurredAt:    occurredAt,
+		Status:        pojo.WithdrawFlowOutboxStatusPending,
+	}
+	if defaultPrefix := strings.TrimSpace(utils.CsConfig.DefaultHost.TablePrefix); defaultPrefix != "" {
+		dbPrefix := strings.TrimSpace(utils.GetDbPrefix(tx))
+		if dbPrefix != "" && dbPrefix != defaultPrefix {
+			return allocateWithdrawFlowEvent(tx, outbox)
+		}
+	}
+	return tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&outbox).Error
+}
+
+func ProcessWithdrawFlowOutboxBatch(db *gorm.DB, limit int) (int, error) {
+	if db == nil {
+		return 0, nil
+	}
+	if limit <= 0 || limit > 500 {
+		limit = 100
+	}
+
+	now := time.Now()
+	var items []pojo.TgUserWithdrawFlowOutbox
+	if err := db.
+		Where("status = ? AND (next_retry_at IS NULL OR next_retry_at <= ?)", pojo.WithdrawFlowOutboxStatusPending, now).
+		Order("id ASC").
+		Limit(limit).
+		Find(&items).Error; err != nil {
+		return 0, err
+	}
+
+	processed := 0
+	for _, item := range items {
+		if err := processWithdrawFlowOutboxItem(db, item.ID); err != nil {
+			return processed, err
+		}
+		processed++
+	}
+	return processed, nil
+}
+
+func processWithdrawFlowOutboxItem(db *gorm.DB, outboxID int64) error {
+	if outboxID <= 0 {
+		return nil
+	}
+	return db.Transaction(func(tx *gorm.DB) error {
+		var outbox pojo.TgUserWithdrawFlowOutbox
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+			Where("id = ? AND status = ?", outboxID, pojo.WithdrawFlowOutboxStatusPending).
+			First(&outbox).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return nil
+			}
+			return err
+		}
+		if outbox.NextRetryAt != nil && outbox.NextRetryAt.After(time.Now()) {
+			return nil
+		}
+
+		if err := allocateWithdrawFlowEvent(tx, outbox); err != nil {
+			attempts := outbox.Attempts + 1
+			status := pojo.WithdrawFlowOutboxStatusPending
+			nextRetryAt := time.Now().Add(withdrawFlowOutboxRetryDelay(attempts))
+			if attempts >= withdrawFlowOutboxMaxAttempts {
+				status = pojo.WithdrawFlowOutboxStatusFailed
+			}
+			return tx.Model(&pojo.TgUserWithdrawFlowOutbox{}).
+				Where("id = ?", outbox.ID).
+				Updates(map[string]any{
+					"status":        status,
+					"attempts":      attempts,
+					"next_retry_at": &nextRetryAt,
+					"last_error":    truncateWithdrawFlowOutboxError(err.Error()),
+				}).Error
+		}
+
+		processedAt := time.Now()
+		return tx.Model(&pojo.TgUserWithdrawFlowOutbox{}).
+			Where("id = ?", outbox.ID).
+			Updates(map[string]any{
+				"status":        pojo.WithdrawFlowOutboxStatusDone,
+				"processed_at":  &processedAt,
+				"next_retry_at": nil,
+				"last_error":    "",
+			}).Error
+	})
+}
+
+const withdrawFlowOutboxMaxAttempts = 10
+
+func withdrawFlowOutboxRetryDelay(attempts int) time.Duration {
+	if attempts < 1 {
+		attempts = 1
+	}
+	delay := time.Duration(attempts*attempts) * time.Second
+	if delay > 5*time.Minute {
+		return 5 * time.Minute
+	}
+	return delay
+}
+
+func truncateWithdrawFlowOutboxError(message string) string {
+	message = strings.TrimSpace(message)
+	if len(message) <= 512 {
+		return message
+	}
+	return message[:512]
+}
+
+func allocateWithdrawFlowEvent(tx *gorm.DB, outbox pojo.TgUserWithdrawFlowOutbox) error {
+	if tx == nil || outbox.UserID <= 0 || outbox.FlowAmount <= 0 {
+		return nil
+	}
+	var batches []pojo.TgUserWithdrawFlowBatch
+	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+		Select("id", "tenant_id", "user_id", "required_flow", "completed_flow").
+		Where("user_id = ? AND status = ? AND completed_flow < required_flow", outbox.UserID, pojo.WithdrawFlowBatchStatusActive).
+		Order("id ASC").
+		Find(&batches).Error; err != nil {
+		return err
+	}
+	if len(batches) == 0 {
+		return nil
+	}
+
+	event := pojo.TgUserWithdrawFlowEvent{
+		TenantID:      outbox.TenantID,
+		UserID:        outbox.UserID,
+		EventType:     outbox.EventType,
+		EventKey:      outbox.EventKey,
+		SourceID:      outbox.SourceID,
+		SourceOrderNo: strings.TrimSpace(outbox.SourceOrderNo),
+		FlowAmount:    utils.Truncate2(outbox.FlowAmount),
+		OccurredAt:    outbox.OccurredAt,
 	}
 	insert := tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&event)
 	if insert.Error != nil {
@@ -156,21 +288,13 @@ func RecordWithdrawFlowEvent(tx *gorm.DB, userID int64, tenantID int64, eventTyp
 
 	remainingFlow := event.FlowAmount
 	allocatedTotal := 0.0
-	var batches []pojo.TgUserWithdrawFlowBatch
-	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
-		Where("user_id = ? AND status = ? AND completed_flow < required_flow", userID, pojo.WithdrawFlowBatchStatusActive).
-		Order("id ASC").
-		Find(&batches).Error; err != nil {
-		return err
-	}
-
 	for _, batch := range batches {
 		if remainingFlow <= 0 {
 			break
 		}
 		batchRemaining := clampNonNegative(batch.RequiredFlow - batch.CompletedFlow)
 		if batchRemaining <= 0 {
-			if err := completeWithdrawFlowBatch(tx, batch.ID, occurredAt, batch.RequiredFlow); err != nil {
+			if err := completeWithdrawFlowBatch(tx, batch.ID, outbox.OccurredAt, batch.RequiredFlow); err != nil {
 				return err
 			}
 			continue
@@ -180,11 +304,11 @@ func RecordWithdrawFlowEvent(tx *gorm.DB, userID int64, tenantID int64, eventTyp
 			continue
 		}
 		if err := tx.Create(&pojo.TgUserWithdrawFlowAllocation{
-			TenantID:         batch.TenantID,
-			UserID:           userID,
-			EventID:          event.ID,
-			BatchID:          batch.ID,
-			AllocatedAmount:  allocated,
+			TenantID:        batch.TenantID,
+			UserID:          outbox.UserID,
+			EventID:         event.ID,
+			BatchID:         batch.ID,
+			AllocatedAmount: allocated,
 		}).Error; err != nil {
 			return err
 		}
@@ -192,12 +316,12 @@ func RecordWithdrawFlowEvent(tx *gorm.DB, userID int64, tenantID int64, eventTyp
 		newCompleted := utils.Truncate2(batch.CompletedFlow + allocated)
 		updates := map[string]any{
 			"completed_flow": newCompleted,
-			"last_flow_at":   occurredAt,
+			"last_flow_at":   outbox.OccurredAt,
 		}
 		if newCompleted+withdrawLimitEpsilon >= batch.RequiredFlow {
 			updates["completed_flow"] = utils.Truncate2(batch.RequiredFlow)
 			updates["status"] = pojo.WithdrawFlowBatchStatusCompleted
-			updates["completed_at"] = occurredAt
+			updates["completed_at"] = outbox.OccurredAt
 		}
 		if err := tx.Model(&pojo.TgUserWithdrawFlowBatch{}).Where("id = ?", batch.ID).Updates(updates).Error; err != nil {
 			return err

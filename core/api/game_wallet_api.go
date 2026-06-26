@@ -345,9 +345,14 @@ func handleGameCashTransfer(db *gorm.DB, req pojo.GameCashTransferInOutReq) (flo
 	tTx = time.Since(txStart)
 	// 慢日志：定位各步骤耗时（lock=行锁+读用户, idem=幂等查, balance=改余额, betRec=下注记录, flow=提现流水, cash=账变）
 	if total := time.Since(reqStart); total >= gameTransferSlowThreshold {
-		log.Printf("[game_wallet][slow] TransferInOut tid=%s userid=%s reason=%s idempotent=%t total=%dms gameInfo=%dms tx=%dms lock=%dms idem=%dms balance=%dms betRec=%dms flow=%dms cash=%dms",
+		measuredTx := tLock + tIdem + tBalance + tBetRec + tFlow + tCash
+		txOther := tTx - measuredTx
+		if txOther < 0 {
+			txOther = 0
+		}
+		log.Printf("[game_wallet][slow] TransferInOut tid=%s userid=%s reason=%s idempotent=%t total=%dms gameInfo=%dms tx=%dms lock=%dms idem=%dms balance=%dms betRec=%dms flow=%dms cash=%dms txOther=%dms",
 			tid, userID, strings.ToLower(strings.TrimSpace(req.Reason)), idempotent,
-			msOf(total), msOf(tGameInfo), msOf(tTx), msOf(tLock), msOf(tIdem), msOf(tBalance), msOf(tBetRec), msOf(tFlow), msOf(tCash))
+			msOf(total), msOf(tGameInfo), msOf(tTx), msOf(tLock), msOf(tIdem), msOf(tBalance), msOf(tBetRec), msOf(tFlow), msOf(tCash), msOf(txOther))
 	}
 	if err != nil {
 		return 0, err
@@ -447,22 +452,25 @@ func createGameBetRecord(tx *gorm.DB, user pojo.TgUser, req pojo.GameCashTransfe
 	uid := parseGameUserNumericUID(user.Uid)
 	remark := gameCashTransferDesc(req)
 
-	return tx.Table(pojo.AppUserBetRecordTableNameByUserID(user.ID)).Create(&pojo.AppUserBetRecord{
-		UID:          uid,
-		UserID:       &user.ID,
-		GameID:       &gameID,
-		GameName:     &gameName,
-		PlatformCode: &platformCode,
-		BetAmount:    &betAmount,
-		WinAmount:    &winAmount,
-		RoundID:      &roundID,
-		TraceID:      &tid,
-		RoundEnd:     &roundEnd,
-		Date:         &now,
-		Remark:       &remark,
-		CreateTime:   &now,
-		UpdateTime:   &now,
-	}).Error
+	return tx.Exec(
+		"INSERT INTO `"+pojo.AppUserBetRecordTableNameByUserID(user.ID)+"` "+
+			"(`uid`, `user_id`, `game_id`, `game_name`, `platform_code`, `bet_amount`, `win_amount`, `round_id`, `trace_id`, `round_end`, `date`, `remark`, `create_time`, `update_time`) "+
+			"VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+		uid,
+		user.ID,
+		gameID,
+		gameName,
+		platformCode,
+		betAmount,
+		winAmount,
+		roundID,
+		tid,
+		roundEnd,
+		now,
+		remark,
+		now,
+		now,
+	).Error
 }
 
 func gameBetRecordAmounts(req pojo.GameCashTransferInOutReq, amount float64, isFishingGame bool) (float64, float64) {

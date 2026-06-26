@@ -83,6 +83,8 @@ func main() {
 		common.InitScheduler()
 		log.Print("init scheduler success\n")
 	}
+	services.StartWithdrawFlowOutboxWorkerDefaultTable()
+	log.Print("init withdraw flow outbox worker success\n")
 	go utils.Test()
 	utils.InitI18n()
 	if err = services.InitLuckyExpireAsynq(); err != nil {
