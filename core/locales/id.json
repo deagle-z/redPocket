@@ -141,6 +141,7 @@
   "game_recharge_required": "silakan lakukan deposit sebelum masuk ke permainan",
   "recharge_v2_min_amount": "jumlah isi ulang minimum adalah {{.min}}",
   "recharge_channel_required": "saluran isi ulang tidak boleh kosong",
+  "recharge_channel_disabled": "saluran isi ulang dinonaktifkan",
   "order_not_found": "pesanan tidak ditemukan",
   "order_not_found_with_no": "pesanan tidak ditemukan: {{.orderNo}}",
   "order_status_not_pending_callback": "status pesanan tidak pending, callback tidak diizinkan",

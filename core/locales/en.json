@@ -141,6 +141,7 @@
   "game_recharge_required": "please make a deposit before entering the game",
   "recharge_v2_min_amount": "minimum recharge amount is {{.min}}",
   "recharge_channel_required": "recharge channel cannot be empty",
+  "recharge_channel_disabled": "recharge channel is disabled",
   "order_not_found": "order does not exist",
   "order_not_found_with_no": "order does not exist: {{.orderNo}}",
   "order_status_not_pending_callback": "order status is not pending, callback is not allowed",

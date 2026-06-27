@@ -400,6 +400,9 @@ func appCreateRechargeOrder(db *gorm.DB, userID int64, req pojo.RechargeOrderApp
 			}
 		}
 	}
+	if err = validateRechargeChannelAvailable(db, req.Channel, req.CountryCode); err != nil {
+		return result, err
+	}
 	providerAmount := req.Amount
 	if country.ID > 0 && country.Rate > 0 {
 		providerAmount = calculateRechargeProviderAmount(req.Amount, country.Rate)
@@ -540,6 +543,39 @@ func appCreateRechargeOrder(db *gorm.DB, userID int64, req pojo.RechargeOrderApp
 		PayURL:          payResp.PayURL,
 	}
 	return result, nil
+}
+
+func validateRechargeChannelAvailable(db *gorm.DB, channel string, countryCode string) error {
+	channel = strings.TrimSpace(channel)
+	if channel == "" {
+		return errors.New("recharge_channel_required")
+	}
+
+	var entity pojo.SysPayChannel
+	err := db.
+		Where("channel_code = ? AND deleted_at = 0", channel).
+		First(&entity).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil
+		}
+		return err
+	}
+
+	if entity.Status != 1 {
+		return errors.New(utils.I18nMessage("recharge_channel_disabled", nil))
+	}
+	channelType := strings.ToLower(strings.TrimSpace(entity.ChannelType))
+	if channelType != "deposit" && channelType != "both" {
+		return errors.New(utils.I18nMessage("recharge_channel_disabled", nil))
+	}
+	if countryCode != "" && entity.CountryCode != nil {
+		channelCountry := pojo.NormalizeWithdrawCountryCode(*entity.CountryCode)
+		if channelCountry != "" && channelCountry != pojo.NormalizeWithdrawCountryCode(countryCode) {
+			return errors.New(utils.I18nMessage("recharge_channel_disabled", nil))
+		}
+	}
+	return nil
 }
 
 func ceilProviderAmount(amount float64) float64 {

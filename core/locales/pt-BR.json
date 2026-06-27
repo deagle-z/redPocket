@@ -141,6 +141,7 @@
   "game_recharge_required": "faça um depósito antes de entrar no jogo",
   "recharge_v2_min_amount": "o valor mínimo de recarga é {{.min}}",
   "recharge_channel_required": "o canal de recarga não pode estar vazio",
+  "recharge_channel_disabled": "o canal de recarga está desativado",
   "order_not_found": "pedido não existe",
   "order_not_found_with_no": "pedido não existe: {{.orderNo}}",
   "order_status_not_pending_callback": "o status do pedido não está pendente, callback não permitido",
