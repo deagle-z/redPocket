@@ -363,7 +363,7 @@ func buildVcpayMxnNotifyParams(req vcpayMxnNotifyReq) map[string]any {
 }
 
 func centsToPayAmount(cents int64) float64 {
-	return float64(cents) / 100
+	return utils.Truncate2(float64(cents) / 100)
 }
 
 type vcpayMxnNotifyReq struct {

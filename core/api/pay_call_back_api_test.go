@@ -5,6 +5,7 @@ import (
 	"BaseGoUni/core/pay/gctpk"
 	"BaseGoUni/core/pay/vcpaymxn"
 	"BaseGoUni/core/utils"
+	"encoding/json"
 	"testing"
 )
 
@@ -131,5 +132,27 @@ func TestValidateVcpayMxnNotifyConfigAcceptsCallbackSignWithoutCodeMsg(t *testin
 
 	if _, err := validateVcpayMxnNotifyConfig(req); err != nil {
 		t.Fatalf("validateVcpayMxnNotifyConfig() error = %v", err)
+	}
+}
+
+func TestVcpayMxnNotifyAmountConvertsCentsToPayAmount(t *testing.T) {
+	tests := []struct {
+		name string
+		raw  string
+		want float64
+	}{
+		{name: "numeric cents", raw: `{"order_amount":10000}`, want: 100},
+		{name: "string cents", raw: `{"order_amount":"12345"}`, want: 123.45},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var req vcpayMxnNotifyReq
+			if err := json.Unmarshal([]byte(tt.raw), &req); err != nil {
+				t.Fatalf("json.Unmarshal() error = %v", err)
+			}
+			if got := centsToPayAmount(req.OrderAmount.Int64()); got != tt.want {
+				t.Fatalf("centsToPayAmount(%d) = %.2f, want %.2f", req.OrderAmount.Int64(), got, tt.want)
+			}
+		})
 	}
 }
