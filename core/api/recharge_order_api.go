@@ -8,7 +8,10 @@ import (
 	"gorm.io/gorm"
 	"log"
 	"strconv"
+	"strings"
 )
+
+const defaultAdminRechargeReturnURL = "https://example.com"
 
 // GetRechargeOrders godoc
 //
@@ -225,6 +228,9 @@ func AdminCreateRechargeOrderV2(ctx *gin.Context) {
 	if req.UserID <= 0 {
 		utils.ErrorBack(ctx, "invalid_params")
 		return
+	}
+	if strings.TrimSpace(req.ReturnURL) == "" {
+		req.ReturnURL = defaultAdminRechargeReturnURL
 	}
 
 	db := ctx.MustGet("db").(*gorm.DB)
