@@ -14,6 +14,9 @@ const props = withDefaults(defineProps<FormProps>(), {
     tenantType: 1,
     status: 1,
     enableWithdraw: 0,
+    withdrawAutoReviewEnabled: 0,
+    withdrawAutoReviewMaxAmount: 0,
+    withdrawAutoReviewDailyLimit: 0,
     loginPassword: "",
     ownerUserId: undefined,
     planCode: "",
@@ -118,6 +121,44 @@ defineExpose({ getRef });
             :inactive-value="0"
             active-text="开启"
             inactive-text="关闭"
+          />
+        </el-form-item>
+      </re-col>
+
+      <re-col :value="12" :xs="24" :sm="24">
+        <el-form-item label="自动审核" prop="withdrawAutoReviewEnabled">
+          <el-switch
+            v-model="newFormInline.withdrawAutoReviewEnabled"
+            :active-value="1"
+            :inactive-value="0"
+            active-text="开启"
+            inactive-text="关闭"
+          />
+        </el-form-item>
+      </re-col>
+
+      <re-col :value="12" :xs="24" :sm="24">
+        <el-form-item label="自动审核单笔上限" prop="withdrawAutoReviewMaxAmount">
+          <el-input-number
+            v-model="newFormInline.withdrawAutoReviewMaxAmount"
+            :min="0"
+            :precision="2"
+            :step="100"
+            class="!w-full"
+            placeholder="0"
+          />
+        </el-form-item>
+      </re-col>
+
+      <re-col :value="12" :xs="24" :sm="24">
+        <el-form-item label="自动审核每日总上限" prop="withdrawAutoReviewDailyLimit">
+          <el-input-number
+            v-model="newFormInline.withdrawAutoReviewDailyLimit"
+            :min="0"
+            :precision="2"
+            :step="100"
+            class="!w-full"
+            placeholder="0"
           />
         </el-form-item>
       </re-col>

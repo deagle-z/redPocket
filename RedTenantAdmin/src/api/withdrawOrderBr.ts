@@ -20,6 +20,7 @@ export type WithdrawOrderBr = {
   channel: string;
   payMethod?: string | null;
   status: number;
+  autoReviewed: number;
   reviewedBy?: number | null;
   reviewedAt?: string | null;
   paidAt?: string | null;

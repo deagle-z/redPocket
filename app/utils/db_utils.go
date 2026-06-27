@@ -156,6 +156,10 @@ func InitTables(prefix string) (firstInit bool, err error) {
 	if err = ensureTgUserRebateWithdrawSchema(db); err != nil {
 		panic(err)
 	}
+	log.Print("init tables: ensure sys_tenant withdraw auto review schema...\n")
+	if err = ensureSysTenantWithdrawAutoReviewSchema(db); err != nil {
+		panic(err)
+	}
 	log.Print("init tables: ensure tg_user withdraw flow outbox schema...\n")
 	if err = ensureTgUserWithdrawFlowOutboxSchema(db); err != nil {
 		panic(err)
@@ -246,6 +250,22 @@ func ensureTgUserRebateWithdrawSchema(db *gorm.DB) error {
 	return nil
 }
 
+func ensureSysTenantWithdrawAutoReviewSchema(db *gorm.DB) error {
+	migrator := db.Migrator()
+	for _, column := range []string{
+		"WithdrawAutoReviewEnabled",
+		"WithdrawAutoReviewMaxAmount",
+		"WithdrawAutoReviewDailyLimit",
+	} {
+		if !migrator.HasColumn(&pojo.SysTenant{}, column) {
+			if err := migrator.AddColumn(&pojo.SysTenant{}, column); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
 func ensureTgUserWithdrawFlowOutboxSchema(db *gorm.DB) error {
 	return db.AutoMigrate(&pojo.TgUserWithdrawFlowOutbox{})
 }
@@ -291,11 +311,21 @@ func ensureWithdrawOrderBrPerformanceSchema(db *gorm.DB) error {
 			return err
 		}
 	}
+	if !migrator.HasColumn(&pojo.WithdrawOrderBr{}, "AutoReviewed") {
+		if err := migrator.AddColumn(&pojo.WithdrawOrderBr{}, "AutoReviewed"); err != nil {
+			return err
+		}
+	}
 	if err := backfillWithdrawOrderBrSource(db); err != nil {
 		return err
 	}
 	if !migrator.HasIndex(&pojo.WithdrawOrderBr{}, "idx_withdraw_order_user_created") {
 		if err := db.Exec("CREATE INDEX `idx_withdraw_order_user_created` ON `withdraw_order_br` (`user_id`, `created_at`)").Error; err != nil {
+			return err
+		}
+	}
+	if !migrator.HasIndex(&pojo.WithdrawOrderBr{}, "idx_withdraw_order_auto_reviewed") {
+		if err := db.Exec("CREATE INDEX `idx_withdraw_order_auto_reviewed` ON `withdraw_order_br` (`auto_reviewed`)").Error; err != nil {
 			return err
 		}
 	}

@@ -373,6 +373,19 @@ export function useWithdrawOrderBr(tableRef: Ref) {
       )
     },
     {
+      label: "自动审核",
+      prop: "autoReviewed",
+      minWidth: 100,
+      cellRenderer: scope => (
+        <ElTag
+          type={Number(scope.row.autoReviewed) === 1 ? "success" : "info"}
+          effect="plain"
+        >
+          {Number(scope.row.autoReviewed) === 1 ? "是" : "否"}
+        </ElTag>
+      )
+    },
+    {
       label: "审核时间",
       prop: "reviewedAt",
       minWidth: 160,

@@ -10,6 +10,9 @@ export type SysTenant = {
   tenantType: number;
   status: number;
   enableWithdraw: number;
+  withdrawAutoReviewEnabled: number;
+  withdrawAutoReviewMaxAmount: number;
+  withdrawAutoReviewDailyLimit: number;
   ownerUserId?: number | null;
   planCode?: string | null;
   bindDomain?: string | null;
@@ -39,6 +42,9 @@ export type SysTenantSet = {
   tenantType: number;
   status: number;
   enableWithdraw: number;
+  withdrawAutoReviewEnabled: number;
+  withdrawAutoReviewMaxAmount: number;
+  withdrawAutoReviewDailyLimit: number;
   loginPassword?: string;
   ownerUserId?: number | null;
   planCode?: string | null;

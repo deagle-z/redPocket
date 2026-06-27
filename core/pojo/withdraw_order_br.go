@@ -24,6 +24,7 @@ type WithdrawOrderBr struct { // 巴西地区提现订单（Pix/TED/DOC）
 	Channel                  string     `json:"channel" gorm:"column:channel;type:varchar(32);default:pix"`                                     // 渠道
 	PayMethod                *string    `json:"payMethod" gorm:"column:pay_method;type:varchar(32)"`                                            // 方式/子渠道
 	Status                   int        `json:"status" gorm:"column:status;type:tinyint;default:0"`                                             // 状态：0待审核 1待打款 2打款中 3成功 4失败 5取消 6退回
+	AutoReviewed             int        `json:"autoReviewed" gorm:"column:auto_reviewed;type:tinyint;default:0;index"`                          // 是否自动审核：0=否 1=是
 	ReviewedBy               *int64     `json:"reviewedBy" gorm:"column:reviewed_by;type:bigint"`                                               // 审核人ID（后台）
 	ReviewedAt               *time.Time `json:"reviewedAt" gorm:"column:reviewed_at;type:datetime(3)"`                                          // 审核时间
 	PaidAt                   *time.Time `json:"paidAt" gorm:"column:paid_at;type:datetime(3)"`                                                  // 打款完成时间
@@ -90,6 +91,7 @@ type WithdrawOrderBrSet struct {
 	Channel              string     `json:"channel"`
 	PayMethod            *string    `json:"payMethod"`
 	Status               int        `json:"status"`
+	AutoReviewed         int        `json:"autoReviewed"`
 	ReviewedBy           *int64     `json:"reviewedBy"`
 	ReviewedAt           *time.Time `json:"reviewedAt"`
 	PaidAt               *time.Time `json:"paidAt"`
@@ -133,6 +135,7 @@ type withdrawOrderBrSetJSON struct {
 	Channel              string            `json:"channel"`
 	PayMethod            *string           `json:"payMethod"`
 	Status               int               `json:"status"`
+	AutoReviewed         int               `json:"autoReviewed"`
 	ReviewedBy           *int64            `json:"reviewedBy"`
 	ReviewedAt           *withdrawJSONTime `json:"reviewedAt"`
 	PaidAt               *withdrawJSONTime `json:"paidAt"`
@@ -224,6 +227,7 @@ func (req *WithdrawOrderBrSet) UnmarshalJSON(data []byte) error {
 	req.Channel = raw.Channel
 	req.PayMethod = raw.PayMethod
 	req.Status = raw.Status
+	req.AutoReviewed = raw.AutoReviewed
 	req.ReviewedBy = raw.ReviewedBy
 	req.ReviewedAt = withdrawJSONTimePtr(raw.ReviewedAt)
 	req.PaidAt = withdrawJSONTimePtr(raw.PaidAt)
@@ -308,6 +312,7 @@ type WithdrawOrderBrBack struct {
 	Channel                  string     `json:"channel"`
 	PayMethod                *string    `json:"payMethod"`
 	Status                   int        `json:"status"`
+	AutoReviewed             int        `json:"autoReviewed"`
 	ReviewedBy               *int64     `json:"reviewedBy"`
 	ReviewedAt               *time.Time `json:"reviewedAt"`
 	PaidAt                   *time.Time `json:"paidAt"`

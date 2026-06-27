@@ -20,6 +20,11 @@ const (
 	withdrawOrderSourceRebate  = "rebate"
 )
 
+const (
+	withdrawAutoReviewLockKey = "bgu_withdraw_auto_review_daily_limit"
+	withdrawAutoReviewLockTTL = 5 * time.Second
+)
+
 // RebateWithdrawFeeRateConfigKey 佣金提现手续费配置键（sys_config，格式：固定费,百分比 如 4.25,1.5）。
 const RebateWithdrawFeeRateConfigKey = "rebate_withdraw_fee_rate"
 
@@ -198,6 +203,8 @@ func SetWithdrawOrderBr(db *gorm.DB, req pojo.WithdrawOrderBrSet) (result pojo.W
 	}
 	var dbOrder pojo.WithdrawOrderBr
 	var payoutErr error
+	autoReviewLocked, releaseAutoReviewLock := acquireWithdrawAutoReviewCreateLock(req)
+	defer releaseAutoReviewLock()
 	err = db.Transaction(func(tx *gorm.DB) error {
 		if req.ID > 0 {
 			if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ?", req.ID).First(&dbOrder).Error; err != nil {
@@ -252,6 +259,9 @@ func SetWithdrawOrderBr(db *gorm.DB, req pojo.WithdrawOrderBrSet) (result pojo.W
 				return err
 			}
 		}
+		if err := applyWithdrawAutoReviewOnCreate(tx, &dbOrder, autoReviewLocked); err != nil {
+			return err
+		}
 		return nil
 	})
 	if err != nil {
@@ -274,6 +284,8 @@ func SetRebateWithdrawOrder(db *gorm.DB, req pojo.WithdrawOrderBrSet) (result po
 		req.Fee = utils.Truncate2(req.Fee)
 	}
 	var dbOrder pojo.WithdrawOrderBr
+	autoReviewLocked, releaseAutoReviewLock := acquireWithdrawAutoReviewCreateLock(req)
+	defer releaseAutoReviewLock()
 	err = db.Transaction(func(tx *gorm.DB) error {
 		_ = copier.Copy(&dbOrder, &req)
 		normalizeWithdrawOrderSource(&dbOrder)
@@ -295,6 +307,9 @@ func SetRebateWithdrawOrder(db *gorm.DB, req pojo.WithdrawOrderBrSet) (result po
 				return err
 			}
 		}
+		if err := applyWithdrawAutoReviewOnCreate(tx, &dbOrder, autoReviewLocked); err != nil {
+			return err
+		}
 		return nil
 	})
 	if err != nil {
@@ -314,6 +329,8 @@ func SetWithdrawOrderBrV2(db *gorm.DB, req pojo.WithdrawOrderBrSet) (result pojo
 		req.Fee = utils.Truncate2(req.Fee)
 	}
 	var dbOrder pojo.WithdrawOrderBr
+	autoReviewLocked, releaseAutoReviewLock := acquireWithdrawAutoReviewCreateLock(req)
+	defer releaseAutoReviewLock()
 	err = db.Transaction(func(tx *gorm.DB) error {
 		_ = copier.Copy(&dbOrder, &req)
 		normalizeWithdrawOrderSource(&dbOrder)
@@ -334,6 +351,9 @@ func SetWithdrawOrderBrV2(db *gorm.DB, req pojo.WithdrawOrderBrSet) (result pojo
 				return err
 			}
 		}
+		if err := applyWithdrawAutoReviewOnCreate(tx, &dbOrder, autoReviewLocked); err != nil {
+			return err
+		}
 		return nil
 	})
 	if err != nil {
@@ -341,6 +361,98 @@ func SetWithdrawOrderBrV2(db *gorm.DB, req pojo.WithdrawOrderBrSet) (result pojo
 	}
 	_ = copier.Copy(&result, &dbOrder)
 	return result, nil
+}
+
+func acquireWithdrawAutoReviewCreateLock(req pojo.WithdrawOrderBrSet) (bool, func()) {
+	if req.ID > 0 || req.Status != 0 || req.TenantId <= 0 || utils.RD == nil {
+		return false, func() {}
+	}
+	acquired, err := utils.AcquireLock(withdrawAutoReviewLockKey, withdrawAutoReviewLockTTL)
+	if err != nil || !acquired {
+		return false, func() {}
+	}
+	return true, func() {
+		_ = utils.ReleaseLock(withdrawAutoReviewLockKey)
+	}
+}
+
+func applyWithdrawAutoReviewOnCreate(tx *gorm.DB, order *pojo.WithdrawOrderBr, autoReviewLocked bool) error {
+	if order == nil || order.ID <= 0 || order.Status != 0 || !autoReviewLocked {
+		return nil
+	}
+	var tenant pojo.SysTenant
+	if err := tx.Select("id", "withdraw_auto_review_enabled", "withdraw_auto_review_max_amount", "withdraw_auto_review_daily_limit").
+		Where("id = ?", order.TenantId).
+		First(&tenant).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil
+		}
+		return err
+	}
+	if !withdrawAutoReviewEligible(tenant, order.Amount) {
+		return nil
+	}
+	todayTotal, err := withdrawAutoReviewTodayTotal(tx, time.Now())
+	if err != nil {
+		return err
+	}
+	if utils.Truncate2(todayTotal+order.Amount) > utils.Truncate2(tenant.WithdrawAutoReviewDailyLimit) {
+		return nil
+	}
+
+	now := time.Now()
+	order.Status = 1
+	order.AutoReviewed = 1
+	order.ReviewedAt = &now
+	if err := submitWithdrawPayout(tx, order); err != nil {
+		failMsg := withdrawFailMsgFromError(err)
+		order.Status = 0
+		order.AutoReviewed = 0
+		order.ReviewedAt = nil
+		order.FailMsg = &failMsg
+		return tx.Model(&pojo.WithdrawOrderBr{}).
+			Where("id = ?", order.ID).
+			Updates(map[string]any{
+				"status":        order.Status,
+				"auto_reviewed": order.AutoReviewed,
+				"reviewed_at":   nil,
+				"fail_msg":      failMsg,
+			}).Error
+	}
+
+	return tx.Model(&pojo.WithdrawOrderBr{}).
+		Where("id = ?", order.ID).
+		Updates(map[string]any{
+			"status":             order.Status,
+			"auto_reviewed":      order.AutoReviewed,
+			"reviewed_at":        order.ReviewedAt,
+			"provider_payout_no": order.ProviderPayoutNo,
+			"provider_status":    order.ProviderStatus,
+		}).Error
+}
+
+func withdrawAutoReviewEligible(tenant pojo.SysTenant, amount float64) bool {
+	if tenant.WithdrawAutoReviewEnabled != 1 {
+		return false
+	}
+	if amount <= 0 || tenant.WithdrawAutoReviewMaxAmount <= 0 || tenant.WithdrawAutoReviewDailyLimit <= 0 {
+		return false
+	}
+	return utils.Truncate2(amount) <= utils.Truncate2(tenant.WithdrawAutoReviewMaxAmount)
+}
+
+func withdrawAutoReviewTodayTotal(db *gorm.DB, now time.Time) (float64, error) {
+	start := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	end := start.AddDate(0, 0, 1)
+	var total float64
+	err := db.Model(&pojo.WithdrawOrderBr{}).
+		Select("COALESCE(SUM(amount), 0)").
+		Where("auto_reviewed = 1 AND reviewed_at >= ? AND reviewed_at < ?", start, end).
+		Scan(&total).Error
+	if err != nil {
+		return 0, err
+	}
+	return utils.Truncate2(total), nil
 }
 
 func mergeWithdrawOrderUpdate(order *pojo.WithdrawOrderBr, req pojo.WithdrawOrderBrSet) {
@@ -398,6 +510,9 @@ func mergeWithdrawOrderUpdate(order *pojo.WithdrawOrderBr, req pojo.WithdrawOrde
 	}
 	if req.HasJSONField("status") {
 		order.Status = req.Status
+	}
+	if req.HasJSONField("autoReviewed") {
+		order.AutoReviewed = req.AutoReviewed
 	}
 	if req.HasJSONField("reviewedBy") {
 		order.ReviewedBy = req.ReviewedBy

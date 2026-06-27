@@ -116,6 +116,41 @@ export function useTenant(_tableRef: Ref) {
       )
     },
     {
+      label: "自动审核",
+      prop: "withdrawAutoReviewEnabled",
+      minWidth: 100,
+      cellRenderer: scope => (
+        <ElTag
+          type={
+            Number(scope.row.withdrawAutoReviewEnabled) === 1
+              ? "success"
+              : "info"
+          }
+          effect="plain"
+        >
+          {Number(scope.row.withdrawAutoReviewEnabled) === 1 ? "开启" : "关闭"}
+        </ElTag>
+      )
+    },
+    {
+      label: "自动审核单笔上限",
+      prop: "withdrawAutoReviewMaxAmount",
+      minWidth: 150,
+      formatter: ({ withdrawAutoReviewMaxAmount }) =>
+        Number(withdrawAutoReviewMaxAmount || 0).toLocaleString("en-US", {
+          maximumFractionDigits: 2
+        })
+    },
+    {
+      label: "自动审核每日总上限",
+      prop: "withdrawAutoReviewDailyLimit",
+      minWidth: 160,
+      formatter: ({ withdrawAutoReviewDailyLimit }) =>
+        Number(withdrawAutoReviewDailyLimit || 0).toLocaleString("en-US", {
+          maximumFractionDigits: 2
+        })
+    },
+    {
       label: "TG客服链接",
       prop: "tgServiceUrl",
       minWidth: 180,
@@ -280,6 +315,10 @@ export function useTenant(_tableRef: Ref) {
           tenantType: row?.tenantType ?? 1,
           status: row?.status ?? 1,
           enableWithdraw: row?.enableWithdraw ?? 0,
+          withdrawAutoReviewEnabled: row?.withdrawAutoReviewEnabled ?? 0,
+          withdrawAutoReviewMaxAmount: row?.withdrawAutoReviewMaxAmount ?? 0,
+          withdrawAutoReviewDailyLimit:
+            row?.withdrawAutoReviewDailyLimit ?? 0,
           loginPassword: title === "新增" ? "" : undefined,
           ownerUserId: row?.ownerUserId ?? undefined,
           planCode: row?.planCode ?? "",

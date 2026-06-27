@@ -6,6 +6,9 @@ interface FormItemProps {
   tenantType: number;
   status: number;
   enableWithdraw: number;
+  withdrawAutoReviewEnabled: number;
+  withdrawAutoReviewMaxAmount: number;
+  withdrawAutoReviewDailyLimit: number;
   loginPassword?: string;
   ownerUserId?: number;
   planCode?: string;
