@@ -609,8 +609,15 @@ func addRechargeOrderBonusAmount(tx *gorm.DB, orderID int64, bonusAmount float64
 		Update("bonus_amount", gorm.Expr("bonus_amount + ?", bonusAmount)).Error
 }
 
+func rechargeCallbackCreditBaseAmount(orderAmount float64, payAmount float64) float64 {
+	if payAmount > 0 {
+		return utils.Truncate2(payAmount)
+	}
+	return utils.Truncate2(orderAmount)
+}
+
 // ProcessRechargeOrderSuccess 处理代收支付成功回调，入账并更新订单状态
-// providerTradeNo: 三方交易号；payAmount: 三方实际支付金额（仅记录，入账按订单 amount 计算）
+// providerTradeNo: 三方交易号；payAmount: 三方实际支付金额（元），为空时回退订单 amount。
 func ProcessRechargeOrderSuccess(db *gorm.DB, orderNo string, providerTradeNo string, payAmount float64, tablePrefix string) error {
 	var successUserID int64
 	var successOrderNo string
@@ -648,7 +655,8 @@ func ProcessRechargeOrderSuccess(db *gorm.DB, orderNo string, providerTradeNo st
 			order.OrderNo, user.ID, tablePrefix, order.Amount, order.Fee, order.Status, formatRechargeActivityType(order.ActivityType), user.Balance, user.RechargeAmount, isFirstRecharge, providerTradeNo, payAmount)
 
 		now := time.Now()
-		creditAmount := utils.Truncate2(order.Amount - order.Fee + bonusAmount)
+		creditBaseAmount := rechargeCallbackCreditBaseAmount(order.Amount, payAmount)
+		creditAmount := utils.Truncate2(creditBaseAmount - order.Fee + bonusAmount)
 		if creditAmount < 0 {
 			creditAmount = 0
 		}
@@ -675,7 +683,7 @@ func ProcessRechargeOrderSuccess(db *gorm.DB, orderNo string, providerTradeNo st
 			"balance":         gorm.Expr("balance + ?", creditAmount),
 			"gift_amount":     gorm.Expr("gift_amount + ?", bonusAmount),
 			"gift_total":      gorm.Expr("gift_total + ?", bonusAmount),
-			"recharge_amount": gorm.Expr("recharge_amount + ?", order.Amount),
+			"recharge_amount": gorm.Expr("recharge_amount + ?", creditBaseAmount),
 		}).Error; err != nil {
 			return err
 		}
@@ -688,7 +696,7 @@ func ProcessRechargeOrderSuccess(db *gorm.DB, orderNo string, providerTradeNo st
 			return err
 		}
 		if order.ActivityType == nil || *order.ActivityType != rechargeActivityTypeV2Gift {
-			if err := AddUserWithdrawRestrictedBalance(tx, user, bonusAmount, clampRechargeRestrictedCredit(order.Amount-order.Fee)); err != nil {
+			if err := AddUserWithdrawRestrictedBalance(tx, user, bonusAmount, clampRechargeRestrictedCredit(creditBaseAmount-order.Fee)); err != nil {
 				return err
 			}
 		}
@@ -717,7 +725,7 @@ func ProcessRechargeOrderSuccess(db *gorm.DB, orderNo string, providerTradeNo st
 				UserId:          user.ID,
 				AwardUni:        fmt.Sprintf("recharge_gift_%s", order.OrderNo),
 				Amount:          bonusAmount,
-				StartAmount:     utils.Truncate2(user.Balance + order.Amount - order.Fee),
+				StartAmount:     utils.Truncate2(user.Balance + creditBaseAmount - order.Fee),
 				EndAmount:       utils.Truncate2(user.Balance + creditAmount),
 				CashMark:        "首充赠送",
 				CashDesc:        fmt.Sprintf("首充赠送彩金%s，赠送%.2f", order.OrderNo, bonusAmount),
