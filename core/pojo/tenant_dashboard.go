@@ -70,6 +70,7 @@ type TenantDashboardUserDetailResp struct {
 type TenantDashboardAgentRankBack struct {
 	ID                int64      `json:"id"`
 	TenantId          int64      `json:"tenantId"`
+	TenantName        *string    `json:"tenantName"`
 	Uid               string     `json:"uid"`
 	TgID              int64      `json:"tgId"`
 	Username          *string    `json:"username"`

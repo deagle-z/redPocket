@@ -207,6 +207,7 @@ func GetAdminDashboardAgentRanks(db *gorm.DB, search pojo.TenantDashboardDetailS
 	type agentRankRow struct {
 		ID                int64      `gorm:"column:id"`
 		TenantId          int64      `gorm:"column:tenant_id"`
+		TenantName        *string    `gorm:"column:tenant_name"`
 		Uid               string     `gorm:"column:uid"`
 		TgID              int64      `gorm:"column:tg_id"`
 		Username          *string    `gorm:"column:username"`
@@ -224,6 +225,7 @@ func GetAdminDashboardAgentRanks(db *gorm.DB, search pojo.TenantDashboardDetailS
 	rowQuery := db.Table(pojo.RechargeOrderTableName+" ro").
 		Select(`parent.id,
 			parent.tenant_id,
+			st.tenant_name,
 			parent.uid,
 			parent.tg_id,
 			parent.username,
@@ -237,12 +239,13 @@ func GetAdminDashboardAgentRanks(db *gorm.DB, search pojo.TenantDashboardDetailS
 			MAX(ro.pay_time) AS last_recharge_at`).
 		Joins("JOIN "+pojo.TgUserTableName+" child ON child.id = ro.user_id AND child.tenant_id = ro.tenant_id").
 		Joins("JOIN "+pojo.TgUserTableName+" parent ON parent.id = child.parent_id AND parent.tenant_id = child.tenant_id").
+		Joins("LEFT JOIN "+pojo.SysTenantTableName+" st ON st.id = parent.tenant_id").
 		Where("ro.status = ? AND coalesce(ro.is_dev, 0) = 0 AND ro.amount > 0", 1).
 		Where("child.parent_id IS NOT NULL AND child.parent_id > 0").
 		Where("child.is_bot = ? AND parent.is_bot = ?", false, false)
 	rowQuery = filterAdminDashboardTenant(rowQuery, "ro.tenant_id", search.TenantId)
 	_ = rowQuery.
-		Group("parent.id, parent.tenant_id, parent.uid, parent.tg_id, parent.username, parent.first_name, parent.phone, parent.balance, parent.status").
+		Group("parent.id, parent.tenant_id, st.tenant_name, parent.uid, parent.tg_id, parent.username, parent.first_name, parent.phone, parent.balance, parent.status").
 		Having("SUM(ro.amount) > 0").
 		Order("sub_recharge_amount DESC, sub_recharge_users DESC, parent.id DESC").
 		Limit(search.PageSize).
@@ -256,6 +259,7 @@ func GetAdminDashboardAgentRanks(db *gorm.DB, search pojo.TenantDashboardDetailS
 		result.List = append(result.List, pojo.TenantDashboardAgentRankBack{
 			ID:                row.ID,
 			TenantId:          row.TenantId,
+			TenantName:        row.TenantName,
 			Uid:               row.Uid,
 			TgID:              row.TgID,
 			Username:          row.Username,

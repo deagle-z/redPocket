@@ -86,6 +86,7 @@ export type TenantDashboardUserDetailResult = {
 export type TenantDashboardAgentRank = {
   id: number;
   tenantId: number;
+  tenantName?: string | null;
   uid: string;
   tgId: number;
   username?: string | null;

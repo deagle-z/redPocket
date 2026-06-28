@@ -88,6 +88,7 @@ export type AdminDashboardUserDetailResult = {
 export type AdminDashboardAgentRank = {
   id: number;
   tenantId: number;
+  tenantName?: string | null;
   uid: string;
   tgId: number;
   username?: string | null;

@@ -292,6 +292,12 @@ const detailPageCount = computed(() => {
     Math.ceil(detailPagination.total / detailPagination.pageSize)
   );
 });
+const agentRankPageCount = computed(() => {
+  return Math.max(
+    1,
+    Math.ceil(agentRankPagination.total / agentRankPagination.pageSize)
+  );
+});
 
 function getDetailExpectedTotal(type: DetailType) {
   if (type === "online") return stats.value.onlineUsers || 0;
@@ -564,6 +570,21 @@ function handleAgentRankCurrentChange(page: number) {
   loadAgentRanks();
 }
 
+function handleAgentRankPrevPage() {
+  if (agentRankLoading.value || agentRankPagination.currentPage <= 1) return;
+  handleAgentRankCurrentChange(agentRankPagination.currentPage - 1);
+}
+
+function handleAgentRankNextPage() {
+  if (
+    agentRankLoading.value ||
+    agentRankPagination.currentPage >= agentRankPageCount.value
+  ) {
+    return;
+  }
+  handleAgentRankCurrentChange(agentRankPagination.currentPage + 1);
+}
+
 onMounted(() => {
   loadTenantOptions();
   loadStats();
@@ -630,6 +651,46 @@ onMounted(() => {
     </el-skeleton>
 
     <el-dialog v-model="agentRankDialogVisible" title="代理排行" width="80%">
+      <div class="detail-pager">
+        <div class="detail-pager__meta">
+          共 {{ agentRankPagination.total }} 条，第
+          {{ agentRankPagination.currentPage }} / {{ agentRankPageCount }} 页
+        </div>
+        <div class="detail-pager__actions">
+          <span>每页</span>
+          <el-select
+            v-model="agentRankPagination.pageSize"
+            size="small"
+            class="detail-pager__size"
+            :disabled="agentRankLoading"
+            @change="handleAgentRankSizeChange"
+          >
+            <el-option :value="10" label="10" />
+            <el-option :value="20" label="20" />
+            <el-option :value="50" label="50" />
+            <el-option :value="100" label="100" />
+          </el-select>
+          <el-button
+            size="small"
+            :disabled="agentRankLoading || agentRankPagination.currentPage <= 1"
+            @click="handleAgentRankPrevPage"
+          >
+            上一页
+          </el-button>
+          <el-button
+            size="small"
+            type="primary"
+            :disabled="
+              agentRankLoading ||
+              agentRankPagination.currentPage >= agentRankPageCount
+            "
+            @click="handleAgentRankNextPage"
+          >
+            下一页
+          </el-button>
+        </div>
+      </div>
+
       <el-table v-loading="agentRankLoading" :data="agentRankList" border stripe>
         <el-table-column label="排名" width="80">
           <template #default="{ $index }">
@@ -641,9 +702,9 @@ onMounted(() => {
             }}
           </template>
         </el-table-column>
-        <el-table-column prop="tenantId" label="商户ID" min-width="90">
+        <el-table-column prop="tenantName" label="商户名称" min-width="140">
           <template #default="{ row }">
-            {{ formatNullable(row.tenantId) }}
+            {{ formatNullable(row.tenantName) }}
           </template>
         </el-table-column>
         <el-table-column prop="uid" label="代理UID" min-width="110">
