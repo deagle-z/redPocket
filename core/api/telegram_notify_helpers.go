@@ -27,6 +27,7 @@ func notifyTelegramWithdraw(user pojo.TgUser, order pojo.WithdrawOrderBrBack) {
 		Currency:          order.Currency,
 		Channel:           order.Channel,
 		PayMethod:         apiStringValue(order.PayMethod),
+		WithdrawSource:    order.WithdrawSource,
 		CreatedAt:         order.CreatedAt,
 	})
 }

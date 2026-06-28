@@ -35,6 +35,7 @@ type TelegramNotifyPayload struct {
 	Channel           string
 	PayMethod         string
 	ProviderTradeNo   string
+	WithdrawSource    string
 	CreatedAt         time.Time
 }
 

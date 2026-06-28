@@ -154,8 +154,9 @@ func buildTelegramNotifyText(payload utils.TelegramNotifyPayload) string {
 			at.Format("2006-01-02 15:04:05"),
 		)
 	case utils.TelegramNotifyEventWithdraw:
-		return fmt.Sprintf("提现通知\n所属商户: %s\n用户ID: %d\nUID: %s\n订单号: %s\n金额: %.2f %s\n手续费: %.2f\n渠道: %s\n时间: %s",
+		return fmt.Sprintf("提现通知\n所属商户: %s\n提现类型: %s\n用户ID: %d\nUID: %s\n订单号: %s\n金额: %.2f %s\n手续费: %.2f\n渠道: %s\n时间: %s",
 			tenant,
+			withdrawSourceLabel(payload.WithdrawSource),
 			payload.UserID,
 			payload.UID,
 			payload.OrderNo,
@@ -167,6 +168,15 @@ func buildTelegramNotifyText(payload utils.TelegramNotifyPayload) string {
 		)
 	default:
 		return ""
+	}
+}
+
+func withdrawSourceLabel(source string) string {
+	switch strings.ToLower(strings.TrimSpace(source)) {
+	case "rebate":
+		return "佣金提现"
+	default:
+		return "普通提现"
 	}
 }
 
