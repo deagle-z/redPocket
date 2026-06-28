@@ -4,6 +4,7 @@ import { computed, onMounted, reactive, ref } from "vue";
 import Refresh from "@iconify-icons/ep/refresh";
 import { useRenderIcon } from "@/components/ReIcon/src/hooks";
 import {
+  getTenantDashboardAgentRanks,
   getTenantDashboardOnlineUsers,
   getTenantDashboardRegisterUsers,
   getTenantDashboardRechargeUsers,
@@ -11,6 +12,7 @@ import {
   getTenantDashboardWithdrawOrders,
   getTenantDashboardMonthlyBalances,
   getTenantDashboardStats,
+  type TenantDashboardAgentRank,
   type TenantDashboardStats,
   type TenantDashboardUserDetail,
   type TenantDashboardOrderDetail,
@@ -85,6 +87,15 @@ const monthlyBalanceTotal = reactive({
   rechargeAmount: 0,
   withdrawAmount: 0,
   balanceAmount: 0
+});
+
+const agentRankDialogVisible = ref(false);
+const agentRankLoading = ref(false);
+const agentRankList = ref<TenantDashboardAgentRank[]>([]);
+const agentRankPagination = reactive({
+  currentPage: 1,
+  pageSize: 10,
+  total: 0
 });
 
 const orderDialogTitle = computed(() =>
@@ -464,6 +475,41 @@ async function handleMonthlyBalanceYearChange() {
   await loadMonthlyBalance();
 }
 
+async function loadAgentRanks() {
+  agentRankLoading.value = true;
+  try {
+    const res = await getTenantDashboardAgentRanks({
+      currentPage: agentRankPagination.currentPage - 1,
+      pageSize: agentRankPagination.pageSize
+    });
+    agentRankList.value = res.data?.list || [];
+    agentRankPagination.total = Number(res.data?.total ?? 0);
+    agentRankPagination.pageSize =
+      res.data?.pageSize || agentRankPagination.pageSize;
+    agentRankPagination.currentPage = (res.data?.currentPage || 0) + 1;
+  } finally {
+    agentRankLoading.value = false;
+  }
+}
+
+async function openAgentRankDialog() {
+  agentRankPagination.currentPage = 1;
+  agentRankPagination.total = 0;
+  agentRankDialogVisible.value = true;
+  await loadAgentRanks();
+}
+
+function handleAgentRankSizeChange(size: number) {
+  agentRankPagination.pageSize = size;
+  agentRankPagination.currentPage = 1;
+  loadAgentRanks();
+}
+
+function handleAgentRankCurrentChange(page: number) {
+  agentRankPagination.currentPage = page;
+  loadAgentRanks();
+}
+
 onMounted(() => {
   loadStats();
 });
@@ -476,13 +522,18 @@ onMounted(() => {
         <h1>首页</h1>
         <p>商户经营数据</p>
       </div>
-      <el-button
-        :icon="useRenderIcon(Refresh)"
-        :loading="loading"
-        @click="loadStats"
-      >
-        刷新
-      </el-button>
+      <div class="tenant-home__actions">
+        <el-button type="primary" plain @click="openAgentRankDialog">
+          代理排行
+        </el-button>
+        <el-button
+          :icon="useRenderIcon(Refresh)"
+          :loading="loading"
+          @click="loadStats"
+        >
+          刷新
+        </el-button>
+      </div>
     </div>
 
     <el-skeleton :loading="loading" animated :rows="6">
@@ -506,6 +557,84 @@ onMounted(() => {
         </div>
       </div>
     </el-skeleton>
+
+    <el-dialog v-model="agentRankDialogVisible" title="代理排行" width="80%">
+      <el-table :data="agentRankList" border stripe v-loading="agentRankLoading">
+        <el-table-column label="排名" width="80">
+          <template #default="{ $index }">
+            {{
+              (agentRankPagination.currentPage - 1) *
+                agentRankPagination.pageSize +
+              $index +
+              1
+            }}
+          </template>
+        </el-table-column>
+        <el-table-column prop="uid" label="代理UID" min-width="110">
+          <template #default="{ row }">{{ formatNullable(row.uid) }}</template>
+        </el-table-column>
+        <el-table-column prop="tgId" label="用户ID" min-width="130" />
+        <el-table-column prop="username" label="用户名" min-width="130">
+          <template #default="{ row }">
+            {{ formatNullable(row.username) }}
+          </template>
+        </el-table-column>
+        <el-table-column prop="firstName" label="昵称" min-width="130">
+          <template #default="{ row }">
+            {{ formatNullable(row.firstName) }}
+          </template>
+        </el-table-column>
+        <el-table-column prop="phone" label="手机号" min-width="130">
+          <template #default="{ row }">
+            {{ formatNullable(row.phone) }}
+          </template>
+        </el-table-column>
+        <el-table-column
+          prop="subRechargeAmount"
+          label="下级充值金额"
+          min-width="140"
+          sortable
+        >
+          <template #default="{ row }">
+            {{ formatAmount(row.subRechargeAmount) }}
+          </template>
+        </el-table-column>
+        <el-table-column
+          prop="subRechargeUsers"
+          label="充值下级数"
+          min-width="110"
+        />
+        <el-table-column
+          prop="subRechargeCount"
+          label="充值笔数"
+          min-width="100"
+        />
+        <el-table-column
+          prop="lastRechargeAt"
+          label="最后充值时间"
+          min-width="170"
+        >
+          <template #default="{ row }">
+            {{ formatDateTime(row.lastRechargeAt) }}
+          </template>
+        </el-table-column>
+      </el-table>
+
+      <div class="detail-pagination">
+        <el-pagination
+          v-model:current-page="agentRankPagination.currentPage"
+          v-model:page-size="agentRankPagination.pageSize"
+          :page-sizes="[10, 20, 50, 100]"
+          :background="true"
+          :disabled="agentRankLoading"
+          :hide-on-single-page="false"
+          layout="total, sizes, prev, pager, next, jumper"
+          :total="agentRankPagination.total"
+          @size-change="handleAgentRankSizeChange"
+          @current-change="handleAgentRankCurrentChange"
+        />
+      </div>
+    </el-dialog>
 
     <el-dialog v-model="detailDialogVisible" :title="detailTitle" width="76%">
       <div class="detail-pager">
@@ -567,6 +696,16 @@ onMounted(() => {
           <template #default="{ row }">{{
             formatNullable(row.phone)
           }}</template>
+        </el-table-column>
+        <el-table-column
+          v-if="isRechargeDetail"
+          prop="parentUid"
+          label="上级UID"
+          min-width="110"
+        >
+          <template #default="{ row }">
+            {{ formatNullable(row.parentUid) }}
+          </template>
         </el-table-column>
         <el-table-column prop="balance" label="余额" min-width="120">
           <template #default="{ row }">
@@ -818,6 +957,14 @@ onMounted(() => {
   margin: 4px 0 0;
   font-size: 14px;
   color: #667085;
+}
+
+.tenant-home__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  justify-content: flex-end;
 }
 
 .metric-grid {

@@ -62,6 +62,8 @@ export type AdminDashboardUserDetail = {
   username?: string | null;
   firstName?: string | null;
   phone?: string | null;
+  parentId?: number | null;
+  parentUid?: string | null;
   balance: number;
   status: number;
   rechargeAmount: number;
@@ -77,6 +79,34 @@ export type AdminDashboardUserDetailResult = {
   success: boolean;
   data: {
     list: AdminDashboardUserDetail[];
+    total: number;
+    pageSize: number;
+    currentPage: number;
+  };
+};
+
+export type AdminDashboardAgentRank = {
+  id: number;
+  tenantId: number;
+  uid: string;
+  tgId: number;
+  username?: string | null;
+  firstName?: string | null;
+  phone?: string | null;
+  balance: number;
+  status: number;
+  subRechargeAmount: number;
+  subRechargeUsers: number;
+  subRechargeCount: number;
+  lastRechargeAt?: string | null;
+};
+
+export type AdminDashboardAgentRankResult = {
+  code: number;
+  message: string;
+  success: boolean;
+  data: {
+    list: AdminDashboardAgentRank[];
     total: number;
     pageSize: number;
     currentPage: number;
@@ -128,6 +158,16 @@ export const getAdminDashboardRegisterUsers = (
   return http.request<AdminDashboardUserDetailResult>(
     "post",
     "/api/v1/admin/dashboard/registerUsers",
+    { data }
+  );
+};
+
+export const getAdminDashboardAgentRanks = (
+  data: AdminDashboardDetailSearch
+) => {
+  return http.request<AdminDashboardAgentRankResult>(
+    "post",
+    "/api/v1/admin/dashboard/agentRanks",
     { data }
   );
 };

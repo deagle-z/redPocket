@@ -614,6 +614,7 @@ func getTenantParentUIDMap(db *gorm.DB, tenantID int64, users []pojo.TgUserBack)
 }
 
 // GetTgUsersWithSubStatsSummary 返回下级（不限层级）的充值金额之和、流水之和、盈利之和、提现金额之和、有效用户数
+// 有效用户口径：有成功充值记录的下级用户数（status=1 且 is_dev=0），按 user_id 去重。
 // parentID 为空：口径为全量 parent_id 非空的用户集合
 // parentID 非空：口径为该 parentID 的所有后代（不含自身）
 func GetTgUsersWithSubStatsSummary(db *gorm.DB, tenantID int64, search pojo.TgUserSearch) (result TgUsersSubStatsSummary) {
@@ -628,17 +629,6 @@ func GetTgUsersWithSubStatsSummary(db *gorm.DB, tenantID int64, search pojo.TgUs
 		if search.IsBot != nil {
 			subUsersQuery = subUsersQuery.Where("is_bot = ?", *search.IsBot)
 		}
-
-		validUsersQuery := db.Model(&pojo.TgUser{}).
-			Where("parent_id is not null").
-			Where("invite_valid_flag = ?", 1)
-		if tenantID > 0 {
-			validUsersQuery = validUsersQuery.Where("tenant_id = ?", tenantID)
-		}
-		if search.IsBot != nil {
-			validUsersQuery = validUsersQuery.Where("is_bot = ?", *search.IsBot)
-		}
-		_ = validUsersQuery.Count(&result.ValidUsers).Error
 
 		rechargeQuery := db.Model(&pojo.RechargeOrder{})
 		if tenantID > 0 {
@@ -657,6 +647,7 @@ func GetTgUsersWithSubStatsSummary(db *gorm.DB, tenantID int64, search pojo.TgUs
 			Where("status = ? and coalesce(is_dev, 0) = 0 and user_id in (?)", 1, subUsersQuery).
 			Distinct("user_id").
 			Count(&result.RechargeUsers).Error
+		result.ValidUsers = result.RechargeUsers
 
 		// 流水/盈利口径：遍历 user_id 查询投注记录（分表）
 		var subUserIDs []int64
@@ -696,14 +687,6 @@ func GetTgUsersWithSubStatsSummary(db *gorm.DB, tenantID int64, search pojo.TgUs
 		return result
 	}
 
-	validUsersQuery := db.Model(&pojo.TgUser{}).
-		Where("id in (?)", descendantIDs).
-		Where("invite_valid_flag = ?", 1)
-	if tenantID > 0 {
-		validUsersQuery = validUsersQuery.Where("tenant_id = ?", tenantID)
-	}
-	_ = validUsersQuery.Count(&result.ValidUsers).Error
-
 	rechargeQuery := db.Model(&pojo.RechargeOrder{})
 	if tenantID > 0 {
 		rechargeQuery = rechargeQuery.Where("tenant_id = ?", tenantID)
@@ -721,6 +704,7 @@ func GetTgUsersWithSubStatsSummary(db *gorm.DB, tenantID int64, search pojo.TgUs
 		Where("status = ? and coalesce(is_dev, 0) = 0 and user_id in (?)", 1, descendantIDs).
 		Distinct("user_id").
 		Count(&result.RechargeUsers).Error
+	result.ValidUsers = result.RechargeUsers
 
 	// 流水/盈利口径：遍历 user_id 查询投注记录（分表）
 	result.SubFlowAmount, result.SubProfitAmount = tenantTgUserBetStatsTotal(db, descendantIDs)

@@ -51,6 +51,8 @@ type TenantDashboardUserDetailBack struct {
 	Username       *string    `json:"username"`
 	FirstName      *string    `json:"firstName"`
 	Phone          *string    `json:"phone"`
+	ParentID       *int64     `json:"parentId"`
+	ParentUid      *string    `json:"parentUid"`
 	Balance        float64    `json:"balance"`
 	Status         int8       `json:"status"`
 	RechargeAmount float64    `json:"rechargeAmount"`
@@ -62,6 +64,27 @@ type TenantDashboardUserDetailBack struct {
 
 type TenantDashboardUserDetailResp struct {
 	BasePageResponse[TenantDashboardUserDetailBack]
+}
+
+// TenantDashboardAgentRankBack 代理排行：按下级用户成功充值金额聚合到上级用户。
+type TenantDashboardAgentRankBack struct {
+	ID                int64      `json:"id"`
+	TenantId          int64      `json:"tenantId"`
+	Uid               string     `json:"uid"`
+	TgID              int64      `json:"tgId"`
+	Username          *string    `json:"username"`
+	FirstName         *string    `json:"firstName"`
+	Phone             *string    `json:"phone"`
+	Balance           float64    `json:"balance"`
+	Status            int8       `json:"status"`
+	SubRechargeAmount float64    `json:"subRechargeAmount"`
+	SubRechargeUsers  int64      `json:"subRechargeUsers"`
+	SubRechargeCount  int64      `json:"subRechargeCount"`
+	LastRechargeAt    *time.Time `json:"lastRechargeAt"`
+}
+
+type TenantDashboardAgentRankResp struct {
+	BasePageResponse[TenantDashboardAgentRankBack]
 }
 
 // TenantDashboardOrderDetailBack 充值/提现订单明细行

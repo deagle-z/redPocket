@@ -60,6 +60,8 @@ export type TenantDashboardUserDetail = {
   username?: string | null;
   firstName?: string | null;
   phone?: string | null;
+  parentId?: number | null;
+  parentUid?: string | null;
   balance: number;
   status: number;
   rechargeAmount: number;
@@ -75,6 +77,34 @@ export type TenantDashboardUserDetailResult = {
   success: boolean;
   data: {
     list: TenantDashboardUserDetail[];
+    total: number;
+    pageSize: number;
+    currentPage: number;
+  };
+};
+
+export type TenantDashboardAgentRank = {
+  id: number;
+  tenantId: number;
+  uid: string;
+  tgId: number;
+  username?: string | null;
+  firstName?: string | null;
+  phone?: string | null;
+  balance: number;
+  status: number;
+  subRechargeAmount: number;
+  subRechargeUsers: number;
+  subRechargeCount: number;
+  lastRechargeAt?: string | null;
+};
+
+export type TenantDashboardAgentRankResult = {
+  code: number;
+  message: string;
+  success: boolean;
+  data: {
+    list: TenantDashboardAgentRank[];
     total: number;
     pageSize: number;
     currentPage: number;
@@ -122,6 +152,16 @@ export const getTenantDashboardRegisterUsers = (
   return http.request<TenantDashboardUserDetailResult>(
     "post",
     "/api/v1/tenant/dashboard/registerUsers",
+    { data }
+  );
+};
+
+export const getTenantDashboardAgentRanks = (
+  data: TenantDashboardDetailSearch
+) => {
+  return http.request<TenantDashboardAgentRankResult>(
+    "post",
+    "/api/v1/tenant/dashboard/agentRanks",
     { data }
   );
 };

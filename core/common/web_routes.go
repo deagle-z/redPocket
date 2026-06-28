@@ -126,6 +126,7 @@ func InitGin() {
 		adminGroup.POST("/dashboard/onlineUsers", api.GetAdminDashboardOnlineUsers)
 		adminGroup.POST("/dashboard/rechargeUsers", api.GetAdminDashboardRechargeUsers)
 		adminGroup.POST("/dashboard/registerUsers", api.GetAdminDashboardRegisterUsers)
+		adminGroup.POST("/dashboard/agentRanks", api.GetAdminDashboardAgentRanks)
 		adminGroup.POST("/dashboard/rechargeOrders", api.GetAdminDashboardRechargeOrders) // 充值总额明细（今天/昨天）
 		adminGroup.POST("/dashboard/withdrawOrders", api.GetAdminDashboardWithdrawOrders) // 提现总额明细（今天/昨天）
 		adminGroup.POST("/withdrawalTask", api.SendWithdrawalTask)
@@ -283,6 +284,7 @@ func InitGin() {
 		tenantGroup.POST("/dashboard/onlineUsers", tenantApi.GetDashboardOnlineUsers)
 		tenantGroup.POST("/dashboard/rechargeUsers", tenantApi.GetDashboardRechargeUsers)
 		tenantGroup.POST("/dashboard/registerUsers", tenantApi.GetDashboardRegisterUsers)
+		tenantGroup.POST("/dashboard/agentRanks", tenantApi.GetDashboardAgentRanks)
 		tenantGroup.POST("/account/changePassword", tenantApi.ChangeTenantPassword)         // 修改当前账号密码
 		tenantGroup.GET("/account/twofa/status", tenantApi.GetTenantTwofaStatus)            // Google验证码绑定状态
 		tenantGroup.GET("/account/twofa/setup", tenantApi.SetupTenantTwofa)                 // 生成待绑定密钥

@@ -58,6 +58,21 @@ func GetDashboardRechargeUsers(ctx *gin.Context) {
 	utils.SuccessObjBack(ctx, result)
 }
 
+func GetDashboardAgentRanks(ctx *gin.Context) {
+	tenantID, ok := getTenantID(ctx)
+	if !ok {
+		return
+	}
+	var search pojo.TenantDashboardDetailSearch
+	search.SetPageDefaults()
+	if err := ctx.ShouldBindJSON(&search); err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	result := tenantRepo.GetDashboardAgentRanks(getDB(ctx), tenantID, search)
+	utils.SuccessObjBack(ctx, result)
+}
+
 func GetDashboardRechargeOrders(ctx *gin.Context) {
 	tenantID, ok := getTenantID(ctx)
 	if !ok {

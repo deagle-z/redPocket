@@ -141,6 +141,8 @@ func GetAdminDashboardRechargeUsers(db *gorm.DB, search pojo.TenantDashboardDeta
 		Username       *string    `gorm:"column:username"`
 		FirstName      *string    `gorm:"column:first_name"`
 		Phone          *string    `gorm:"column:phone"`
+		ParentID       *int64     `gorm:"column:parent_id"`
+		ParentUid      *string    `gorm:"column:parent_uid"`
 		Balance        float64    `gorm:"column:balance"`
 		Status         int8       `gorm:"column:status"`
 	}
@@ -152,12 +154,13 @@ func GetAdminDashboardRechargeUsers(db *gorm.DB, search pojo.TenantDashboardDeta
 			COALESCE(SUM(ro.amount), 0) AS recharge_amount,
 			COUNT(*) AS recharge_count,
 			MAX(ro.pay_time) AS last_recharge_at,
-			tu.id, tu.uid, tu.tg_id, tu.username, tu.first_name, tu.phone, tu.balance, tu.status`).
+			tu.id, tu.uid, tu.tg_id, tu.username, tu.first_name, tu.phone, tu.parent_id, parent.uid AS parent_uid, tu.balance, tu.status`).
 		Joins("LEFT JOIN "+pojo.TgUserTableName+" tu ON tu.id = ro.user_id").
+		Joins("LEFT JOIN "+pojo.TgUserTableName+" parent ON parent.id = tu.parent_id AND parent.tenant_id = tu.tenant_id").
 		Where("ro.status = ? AND coalesce(ro.is_dev, 0) = 0 AND ro.pay_time >= ? AND ro.pay_time < ?", 1, start, end)
 	rowQuery = filterAdminDashboardTenant(rowQuery, "ro.tenant_id", search.TenantId)
 	_ = rowQuery.
-		Group("ro.user_id, ro.tenant_id, tu.id, tu.uid, tu.tg_id, tu.username, tu.first_name, tu.phone, tu.balance, tu.status").
+		Group("ro.user_id, ro.tenant_id, tu.id, tu.uid, tu.tg_id, tu.username, tu.first_name, tu.phone, tu.parent_id, parent.uid, tu.balance, tu.status").
 		Order("recharge_amount DESC, recharge_count DESC, ro.user_id DESC").
 		Limit(search.PageSize).
 		Offset(search.PageSize * search.CurrentPage).
@@ -175,11 +178,95 @@ func GetAdminDashboardRechargeUsers(db *gorm.DB, search pojo.TenantDashboardDeta
 			Username:       row.Username,
 			FirstName:      row.FirstName,
 			Phone:          row.Phone,
+			ParentID:       row.ParentID,
+			ParentUid:      row.ParentUid,
 			Balance:        utils.Truncate2(row.Balance),
 			Status:         row.Status,
 			RechargeAmount: utils.Truncate2(row.RechargeAmount),
 			RechargeCount:  row.RechargeCount,
 			LastRechargeAt: row.LastRechargeAt,
+		})
+	}
+	return result
+}
+
+func GetAdminDashboardAgentRanks(db *gorm.DB, search pojo.TenantDashboardDetailSearch) pojo.TenantDashboardAgentRankResp {
+	var result pojo.TenantDashboardAgentRankResp
+
+	groupQuery := db.Table(pojo.RechargeOrderTableName+" ro").
+		Select("child.parent_id AS parent_id").
+		Joins("JOIN "+pojo.TgUserTableName+" child ON child.id = ro.user_id AND child.tenant_id = ro.tenant_id").
+		Joins("JOIN "+pojo.TgUserTableName+" parent ON parent.id = child.parent_id AND parent.tenant_id = child.tenant_id").
+		Where("ro.status = ? AND coalesce(ro.is_dev, 0) = 0 AND ro.amount > 0", 1).
+		Where("child.parent_id IS NOT NULL AND child.parent_id > 0").
+		Where("child.is_bot = ? AND parent.is_bot = ?", false, false)
+	groupQuery = filterAdminDashboardTenant(groupQuery, "ro.tenant_id", search.TenantId)
+	_ = db.Table("(?) AS agent_rank", groupQuery.Group("child.parent_id").Having("SUM(ro.amount) > 0")).
+		Count(&result.Total).Error
+
+	type agentRankRow struct {
+		ID                int64      `gorm:"column:id"`
+		TenantId          int64      `gorm:"column:tenant_id"`
+		Uid               string     `gorm:"column:uid"`
+		TgID              int64      `gorm:"column:tg_id"`
+		Username          *string    `gorm:"column:username"`
+		FirstName         *string    `gorm:"column:first_name"`
+		Phone             *string    `gorm:"column:phone"`
+		Balance           float64    `gorm:"column:balance"`
+		Status            int8       `gorm:"column:status"`
+		SubRechargeAmount float64    `gorm:"column:sub_recharge_amount"`
+		SubRechargeUsers  int64      `gorm:"column:sub_recharge_users"`
+		SubRechargeCount  int64      `gorm:"column:sub_recharge_count"`
+		LastRechargeAt    *time.Time `gorm:"column:last_recharge_at"`
+	}
+
+	var rows []agentRankRow
+	rowQuery := db.Table(pojo.RechargeOrderTableName+" ro").
+		Select(`parent.id,
+			parent.tenant_id,
+			parent.uid,
+			parent.tg_id,
+			parent.username,
+			parent.first_name,
+			parent.phone,
+			parent.balance,
+			parent.status,
+			COALESCE(SUM(ro.amount), 0) AS sub_recharge_amount,
+			COUNT(DISTINCT ro.user_id) AS sub_recharge_users,
+			COUNT(*) AS sub_recharge_count,
+			MAX(ro.pay_time) AS last_recharge_at`).
+		Joins("JOIN "+pojo.TgUserTableName+" child ON child.id = ro.user_id AND child.tenant_id = ro.tenant_id").
+		Joins("JOIN "+pojo.TgUserTableName+" parent ON parent.id = child.parent_id AND parent.tenant_id = child.tenant_id").
+		Where("ro.status = ? AND coalesce(ro.is_dev, 0) = 0 AND ro.amount > 0", 1).
+		Where("child.parent_id IS NOT NULL AND child.parent_id > 0").
+		Where("child.is_bot = ? AND parent.is_bot = ?", false, false)
+	rowQuery = filterAdminDashboardTenant(rowQuery, "ro.tenant_id", search.TenantId)
+	_ = rowQuery.
+		Group("parent.id, parent.tenant_id, parent.uid, parent.tg_id, parent.username, parent.first_name, parent.phone, parent.balance, parent.status").
+		Having("SUM(ro.amount) > 0").
+		Order("sub_recharge_amount DESC, sub_recharge_users DESC, parent.id DESC").
+		Limit(search.PageSize).
+		Offset(search.PageSize * search.CurrentPage).
+		Scan(&rows).Error
+
+	result.PageSize = search.PageSize
+	result.CurrentPage = search.CurrentPage
+	result.List = make([]pojo.TenantDashboardAgentRankBack, 0, len(rows))
+	for _, row := range rows {
+		result.List = append(result.List, pojo.TenantDashboardAgentRankBack{
+			ID:                row.ID,
+			TenantId:          row.TenantId,
+			Uid:               row.Uid,
+			TgID:              row.TgID,
+			Username:          row.Username,
+			FirstName:         row.FirstName,
+			Phone:             row.Phone,
+			Balance:           utils.Truncate2(row.Balance),
+			Status:            row.Status,
+			SubRechargeAmount: utils.Truncate2(row.SubRechargeAmount),
+			SubRechargeUsers:  row.SubRechargeUsers,
+			SubRechargeCount:  row.SubRechargeCount,
+			LastRechargeAt:    row.LastRechargeAt,
 		})
 	}
 	return result

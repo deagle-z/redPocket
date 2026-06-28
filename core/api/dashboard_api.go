@@ -49,6 +49,18 @@ func GetAdminDashboardRechargeUsers(ctx *gin.Context) {
 	utils.SuccessObjBack(ctx, result)
 }
 
+func GetAdminDashboardAgentRanks(ctx *gin.Context) {
+	var search pojo.TenantDashboardDetailSearch
+	search.SetPageDefaults()
+	if err := ctx.ShouldBindJSON(&search); err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	db := ctx.MustGet("db").(*gorm.DB)
+	result := repository.GetAdminDashboardAgentRanks(db, search)
+	utils.SuccessObjBack(ctx, result)
+}
+
 func GetAdminDashboardRechargeOrders(ctx *gin.Context) {
 	var search pojo.TenantDashboardDetailSearch
 	search.SetPageDefaults()

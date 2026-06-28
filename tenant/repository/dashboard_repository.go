@@ -100,6 +100,8 @@ func GetDashboardRechargeUsers(db *gorm.DB, tenantID int64, search pojo.TenantDa
 		Username       *string    `gorm:"column:username"`
 		FirstName      *string    `gorm:"column:first_name"`
 		Phone          *string    `gorm:"column:phone"`
+		ParentID       *int64     `gorm:"column:parent_id"`
+		ParentUid      *string    `gorm:"column:parent_uid"`
 		Balance        float64    `gorm:"column:balance"`
 		Status         int8       `gorm:"column:status"`
 	}
@@ -110,10 +112,11 @@ func GetDashboardRechargeUsers(db *gorm.DB, tenantID int64, search pojo.TenantDa
 			COALESCE(SUM(ro.amount), 0) AS recharge_amount,
 			COUNT(*) AS recharge_count,
 			MAX(ro.pay_time) AS last_recharge_at,
-			tu.id, tu.uid, tu.tg_id, tu.username, tu.first_name, tu.phone, tu.balance, tu.status`).
+			tu.id, tu.uid, tu.tg_id, tu.username, tu.first_name, tu.phone, tu.parent_id, parent.uid AS parent_uid, tu.balance, tu.status`).
 		Joins("LEFT JOIN "+pojo.TgUserTableName+" tu ON tu.id = ro.user_id AND tu.tenant_id = ?", tenantID).
+		Joins("LEFT JOIN "+pojo.TgUserTableName+" parent ON parent.id = tu.parent_id AND parent.tenant_id = tu.tenant_id").
 		Where("ro.tenant_id = ? AND ro.status = ? AND coalesce(ro.is_dev, 0) = 0 AND ro.pay_time >= ? AND ro.pay_time < ?", tenantID, 1, start, end).
-		Group("ro.user_id, tu.id, tu.uid, tu.tg_id, tu.username, tu.first_name, tu.phone, tu.balance, tu.status").
+		Group("ro.user_id, tu.id, tu.uid, tu.tg_id, tu.username, tu.first_name, tu.phone, tu.parent_id, parent.uid, tu.balance, tu.status").
 		Order("recharge_amount DESC, recharge_count DESC, ro.user_id DESC").
 		Limit(search.PageSize).
 		Offset(search.PageSize * search.CurrentPage).
@@ -131,6 +134,8 @@ func GetDashboardRechargeUsers(db *gorm.DB, tenantID int64, search pojo.TenantDa
 			Username:       row.Username,
 			FirstName:      row.FirstName,
 			Phone:          row.Phone,
+			ParentID:       row.ParentID,
+			ParentUid:      row.ParentUid,
 			Balance:        row.Balance,
 			Status:         row.Status,
 			RechargeAmount: row.RechargeAmount,
@@ -139,6 +144,11 @@ func GetDashboardRechargeUsers(db *gorm.DB, tenantID int64, search pojo.TenantDa
 		})
 	}
 	return result
+}
+
+func GetDashboardAgentRanks(db *gorm.DB, tenantID int64, search pojo.TenantDashboardDetailSearch) pojo.TenantDashboardAgentRankResp {
+	search.TenantId = tenantID
+	return coreRepo.GetAdminDashboardAgentRanks(db, search)
 }
 
 func GetDashboardRegisterUsers(db *gorm.DB, tenantID int64, search pojo.TenantDashboardDetailSearch) pojo.TenantDashboardUserDetailResp {
