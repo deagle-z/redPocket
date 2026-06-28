@@ -10,23 +10,7 @@ import (
 )
 
 func notifyTelegramRegister(user pojo.TgUser) {
-	dispatchTelegramNotify(utils.TelegramNotifyPayload{
-		Event:             utils.TelegramNotifyEventRegister,
-		UserID:            user.ID,
-		TenantID:          user.TenantId,
-		UID:               user.Uid,
-		TgID:              user.TgID,
-		Username:          valueString(user.Username),
-		TgName:            valueString(user.TgName),
-		FirstName:         valueString(user.FirstName),
-		Email:             strings.TrimSpace(user.Email),
-		Phone:             valueString(user.Phone),
-		Country:           valueString(user.Country),
-		IP:                valueString(user.Ip),
-		Region:            valueString(user.Region),
-		SourceChannelCode: valueString(user.SourceChannelCode),
-		CreatedAt:         user.CreatedAt,
-	})
+	// 注册通知已关闭；保留函数入口，避免影响注册流程中已有调用点。
 }
 
 func notifyTelegramRechargeByOrderNo(db *gorm.DB, orderNo string) {
