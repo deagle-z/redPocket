@@ -676,6 +676,11 @@ func ProcessRechargeOrderSuccess(db *gorm.DB, orderNo string, providerTradeNo st
 		if err := tx.Model(&pojo.RechargeOrder{}).Where("id = ?", order.ID).Updates(updates).Error; err != nil {
 			return err
 		}
+		order.Amount = creditBaseAmount
+		order.CreditAmount = &creditBaseAmount
+		order.BonusAmount = bonusAmount
+		order.PayTime = &now
+		order.Status = 1
 		log.Printf("[recharge] pay callback order marked success orderNo=%s userID=%d tablePrefix=%q creditAmount=%.2f bonusAmount=%.2f isFirstRecharge=%t activityType=%s",
 			order.OrderNo, user.ID, tablePrefix, creditAmount, bonusAmount, isFirstRecharge, formatRechargeActivityType(order.ActivityType))
 
@@ -892,6 +897,10 @@ func rechargeOrderDevCallback(db *gorm.DB, orderNo string, tablePrefix string) e
 			}).Error; err != nil {
 			return err
 		}
+		order.CreditAmount = &creditAmount
+		order.BonusAmount = bonusAmount
+		order.PayTime = &now
+		order.Status = 1
 
 		if err := tx.Model(&pojo.TgUser{}).
 			Where("id = ?", user.ID).
@@ -1421,6 +1430,13 @@ func calculateFirstRechargeGiftV2Amount(orderAmount float64, rate float64) float
 	return utils.Truncate2(utils.ToMoney(orderAmount).Multiply(rate / 100).ToDollars())
 }
 
+func rechargeGiftBaseAmount(order pojo.RechargeOrder) float64 {
+	if order.CreditAmount != nil && *order.CreditAmount > 0 {
+		return utils.Truncate2(*order.CreditAmount)
+	}
+	return utils.Truncate2(order.Amount)
+}
+
 // RechargeV2GiftRatesConfigKey v2充值赠送比例配置键（sys_config，逗号分隔：首充,二充,三充,第4次及以后）。
 const RechargeV2GiftRatesConfigKey = "recharge_v2_gift_rates"
 
@@ -1550,10 +1566,11 @@ func CheckRechargeV2IsFirst(db *gorm.DB, userID int64) (bool, error) {
 func applyRechargeV2Gift(tx *gorm.DB, order pojo.RechargeOrder, user pojo.TgUser) error {
 	rechargeNumber := rechargeV2RechargeNumber(tx, user.ID)
 	rate := rechargeV2GiftRateByNumber(tx, rechargeNumber)
-	giftAmount := calculateRechargeV2GiftAmount(tx, order.Amount, rechargeNumber)
+	giftBaseAmount := rechargeGiftBaseAmount(order)
+	giftAmount := calculateRechargeV2GiftAmount(tx, giftBaseAmount, rechargeNumber)
 	if giftAmount <= 0 {
-		log.Printf("[recharge] v2 gift skip: non-positive gift orderNo=%s userID=%d amount=%.2f rechargeNumber=%d rate=%.2f giftAmount=%.2f",
-			order.OrderNo, user.ID, order.Amount, rechargeNumber, rate, giftAmount)
+		log.Printf("[recharge] v2 gift skip: non-positive gift orderNo=%s userID=%d amount=%.2f giftBaseAmount=%.2f rechargeNumber=%d rate=%.2f giftAmount=%.2f",
+			order.OrderNo, user.ID, order.Amount, giftBaseAmount, rechargeNumber, rate, giftAmount)
 		return nil
 	}
 
@@ -1578,7 +1595,7 @@ func applyRechargeV2Gift(tx *gorm.DB, order pojo.RechargeOrder, user pojo.TgUser
 		return err
 	}
 	rechargeKind := rechargeV2RechargeKindLabel(rechargeNumber)
-	desc := fmt.Sprintf("v2充值赠送，%s，订单%s，充值金额%.2f，赠送比例%.2f%%，赠送%.2f", rechargeKind, order.OrderNo, order.Amount, rate, giftAmount)
+	desc := fmt.Sprintf("v2充值赠送，%s，订单%s，充值金额%.2f，赠送比例%.2f%%，赠送%.2f", rechargeKind, order.OrderNo, giftBaseAmount, rate, giftAmount)
 	history := pojo.CashHistory{
 		UserId:          user.ID,
 		AwardUni:        awardUni,

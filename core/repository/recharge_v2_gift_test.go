@@ -61,6 +61,20 @@ func TestCalculateRechargeV2GiftAmountByNumber(t *testing.T) {
 	}
 }
 
+func TestRechargeGiftBaseAmountPrefersActualCreditAmount(t *testing.T) {
+	creditAmount := 20.0
+	order := pojo.RechargeOrder{
+		Amount:       500,
+		CreditAmount: &creditAmount,
+	}
+	if got := rechargeGiftBaseAmount(order); got != 20 {
+		t.Fatalf("rechargeGiftBaseAmount() = %.2f, want 20.00", got)
+	}
+	if got := calculateRechargeV2GiftAmount(nil, rechargeGiftBaseAmount(order), 1); got != 0 {
+		t.Fatalf("calculateRechargeV2GiftAmount(actual 20) = %.2f, want 0.00", got)
+	}
+}
+
 func TestIsRechargeV2FirstRechargeAmount(t *testing.T) {
 	tests := []struct {
 		name           string
