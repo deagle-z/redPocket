@@ -616,6 +616,13 @@ func rechargeCallbackCreditBaseAmount(orderAmount float64, payAmount float64) fl
 	return utils.Truncate2(orderAmount)
 }
 
+func calculateRechargeFreeLotteryCount(amount float64) int {
+	if amount < 200 || math.IsNaN(amount) || math.IsInf(amount, 0) {
+		return 0
+	}
+	return int(math.Floor(amount / 200))
+}
+
 // ProcessRechargeOrderSuccess 处理代收支付成功回调，入账并更新订单状态
 // providerTradeNo: 三方交易号；payAmount: 三方实际支付金额（元），为空时回退订单 amount。
 func ProcessRechargeOrderSuccess(db *gorm.DB, orderNo string, providerTradeNo string, payAmount float64, tablePrefix string) error {
@@ -689,11 +696,15 @@ func ProcessRechargeOrderSuccess(db *gorm.DB, orderNo string, providerTradeNo st
 			"gift_amount":     gorm.Expr("gift_amount + ?", bonusAmount),
 			"gift_total":      gorm.Expr("gift_total + ?", bonusAmount),
 			"recharge_amount": gorm.Expr("recharge_amount + ?", creditBaseAmount),
+			"free_lottery_count": gorm.Expr(
+				"free_lottery_count + ?",
+				calculateRechargeFreeLotteryCount(creditBaseAmount),
+			),
 		}).Error; err != nil {
 			return err
 		}
-		log.Printf("[recharge] pay callback user credited orderNo=%s userID=%d tablePrefix=%q rechargeCredit=%.2f activityBaseGift=%.2f startBalance=%.2f",
-			order.OrderNo, user.ID, tablePrefix, creditAmount, bonusAmount, user.Balance)
+		log.Printf("[recharge] pay callback user credited orderNo=%s userID=%d tablePrefix=%q rechargeCredit=%.2f activityBaseGift=%.2f startBalance=%.2f lotteryCount=%d",
+			order.OrderNo, user.ID, tablePrefix, creditAmount, bonusAmount, user.Balance, calculateRechargeFreeLotteryCount(creditBaseAmount))
 		if err := ApplyInviteRechargeRebate(tx, order, now); err != nil {
 			return err
 		}
@@ -909,6 +920,10 @@ func rechargeOrderDevCallback(db *gorm.DB, orderNo string, tablePrefix string) e
 				"gift_amount":     gorm.Expr("gift_amount + ?", bonusAmount),
 				"gift_total":      gorm.Expr("gift_total + ?", bonusAmount),
 				"recharge_amount": gorm.Expr("recharge_amount + ?", order.Amount),
+				"free_lottery_count": gorm.Expr(
+					"free_lottery_count + ?",
+					calculateRechargeFreeLotteryCount(order.Amount),
+				),
 			}).Error; err != nil {
 			return err
 		}

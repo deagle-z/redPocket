@@ -579,7 +579,12 @@ onMounted(() => {
       </div>
     </el-skeleton>
 
-    <el-dialog v-model="agentRankDialogVisible" title="代理排行" width="80%">
+    <el-dialog
+      v-model="agentRankDialogVisible"
+      title="代理排行"
+      width="80%"
+      class="agent-rank-dialog"
+    >
       <div class="detail-pager">
         <div class="detail-pager__meta">
           共 {{ agentRankPagination.total }} 条，第
@@ -620,66 +625,74 @@ onMounted(() => {
         </div>
       </div>
 
-      <el-table :data="agentRankList" border stripe v-loading="agentRankLoading">
-        <el-table-column label="排名" width="80">
-          <template #default="{ $index }">
-            {{
-              (agentRankPagination.currentPage - 1) *
-                agentRankPagination.pageSize +
-              $index +
-              1
-            }}
-          </template>
-        </el-table-column>
-        <el-table-column prop="uid" label="代理UID" min-width="110">
-          <template #default="{ row }">{{ formatNullable(row.uid) }}</template>
-        </el-table-column>
-        <el-table-column prop="tgId" label="用户ID" min-width="130" />
-        <el-table-column prop="username" label="用户名" min-width="130">
-          <template #default="{ row }">
-            {{ formatNullable(row.username) }}
-          </template>
-        </el-table-column>
-        <el-table-column prop="firstName" label="昵称" min-width="130">
-          <template #default="{ row }">
-            {{ formatNullable(row.firstName) }}
-          </template>
-        </el-table-column>
-        <el-table-column prop="phone" label="手机号" min-width="130">
-          <template #default="{ row }">
-            {{ formatNullable(row.phone) }}
-          </template>
-        </el-table-column>
-        <el-table-column
-          prop="subRechargeAmount"
-          label="下级充值金额"
-          min-width="140"
-          sortable
+      <div class="agent-rank-table-scroll">
+        <el-table
+          class="agent-rank-table"
+          :data="agentRankList"
+          border
+          stripe
+          v-loading="agentRankLoading"
         >
-          <template #default="{ row }">
-            {{ formatAmount(row.subRechargeAmount) }}
-          </template>
-        </el-table-column>
-        <el-table-column
-          prop="subRechargeUsers"
-          label="充值下级数"
-          min-width="110"
-        />
-        <el-table-column
-          prop="subRechargeCount"
-          label="充值笔数"
-          min-width="100"
-        />
-        <el-table-column
-          prop="lastRechargeAt"
-          label="最后充值时间"
-          min-width="170"
-        >
-          <template #default="{ row }">
-            {{ formatDateTime(row.lastRechargeAt) }}
-          </template>
-        </el-table-column>
-      </el-table>
+          <el-table-column label="排名" width="80">
+            <template #default="{ $index }">
+              {{
+                (agentRankPagination.currentPage - 1) *
+                  agentRankPagination.pageSize +
+                $index +
+                1
+              }}
+            </template>
+          </el-table-column>
+          <el-table-column prop="uid" label="代理UID" min-width="110">
+            <template #default="{ row }">{{ formatNullable(row.uid) }}</template>
+          </el-table-column>
+          <el-table-column prop="tgId" label="用户ID" min-width="130" />
+          <el-table-column prop="username" label="用户名" min-width="130">
+            <template #default="{ row }">
+              {{ formatNullable(row.username) }}
+            </template>
+          </el-table-column>
+          <el-table-column prop="firstName" label="昵称" min-width="130">
+            <template #default="{ row }">
+              {{ formatNullable(row.firstName) }}
+            </template>
+          </el-table-column>
+          <el-table-column prop="phone" label="手机号" min-width="130">
+            <template #default="{ row }">
+              {{ formatNullable(row.phone) }}
+            </template>
+          </el-table-column>
+          <el-table-column
+            prop="subRechargeAmount"
+            label="下级充值金额"
+            min-width="140"
+            sortable
+          >
+            <template #default="{ row }">
+              {{ formatAmount(row.subRechargeAmount) }}
+            </template>
+          </el-table-column>
+          <el-table-column
+            prop="subRechargeUsers"
+            label="充值下级数"
+            min-width="110"
+          />
+          <el-table-column
+            prop="subRechargeCount"
+            label="充值笔数"
+            min-width="100"
+          />
+          <el-table-column
+            prop="lastRechargeAt"
+            label="最后充值时间"
+            min-width="170"
+          >
+            <template #default="{ row }">
+              {{ formatDateTime(row.lastRechargeAt) }}
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
 
       <div class="detail-pagination">
         <el-pagination
@@ -1121,6 +1134,7 @@ onMounted(() => {
 .detail-pagination {
   display: flex;
   justify-content: flex-end;
+  overflow-x: auto;
   margin-top: 16px;
 }
 
@@ -1148,6 +1162,32 @@ onMounted(() => {
 
 .detail-pager__size {
   width: 86px;
+}
+
+:deep(.agent-rank-dialog) {
+  max-width: calc(100vw - 32px);
+}
+
+:deep(.agent-rank-dialog .el-dialog__body) {
+  max-height: calc(100vh - 160px);
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.agent-rank-table-scroll {
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 2px;
+}
+
+.agent-rank-table {
+  min-width: 1320px;
+}
+
+.agent-rank-dialog .detail-pagination {
+  justify-content: flex-start;
+  padding-bottom: 4px;
 }
 
 .order-toolbar {

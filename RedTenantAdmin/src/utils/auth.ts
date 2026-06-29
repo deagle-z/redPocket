@@ -38,9 +38,16 @@ export const multipleTabsKey = "multiple-tabs";
 /** 获取`token` */
 export function getToken(): DataInfo<number> {
   // 此处与`TokenKey`相同，此写法解决初始化时`Cookies`中不存在`TokenKey`报错
-  return Cookies.get(TokenKey)
-    ? JSON.parse(Cookies.get(TokenKey))
-    : storageLocal().getItem(userKey);
+  const localInfo = storageLocal().getItem<DataInfo<number>>(userKey);
+  const cookieInfo = Cookies.get(TokenKey);
+  if (!cookieInfo) return localInfo;
+
+  const parsedCookie = JSON.parse(cookieInfo);
+  return {
+    ...(localInfo || {}),
+    ...parsedCookie,
+    enableWithdraw: parsedCookie?.enableWithdraw ?? localInfo?.enableWithdraw ?? 0
+  };
 }
 
 /**
@@ -54,7 +61,15 @@ export function setToken(data: DataInfo<Date>) {
   const { accessToken, refreshToken } = data;
   const { isRemembered, loginDay } = useUserStoreHook();
   expires = new Date(data.expires).getTime(); // 如果后端直接设置时间戳，将此处代码改为expires = data.expires，然后把上面的DataInfo<Date>改成DataInfo<number>即可
-  const cookieString = JSON.stringify({ accessToken, expires, refreshToken });
+  const storedEnableWithdraw =
+    storageLocal().getItem<DataInfo<number>>(userKey)?.enableWithdraw ?? 0;
+  const enableWithdraw = data?.enableWithdraw ?? storedEnableWithdraw;
+  const cookieString = JSON.stringify({
+    accessToken,
+    expires,
+    refreshToken,
+    enableWithdraw
+  });
 
   expires > 0
     ? Cookies.set(TokenKey, cookieString, {
@@ -109,7 +124,7 @@ export function setToken(data: DataInfo<Date>) {
       country: data?.country ?? "",
       roles,
       permissions: data?.permissions ?? [],
-      enableWithdraw: data?.enableWithdraw ?? 0
+      enableWithdraw
     });
   } else {
     const avatar =

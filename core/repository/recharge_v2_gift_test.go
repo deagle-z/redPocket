@@ -75,6 +75,26 @@ func TestRechargeGiftBaseAmountPrefersActualCreditAmount(t *testing.T) {
 	}
 }
 
+func TestCalculateRechargeFreeLotteryCount(t *testing.T) {
+	tests := []struct {
+		amount float64
+		want   int
+	}{
+		{amount: 0, want: 0},
+		{amount: 199.99, want: 0},
+		{amount: 200, want: 1},
+		{amount: 399.99, want: 1},
+		{amount: 400, want: 2},
+		{amount: 1000, want: 5},
+	}
+
+	for _, tt := range tests {
+		if got := calculateRechargeFreeLotteryCount(tt.amount); got != tt.want {
+			t.Fatalf("calculateRechargeFreeLotteryCount(%.2f) = %d, want %d", tt.amount, got, tt.want)
+		}
+	}
+}
+
 func TestIsRechargeV2FirstRechargeAmount(t *testing.T) {
 	tests := []struct {
 		name           string
