@@ -50,6 +50,7 @@ const (
 	CashHistoryTypeExchangeCodeGift       int8 = 24 // 兑换码赠送
 	CashHistoryTypeVipWeeklySalary        int8 = 25 // VIP周薪
 	CashHistoryTypeInviteRebateTierReward int8 = 26 // 邀请返佣阶梯奖励
+	CashHistoryTypeRegisterGift           int8 = 27 // 注册赠送
 )
 
 type CashHistoryResp struct {

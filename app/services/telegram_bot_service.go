@@ -2198,7 +2198,16 @@ func (s *TelegramBotService) HandleRegisterCommand(chatID int64, userID int64, u
 		ParentID:   parentID,
 		InviteCode: &inviteCode,
 	}
-	if err = s.DB.Create(&newUser).Error; err != nil {
+	err = s.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(&newUser).Error; err != nil {
+			if strings.Contains(err.Error(), "Duplicate entry") || strings.Contains(err.Error(), "1062") {
+				return err
+			}
+			return err
+		}
+		return repository.ApplyRegisterGift(tx, &newUser)
+	})
+	if err != nil {
 		if strings.Contains(err.Error(), "Duplicate entry") || strings.Contains(err.Error(), "1062") {
 			var retryUser pojo.TgUser
 			retryErr := s.DB.Where("tg_id = ?", userID).First(&retryUser).Error
@@ -2375,7 +2384,12 @@ func (s *TelegramBotService) GetOrCreateTgUserByTelegramID(telegramUserID int64,
 		InviteCode: &inviteCode,
 	}
 
-	if err := s.DB.Create(&newUser).Error; err != nil {
+	if err := s.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(&newUser).Error; err != nil {
+			return err
+		}
+		return repository.ApplyRegisterGift(tx, &newUser)
+	}); err != nil {
 		if strings.Contains(err.Error(), "Duplicate entry") || strings.Contains(err.Error(), "1062") {
 			var retryUser pojo.TgUser
 			retryErr := s.DB.Where("tg_id = ?", telegramUserID).First(&retryUser).Error
@@ -2533,15 +2547,15 @@ func (s *TelegramBotService) getRebateRate(key string) float64 {
 }
 
 func (s *TelegramBotService) getRegisterGiftAmount() float64 {
-	defaultValue := "0"
+	defaultValue := "58"
 	val := utils.GetStringCache(s.TablePrefix, "register_gift_amount", &defaultValue)
 	if val == nil || *val == "" {
-		return 0
+		return 58
 	}
 
 	amount, err := strconv.ParseFloat(strings.TrimSpace(*val), 64)
 	if err != nil || amount < 0 {
-		return 0
+		return 58
 	}
 
 	return amount

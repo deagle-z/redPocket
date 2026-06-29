@@ -259,6 +259,9 @@ func createTgUserFromAuth(tx *gorm.DB, req pojo.TgAuthLoginReq, ip string, regio
 			}
 			return pojo.TgUser{}, err
 		}
+		if err := ApplyRegisterGift(tx, &newUser); err != nil {
+			return pojo.TgUser{}, err
+		}
 		return newUser, nil
 	}
 	return pojo.TgUser{}, errors.New("create_tg_user_failed")
@@ -535,6 +538,9 @@ func RegisterTgByEmail(db *gorm.DB, email string, firstName string, password str
 				return createErr
 			}
 			newUser = user
+			if err := ApplyRegisterGift(tx, &newUser); err != nil {
+				return err
+			}
 			return nil
 		}
 		return errors.New("register_failed_retry")
@@ -656,6 +662,9 @@ func RegisterTgByPhone(db *gorm.DB, phone string, country string, firstName stri
 					}
 					continue
 				}
+				return err
+			}
+			if err := ApplyRegisterGift(tx, &newUser); err != nil {
 				return err
 			}
 			return nil
