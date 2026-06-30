@@ -12,6 +12,16 @@ import (
 	"time"
 )
 
+const (
+	withdrawFlowBatchWithdrawLimitConfigKey       = "withdraw_limit"
+	withdrawFlowBatchGiftLimitConfigKey           = "withdraw_gift_limit"
+	withdrawFlowBatchRebateTransferLimitConfigKey = "rebate_transfer_withdraw_limit"
+
+	defaultWithdrawFlowBatchWithdrawMultiplier       = 2
+	defaultWithdrawFlowBatchGiftMultiplier           = 5
+	defaultWithdrawFlowBatchRebateTransferMultiplier = defaultWithdrawFlowBatchGiftMultiplier
+)
+
 func EnsureWithdrawFlowBatchForRechargeV2(tx *gorm.DB, user pojo.TgUser, order pojo.RechargeOrder, preRechargeBalance float64) error {
 	if tx == nil || user.ID <= 0 || order.ID <= 0 || order.ActivityType == nil || *order.ActivityType != rechargeActivityTypeV2Gift {
 		return nil
@@ -47,8 +57,8 @@ func EnsureWithdrawFlowBatchForRechargeV2(tx *gorm.DB, user pojo.TgUser, order p
 		bonusAmount = 0
 	}
 	baseAmount := utils.Truncate2(creditAmount + bonusAmount)
-	withdrawMultiplier := loadWithdrawFlowBatchMultiplier(tx, "withdraw_limit", 2, "v2充值到账金额提现所需流水倍数")
-	giftMultiplier := loadWithdrawFlowBatchMultiplier(tx, "withdraw_gift_limit", 5, "v2充值赠送金额提现所需流水倍数")
+	withdrawMultiplier := loadWithdrawFlowBatchMultiplier(tx, withdrawFlowBatchWithdrawLimitConfigKey, defaultWithdrawFlowBatchWithdrawMultiplier, "v2充值到账金额提现所需流水倍数")
+	giftMultiplier := loadWithdrawFlowBatchMultiplier(tx, withdrawFlowBatchGiftLimitConfigKey, defaultWithdrawFlowBatchGiftMultiplier, "v2充值赠送金额提现所需流水倍数")
 	requiredFlow := utils.Truncate2(creditAmount*withdrawMultiplier + bonusAmount*giftMultiplier)
 	if requiredFlow <= 0 {
 		return nil
@@ -75,7 +85,8 @@ func EnsureWithdrawFlowBatchForRechargeV2(tx *gorm.DB, user pojo.TgUser, order p
 }
 
 // EnsureWithdrawFlowBatchForGift 为纯赠送金额创建 v2 提现流水批次（所需流水 = 赠送额 × 赠送倍数）。
-// 复用充值赠送的 withdraw_gift_limit 倍数配置。sourceOrderNo 需全局唯一以防重复建批次。
+// 佣金转余额(sourceType=rebate_transfer)使用单独的 rebate_transfer_withdraw_limit 配置。
+// sourceOrderNo 需全局唯一以防重复建批次。
 func EnsureWithdrawFlowBatchForGift(tx *gorm.DB, user pojo.TgUser, sourceType string, sourceID int64, sourceOrderNo string, activityCode string, giftAmount float64) error {
 	if tx == nil || user.ID <= 0 {
 		return nil
@@ -84,7 +95,7 @@ func EnsureWithdrawFlowBatchForGift(tx *gorm.DB, user pojo.TgUser, sourceType st
 	if bonusAmount <= 0 {
 		return nil
 	}
-	giftMultiplier := loadWithdrawFlowBatchMultiplier(tx, "withdraw_gift_limit", 5, "v2充值赠送金额提现所需流水倍数")
+	giftMultiplier := loadWithdrawFlowBatchBonusMultiplier(tx, sourceType)
 	requiredFlow := utils.Truncate2(bonusAmount * giftMultiplier)
 	if requiredFlow <= 0 {
 		return nil
@@ -360,8 +371,8 @@ func GetUserWithdrawFlowBatchSummary(db *gorm.DB, userID int64) (pojo.TgWithdraw
 	result.CompletedFlow = summary.CompletedFlow
 	result.RemainingFlow = summary.RemainingFlow
 	result.UnfinishedBatchCount = summary.Count
-	result.WithdrawMultiplier = loadWithdrawFlowBatchMultiplier(db, "withdraw_limit", 2, "v2充值到账金额提现所需流水倍数")
-	result.GiftMultiplier = loadWithdrawFlowBatchMultiplier(db, "withdraw_gift_limit", 5, "v2充值赠送金额提现所需流水倍数")
+	result.WithdrawMultiplier = loadWithdrawFlowBatchMultiplier(db, withdrawFlowBatchWithdrawLimitConfigKey, defaultWithdrawFlowBatchWithdrawMultiplier, "v2充值到账金额提现所需流水倍数")
+	result.GiftMultiplier = loadWithdrawFlowBatchMultiplier(db, withdrawFlowBatchGiftLimitConfigKey, defaultWithdrawFlowBatchGiftMultiplier, "v2充值赠送金额提现所需流水倍数")
 	return result, nil
 }
 
@@ -524,6 +535,51 @@ func completeWithdrawFlowBatch(tx *gorm.DB, batchID int64, completedAt time.Time
 		"completed_at":   completedAt,
 		"last_flow_at":   completedAt,
 	}).Error
+}
+
+type withdrawFlowBatchBonusMultiplierConfig struct {
+	key          string
+	defaultValue float64
+	desc         string
+}
+
+func withdrawFlowBatchBonusMultiplierConfigForSource(sourceType string) withdrawFlowBatchBonusMultiplierConfig {
+	if strings.EqualFold(strings.TrimSpace(sourceType), pojo.WithdrawFlowBatchSourceRebateTransfer) {
+		return withdrawFlowBatchBonusMultiplierConfig{
+			key:          withdrawFlowBatchRebateTransferLimitConfigKey,
+			defaultValue: defaultWithdrawFlowBatchRebateTransferMultiplier,
+			desc:         "佣金转余额提现所需流水倍数",
+		}
+	}
+	return withdrawFlowBatchBonusMultiplierConfig{
+		key:          withdrawFlowBatchGiftLimitConfigKey,
+		defaultValue: defaultWithdrawFlowBatchGiftMultiplier,
+		desc:         "v2充值赠送金额提现所需流水倍数",
+	}
+}
+
+func loadWithdrawFlowBatchBonusMultiplier(tx *gorm.DB, sourceType string) float64 {
+	config := withdrawFlowBatchBonusMultiplierConfigForSource(sourceType)
+	defaultValue := config.defaultValue
+	if config.key == withdrawFlowBatchRebateTransferLimitConfigKey {
+		defaultValue = loadExistingWithdrawFlowBatchMultiplier(tx, withdrawFlowBatchGiftLimitConfigKey, defaultValue)
+	}
+	return loadWithdrawFlowBatchMultiplier(tx, config.key, defaultValue, config.desc)
+}
+
+func loadExistingWithdrawFlowBatchMultiplier(tx *gorm.DB, key string, defaultValue float64) float64 {
+	if tx == nil || strings.TrimSpace(key) == "" {
+		return defaultValue
+	}
+	var cfg pojo.SysConfig
+	if err := tx.Where("config_key = ?", key).First(&cfg).Error; err != nil || cfg.ID == 0 {
+		return defaultValue
+	}
+	value, err := strconv.ParseFloat(strings.TrimSpace(cfg.ConfigValue), 64)
+	if err != nil || value <= 0 {
+		return defaultValue
+	}
+	return value
 }
 
 func loadWithdrawFlowBatchMultiplier(tx *gorm.DB, key string, defaultValue float64, desc string) float64 {

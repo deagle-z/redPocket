@@ -187,8 +187,11 @@ func LaunchAppGame(ctx *gin.Context) {
 		utils.ErrorBack(ctx, "player disabled")
 		return
 	}
-	// 进入游戏需先充值
+	rebateTransferred := false
 	if tgUser.RechargeAmount <= 0 {
+		rebateTransferred = repository.GetUserRechargeCount(db, userID).RebateTransferred
+	}
+	if !canLaunchAppGame(tgUser.RechargeAmount, rebateTransferred) {
 		utils.ErrorBack(ctx, "game_recharge_required")
 		return
 	}
@@ -219,6 +222,10 @@ func LaunchAppGame(ctx *gin.Context) {
 	}
 
 	utils.SuccessObjBack(ctx, pojo.AppGameLaunchResp{URL: resp.Data.URL})
+}
+
+func canLaunchAppGame(rechargeAmount float64, rebateTransferred bool) bool {
+	return rechargeAmount > 0 || rebateTransferred
 }
 
 // SyncAppGames godoc
