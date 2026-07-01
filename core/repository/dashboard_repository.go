@@ -13,6 +13,10 @@ type dashboardMonthlyAmountRow struct {
 	Amount float64 `gorm:"column:amount"`
 }
 
+func DashboardRechargePaidAmountExpr(prefix string) string {
+	return "COALESCE(NULLIF(" + prefix + "credit_amount + COALESCE(" + prefix + "fee, 0), 0), " + prefix + "amount)"
+}
+
 func GetAdminDashboardStats(db *gorm.DB, tenantID int64) pojo.TenantDashboardStatsBack {
 	now := time.Now()
 	todayStart := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
@@ -151,7 +155,7 @@ func GetAdminDashboardRechargeUsers(db *gorm.DB, search pojo.TenantDashboardDeta
 	rowQuery := db.Table(pojo.RechargeOrderTableName+" ro").
 		Select(`ro.user_id,
 			ro.tenant_id,
-			COALESCE(SUM(ro.amount), 0) AS recharge_amount,
+			COALESCE(SUM(`+DashboardRechargePaidAmountExpr("ro.")+`), 0) AS recharge_amount,
 			COUNT(*) AS recharge_count,
 			MAX(ro.pay_time) AS last_recharge_at,
 			tu.id, tu.uid, tu.tg_id, tu.username, tu.first_name, tu.phone, tu.parent_id, parent.uid AS parent_uid, tu.balance, tu.status`).
@@ -197,11 +201,11 @@ func GetAdminDashboardAgentRanks(db *gorm.DB, search pojo.TenantDashboardDetailS
 		Select("child.parent_id AS parent_id").
 		Joins("JOIN "+pojo.TgUserTableName+" child ON child.id = ro.user_id AND child.tenant_id = ro.tenant_id").
 		Joins("JOIN "+pojo.TgUserTableName+" parent ON parent.id = child.parent_id AND parent.tenant_id = child.tenant_id").
-		Where("ro.status = ? AND coalesce(ro.is_dev, 0) = 0 AND ro.amount > 0", 1).
+		Where("ro.status = ? AND coalesce(ro.is_dev, 0) = 0 AND "+DashboardRechargePaidAmountExpr("ro.")+" > 0", 1).
 		Where("child.parent_id IS NOT NULL AND child.parent_id > 0").
 		Where("child.is_bot = ? AND parent.is_bot = ?", false, false)
 	groupQuery = filterAdminDashboardTenant(groupQuery, "ro.tenant_id", search.TenantId)
-	_ = db.Table("(?) AS agent_rank", groupQuery.Group("child.parent_id").Having("SUM(ro.amount) > 0")).
+	_ = db.Table("(?) AS agent_rank", groupQuery.Group("child.parent_id").Having("SUM("+DashboardRechargePaidAmountExpr("ro.")+") > 0")).
 		Count(&result.Total).Error
 
 	type agentRankRow struct {
@@ -233,20 +237,20 @@ func GetAdminDashboardAgentRanks(db *gorm.DB, search pojo.TenantDashboardDetailS
 			parent.phone,
 			parent.balance,
 			parent.status,
-			COALESCE(SUM(ro.amount), 0) AS sub_recharge_amount,
+			COALESCE(SUM(`+DashboardRechargePaidAmountExpr("ro.")+`), 0) AS sub_recharge_amount,
 			COUNT(DISTINCT ro.user_id) AS sub_recharge_users,
 			COUNT(*) AS sub_recharge_count,
 			MAX(ro.pay_time) AS last_recharge_at`).
 		Joins("JOIN "+pojo.TgUserTableName+" child ON child.id = ro.user_id AND child.tenant_id = ro.tenant_id").
 		Joins("JOIN "+pojo.TgUserTableName+" parent ON parent.id = child.parent_id AND parent.tenant_id = child.tenant_id").
 		Joins("LEFT JOIN "+pojo.SysTenantTableName+" st ON st.id = parent.tenant_id").
-		Where("ro.status = ? AND coalesce(ro.is_dev, 0) = 0 AND ro.amount > 0", 1).
+		Where("ro.status = ? AND coalesce(ro.is_dev, 0) = 0 AND "+DashboardRechargePaidAmountExpr("ro.")+" > 0", 1).
 		Where("child.parent_id IS NOT NULL AND child.parent_id > 0").
 		Where("child.is_bot = ? AND parent.is_bot = ?", false, false)
 	rowQuery = filterAdminDashboardTenant(rowQuery, "ro.tenant_id", search.TenantId)
 	_ = rowQuery.
 		Group("parent.id, parent.tenant_id, st.tenant_name, parent.uid, parent.tg_id, parent.username, parent.first_name, parent.phone, parent.balance, parent.status").
-		Having("SUM(ro.amount) > 0").
+		Having("SUM(" + DashboardRechargePaidAmountExpr("ro.") + ") > 0").
 		Order("sub_recharge_amount DESC, sub_recharge_users DESC, parent.id DESC").
 		Limit(search.PageSize).
 		Offset(search.PageSize * search.CurrentPage).
@@ -332,7 +336,7 @@ func GetAdminDashboardRechargeOrders(db *gorm.DB, search pojo.TenantDashboardDet
 	amountQuery := db.Model(&pojo.RechargeOrder{}).
 		Where("status = ? AND coalesce(is_dev, 0) = 0 AND pay_time >= ? AND pay_time < ?", 1, start, end)
 	amountQuery = filterAdminDashboardTenant(amountQuery, "tenant_id", search.TenantId)
-	result.TotalAmount = sumAdminDashboardAmount(amountQuery, "amount")
+	result.TotalAmount = sumAdminDashboardAmount(amountQuery, DashboardRechargePaidAmountExpr(""))
 
 	type orderRow struct {
 		ID        int64      `gorm:"column:id"`
@@ -351,7 +355,7 @@ func GetAdminDashboardRechargeOrders(db *gorm.DB, search pojo.TenantDashboardDet
 	}
 	var rows []orderRow
 	rowQuery := db.Table(pojo.RechargeOrderTableName+" ro").
-		Select(`ro.id, ro.order_no, ro.tenant_id, ro.user_id, ro.amount, ro.fee, ro.channel, ro.status, ro.pay_time,
+		Select(`ro.id, ro.order_no, ro.tenant_id, ro.user_id, `+DashboardRechargePaidAmountExpr("ro.")+` AS amount, ro.fee, ro.channel, ro.status, ro.pay_time,
 			tu.uid, tu.username, tu.first_name, tu.phone`).
 		Joins("LEFT JOIN "+pojo.TgUserTableName+" tu ON tu.id = ro.user_id").
 		Where("ro.status = ? AND coalesce(ro.is_dev, 0) = 0 AND ro.pay_time >= ? AND ro.pay_time < ?", 1, start, end)
@@ -480,7 +484,7 @@ func getAdminDashboardPeriodStats(db *gorm.DB, tenantID int64, start time.Time, 
 		Where("status = ? AND coalesce(is_dev, 0) = 0 AND pay_time >= ? AND pay_time < ?", 1, start, end)
 	rechargeAmountQuery = filterAdminDashboardTenant(rechargeAmountQuery, "tenant_id", tenantID)
 	result.RechargeAmount = sumAdminDashboardAmount(rechargeAmountQuery,
-		"amount")
+		DashboardRechargePaidAmountExpr(""))
 
 	rechargeUsersQuery := db.Model(&pojo.RechargeOrder{}).
 		Where("status = ? AND coalesce(is_dev, 0) = 0 AND pay_time >= ? AND pay_time < ?", 1, start, end)
@@ -540,7 +544,7 @@ func sumAdminDashboardAmount(query *gorm.DB, expr string) float64 {
 func getAdminDashboardMonthlyRechargeAmounts(db *gorm.DB, tenantID int64, start time.Time, end time.Time) map[string]float64 {
 	var rows []dashboardMonthlyAmountRow
 	query := db.Model(&pojo.RechargeOrder{}).
-		Select("DATE_FORMAT(pay_time, '%Y-%m') AS month, COALESCE(SUM(amount), 0) AS amount").
+		Select("DATE_FORMAT(pay_time, '%Y-%m') AS month, COALESCE(SUM("+DashboardRechargePaidAmountExpr("")+"), 0) AS amount").
 		Where("status = ? AND coalesce(is_dev, 0) = 0 AND pay_time >= ? AND pay_time < ?", 1, start, end)
 	query = filterAdminDashboardTenant(query, "tenant_id", tenantID)
 	_ = query.Group("DATE_FORMAT(pay_time, '%Y-%m')").Scan(&rows).Error

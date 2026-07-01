@@ -13,6 +13,7 @@ import (
 )
 
 const hgGameAssetDomain = "https://hgapi.com"
+const appGameLaunchMinimumRechargeAmount = 50.0
 
 // GetAppGames godoc
 //
@@ -188,7 +189,7 @@ func LaunchAppGame(ctx *gin.Context) {
 		return
 	}
 	rebateTransferred := false
-	if tgUser.RechargeAmount <= 0 {
+	if tgUser.RechargeAmount < appGameLaunchMinimumRechargeAmount {
 		rebateTransferred = repository.GetUserRechargeCount(db, userID).RebateTransferred
 	}
 	if !canLaunchAppGame(tgUser.RechargeAmount, rebateTransferred) {
@@ -225,7 +226,11 @@ func LaunchAppGame(ctx *gin.Context) {
 }
 
 func canLaunchAppGame(rechargeAmount float64, rebateTransferred bool) bool {
-	return rechargeAmount > 0 || rebateTransferred
+	return rechargeAmountAtLeastMinimum(rechargeAmount) || rebateTransferred
+}
+
+func rechargeAmountAtLeastMinimum(rechargeAmount float64) bool {
+	return rechargeAmount >= appGameLaunchMinimumRechargeAmount
 }
 
 // SyncAppGames godoc

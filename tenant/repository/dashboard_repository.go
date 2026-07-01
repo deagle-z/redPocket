@@ -109,7 +109,7 @@ func GetDashboardRechargeUsers(db *gorm.DB, tenantID int64, search pojo.TenantDa
 	var rows []rechargeUserRow
 	_ = db.Table(pojo.RechargeOrderTableName+" ro").
 		Select(`ro.user_id,
-			COALESCE(SUM(ro.amount), 0) AS recharge_amount,
+			COALESCE(SUM(`+coreRepo.DashboardRechargePaidAmountExpr("ro.")+`), 0) AS recharge_amount,
 			COUNT(*) AS recharge_count,
 			MAX(ro.pay_time) AS last_recharge_at,
 			tu.id, tu.uid, tu.tg_id, tu.username, tu.first_name, tu.phone, tu.parent_id, parent.uid AS parent_uid, tu.balance, tu.status`).
@@ -202,7 +202,7 @@ func GetDashboardRechargeOrders(db *gorm.DB, tenantID int64, search pojo.TenantD
 		Count(&result.Total).Error
 	result.TotalAmount = sumDashboardAmount(db.Model(&pojo.RechargeOrder{}).
 		Where("tenant_id = ? AND status = ? AND coalesce(is_dev, 0) = 0 AND pay_time >= ? AND pay_time < ?", tenantID, 1, start, end),
-		"amount")
+		coreRepo.DashboardRechargePaidAmountExpr(""))
 
 	type orderRow struct {
 		ID        int64      `gorm:"column:id"`
@@ -220,7 +220,7 @@ func GetDashboardRechargeOrders(db *gorm.DB, tenantID int64, search pojo.TenantD
 	}
 	var rows []orderRow
 	_ = db.Table(pojo.RechargeOrderTableName+" ro").
-		Select(`ro.id, ro.order_no, ro.user_id, ro.amount, ro.fee, ro.channel, ro.status, ro.pay_time,
+		Select(`ro.id, ro.order_no, ro.user_id, `+coreRepo.DashboardRechargePaidAmountExpr("ro.")+` AS amount, ro.fee, ro.channel, ro.status, ro.pay_time,
 			tu.uid, tu.username, tu.first_name, tu.phone`).
 		Joins("LEFT JOIN "+pojo.TgUserTableName+" tu ON tu.id = ro.user_id AND tu.tenant_id = ?", tenantID).
 		Where("ro.tenant_id = ? AND ro.status = ? AND coalesce(ro.is_dev, 0) = 0 AND ro.pay_time >= ? AND ro.pay_time < ?", tenantID, 1, start, end).
@@ -341,7 +341,7 @@ func getDashboardPeriodStats(db *gorm.DB, tenantID int64, start time.Time, end t
 
 	result.RechargeAmount = sumDashboardAmount(db.Model(&pojo.RechargeOrder{}).
 		Where("tenant_id = ? AND status = ? AND coalesce(is_dev, 0) = 0 AND pay_time >= ? AND pay_time < ?", tenantID, 1, start, end),
-		"amount")
+		coreRepo.DashboardRechargePaidAmountExpr(""))
 
 	_ = db.Model(&pojo.RechargeOrder{}).
 		Where("tenant_id = ? AND status = ? AND coalesce(is_dev, 0) = 0 AND pay_time >= ? AND pay_time < ?", tenantID, 1, start, end).
