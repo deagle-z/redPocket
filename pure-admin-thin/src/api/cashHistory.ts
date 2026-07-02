@@ -10,6 +10,7 @@ export type CashHistory = {
   endAmount: number;
   cashMark: string;
   cashDesc: string;
+  type: number;
   fromUserId: number;
 };
 
@@ -19,6 +20,7 @@ export type CashHistorySearch = {
   pageSize: number;
   userId?: number;
   uid?: string;
+  type?: number;
   cashMark?: string;
 };
 

@@ -528,8 +528,8 @@ func UserAwardInfos(db *gorm.DB, search pojo.CashHistorySearch) (result pojo.Cas
 func GetCashHistoryListAdmin(db *gorm.DB, search pojo.CashHistorySearch) (result pojo.CashHistoryPage) {
 	var cashHistoryList []pojo.CashHistory
 	start := time.Now()
-	log.Printf("cashHistory admin list start userId=%d uid=%q cashMark=%q pageSize=%d currentPage=%d",
-		search.UserId, search.Uid, search.CashMark, search.PageSize, search.CurrentPage)
+	log.Printf("cashHistory admin list start userId=%d uid=%q type=%s cashMark=%q pageSize=%d currentPage=%d",
+		search.UserId, search.Uid, formatCashHistorySearchType(search.Type), search.CashMark, search.PageSize, search.CurrentPage)
 	userIDs, userFiltered := resolveCashHistorySearchUserIDs(db, search)
 	log.Printf("cashHistory admin list resolve users cost=%s userFiltered=%v userIDs=%v",
 		time.Since(start), userFiltered, userIDs)
@@ -550,6 +550,9 @@ func GetCashHistoryListAdmin(db *gorm.DB, search pojo.CashHistorySearch) (result
 	// 如果指定了余额备注，则按备注查询
 	if search.CashMark != "" {
 		query = query.Where("cash_mark LIKE ?", "%"+search.CashMark+"%")
+	}
+	if search.Type != nil {
+		query = query.Where("type = ?", *search.Type)
 	}
 	log.Printf("cashHistory admin list build query cost=%s", time.Since(queryStart))
 
@@ -660,7 +663,17 @@ func applyCashHistoryAdminFilters(query *gorm.DB, search pojo.CashHistorySearch,
 	if search.CashMark != "" {
 		query = query.Where("cash_mark LIKE ?", "%"+search.CashMark+"%")
 	}
+	if search.Type != nil {
+		query = query.Where("type = ?", *search.Type)
+	}
 	return query
+}
+
+func formatCashHistorySearchType(value *int8) string {
+	if value == nil {
+		return ""
+	}
+	return fmt.Sprintf("%d", *value)
 }
 
 func cashHistoryShardTableName(index int) string {

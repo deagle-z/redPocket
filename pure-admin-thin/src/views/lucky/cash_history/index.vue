@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from "vue";
-import { useCashHistory } from "./utils/hook";
+import { cashHistoryTypeOptions, useCashHistory } from "./utils/hook";
 import { PureTableBar } from "@/components/RePureTableBar";
 import { useRenderIcon } from "@/components/ReIcon/src/hooks";
 import { deviceDetection } from "@pureadmin/utils";
@@ -52,6 +52,22 @@ const {
             clearable
             class="!w-[180px]"
           />
+        </el-form-item>
+        <el-form-item label="类型：" prop="type">
+          <el-select
+            v-model="form.type"
+            placeholder="请选择类型"
+            clearable
+            filterable
+            class="!w-[220px]"
+          >
+            <el-option
+              v-for="item in cashHistoryTypeOptions"
+              :key="item.value"
+              :label="item.label"
+              :value="item.value"
+            />
+          </el-select>
         </el-form-item>
         <el-form-item label="余额备注：" prop="cashMark">
           <el-input

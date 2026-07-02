@@ -70,9 +70,10 @@ type CashHistoryResp struct {
 
 type CashHistorySearch struct {
 	PageInfo
-	UserId   int64  `json:"userId"`   // 用户ID，0表示查询所有用户（管理端）
-	Uid      string `json:"uid"`      // 用户UID
-	CashMark string `json:"cashMark"` // 余额备注，可选
+	UserId   int64  `json:"userId"` // 用户ID，0表示查询所有用户（管理端）
+	Uid      string `json:"uid"`    // 用户UID
+	Type     *int8  `json:"type"`   // 变动类型，可选
+	CashMark string `json:"cashMark"`
 }
 
 func (s *CashHistorySearch) UnmarshalJSON(data []byte) error {
@@ -81,6 +82,7 @@ func (s *CashHistorySearch) UnmarshalJSON(data []byte) error {
 		PageSize    int             `json:"pageSize"`
 		UserId      json.RawMessage `json:"userId"`
 		Uid         string          `json:"uid"`
+		Type        *int8           `json:"type"`
 		CashMark    string          `json:"cashMark"`
 	}
 	if err := json.Unmarshal(data, &raw); err != nil {
@@ -96,6 +98,7 @@ func (s *CashHistorySearch) UnmarshalJSON(data []byte) error {
 	s.PageSize = raw.PageSize
 	s.UserId = userID
 	s.Uid = raw.Uid
+	s.Type = raw.Type
 	s.CashMark = raw.CashMark
 	return nil
 }

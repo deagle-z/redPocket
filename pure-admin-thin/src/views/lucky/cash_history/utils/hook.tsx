@@ -4,10 +4,47 @@ import type { PaginationProps } from "@pureadmin/table";
 import { getCashHistoryListAdmin, type CashHistory } from "@/api/cashHistory";
 import { type Ref, reactive, ref, onMounted, toRaw } from "vue";
 
+export const cashHistoryTypeOptions = [
+  { label: "未知", value: 0 },
+  { label: "发送红包", value: 1 },
+  { label: "抢红包未中雷收益", value: 2 },
+  { label: "抢红包中雷损失", value: 3 },
+  { label: "发包者中雷收益", value: 4 },
+  { label: "红包相关抽成", value: 5 },
+  { label: "充值到账", value: 6 },
+  { label: "后台手工加款", value: 7 },
+  { label: "后台手工扣款", value: 8 },
+  { label: "提现申请扣款", value: 9 },
+  { label: "提现失败/取消/退回返还", value: 10 },
+  { label: "佣金(返水)转余额", value: 11 },
+  { label: "红包过期退回", value: 12 },
+  { label: "抽奖消耗", value: 13 },
+  { label: "抽奖中奖", value: 14 },
+  { label: "VIP升级奖励", value: 15 },
+  { label: "首充赠送", value: 16 },
+  { label: "今日首充赠送", value: 17 },
+  { label: "幸运数字赠送", value: 18 },
+  { label: "后台手工加佣金", value: 19 },
+  { label: "签到活动赠送", value: 20 },
+  { label: "三方游戏下注扣款", value: 21 },
+  { label: "三方游戏派奖", value: 22 },
+  { label: "三方游戏退回下注", value: 23 },
+  { label: "兑换码赠送", value: 24 },
+  { label: "VIP周薪", value: 25 },
+  { label: "邀请返佣阶梯奖励", value: 26 },
+  { label: "注册赠送", value: 27 }
+];
+
+function getCashHistoryTypeLabel(type: number) {
+  const match = cashHistoryTypeOptions.find(item => item.value === type);
+  return match ? match.label : `未知(${type})`;
+}
+
 export function useCashHistory(_tableRef: Ref) {
   const form = reactive({
     userId: undefined as number | undefined,
     uid: undefined as string | undefined,
+    type: undefined as number | undefined,
     cashMark: undefined as string | undefined
   });
   const dataList = ref<CashHistory[]>([]);
@@ -62,6 +99,12 @@ export function useCashHistory(_tableRef: Ref) {
       prop: "cashMark",
       minWidth: 120,
       showOverflowTooltip: true
+    },
+    {
+      label: "类型",
+      prop: "type",
+      minWidth: 150,
+      formatter: ({ type }) => getCashHistoryTypeLabel(type)
     },
     {
       label: "余额描述",
