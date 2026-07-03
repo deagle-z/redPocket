@@ -7,13 +7,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/jinzhu/copier"
-	"github.com/pquerna/otp/totp"
-	"gorm.io/gorm"
 	"log"
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/jinzhu/copier"
+	"github.com/pquerna/otp/totp"
+	"gorm.io/gorm"
 )
 
 func AdminAwardInfo(currentUser pojo.SysUser, reqData pojo.AdminAwardInfo) (result string, err error) {
@@ -406,19 +407,20 @@ func UserLogin(db *gorm.DB, hostInfo pojo.HostInfo, reqUserLogin pojo.UserLogin,
 	}
 	//needBind := false
 	if !utils.CsConfig.PassGoogleAuth {
-		if dbUser.GoogleCode != "" {
+		googleCode := strings.TrimSpace(dbUser.GoogleCode)
+		if googleCode != "" {
 			//if reqUserLogin.Code == "" {
 			//	return data, errors.New("请输入验证码")
 			//}
 			_, err2 := totp.Generate(totp.GenerateOpts{
 				Issuer:      "gg",
 				AccountName: dbUser.Username,
-				Secret:      []byte(dbUser.GoogleCode),
+				Secret:      []byte(googleCode),
 			})
 			if err2 != nil {
 				return data, err2
 			}
-			valid := totp.Validate(reqUserLogin.Code, dbUser.GoogleCode)
+			valid := totp.Validate(reqUserLogin.Code, googleCode)
 			if !valid {
 				if dbUser.BindCode {
 					return data, errors.New("code_incorrect")
