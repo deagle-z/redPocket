@@ -114,6 +114,18 @@ defineExpose({ getRef });
       </re-col>
 
       <re-col :value="12" :xs="24" :sm="24">
+        <el-form-item label="商家上级" prop="ownerUserId">
+          <el-input-number
+            v-model="newFormInline.ownerUserId"
+            :min="1"
+            :controls="false"
+            class="!w-full"
+            placeholder="请输入上级用户ID"
+          />
+        </el-form-item>
+      </re-col>
+
+      <re-col :value="12" :xs="24" :sm="24">
         <el-form-item label="开启提现" prop="enableWithdraw">
           <el-switch
             v-model="newFormInline.enableWithdraw"
@@ -138,7 +150,10 @@ defineExpose({ getRef });
       </re-col>
 
       <re-col :value="12" :xs="24" :sm="24">
-        <el-form-item label="自动审核单笔上限" prop="withdrawAutoReviewMaxAmount">
+        <el-form-item
+          label="自动审核单笔上限"
+          prop="withdrawAutoReviewMaxAmount"
+        >
           <el-input-number
             v-model="newFormInline.withdrawAutoReviewMaxAmount"
             :min="0"
@@ -151,7 +166,10 @@ defineExpose({ getRef });
       </re-col>
 
       <re-col :value="12" :xs="24" :sm="24">
-        <el-form-item label="自动审核每日总上限" prop="withdrawAutoReviewDailyLimit">
+        <el-form-item
+          label="自动审核每日总上限"
+          prop="withdrawAutoReviewDailyLimit"
+        >
           <el-input-number
             v-model="newFormInline.withdrawAutoReviewDailyLimit"
             :min="0"

@@ -306,10 +306,11 @@ func handleGameCashTransfer(db *gorm.DB, req pojo.GameCashTransferInOutReq) (flo
 			}
 			tBetRec = time.Since(s)
 			betAmount, _ := gameBetRecordAmounts(req, amount, gameInfo.IsFishing)
-			if betAmount > 0 {
+			withdrawFlowAmount := gameWithdrawFlowAmount(betAmount, gameInfo)
+			if withdrawFlowAmount > 0 {
 				vipUserID = user.ID
 				vipTenantID = user.TenantId
-				vipBetFlow = betAmount
+				vipBetFlow = withdrawFlowAmount
 				occurredAt := time.Now()
 				if req.ReqTime > 0 {
 					occurredAt = time.UnixMilli(req.ReqTime)
@@ -323,7 +324,7 @@ func handleGameCashTransfer(db *gorm.DB, req pojo.GameCashTransferInOutReq) (flo
 					"game_bet:"+tid,
 					0,
 					tid,
-					betAmount,
+					withdrawFlowAmount,
 					occurredAt,
 				); err != nil {
 					return err
@@ -404,8 +405,9 @@ func validateGameCashTransferAmount(req pojo.GameCashTransferInOutReq, amount fl
 }
 
 type gameCashTransferGameInfo struct {
-	GameName  string
-	IsFishing bool
+	GameName     string
+	IsFishing    bool
+	IsLiveCasino bool
 }
 
 type cachedGameInfo struct {
@@ -447,9 +449,11 @@ func lookupGameCashTransferGameInfo(db *gorm.DB, thirdGameID string) (gameCashTr
 	}
 	categoryCode := strings.ToLower(strings.TrimSpace(appGameStringValue(appGame.CategoryCode)))
 	isFishing := categoryCode == "fishing" || (appGame.Type != nil && *appGame.Type == 3)
+	isLiveCasino := categoryCode == "casino" || (appGame.Type != nil && *appGame.Type == 2)
 	return gameCashTransferGameInfo{
-		GameName:  appGameStringValue(appGame.GameName),
-		IsFishing: isFishing,
+		GameName:     appGameStringValue(appGame.GameName),
+		IsFishing:    isFishing,
+		IsLiveCasino: isLiveCasino,
 	}, true
 }
 
@@ -516,6 +520,17 @@ func gameBetRecordAmounts(req pojo.GameCashTransferInOutReq, amount float64, isF
 		}
 	}
 	return betAmount, winAmount
+}
+
+func gameWithdrawFlowAmount(betAmount float64, gameInfo gameCashTransferGameInfo) float64 {
+	betAmount = utils.Truncate2(betAmount)
+	if betAmount <= 0 {
+		return 0
+	}
+	if gameInfo.IsLiveCasino {
+		return utils.Truncate2(betAmount * 0.5)
+	}
+	return betAmount
 }
 
 func parseGameUserNumericUID(uid string) *int64 {

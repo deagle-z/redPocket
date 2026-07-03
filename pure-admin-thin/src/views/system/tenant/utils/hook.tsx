@@ -81,6 +81,12 @@ export function useTenant(_tableRef: Ref) {
       showOverflowTooltip: true
     },
     {
+      label: "商家上级",
+      prop: "ownerUserId",
+      minWidth: 110,
+      formatter: ({ ownerUserId }) => ownerUserId || "-"
+    },
+    {
       label: "类型",
       prop: "tenantType",
       minWidth: 100,
@@ -317,8 +323,7 @@ export function useTenant(_tableRef: Ref) {
           enableWithdraw: row?.enableWithdraw ?? 0,
           withdrawAutoReviewEnabled: row?.withdrawAutoReviewEnabled ?? 0,
           withdrawAutoReviewMaxAmount: row?.withdrawAutoReviewMaxAmount ?? 0,
-          withdrawAutoReviewDailyLimit:
-            row?.withdrawAutoReviewDailyLimit ?? 0,
+          withdrawAutoReviewDailyLimit: row?.withdrawAutoReviewDailyLimit ?? 0,
           loginPassword: title === "新增" ? "" : undefined,
           ownerUserId: row?.ownerUserId ?? undefined,
           planCode: row?.planCode ?? "",
@@ -342,6 +347,7 @@ export function useTenant(_tableRef: Ref) {
 
         function chores() {
           const submitData = { ...curData };
+          submitData.ownerUserId = submitData.ownerUserId || undefined;
           if (submitData.id > 0) {
             delete submitData.bindDomain;
             delete submitData.loginPassword;

@@ -62,6 +62,15 @@ const {
             class="!w-[180px]"
           />
         </el-form-item>
+        <el-form-item label="商家上级：" prop="ownerUserId">
+          <el-input-number
+            v-model="form.ownerUserId"
+            :min="1"
+            :controls="false"
+            placeholder="上级用户ID"
+            class="!w-[180px]"
+          />
+        </el-form-item>
         <el-form-item label="租户类型：" prop="tenantType">
           <el-select
             v-model="form.tenantType"

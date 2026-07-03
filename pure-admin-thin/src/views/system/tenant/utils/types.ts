@@ -10,7 +10,7 @@ interface FormItemProps {
   withdrawAutoReviewMaxAmount: number;
   withdrawAutoReviewDailyLimit: number;
   loginPassword?: string;
-  ownerUserId?: number;
+  ownerUserId?: number | null;
   planCode?: string;
   bindDomain?: string;
   tgServiceUrl?: string;
