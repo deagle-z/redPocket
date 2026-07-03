@@ -102,11 +102,11 @@ export function useRechargeOrder(_tableRef: Ref) {
       formatter: ({ fee }) => formatMoney(fee)
     },
     {
-      label: "净入账",
-      prop: "netAmount",
+      label: "实际入款",
+      prop: "creditAmount",
       minWidth: 120,
-      formatter: ({ netAmount, currency }) =>
-        formatMoneyWithCurrency(netAmount, currency)
+      formatter: ({ creditAmount, currency }) =>
+        formatMoneyWithCurrency(creditAmount, currency)
     },
     {
       label: "赠送金额",

@@ -3,6 +3,7 @@ import { message } from "@/utils/message";
 import type { PaginationProps } from "@pureadmin/table";
 import { getCashHistoryListAdmin, type CashHistory } from "@/api/cashHistory";
 import { type Ref, reactive, ref, onMounted, toRaw } from "vue";
+import { getTgUserList } from "@/api/tgUser";
 
 export const cashHistoryTypeOptions = [
   { label: "未知", value: 0 },
@@ -38,6 +39,10 @@ export const cashHistoryTypeOptions = [
 function getCashHistoryTypeLabel(type: number) {
   const match = cashHistoryTypeOptions.find(item => item.value === type);
   return match ? match.label : `未知(${type})`;
+}
+
+function getTrimmedString(value?: string) {
+  return value?.trim() || undefined;
 }
 
 export function useCashHistory(_tableRef: Ref) {
@@ -141,12 +146,44 @@ export function useCashHistory(_tableRef: Ref) {
     console.log("handleSelectionChange", val);
   }
 
+  async function resolveUserIdByUid(uid: string) {
+    const { data } = await getTgUserList({
+      currentPage: 0,
+      pageSize: 1,
+      uid
+    });
+
+    return data.list[0]?.id;
+  }
+
+  function setEmptyResult() {
+    dataList.value = [];
+    pagination.total = 0;
+    pagination.currentPage = 0;
+  }
+
   async function onSearch() {
     loading.value = true;
     try {
+      const rawForm = toRaw(form);
+      const uid = getTrimmedString(rawForm.uid);
+      let userId = rawForm.userId;
+
+      if (uid) {
+        userId = await resolveUserIdByUid(uid);
+        if (!userId) {
+          setEmptyResult();
+          message("未找到该用户UID", { type: "warning" });
+          return;
+        }
+      }
+
       const { data } = await getCashHistoryListAdmin({
-        ...toRaw(form),
-        ...toRaw(pagination)
+        currentPage: pagination.currentPage,
+        pageSize: pagination.pageSize,
+        userId,
+        type: rawForm.type,
+        cashMark: getTrimmedString(rawForm.cashMark)
       });
       dataList.value = data.list;
       pagination.total = data.total;

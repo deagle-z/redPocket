@@ -61,7 +61,7 @@ function formatMoneyWithCurrency(
   return `${formatMoney(value)} ${currency || ""}`.trim();
 }
 
-export function useRechargeOrder(tableRef: Ref) {
+export function useRechargeOrder(_tableRef: Ref) {
   const form = reactive({
     userUid: "",
     orderNo: "",
@@ -71,7 +71,6 @@ export function useRechargeOrder(tableRef: Ref) {
     channel: "",
     payMethod: ""
   });
-  const formRef = ref();
   const dataList = ref<RechargeOrder[]>([]);
   const loading = ref(true);
   const pagination = reactive<PaginationProps>({
@@ -106,11 +105,11 @@ export function useRechargeOrder(tableRef: Ref) {
       formatter: ({ fee }) => formatMoney(fee)
     },
     {
-      label: "净入账",
-      prop: "netAmount",
+      label: "实际入款",
+      prop: "creditAmount",
       minWidth: 120,
-      formatter: ({ netAmount, currency }) =>
-        formatMoneyWithCurrency(netAmount, currency)
+      formatter: ({ creditAmount, currency }) =>
+        formatMoneyWithCurrency(creditAmount, currency)
     },
     {
       label: "赠送金额",

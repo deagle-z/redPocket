@@ -141,14 +141,14 @@ func buildTelegramNotifyText(payload utils.TelegramNotifyPayload) string {
 			at.Format("2006-01-02 15:04:05"),
 		)
 	case utils.TelegramNotifyEventRecharge:
-		return fmt.Sprintf("充值通知\n所属商户: %s\n用户ID: %d\nUID: %s\n订单号: %s\n金额: %.2f %s\n入账: %.2f\n赠送: %.2f\n渠道: %s\n时间: %s",
+		actualAmount := rechargeNotifyActualAmount(payload)
+		return fmt.Sprintf("充值通知\n所属商户: %s\n用户ID: %d\nUID: %s\n订单号: %s\n实际入款: %.2f %s\n赠送: %.2f\n渠道: %s\n时间: %s",
 			tenant,
 			payload.UserID,
 			payload.UID,
 			payload.OrderNo,
-			utils.Truncate2(payload.Amount),
+			actualAmount,
 			firstNonEmpty(payload.Currency, "-"),
-			utils.Truncate2(payload.CreditAmount),
 			utils.Truncate2(payload.BonusAmount),
 			firstNonEmpty(payload.Channel, payload.PayMethod, "-"),
 			at.Format("2006-01-02 15:04:05"),
@@ -169,6 +169,13 @@ func buildTelegramNotifyText(payload utils.TelegramNotifyPayload) string {
 	default:
 		return ""
 	}
+}
+
+func rechargeNotifyActualAmount(payload utils.TelegramNotifyPayload) float64 {
+	if payload.CreditAmount > 0 {
+		return utils.Truncate2(payload.CreditAmount)
+	}
+	return utils.Truncate2(payload.Amount)
 }
 
 func withdrawSourceLabel(source string) string {
