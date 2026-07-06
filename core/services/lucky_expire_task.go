@@ -52,6 +52,7 @@ func InitLuckyExpireAsynq() error {
 		mux.HandleFunc(TaskTypeTelegramWelcomeMessage, handleTelegramWelcomeMessageTask)
 		mux.HandleFunc(TaskTypeTelegramDeleteMessage, handleTelegramDeleteMessageTask)
 		mux.HandleFunc(pojo.TaskTypeRechargeFirstGiftInstallment, handleRechargeFirstGiftInstallmentTask)
+		mux.HandleFunc(TaskTypeUsdtRechargeExpire, handleUsdtRechargeExpireTask)
 		go func() {
 			if err := srv.Run(mux); err != nil {
 				log.Printf("asynq server stopped: %v", err)

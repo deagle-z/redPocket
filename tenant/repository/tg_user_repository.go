@@ -229,6 +229,15 @@ func AdminCreateRechargeOrderV2(db *gorm.DB, tenantID int64, req pojo.AdminCreat
 	return coreRepo.AdminCreateRechargeOrderV2(db, req.UserID, req.RechargeOrderAppReq, tablePrefix)
 }
 
+func AdminCreateCryptoRechargeOrder(db *gorm.DB, tenantID int64, req pojo.CryptoRechargeOrderReq, tablePrefix string) (pojo.RechargeOrderAppBack, error) {
+	var dbUser pojo.TgUser
+	db.Select("id").Where("id = ? and tenant_id = ?", req.UserID, tenantID).First(&dbUser)
+	if dbUser.ID == 0 {
+		return pojo.RechargeOrderAppBack{}, errors.New("数据不存在")
+	}
+	return coreRepo.AdminCreateCryptoRechargeOrder(db, req.UserID, req, tablePrefix)
+}
+
 func SetTgUserRemark(db *gorm.DB, tenantID int64, id int64, remark string) (result pojo.TgUserBack, err error) {
 	var dbUser pojo.TgUser
 	db.Where("id = ? and tenant_id = ?", id, tenantID).First(&dbUser)

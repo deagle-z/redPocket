@@ -2,10 +2,13 @@ package api
 
 import (
 	"BaseGoUni/core/pojo"
+	"BaseGoUni/core/services"
 	"BaseGoUni/core/utils"
 	tenantRepo "BaseGoUni/tenant/repository"
 	"io"
+	"log"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -240,6 +243,44 @@ func TenantCreateRechargeOrderV2(ctx *gin.Context) {
 		return
 	}
 	utils.SuccessObjBack(ctx, result)
+}
+
+func TenantCreateCryptoRechargeOrder(ctx *gin.Context) {
+	tenantID, ok := getTenantID(ctx)
+	if !ok {
+		return
+	}
+	var req pojo.CryptoRechargeOrderReq
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		utils.ErrorBack(ctx, "参数格式错误")
+		return
+	}
+	if req.UserID <= 0 {
+		utils.ErrorBack(ctx, "参数格式错误")
+		return
+	}
+	hostInfo := ctx.MustGet("hostInfo").(pojo.HostInfo)
+	result, err := tenantRepo.AdminCreateCryptoRechargeOrder(getDB(ctx), tenantID, req, hostInfo.TablePrefix)
+	if err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	enqueueTenantCryptoRechargeExpire(hostInfo.TablePrefix, result)
+	utils.SuccessObjBack(ctx, result)
+}
+
+func enqueueTenantCryptoRechargeExpire(tablePrefix string, result pojo.RechargeOrderAppBack) {
+	if result.OrderNo == "" || result.CryptoPayment == nil || strings.TrimSpace(result.CryptoPayment.ExpireTime) == "" {
+		return
+	}
+	expireAt, err := time.Parse(time.RFC3339, result.CryptoPayment.ExpireTime)
+	if err != nil {
+		log.Printf("[usdt_recharge] parse tenant expire time failed orderNo=%s expireTime=%s err=%v", result.OrderNo, result.CryptoPayment.ExpireTime, err)
+		return
+	}
+	if err = services.EnqueueUsdtRechargeExpireTask(tablePrefix, result.OrderNo, expireAt); err != nil {
+		log.Printf("[usdt_recharge] enqueue tenant expire task failed prefix=%s orderNo=%s err=%v", tablePrefix, result.OrderNo, err)
+	}
 }
 
 func SetTgUserRemark(ctx *gin.Context) {

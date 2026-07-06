@@ -124,6 +124,8 @@ func InitTables(prefix string) (firstInit bool, err error) {
 			&pojo.ExchangeCode{},
 			&pojo.ExchangeCodeRedeem{},
 			&pojo.RechargeOrder{},
+			&pojo.UsdtRechargeOrder{},
+			&pojo.UsdtRechargeTx{},
 			&pojo.WithdrawOrderBr{},
 			&pojo.TgUserRebateRecord{},
 			&pojo.PlatformProfitLedger{},
@@ -170,6 +172,10 @@ func InitTables(prefix string) (firstInit bool, err error) {
 	}
 	log.Print("init tables: ensure withdraw_order_br performance schema...\n")
 	if err = ensureWithdrawOrderBrPerformanceSchema(db); err != nil {
+		panic(err)
+	}
+	log.Print("init tables: ensure usdt recharge schema...\n")
+	if err = ensureUsdtRechargeSchema(db); err != nil {
 		panic(err)
 	}
 	log.Print("init tables: ensure trial lucky item pick index...\n")
@@ -330,6 +336,10 @@ func ensureWithdrawOrderBrPerformanceSchema(db *gorm.DB) error {
 		}
 	}
 	return nil
+}
+
+func ensureUsdtRechargeSchema(db *gorm.DB) error {
+	return db.AutoMigrate(&pojo.UsdtRechargeOrder{}, &pojo.UsdtRechargeTx{})
 }
 
 func backfillWithdrawOrderBrSource(db *gorm.DB) error {

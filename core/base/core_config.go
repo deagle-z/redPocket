@@ -38,10 +38,11 @@ type GameConfig struct {
 }
 
 type PayConfig struct {
-	Gctpk    GctpkPayConfig    `yaml:"gctpk"`
-	Gctpkmxn GctpkPayConfig    `yaml:"gctpkmxn"`
-	Gctpkbrl GctpkPayConfig    `yaml:"gctpkbrl"`
-	Vcpaymxn VcpayMxnPayConfig `yaml:"vcpaymxn"`
+	Gctpk     GctpkPayConfig     `yaml:"gctpk"`
+	Gctpkmxn  GctpkPayConfig     `yaml:"gctpkmxn"`
+	Gctpkbrl  GctpkPayConfig     `yaml:"gctpkbrl"`
+	Vcpaymxn  VcpayMxnPayConfig  `yaml:"vcpaymxn"`
+	UsdtTrc20 UsdtTrc20PayConfig `yaml:"usdtTrc20"`
 }
 
 type GctpkPayConfig struct {
@@ -62,6 +63,16 @@ type VcpayMxnPayConfig struct {
 	NotifyURL       string `yaml:"notifyUrl"`       // 代收异步回调地址
 	PageURL         string `yaml:"pageUrl"`         // 支付完成跳转地址
 	PayoutNotifyURL string `yaml:"payoutNotifyUrl"` // 代付异步回调地址
+}
+
+type UsdtTrc20PayConfig struct {
+	Enabled               bool   `yaml:"enabled"`               // 是否启用 TRC20-USDT 扫描
+	APIBaseURL            string `yaml:"apiBaseUrl"`            // TronGrid API 根地址
+	APIKey                string `yaml:"apiKey"`                // TronGrid API Key，可选
+	ContractAddress       string `yaml:"contractAddress"`       // TRC20-USDT 合约地址
+	DefaultReceiveAddress string `yaml:"defaultReceiveAddress"` // 默认收款地址，可被租户 sys_config 覆盖
+	OrderExpireMinutes    int    `yaml:"orderExpireMinutes"`    // 订单过期分钟数
+	ScanIntervalSeconds   int    `yaml:"scanIntervalSeconds"`   // 扫描间隔秒数
 }
 
 type TelegramConfig struct {

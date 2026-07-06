@@ -3,12 +3,14 @@ package api
 import (
 	"BaseGoUni/core/pojo"
 	"BaseGoUni/core/repository"
+	"BaseGoUni/core/services"
 	"BaseGoUni/core/utils"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 	"log"
 	"strconv"
 	"strings"
+	"time"
 )
 
 const defaultAdminRechargeReturnURL = "https://example.com"
@@ -218,6 +220,114 @@ func AppCreateRechargeOrderV2(ctx *gin.Context) {
 	utils.SuccessObjBack(ctx, result)
 }
 
+func GetCryptoRechargeOptions(ctx *gin.Context) {
+	amount, err := strconv.ParseFloat(strings.TrimSpace(ctx.Query("amount")), 64)
+	if err != nil || amount <= 0 {
+		utils.ErrorBack(ctx, "invalid_params")
+		return
+	}
+	db := ctx.MustGet("db").(*gorm.DB)
+	hostInfo := ctx.MustGet("hostInfo").(pojo.HostInfo)
+	result, err := repository.GetCryptoRechargeOptions(db, hostInfo.TablePrefix, amount)
+	if err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	utils.SuccessObjBack(ctx, result)
+}
+
+func AppCreateCryptoRechargeOrder(ctx *gin.Context) {
+	var req pojo.CryptoRechargeOrderReq
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		utils.ErrorBack(ctx, "参数格式错误")
+		return
+	}
+	userIDRaw, ok := ctx.Get("userId")
+	if !ok {
+		utils.UnauthorizedBack(ctx, "token is invalid")
+		return
+	}
+	userID, ok := userIDRaw.(int64)
+	if !ok || userID <= 0 {
+		utils.UnauthorizedBack(ctx, "token is invalid")
+		return
+	}
+
+	db := ctx.MustGet("db").(*gorm.DB)
+	hostInfo := ctx.MustGet("hostInfo").(pojo.HostInfo)
+	result, err := repository.AppCreateCryptoRechargeOrder(db, userID, req, hostInfo.TablePrefix)
+	if err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	enqueueCryptoRechargeExpire(hostInfo.TablePrefix, result)
+	utils.SuccessObjBack(ctx, result)
+}
+
+func GetCryptoRechargeOrderStatus(ctx *gin.Context) {
+	userIDRaw, ok := ctx.Get("userId")
+	if !ok {
+		utils.UnauthorizedBack(ctx, "token is invalid")
+		return
+	}
+	userID, ok := userIDRaw.(int64)
+	if !ok || userID <= 0 {
+		utils.UnauthorizedBack(ctx, "token is invalid")
+		return
+	}
+	orderNo := strings.TrimSpace(ctx.Param("orderNo"))
+	if orderNo == "" {
+		utils.ErrorBack(ctx, "order_no_required")
+		return
+	}
+	db := ctx.MustGet("db").(*gorm.DB)
+	result, err := repository.GetCryptoRechargeOrderStatus(db, userID, orderNo)
+	if err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	utils.SuccessObjBack(ctx, result)
+}
+
+func CancelCryptoRechargeOrder(ctx *gin.Context) {
+	userIDRaw, ok := ctx.Get("userId")
+	if !ok {
+		utils.UnauthorizedBack(ctx, "token is invalid")
+		return
+	}
+	userID, ok := userIDRaw.(int64)
+	if !ok || userID <= 0 {
+		utils.UnauthorizedBack(ctx, "token is invalid")
+		return
+	}
+	orderNo := strings.TrimSpace(ctx.Param("orderNo"))
+	if orderNo == "" {
+		utils.ErrorBack(ctx, "order_no_required")
+		return
+	}
+	db := ctx.MustGet("db").(*gorm.DB)
+	result, err := repository.CancelCryptoRechargeOrder(db, userID, orderNo)
+	if err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	utils.SuccessObjBack(ctx, result)
+}
+
+func enqueueCryptoRechargeExpire(tablePrefix string, result pojo.RechargeOrderAppBack) {
+	if result.OrderNo == "" || result.CryptoPayment == nil || strings.TrimSpace(result.CryptoPayment.ExpireTime) == "" {
+		return
+	}
+	expireAt, err := time.Parse(time.RFC3339, result.CryptoPayment.ExpireTime)
+	if err != nil {
+		log.Printf("[usdt_recharge] parse expire time failed orderNo=%s expireTime=%s err=%v", result.OrderNo, result.CryptoPayment.ExpireTime, err)
+		return
+	}
+	if err = services.EnqueueUsdtRechargeExpireTask(tablePrefix, result.OrderNo, expireAt); err != nil {
+		log.Printf("[usdt_recharge] enqueue expire task failed prefix=%s orderNo=%s err=%v", tablePrefix, result.OrderNo, err)
+	}
+}
+
 // AdminCreateRechargeOrderV2 管理后台为指定TG用户手动拉起v2充值订单
 func AdminCreateRechargeOrderV2(ctx *gin.Context) {
 	var req pojo.AdminCreateRechargeOrderV2Req
@@ -240,6 +350,29 @@ func AdminCreateRechargeOrderV2(ctx *gin.Context) {
 		utils.ErrorBack(ctx, err.Error())
 		return
 	}
+	utils.SuccessObjBack(ctx, result)
+}
+
+// AdminCreateCryptoRechargeOrder 管理后台为指定TG用户创建虚拟货币充值订单
+func AdminCreateCryptoRechargeOrder(ctx *gin.Context) {
+	var req pojo.CryptoRechargeOrderReq
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		utils.ErrorBack(ctx, "参数格式错误")
+		return
+	}
+	if req.UserID <= 0 {
+		utils.ErrorBack(ctx, "invalid_params")
+		return
+	}
+
+	db := ctx.MustGet("db").(*gorm.DB)
+	hostInfo := ctx.MustGet("hostInfo").(pojo.HostInfo)
+	result, err := repository.AdminCreateCryptoRechargeOrder(db, req.UserID, req, hostInfo.TablePrefix)
+	if err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	enqueueCryptoRechargeExpire(hostInfo.TablePrefix, result)
 	utils.SuccessObjBack(ctx, result)
 }
 

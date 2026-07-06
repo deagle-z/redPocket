@@ -218,9 +218,10 @@ func InitGin() {
 		adminGroupLog.POST("/tgUser/rebateWithdrawDisabled", api.SetTgUserRebateWithdrawDisabled) // 修改Telegram用户提现开关
 		adminGroupLog.POST("/tgUser/rechargeRebateRates", api.SetTgUserRechargeRebateRates)       // 修改Telegram用户充值返佣档位(每用户单独)
 		adminGroupLog.POST("/tgUser/rebateAmount", api.AddTgUserRebateAmount)
-		adminGroupLog.POST("/tgUser/rechargeOrder/v2", api.AdminCreateRechargeOrderV2) // 手动拉起TG用户v2充值订单
-		adminGroupLog.POST("/tgUser/remark", api.SetTgUserRemark)                      // 修改Telegram用户备注
-		adminGroupLog.DELETE("/tgUser/:id", api.DelTgUser)                             // 删除Telegram用户
+		adminGroupLog.POST("/tgUser/rechargeOrder/v2", api.AdminCreateRechargeOrderV2)         // 手动拉起TG用户v2充值订单
+		adminGroupLog.POST("/tgUser/rechargeOrder/crypto", api.AdminCreateCryptoRechargeOrder) // 创建TG用户虚拟货币充值订单
+		adminGroupLog.POST("/tgUser/remark", api.SetTgUserRemark)                              // 修改Telegram用户备注
+		adminGroupLog.DELETE("/tgUser/:id", api.DelTgUser)                                     // 删除Telegram用户
 		adminGroupLog.POST("/lucky/manualGrab", api.ManualGrabLuckyMoneyAdmin)
 		adminGroupLog.POST("/trialBot/batchCreate", api.BatchCreateTrialBotUsers)
 		adminGroupLog.POST("/trialBot/batchUpdate", api.BatchUpdateTrialBotUsers)
@@ -322,6 +323,7 @@ func InitGin() {
 		tenantGroup.POST("/tgUser/rechargeRebateRates", tenantApi.SetTgUserRechargeRebateRates)
 		tenantGroup.POST("/tgUser/rebateAmount", tenantApi.AddTgUserRebateAmount)
 		tenantGroup.POST("/tgUser/rechargeOrder/v2", tenantApi.TenantCreateRechargeOrderV2)
+		tenantGroup.POST("/tgUser/rechargeOrder/crypto", tenantApi.TenantCreateCryptoRechargeOrder)
 		tenantGroup.POST("/tgUser/remark", tenantApi.SetTgUserRemark)
 		tenantGroup.DELETE("/tgUser/:id", tenantApi.DelTgUser)
 
@@ -386,6 +388,10 @@ func InitGin() {
 	{
 		appAuthRouter.POST("/rechargeOrder", api.AppCreateRechargeOrder)
 		appAuthRouter.POST("/rechargeOrder/v2", api.AppCreateRechargeOrderV2)
+		appAuthRouter.GET("/rechargeOrder/crypto/options", api.GetCryptoRechargeOptions)
+		appAuthRouter.POST("/rechargeOrder/crypto", api.AppCreateCryptoRechargeOrder)
+		appAuthRouter.GET("/rechargeOrder/crypto/:orderNo/status", api.GetCryptoRechargeOrderStatus)
+		appAuthRouter.POST("/rechargeOrder/crypto/:orderNo/cancel", api.CancelCryptoRechargeOrder)
 		appAuthRouter.POST("/rechargeOrder/list", api.GetAppRechargeOrderHistory)
 		appAuthRouter.GET("/recharge/count", api.GetCurrentUserRechargeCount)
 		appAuthRouter.GET("/rechargeOrder/pendingNotifications", api.GetCurrentUserPendingRechargeNotifications)

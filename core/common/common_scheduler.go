@@ -60,6 +60,7 @@ func InitScheduler() {
 		services.SweepTimedOutProcessingWithdrawPayoutOrdersDefaultTable()
 	}, "查询超时处理中代付订单")
 	services.StartBotLotteryTask()
+	services.StartUsdtRechargeScanTask()
 	c.Start()
 	log.Println("Scheduler started successfully")
 }

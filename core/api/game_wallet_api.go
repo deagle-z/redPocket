@@ -5,6 +5,8 @@ import (
 	"BaseGoUni/core/pojo"
 	"BaseGoUni/core/repository"
 	"BaseGoUni/core/utils"
+	"crypto/sha1"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -238,6 +240,7 @@ func handleGameCashTransfer(db *gorm.DB, req pojo.GameCashTransferInOutReq) (flo
 	// 游戏元数据查询(带缓存)放在事务外，避免占用行锁时间
 	g0 := time.Now()
 	gameInfo := getGameCashTransferGameInfo(db, req.GameID)
+	roundAggregated := gameCashTransferIsRoundAggregated(gameInfo)
 	tGameInfo = time.Since(g0)
 
 	txStart := time.Now()
@@ -262,17 +265,31 @@ func handleGameCashTransfer(db *gorm.DB, req pojo.GameCashTransferInOutReq) (flo
 				}
 				return err
 			}
-			s = time.Now()
-			var history pojo.CashHistory
-			err = tx.Where("user_id = ? AND award_uni = ?", user.ID, awardUni).First(&history).Error
-			tIdem = time.Since(s)
-			if err == nil {
-				balance = utils.Truncate2(history.EndAmount)
-				idempotent = true
-				return nil
-			}
-			if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-				return err
+			if roundAggregated {
+				s = time.Now()
+				exists, traceErr := gameCashTransferTraceExists(tx, user.ID, tid)
+				tIdem = time.Since(s)
+				if traceErr != nil {
+					return traceErr
+				}
+				if exists {
+					balance = utils.Truncate2(user.Balance)
+					idempotent = true
+					return nil
+				}
+			} else {
+				s = time.Now()
+				var history pojo.CashHistory
+				err = tx.Where("user_id = ? AND award_uni = ?", user.ID, awardUni).First(&history).Error
+				tIdem = time.Since(s)
+				if err == nil {
+					balance = utils.Truncate2(history.EndAmount)
+					idempotent = true
+					return nil
+				}
+				if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+					return err
+				}
 			}
 			if user.Status != 1 {
 				log.Printf("[game_wallet] TransferInOut user disabled userid=%s tid=%s userId=%d status=%d",
@@ -306,7 +323,22 @@ func handleGameCashTransfer(db *gorm.DB, req pojo.GameCashTransferInOutReq) (flo
 			}
 			tBetRec = time.Since(s)
 			betAmount, _ := gameBetRecordAmounts(req, amount, gameInfo.IsFishing)
-			withdrawFlowAmount := gameWithdrawFlowAmount(betAmount, gameInfo)
+			withdrawFlowAmount := 0.0
+			withdrawFlowEventKey := "game_bet:" + tid
+			withdrawFlowSourceOrderNo := tid
+			if roundAggregated {
+				if req.IsEnd {
+					roundBetAmount, sumErr := gameCashTransferRoundBetAmount(tx, user.ID, req)
+					if sumErr != nil {
+						return sumErr
+					}
+					withdrawFlowAmount = gameWithdrawFlowAmount(roundBetAmount, gameInfo)
+					withdrawFlowEventKey = gameCashTransferRoundFlowEventKey(user.ID, req.GameID, req.RoundID)
+					withdrawFlowSourceOrderNo = gameCashTransferRoundSourceOrderNo(user.ID, req.GameID, req.RoundID)
+				}
+			} else {
+				withdrawFlowAmount = gameWithdrawFlowAmount(betAmount, gameInfo)
+			}
 			if withdrawFlowAmount > 0 {
 				vipUserID = user.ID
 				vipTenantID = user.TenantId
@@ -321,9 +353,9 @@ func handleGameCashTransfer(db *gorm.DB, req pojo.GameCashTransferInOutReq) (flo
 					user.ID,
 					user.TenantId,
 					pojo.WithdrawFlowEventTypeGameBet,
-					"game_bet:"+tid,
+					withdrawFlowEventKey,
 					0,
-					tid,
+					withdrawFlowSourceOrderNo,
 					withdrawFlowAmount,
 					occurredAt,
 				); err != nil {
@@ -333,17 +365,23 @@ func handleGameCashTransfer(db *gorm.DB, req pojo.GameCashTransferInOutReq) (flo
 				// 邀请有效用户标记不再同步发生（仅统计用、非资金关键），移到事务提交后异步处理
 			}
 			s = time.Now()
-			if err := tx.Create(&pojo.CashHistory{
-				UserId:      user.ID,
-				AwardUni:    awardUni,
-				Amount:      amount,
-				StartAmount: startBalance,
-				EndAmount:   endBalance,
-				CashMark:    gameCashTransferMark(req.Reason, amount),
-				CashDesc:    gameCashTransferDesc(req),
-				Type:        gameCashTransferCashHistoryType(req.Reason, amount),
-			}).Error; err != nil {
-				return err
+			if roundAggregated {
+				if err := upsertGameCashTransferRoundCashHistory(tx, user.ID, req, amount, startBalance, endBalance); err != nil {
+					return err
+				}
+			} else {
+				if err := tx.Create(&pojo.CashHistory{
+					UserId:      user.ID,
+					AwardUni:    awardUni,
+					Amount:      amount,
+					StartAmount: startBalance,
+					EndAmount:   endBalance,
+					CashMark:    gameCashTransferMark(req.Reason, amount),
+					CashDesc:    gameCashTransferDesc(req),
+					Type:        gameCashTransferCashHistoryType(req.Reason, amount),
+				}).Error; err != nil {
+					return err
+				}
 			}
 			tCash = time.Since(s)
 
@@ -405,6 +443,7 @@ func validateGameCashTransferAmount(req pojo.GameCashTransferInOutReq, amount fl
 }
 
 type gameCashTransferGameInfo struct {
+	ThirdGameID  string
 	GameName     string
 	IsFishing    bool
 	IsLiveCasino bool
@@ -441,7 +480,7 @@ func getGameCashTransferGameInfo(db *gorm.DB, thirdGameID string) gameCashTransf
 func lookupGameCashTransferGameInfo(db *gorm.DB, thirdGameID string) (gameCashTransferGameInfo, bool) {
 	var appGame pojo.AppGame
 	err := db.Model(&pojo.AppGame{}).
-		Select("game_name, category_code, type").
+		Select("third_game_id, game_name, category_code, type").
 		Where("third_game_id = ? AND COALESCE(deleted_flag, 0) = 0", strings.TrimSpace(thirdGameID)).
 		First(&appGame).Error
 	if err != nil {
@@ -451,10 +490,15 @@ func lookupGameCashTransferGameInfo(db *gorm.DB, thirdGameID string) (gameCashTr
 	isFishing := categoryCode == "fishing" || (appGame.Type != nil && *appGame.Type == 3)
 	isLiveCasino := categoryCode == "casino" || (appGame.Type != nil && *appGame.Type == 2)
 	return gameCashTransferGameInfo{
+		ThirdGameID:  appGameStringValue(appGame.ThirdGameID),
 		GameName:     appGameStringValue(appGame.GameName),
 		IsFishing:    isFishing,
 		IsLiveCasino: isLiveCasino,
 	}, true
+}
+
+func gameCashTransferIsRoundAggregated(gameInfo gameCashTransferGameInfo) bool {
+	return strings.EqualFold(strings.TrimSpace(gameInfo.ThirdGameID), "spribe_01")
 }
 
 func createGameBetRecord(tx *gorm.DB, user pojo.TgUser, req pojo.GameCashTransferInOutReq, amount float64, gameInfo gameCashTransferGameInfo) error {
@@ -494,6 +538,68 @@ func createGameBetRecord(tx *gorm.DB, user pojo.TgUser, req pojo.GameCashTransfe
 		now,
 		now,
 	).Error
+}
+
+func gameCashTransferTraceExists(tx *gorm.DB, userID int64, tid string) (bool, error) {
+	var count int64
+	err := tx.Table(pojo.AppUserBetRecordTableNameByUserID(userID)).
+		Where("user_id = ? AND trace_id = ? AND COALESCE(deleted_flag, 0) = 0", userID, strings.TrimSpace(tid)).
+		Count(&count).Error
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}
+
+func gameCashTransferRoundBetAmount(tx *gorm.DB, userID int64, req pojo.GameCashTransferInOutReq) (float64, error) {
+	var amount float64
+	err := tx.Table(pojo.AppUserBetRecordTableNameByUserID(userID)).
+		Select("COALESCE(SUM(bet_amount), 0)").
+		Where("user_id = ? AND game_id = ? AND round_id = ? AND COALESCE(deleted_flag, 0) = 0",
+			userID,
+			strings.TrimSpace(req.GameID),
+			strings.TrimSpace(req.RoundID),
+		).
+		Scan(&amount).Error
+	if err != nil {
+		return 0, err
+	}
+	return utils.Truncate2(amount), nil
+}
+
+func upsertGameCashTransferRoundCashHistory(tx *gorm.DB, userID int64, req pojo.GameCashTransferInOutReq, amount float64, startBalance float64, endBalance float64) error {
+	awardUni := gameCashTransferRoundAwardUni(userID, req.GameID, req.RoundID)
+	var history pojo.CashHistory
+	err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+		Where("user_id = ? AND award_uni = ?", userID, awardUni).
+		First(&history).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		netAmount := utils.Truncate2(amount)
+		return tx.Create(&pojo.CashHistory{
+			UserId:      userID,
+			AwardUni:    awardUni,
+			Amount:      netAmount,
+			StartAmount: startBalance,
+			EndAmount:   endBalance,
+			CashMark:    gameCashTransferRoundMark(),
+			CashDesc:    gameCashTransferRoundDesc(req, netAmount),
+			Type:        gameCashTransferRoundCashHistoryType(netAmount),
+		}).Error
+	}
+	if err != nil {
+		return err
+	}
+
+	netAmount := utils.Truncate2(history.Amount + amount)
+	return tx.Model(&pojo.CashHistory{}).
+		Where("user_id = ? AND award_uni = ?", userID, awardUni).
+		Updates(map[string]any{
+			"amount":     netAmount,
+			"end_amount": endBalance,
+			"cash_mark":  gameCashTransferRoundMark(),
+			"cash_desc":  gameCashTransferRoundDesc(req, netAmount),
+			"type":       gameCashTransferRoundCashHistoryType(netAmount),
+		}).Error
 }
 
 func gameBetRecordAmounts(req pojo.GameCashTransferInOutReq, amount float64, isFishingGame bool) (float64, float64) {
@@ -545,6 +651,23 @@ func gameCashTransferAwardUni(tid string) string {
 	return "game_transfer_" + strings.TrimSpace(tid)
 }
 
+func gameCashTransferRoundAwardUni(userID int64, gameID string, roundID string) string {
+	return "game_round_" + gameCashTransferRoundHash(userID, gameID, roundID)
+}
+
+func gameCashTransferRoundFlowEventKey(userID int64, gameID string, roundID string) string {
+	return "game_bet_round:" + gameCashTransferRoundHash(userID, gameID, roundID)
+}
+
+func gameCashTransferRoundSourceOrderNo(userID int64, gameID string, roundID string) string {
+	return "round_" + gameCashTransferRoundHash(userID, gameID, roundID)
+}
+
+func gameCashTransferRoundHash(userID int64, gameID string, roundID string) string {
+	sum := sha1.Sum([]byte(fmt.Sprintf("%d|%s|%s", userID, strings.TrimSpace(gameID), strings.TrimSpace(roundID))))
+	return hex.EncodeToString(sum[:])
+}
+
 func gameCashTransferCashHistoryType(reason string, amount float64) int8 {
 	switch strings.ToLower(strings.TrimSpace(reason)) {
 	case "bet":
@@ -577,8 +700,29 @@ func gameCashTransferMark(reason string, amount float64) string {
 	}
 }
 
+func gameCashTransferRoundMark() string {
+	return "游戏单轮结算"
+}
+
+func gameCashTransferRoundCashHistoryType(amount float64) int8 {
+	if amount < 0 {
+		return pojo.CashHistoryTypeGameBet
+	}
+	return pojo.CashHistoryTypeGameWin
+}
+
+func gameCashTransferRoundDesc(req pojo.GameCashTransferInOutReq, netAmount float64) string {
+	return gameCashTransferLimitString(fmt.Sprintf("游戏单轮结算 round=%s game=%s net=%.2f lastTid=%s isEnd=%t",
+		strings.TrimSpace(req.RoundID),
+		strings.TrimSpace(req.GameID),
+		utils.Truncate2(netAmount),
+		strings.TrimSpace(req.TID),
+		req.IsEnd,
+	), 255)
+}
+
 func gameCashTransferDesc(req pojo.GameCashTransferInOutReq) string {
-	return fmt.Sprintf("游戏%s tid=%s round=%s game=%s amount=%.2f isEnd=%t isBuy=%t",
+	return gameCashTransferLimitString(fmt.Sprintf("游戏%s tid=%s round=%s game=%s amount=%.2f isEnd=%t isBuy=%t",
 		strings.TrimSpace(req.Reason),
 		strings.TrimSpace(req.TID),
 		strings.TrimSpace(req.RoundID),
@@ -586,7 +730,18 @@ func gameCashTransferDesc(req pojo.GameCashTransferInOutReq) string {
 		utils.Truncate2(req.Amount),
 		req.IsEnd,
 		req.IsBuy,
-	)
+	), 255)
+}
+
+func gameCashTransferLimitString(value string, maxLen int) string {
+	if maxLen <= 0 {
+		return ""
+	}
+	runes := []rune(value)
+	if len(runes) <= maxLen {
+		return value
+	}
+	return string(runes[:maxLen])
 }
 
 func gameSuccessBack[T any](ctx *gin.Context, data T) {
