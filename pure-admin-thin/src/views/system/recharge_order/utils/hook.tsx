@@ -6,6 +6,7 @@ import {
   adminRechargeOrderCallback,
   type RechargeOrder
 } from "@/api/rechargeOrder";
+import { withBackstageDisplayCurrency } from "@/utils/currency";
 import { type Ref, reactive, ref, onMounted, toRaw } from "vue";
 import { ElTag, ElButton, ElMessageBox } from "element-plus";
 
@@ -54,11 +55,8 @@ function formatMoney(value: number | string | null | undefined) {
     : "0";
 }
 
-function formatMoneyWithCurrency(
-  value: number | string | null | undefined,
-  currency?: string | null
-) {
-  return `${formatMoney(value)} ${currency || ""}`.trim();
+function formatMoneyWithCurrency(value: number | string | null | undefined) {
+  return withBackstageDisplayCurrency(formatMoney(value));
 }
 
 export function useRechargeOrder(_tableRef: Ref) {
@@ -108,8 +106,7 @@ export function useRechargeOrder(_tableRef: Ref) {
       label: "实际入款",
       prop: "creditAmount",
       minWidth: 120,
-      formatter: ({ creditAmount, currency }) =>
-        formatMoneyWithCurrency(creditAmount, currency)
+      formatter: ({ creditAmount }) => formatMoneyWithCurrency(creditAmount)
     },
     {
       label: "赠送金额",

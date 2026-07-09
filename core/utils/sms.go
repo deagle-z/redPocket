@@ -214,7 +214,31 @@ func NormalizePhoneDigits(phone string) string {
 
 func HasSupportedRegisterPhoneDialCode(phone string) bool {
 	digits := NormalizePhoneDigits(phone)
+	if IsUSPhoneWithDialCode(digits) {
+		return true
+	}
 	return strings.HasPrefix(digits, "55") || strings.HasPrefix(digits, "62") || strings.HasPrefix(digits, "52")
+}
+
+func IsUSPhoneWithDialCode(phone string) bool {
+	digits := NormalizePhoneDigits(phone)
+	if len(digits) != 11 || !strings.HasPrefix(digits, "1") {
+		return false
+	}
+	return isValidUSNationalPhone(digits[1:])
+}
+
+func isValidUSNationalPhone(digits string) bool {
+	if len(digits) != 10 {
+		return false
+	}
+	for _, r := range digits {
+		if r < '0' || r > '9' {
+			return false
+		}
+	}
+	// NANP basic format: NXX-NXX-XXXX, where N is 2-9.
+	return digits[0] >= '2' && digits[0] <= '9' && digits[3] >= '2' && digits[3] <= '9'
 }
 
 // InferCountryByPhone 根据手机号中的国际区号推断国家，推断失败时回退 fallbackCountry。

@@ -6,6 +6,7 @@ import { useRenderIcon } from "@/components/ReIcon/src/hooks";
 import { deviceDetection } from "@pureadmin/utils";
 import { ElMessageBox } from "element-plus";
 import { message } from "@/utils/message";
+import { BACKSTAGE_DISPLAY_CURRENCY } from "@/utils/currency";
 import {
   getAdminCountryRechargeInfo,
   getSysCountryList,
@@ -342,7 +343,7 @@ async function syncRechargeCountryConfig() {
   const country = rechargeCountries.value.find(
     item => item.countryCode === rechargeForm.countryCode
   );
-  rechargeForm.currency = country?.currencyCode || "";
+  rechargeForm.currency = country ? BACKSTAGE_DISPLAY_CURRENCY : "";
   rechargeChannels.value = [];
   rechargeFields.value = [];
   rechargeMinAmount.value = 1;
@@ -408,12 +409,12 @@ function selectDefaultRechargeCountry(row: TgUser) {
   const preferredCountry = preferred
     ? rechargeCountries.value.find(item => item.countryCode === preferred)
     : undefined;
-  const mxCountry = rechargeCountries.value.find(
-    item => item.countryCode === "MX"
+  const usCountry = rechargeCountries.value.find(
+    item => item.countryCode === "US"
   );
   return (
     preferredCountry?.countryCode ||
-    mxCountry?.countryCode ||
+    usCountry?.countryCode ||
     rechargeCountries.value[0]?.countryCode ||
     ""
   );

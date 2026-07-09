@@ -9,6 +9,7 @@ import {
 } from "@/api/taskActivityRecord";
 import { levelOptions } from "@/views/system/taskActivityConfig/utils/hook";
 import type { TaskActivityLevelCode } from "@/api/taskActivityConfig";
+import { withBackstageDisplayCurrency } from "@/utils/currency";
 
 export const recordStatusOptions = [
   { label: "进行中", value: 0 },
@@ -140,8 +141,8 @@ export function useTaskActivityRecord(tableRef: Ref) {
       label: "奖励",
       prop: "rewardAmount",
       minWidth: 130,
-      formatter: ({ rewardAmount, rewardCurrency }) =>
-        `${formatMoney(rewardAmount)} ${rewardCurrency || "USD"}`
+      formatter: ({ rewardAmount }) =>
+        withBackstageDisplayCurrency(formatMoney(rewardAmount))
     },
     {
       label: "状态",

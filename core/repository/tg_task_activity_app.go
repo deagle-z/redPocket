@@ -29,17 +29,21 @@ func GetAppTaskActivityList(db *gorm.DB, userID int64, lang string) ([]pojo.TgTa
 	if record, ok, err := getProgressTaskActivityRecord(db, userID, false); err != nil {
 		return nil, err
 	} else if ok {
-		return []pojo.TgTaskActivityAppItem{taskActivityAppItemFromRecord(record, lang, now)}, nil
+		return taskActivityAppItemsFromRecordConfigs(db, record, lang, now)
 	}
 
-	configs, err := taskActivityConfigsAt(db, now, taskActivityRewardDescOrder())
+	configs, err := taskActivityConfigsAt(db, now, taskActivityDisplayOrder())
 	if err != nil {
 		return nil, err
 	}
 	if len(configs) == 0 {
 		return []pojo.TgTaskActivityAppItem{}, nil
 	}
-	return []pojo.TgTaskActivityAppItem{taskActivityAppItemFromConfig(configs[0], lang)}, nil
+	items := make([]pojo.TgTaskActivityAppItem, 0, len(configs))
+	for _, cfg := range configs {
+		items = append(items, taskActivityAppItemFromConfig(cfg, lang))
+	}
+	return items, nil
 }
 
 func ClaimAppTaskActivity(db *gorm.DB, userID int64, lang string) (pojo.TgTaskActivityAppItem, error) {
@@ -67,7 +71,7 @@ func ClaimAppTaskActivity(db *gorm.DB, userID int64, lang string) (pojo.TgTaskAc
 			return nil
 		}
 
-		configs, err := taskActivityConfigsAt(tx, now, taskActivityRewardDescOrder())
+		configs, err := taskActivityConfigsAt(tx, now, taskActivityDisplayOrder())
 		if err != nil {
 			return err
 		}
@@ -484,6 +488,10 @@ func taskActivityRewardDescOrder() string {
 	return "reward_amount desc, required_invite_count desc, required_recharge_amount desc, sort asc, id desc"
 }
 
+func taskActivityDisplayOrder() string {
+	return "sort asc, id asc"
+}
+
 func taskActivityActiveRecordStatuses() []int8 {
 	return []int8{
 		pojo.TaskActivityRecordStatusProgress,
@@ -506,6 +514,55 @@ func taskActivityAppItemFromConfig(cfg pojo.TgTaskActivityConfig, lang string) p
 		Claimed:                false,
 		ProgressPercent:        0,
 	}
+}
+
+func taskActivityAppItemsFromRecordConfigs(db *gorm.DB, record pojo.TgTaskActivityRecord, lang string, now time.Time) ([]pojo.TgTaskActivityAppItem, error) {
+	configs, err := taskActivityConfigsAt(db, record.ClaimedAt, taskActivityDisplayOrder())
+	if err != nil {
+		return nil, err
+	}
+	if len(configs) == 0 {
+		return []pojo.TgTaskActivityAppItem{taskActivityAppItemFromRecord(record, lang, now)}, nil
+	}
+
+	items := make([]pojo.TgTaskActivityAppItem, 0, len(configs))
+	for _, cfg := range configs {
+		qualifiedCount, totalRecharge, err := taskActivityProgressForThreshold(db, record, cfg.RequiredRechargeAmount)
+		if err != nil {
+			return nil, err
+		}
+		items = append(items, taskActivityAppItemFromConfigAndRecord(cfg, record, qualifiedCount, totalRecharge, lang, now))
+	}
+	return items, nil
+}
+
+func taskActivityAppItemFromConfigAndRecord(cfg pojo.TgTaskActivityConfig, record pojo.TgTaskActivityRecord, qualifiedCount int, totalRecharge float64, lang string, now time.Time) pojo.TgTaskActivityAppItem {
+	item := taskActivityAppItemFromConfig(cfg, lang)
+	status := record.Status
+	claimedAt := record.ClaimedAt
+	deadlineAt := record.DeadlineAt
+	remainingSeconds := int64(0)
+	if record.Status == pojo.TaskActivityRecordStatusProgress && record.DeadlineAt.After(now) {
+		remainingSeconds = int64(record.DeadlineAt.Sub(now).Seconds())
+	}
+	progressPercent := float64(0)
+	if cfg.RequiredInviteCount > 0 {
+		progressPercent = utils.Truncate2(float64(qualifiedCount) / float64(cfg.RequiredInviteCount) * 100)
+		if progressPercent > 100 {
+			progressPercent = 100
+		}
+	}
+	item.RecordID = record.ID
+	item.Claimed = true
+	item.Status = &status
+	item.ClaimedAt = &claimedAt
+	item.DeadlineAt = &deadlineAt
+	item.RemainingSeconds = remainingSeconds
+	item.ProgressInviteCount = qualifiedCount
+	item.ProgressRechargeCount = qualifiedCount
+	item.ProgressRechargeAmount = utils.Truncate2(totalRecharge)
+	item.ProgressPercent = progressPercent
+	return item
 }
 
 func taskActivityAppItemFromRecord(record pojo.TgTaskActivityRecord, lang string, now time.Time) pojo.TgTaskActivityAppItem {
