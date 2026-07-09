@@ -154,6 +154,9 @@ const rechargeForm = reactive({
   payMethod: "",
   merchantOrderNo: ""
 });
+const rechargeDisplayCurrency = computed(() =>
+  rechargeForm.currency ? BACKSTAGE_DISPLAY_CURRENCY : ""
+);
 const subStatsPagination = reactive({
   currentPage: 1,
   pageSize: 10,
@@ -361,7 +364,7 @@ async function syncRechargeCountryConfig() {
   const country = rechargeCountries.value.find(
     item => item.countryCode === rechargeForm.countryCode
   );
-  rechargeForm.currency = country ? BACKSTAGE_DISPLAY_CURRENCY : "";
+  rechargeForm.currency = country?.currencyCode || "";
   rechargeChannels.value = [];
   rechargeFields.value = [];
   rechargeMinAmount.value = 1;
@@ -1079,7 +1082,7 @@ function handleSubStatsCurrentChange(page: number) {
           </el-select>
         </el-form-item>
         <el-form-item label="币种">
-          <el-input v-model="rechargeForm.currency" readonly />
+          <el-input :model-value="rechargeDisplayCurrency" readonly />
         </el-form-item>
         <el-form-item label="充值通道" required>
           <el-select
