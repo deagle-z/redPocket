@@ -125,6 +125,7 @@ func buildTenantTgUserUpdateMap(req pojo.TgUserSet) map[string]any {
 		"remark":              req.Remark,
 		"is_bot":              req.IsBot,
 		"tg_id":               req.TgID,
+		"sport_balance":       utils.Truncate2(req.SportBalance),
 		"status":              req.Status,
 		"parent_id":           req.ParentID,
 		"invite_code":         req.InviteCode,

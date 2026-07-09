@@ -5,16 +5,17 @@ type GameCashGetReq struct {
 }
 
 type GameCashTransferInOutReq struct {
-	UserID  string  `json:"userid"`
-	TID     string  `json:"tid"`
-	Amount  float64 `json:"amount"`
-	RoundID string  `json:"roundid"`
-	GameID  string  `json:"gameid"`
-	ReqTime int64   `json:"req_time"`
-	Reason  string  `json:"reason"`
-	IsEnd   bool    `json:"is_end"`
-	IsBuy   bool    `json:"is_buy"`
-	Bet     float64 `json:"bet"`
+	UserID       string  `json:"userid"`
+	TID          string  `json:"tid"`
+	Amount       float64 `json:"amount"`
+	RoundID      string  `json:"roundid"`
+	GameID       string  `json:"gameid"`
+	ReqTime      int64   `json:"req_time"`
+	Reason       string  `json:"reason"`
+	IsEnd        bool    `json:"is_end"`
+	IsBuy        bool    `json:"is_buy"`
+	Bet          float64 `json:"bet"`
+	PlatformCode string  `json:"platform_code,omitempty"`
 }
 
 type GameCashGetData struct {

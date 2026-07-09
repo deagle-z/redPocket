@@ -6,6 +6,7 @@ import (
 	"BaseGoUni/core/repository"
 	"BaseGoUni/core/utils"
 	"fmt"
+	"net/http"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -180,7 +181,7 @@ func LaunchAppGame(ctx *gin.Context) {
 	userID := ctx.MustGet("userId").(int64)
 	db := ctx.MustGet("db").(*gorm.DB)
 	var tgUser pojo.TgUser
-	if err := db.Select("id, uid, status, recharge_amount").Where("id = ? AND status <> ?", userID, int8(-1)).First(&tgUser).Error; err != nil {
+	if err := db.Select("id, uid, status, recharge_amount, tg_name, first_name, password_plain").Where("id = ? AND status <> ?", userID, int8(-1)).First(&tgUser).Error; err != nil {
 		utils.ErrorBack(ctx, "player not found")
 		return
 	}
@@ -208,6 +209,52 @@ func LaunchAppGame(ctx *gin.Context) {
 		return
 	}
 
+	platformCode := appGamePlatformCode(appGame.PlatformCode)
+	if shouldLaunchWithHGClient(platformCode) {
+		launchHGAppGame(ctx, tgUser, thirdGameID, language)
+		return
+	}
+	if shouldLaunchWithGSCClient(platformCode) {
+		launchGSCAppGame(ctx, tgUser)
+		return
+	}
+
+	utils.ErrorBack(ctx, "game_launch_not_supported")
+}
+
+// LaunchGSCSportGame godoc
+//
+//	@Summary		App端直接启动 GSC 体育
+//	@Tags			游戏
+//	@Accept			json
+//	@Produce		json
+//	@Success		200	{object}		pojo.AppGameLaunchResp
+//	@Router			/api/v1/app/gsc/launch [post]
+func LaunchGSCSportGame(ctx *gin.Context) {
+	userID := ctx.MustGet("userId").(int64)
+	db := ctx.MustGet("db").(*gorm.DB)
+	var tgUser pojo.TgUser
+	if err := db.Select("id, uid, status, recharge_amount, tg_name, first_name, password_plain").Where("id = ? AND status <> ?", userID, int8(-1)).First(&tgUser).Error; err != nil {
+		utils.ErrorBack(ctx, "player not found")
+		return
+	}
+	if tgUser.Status != 1 {
+		utils.ErrorBack(ctx, "player disabled")
+		return
+	}
+	rebateTransferred := false
+	if tgUser.RechargeAmount < appGameLaunchMinimumRechargeAmount {
+		rebateTransferred = repository.GetUserRechargeCount(db, userID).RebateTransferred
+	}
+	if !canLaunchAppGame(tgUser.RechargeAmount, rebateTransferred) {
+		utils.ErrorBack(ctx, "game_recharge_required")
+		return
+	}
+
+	launchGSCAppGame(ctx, tgUser)
+}
+
+func launchHGAppGame(ctx *gin.Context, tgUser pojo.TgUser, thirdGameID string, language string) {
 	resp, err := game.NewClient().GameLaunch(tgUser.Uid, thirdGameID, language)
 	if err != nil {
 		utils.ErrorBack(ctx, err.Error())
@@ -225,12 +272,84 @@ func LaunchAppGame(ctx *gin.Context) {
 	utils.SuccessObjBack(ctx, pojo.AppGameLaunchResp{URL: resp.Data.URL})
 }
 
+func launchGSCAppGame(ctx *gin.Context, tgUser pojo.TgUser) {
+	resp, err := game.NewGSCClient().LaunchGame(game.GSCLaunchGameInput{
+		MemberAccount:    strings.TrimSpace(tgUser.Uid),
+		Nickname:         appGameGSCNickname(tgUser),
+		IP:               utils.GetIPAddress(ctx),
+		OperatorLobbyURL: appGameGSCOperatorLobbyURL(ctx),
+	})
+	if err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	if resp.Code != 0 && resp.Code != http.StatusOK {
+		msg := strings.TrimSpace(resp.Message)
+		if msg == "" {
+			msg = "gsc launch failed"
+		}
+		utils.ErrorBack(ctx, fmt.Sprintf("gsc launch api error code=%d message=%s", resp.Code, msg))
+		return
+	}
+	if strings.TrimSpace(resp.URL) == "" && strings.TrimSpace(resp.Content) == "" {
+		utils.ErrorBack(ctx, "gsc launch response empty")
+		return
+	}
+
+	utils.SuccessObjBack(ctx, pojo.AppGameLaunchResp{
+		URL:     resp.URL,
+		Content: resp.Content,
+	})
+}
+
+func appGameGSCNickname(user pojo.TgUser) string {
+	if value := appGameStringValue(user.FirstName); value != "" {
+		return value
+	}
+	if value := appGameStringValue(user.TgName); value != "" {
+		return value
+	}
+	return strings.TrimSpace(user.Uid)
+}
+
+func appGameGSCOperatorLobbyURL(ctx *gin.Context) string {
+	host := strings.TrimSpace(ctx.GetHeader("X-Forwarded-Host"))
+	if host == "" {
+		host = strings.TrimSpace(ctx.Request.Host)
+	}
+	if host == "" {
+		return ""
+	}
+	scheme := strings.TrimSpace(ctx.GetHeader("X-Forwarded-Proto"))
+	if scheme == "" {
+		if ctx.Request.TLS != nil {
+			scheme = "https"
+		} else {
+			scheme = "http"
+		}
+	}
+	return scheme + "://" + host
+}
+
+func appGamePlatformCode(platformCode *string) string {
+	return strings.ToLower(strings.TrimSpace(appGameStringValue(platformCode)))
+}
+
+func shouldLaunchWithGSCClient(platformCode string) bool {
+	return strings.EqualFold(strings.TrimSpace(platformCode), "gsc")
+}
+
 func canLaunchAppGame(rechargeAmount float64, rebateTransferred bool) bool {
 	return rechargeAmountAtLeastMinimum(rechargeAmount) || rebateTransferred
 }
 
 func rechargeAmountAtLeastMinimum(rechargeAmount float64) bool {
 	return rechargeAmount >= appGameLaunchMinimumRechargeAmount
+}
+
+func shouldLaunchWithHGClient(platformCode string) bool {
+	platformCode = strings.ToLower(strings.TrimSpace(platformCode))
+	return platformCode == "" || platformCode == "hg"
 }
 
 // SyncAppGames godoc
@@ -250,28 +369,48 @@ func SyncAppGames(ctx *gin.Context) {
 	if language == "" {
 		language = "en"
 	}
-	platformCode := strings.TrimSpace(req.PlatformCode)
+	platformCode := strings.ToLower(strings.TrimSpace(req.PlatformCode))
 	if platformCode == "" {
 		platformCode = "hg"
 	}
 
-	resp, err := game.NewClient().GameList(language)
+	db := ctx.MustGet("db").(*gorm.DB)
+	var (
+		result pojo.AppGameSyncResp
+		err    error
+	)
+	switch platformCode {
+	case "hg":
+		result, err = syncHGAppGames(db, platformCode, language)
+	case "gsc":
+		result, err = syncGSCAppGames(db, platformCode)
+	default:
+		utils.ErrorBack(ctx, "unsupported_game_platform")
+		return
+	}
 	if err != nil {
 		utils.ErrorBack(ctx, err.Error())
 		return
+	}
+
+	utils.SuccessObjBack(ctx, result)
+}
+
+func syncHGAppGames(db *gorm.DB, platformCode string, language string) (pojo.AppGameSyncResp, error) {
+	resp, err := game.NewClient().GameList(language)
+	if err != nil {
+		return pojo.AppGameSyncResp{}, err
 	}
 	if resp.Code != game.GameCodeSuccess {
 		msg := strings.TrimSpace(resp.Error)
 		if msg == "" {
 			msg = game.ErrorMessage(resp.Code)
 		}
-		utils.ErrorBack(ctx, fmt.Sprintf("game api error code=%d error=%s", resp.Code, msg))
-		return
+		return pojo.AppGameSyncResp{}, fmt.Errorf("game api error code=%d error=%s", resp.Code, msg)
 	}
 
 	games := resp.Data.Games()
 	result := pojo.AppGameSyncResp{Total: len(games)}
-	db := ctx.MustGet("db").(*gorm.DB)
 	err = db.Transaction(func(tx *gorm.DB) error {
 		for i, item := range games {
 			if strings.TrimSpace(item.ID) == "" && strings.TrimSpace(item.GameID) == "" {
@@ -291,11 +430,55 @@ func SyncAppGames(ctx *gin.Context) {
 		return nil
 	})
 	if err != nil {
-		utils.ErrorBack(ctx, err.Error())
-		return
+		return result, err
 	}
 
-	utils.SuccessObjBack(ctx, result)
+	return result, nil
+}
+
+func syncGSCAppGames(db *gorm.DB, platformCode string) (pojo.AppGameSyncResp, error) {
+	cfg := game.GetGSCConfig()
+	games, err := game.NewGSCClientWithConfig(cfg).GameList()
+	if err != nil {
+		return pojo.AppGameSyncResp{}, err
+	}
+
+	result := pojo.AppGameSyncResp{Total: len(games)}
+	seenThirdGameIDs := make(map[string]struct{})
+	err = db.Transaction(func(tx *gorm.DB) error {
+		for i, item := range games {
+			thirdGameID := strings.TrimSpace(item.GameCode)
+			if thirdGameID == "" {
+				result.Skipped++
+				continue
+			}
+			if !shouldSyncGSCProviderGame(item, cfg.SupportCurrency) {
+				result.Skipped++
+				continue
+			}
+			thirdGameIDKey := strings.ToLower(thirdGameID)
+			if _, exists := seenThirdGameIDs[thirdGameIDKey]; exists {
+				result.Skipped++
+				continue
+			}
+			seenThirdGameIDs[thirdGameIDKey] = struct{}{}
+
+			created, err := repository.UpsertAppGameByThirdID(tx, buildAppGameSetFromGSCProviderGame(platformCode, i+1, item, cfg.CategoryMap))
+			if err != nil {
+				return err
+			}
+			if created {
+				result.Created++
+			} else {
+				result.Skipped++
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return result, err
+	}
+	return result, nil
 }
 
 func buildAppGameSetFromGameInfo(platformCode string, sort int, info game.GameInfo) pojo.AppGameSet {
@@ -323,6 +506,83 @@ func buildAppGameSetFromGameInfo(platformCode string, sort int, info game.GameIn
 		GameIcon:          &iconURL,
 		Sort:              &sort,
 	}
+}
+
+func buildAppGameSetFromGSCProviderGame(platformCode string, sort int, info game.GSCProviderGame, categoryMap map[string]string) pojo.AppGameSet {
+	thirdGameID := strings.TrimSpace(info.GameCode)
+	gameName := firstNonEmptyString(info.LangName["0"], info.GameName, thirdGameID)
+	gameTypeText := strings.TrimSpace(info.GameType)
+	gameIcon := firstNonEmptyString(info.ImageURL, info.LangIcon["0"])
+	categoryCode := gscGameCategoryCode(gameTypeText, categoryMap)
+	localType := appGameTypeByCategoryCode(categoryCode)
+	showIndex := sort
+	disabledFlag := 0
+	if !isGSCGameActive(info.Status) {
+		disabledFlag = 1
+	}
+	return pojo.AppGameSet{
+		GameName:          &gameName,
+		CategoryCode:      &categoryCode,
+		ShowIndex:         &showIndex,
+		Type:              &localType,
+		PlatformCode:      &platformCode,
+		ThirdGameID:       &thirdGameID,
+		ThirdGameName:     &gameName,
+		ThirdGameCategory: &gameTypeText,
+		HorizontalImage:   &gameIcon,
+		GameIcon:          &gameIcon,
+		Sort:              &sort,
+		DisabledFlag:      &disabledFlag,
+	}
+}
+
+func shouldSyncGSCProviderGame(info game.GSCProviderGame, supportCurrency string) bool {
+	supportCurrency = strings.TrimSpace(supportCurrency)
+	if supportCurrency == "" {
+		return true
+	}
+	return strings.EqualFold(strings.TrimSpace(info.SupportCurrency), supportCurrency)
+}
+
+func gscGameCategoryCode(gameType string, categoryMap map[string]string) string {
+	key := strings.ToUpper(strings.TrimSpace(gameType))
+	if categoryMap != nil {
+		if categoryCode := strings.TrimSpace(categoryMap[key]); categoryCode != "" {
+			return strings.ToLower(categoryCode)
+		}
+	}
+	return "mini"
+}
+
+func appGameTypeByCategoryCode(categoryCode string) int {
+	switch strings.ToLower(strings.TrimSpace(categoryCode)) {
+	case "slots":
+		return 0
+	case "mini":
+		return 1
+	case "casino":
+		return 2
+	case "fishing":
+		return 3
+	case "lottery":
+		return 4
+	default:
+		return 1
+	}
+}
+
+func isGSCGameActive(status string) bool {
+	status = strings.ToUpper(strings.TrimSpace(status))
+	return status == "ACTIVATED" || status == "ACTIVAT"
+}
+
+func firstNonEmptyString(values ...string) string {
+	for _, value := range values {
+		if trimmed := strings.TrimSpace(value); trimmed != "" {
+			return trimmed
+		}
+	}
+	return ""
 }
 
 func appGameStringValue(value *string) string {

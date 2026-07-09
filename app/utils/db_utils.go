@@ -128,6 +128,8 @@ func InitTables(prefix string) (firstInit bool, err error) {
 			&pojo.UsdtRechargeTx{},
 			&pojo.WithdrawOrderBr{},
 			&pojo.TgUserRebateRecord{},
+			&pojo.TgTaskActivityConfig{},
+			&pojo.TgTaskActivityRecord{},
 			&pojo.PlatformProfitLedger{},
 			&pojo.SysTenantPrizePool{},
 			&pojo.SysTenantPrizePoolRecord{},
@@ -158,6 +160,10 @@ func InitTables(prefix string) (firstInit bool, err error) {
 	if err = ensureTgUserRebateWithdrawSchema(db); err != nil {
 		panic(err)
 	}
+	log.Print("init tables: ensure tg_user sport balance schema...\n")
+	if err = ensureTgUserSportBalanceSchema(db); err != nil {
+		panic(err)
+	}
 	log.Print("init tables: ensure sys_tenant withdraw auto review schema...\n")
 	if err = ensureSysTenantWithdrawAutoReviewSchema(db); err != nil {
 		panic(err)
@@ -170,12 +176,24 @@ func InitTables(prefix string) (firstInit bool, err error) {
 	if err = ensureTgUserInviteRewardLogSchema(db); err != nil {
 		panic(err)
 	}
+	log.Print("init tables: ensure tg_task_activity_config schema...\n")
+	if err = ensureTgTaskActivityConfigSchema(db); err != nil {
+		panic(err)
+	}
+	log.Print("init tables: ensure tg_task_activity_record schema...\n")
+	if err = ensureTgTaskActivityRecordSchema(db); err != nil {
+		panic(err)
+	}
 	log.Print("init tables: ensure withdraw_order_br performance schema...\n")
 	if err = ensureWithdrawOrderBrPerformanceSchema(db); err != nil {
 		panic(err)
 	}
 	log.Print("init tables: ensure usdt recharge schema...\n")
 	if err = ensureUsdtRechargeSchema(db); err != nil {
+		panic(err)
+	}
+	log.Print("init tables: ensure recharge_order wallet schema...\n")
+	if err = ensureRechargeOrderWalletSchema(db); err != nil {
 		panic(err)
 	}
 	log.Print("init tables: ensure trial lucky item pick index...\n")
@@ -256,6 +274,16 @@ func ensureTgUserRebateWithdrawSchema(db *gorm.DB) error {
 	return nil
 }
 
+func ensureTgUserSportBalanceSchema(db *gorm.DB) error {
+	migrator := db.Migrator()
+	if !migrator.HasColumn(&pojo.TgUser{}, "SportBalance") {
+		if err := migrator.AddColumn(&pojo.TgUser{}, "SportBalance"); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func ensureSysTenantWithdrawAutoReviewSchema(db *gorm.DB) error {
 	migrator := db.Migrator()
 	for _, column := range []string{
@@ -288,6 +316,28 @@ func ensureTgUserInviteRewardLogSchema(db *gorm.DB) error {
 	}
 	if !migrator.HasIndex(&pojo.TgUserInviteRewardLog{}, "idx_invite_reward_user_sub_stage") {
 		if err := migrator.CreateIndex(&pojo.TgUserInviteRewardLog{}, "idx_invite_reward_user_sub_stage"); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func ensureTgTaskActivityConfigSchema(db *gorm.DB) error {
+	return db.AutoMigrate(&pojo.TgTaskActivityConfig{})
+}
+
+func ensureTgTaskActivityRecordSchema(db *gorm.DB) error {
+	if err := db.AutoMigrate(&pojo.TgTaskActivityRecord{}); err != nil {
+		return err
+	}
+	migrator := db.Migrator()
+	if migrator.HasIndex(&pojo.TgTaskActivityRecord{}, "uk_task_activity_user_config") {
+		if err := migrator.DropIndex(&pojo.TgTaskActivityRecord{}, "uk_task_activity_user_config"); err != nil {
+			return err
+		}
+	}
+	if !migrator.HasIndex(&pojo.TgTaskActivityRecord{}, "idx_task_activity_user_config") {
+		if err := migrator.CreateIndex(&pojo.TgTaskActivityRecord{}, "idx_task_activity_user_config"); err != nil {
 			return err
 		}
 	}
@@ -340,6 +390,18 @@ func ensureWithdrawOrderBrPerformanceSchema(db *gorm.DB) error {
 
 func ensureUsdtRechargeSchema(db *gorm.DB) error {
 	return db.AutoMigrate(&pojo.UsdtRechargeOrder{}, &pojo.UsdtRechargeTx{})
+}
+
+func ensureRechargeOrderWalletSchema(db *gorm.DB) error {
+	migrator := db.Migrator()
+	if !migrator.HasColumn(&pojo.RechargeOrder{}, "WalletType") {
+		if err := migrator.AddColumn(&pojo.RechargeOrder{}, "WalletType"); err != nil {
+			return err
+		}
+	}
+	return db.Model(&pojo.RechargeOrder{}).
+		Where("COALESCE(wallet_type, '') = ''").
+		Update("wallet_type", pojo.RechargeWalletTypeBalance).Error
 }
 
 func backfillWithdrawOrderBrSource(db *gorm.DB) error {

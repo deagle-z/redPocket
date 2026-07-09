@@ -30,6 +30,7 @@ type TgUser struct {
 	TgID int64 `gorm:"column:tg_id;index;comment:Telegram 用户ID（唯一且稳定）" json:"tg_id"`
 
 	Balance                   float64    `gorm:"type:decimal(20,2);not null;default:0.00;comment:账户可用余额" json:"balance"`
+	SportBalance              float64    `gorm:"column:sport_balance;type:decimal(20,2);not null;default:0.00;comment:体育余额" json:"sportBalance"`
 	TrialBalance              float64    `gorm:"column:trial_balance;type:decimal(20,2);not null;default:1000.00;comment:试玩额度" json:"trialBalance"`
 	TrialBalanceRefreshedAt   *time.Time `gorm:"column:trial_balance_refreshed_at;comment:试玩额度每日刷新时间" json:"trialBalanceRefreshedAt"`
 	GiftAmount                float64    `gorm:"type:decimal(20,2);not null;default:0.00;comment:赠送余额（可用）" json:"gift_amount"`
@@ -98,6 +99,7 @@ type TgUserSet struct {
 	IsBot             bool     `json:"isBot"`
 	TgID              int64    `json:"tgId"`
 	Balance           float64  `json:"balance"`
+	SportBalance      float64  `json:"sportBalance"`
 	TrialBalance      float64  `json:"trialBalance"`
 	GiftAmount        float64  `json:"giftAmount"`
 	GiftTotal         float64  `json:"giftTotal"`
@@ -265,10 +267,25 @@ type TgRebateTransferReq struct {
 	Amount float64 `json:"amount" binding:"required"`
 }
 
+type TgWalletTransferReq struct {
+	FromWallet string  `json:"fromWallet"`
+	ToWallet   string  `json:"toWallet"`
+	Amount     float64 `json:"amount" binding:"required"`
+}
+
+type TgWalletTransferBack struct {
+	FromWallet     string  `json:"fromWallet"`
+	ToWallet       string  `json:"toWallet"`
+	TransferAmount float64 `json:"transferAmount"`
+	Balance        float64 `json:"balance"`
+	SportBalance   float64 `json:"sportBalance"`
+}
+
 type TgCurrentUserInfo struct {
 	Avatar                    *string `json:"avatar"`
 	TenantId                  int64   `json:"tenantId"`
 	Balance                   float64 `json:"balance"`
+	SportBalance              float64 `json:"sportBalance"`
 	TrialBalance              float64 `json:"trialBalance"`
 	Uid                       string  `json:"uid"`
 	Username                  *string `json:"username"`
@@ -385,6 +402,7 @@ type TgUserBack struct {
 	Remark                    *string   `json:"remark"`
 	TgID                      int64     `json:"tgId"`
 	Balance                   float64   `json:"balance"`
+	SportBalance              float64   `json:"sportBalance"`
 	TrialBalance              float64   `json:"trialBalance"`
 	GiftAmount                float64   `json:"giftAmount"`
 	GiftTotal                 float64   `json:"giftTotal"`
@@ -430,6 +448,7 @@ type TgUserAdminBack struct {
 	IsBot                     bool      `json:"isBot"`
 	TgID                      int64     `json:"tgId"`
 	Balance                   float64   `json:"balance"`
+	SportBalance              float64   `json:"sportBalance"`
 	TrialBalance              float64   `json:"trialBalance"`
 	TotalFlow                 float64   `json:"totalFlow"`
 	SubUserCount              int64     `json:"subUserCount"`

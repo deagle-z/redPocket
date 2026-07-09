@@ -48,8 +48,12 @@ func InitGin() {
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	router.GET("/ws", WsHandler)
 	router.GET("/api/v1/ws", WsHandler)
-	router.POST("/Cash/Get", api.GetGameCash)                     // 三方游戏方查询玩家余额（公开签名接口）
-	router.POST("/Cash/TransferInOut", api.TransferGameCashInOut) // 三方游戏方修改玩家余额（公开签名接口）
+	router.POST("/Cash/Get", api.GetGameCash)                           // 三方游戏方查询玩家余额（公开签名接口）
+	router.POST("/Cash/TransferInOut", api.TransferGameCashInOut)       // 三方游戏方修改玩家余额（公开签名接口）
+	router.POST("/v1/api/seamless/balance", api.GSCOpenBalance)         // GSC 查询玩家余额（公开签名接口）
+	router.POST("/v1/api/seamless/withdraw", api.GSCOpenWithdraw)       // GSC 玩家下注扣款（公开签名接口）
+	router.POST("/v1/api/seamless/deposit", api.GSCOpenDeposit)         // GSC 玩家派奖加款（公开签名接口）
+	router.POST("/v1/api/seamless/pushbetdata", api.GSCOpenPushBetData) // GSC 同步注单数据（公开签名接口）
 	_ = mime.AddExtensionType(".js", "application/javascript")
 	router.Use(static.ServeRoot("/", "dist"))
 	apiGroup := router.Group("/api/v1")
@@ -131,10 +135,14 @@ func InitGin() {
 		adminGroup.POST("/dashboard/withdrawOrders", api.GetAdminDashboardWithdrawOrders) // 提现总额明细（今天/昨天）
 		adminGroup.POST("/withdrawalTask", api.SendWithdrawalTask)
 		adminGroup.POST("/verifyCodeTask", api.SendVerifyCodeTask)
-		adminGroup.POST("/tgUser/list", api.GetTgUsers)                     // 获取Telegram用户列表
-		adminGroup.GET("/tgUser/:id", api.GetTgUserById)                    // 获取Telegram用户详情
-		adminGroup.POST("/tgUserRebate/list", api.GetTgUserRebateRecords)   // 获取Telegram反水记录列表
-		adminGroup.GET("/tgUserRebate/:id", api.GetTgUserRebateRecordById)  // 获取Telegram反水记录详情
+		adminGroup.POST("/tgUser/list", api.GetTgUsers)                    // 获取Telegram用户列表
+		adminGroup.GET("/tgUser/:id", api.GetTgUserById)                   // 获取Telegram用户详情
+		adminGroup.POST("/tgUserRebate/list", api.GetTgUserRebateRecords)  // 获取Telegram反水记录列表
+		adminGroup.GET("/tgUserRebate/:id", api.GetTgUserRebateRecordById) // 获取Telegram反水记录详情
+		adminGroup.POST("/taskActivityConfig/list", api.GetTgTaskActivityConfigs)
+		adminGroup.GET("/taskActivityConfig/:id", api.GetTgTaskActivityConfigById)
+		adminGroup.POST("/taskActivityRecord/list", api.GetTgTaskActivityRecords)
+		adminGroup.GET("/taskActivityRecord/:id", api.GetTgTaskActivityRecordById)
 		adminGroup.POST("/lucky/list", api.GetLuckyMoneyListAdmin)          // 管理员获取红包列表
 		adminGroup.POST("/lucky/history", api.GetLuckyHistoryListAdmin)     // 管理员获取领取历史
 		adminGroup.GET("/lucky/:id", api.GetLuckyMoneyDetailAdmin)          // 管理员获取红包详情
@@ -229,9 +237,11 @@ func InitGin() {
 		adminGroupLog.DELETE("/trialBot/:id", api.DelTrialBotUser)
 		adminGroupLog.POST("/tgUserRebate", api.SetTgUserRebateRecord)       // 创建或更新Telegram反水记录
 		adminGroupLog.DELETE("/tgUserRebate/:id", api.DelTgUserRebateRecord) // 删除Telegram反水记录
-		adminGroupLog.POST("/luckyItem", api.SetLuckyMoneyItem)              // 创建或更新红包明细
-		adminGroupLog.DELETE("/luckyItem/:id", api.DelLuckyMoneyItem)        // 删除红包明细
-		adminGroupLog.POST("/tenant", api.SetSysTenant)                      // 创建或更新租户
+		adminGroupLog.POST("/taskActivityConfig", api.SetTgTaskActivityConfig)
+		adminGroupLog.DELETE("/taskActivityConfig/:id", api.DelTgTaskActivityConfig)
+		adminGroupLog.POST("/luckyItem", api.SetLuckyMoneyItem)       // 创建或更新红包明细
+		adminGroupLog.DELETE("/luckyItem/:id", api.DelLuckyMoneyItem) // 删除红包明细
+		adminGroupLog.POST("/tenant", api.SetSysTenant)               // 创建或更新租户
 		adminGroupLog.POST("/tenant/resetPassword", api.ResetSysTenantPassword)
 		adminGroupLog.DELETE("/tenant/:id", api.DelSysTenant)                             // 删除租户
 		adminGroupLog.POST("/tenantUser", api.SetSysTenantUser)                           // 创建或更新租户用户
@@ -420,7 +430,12 @@ func InitGin() {
 		appAuthRouter.POST("/tg/audioOpen", api.SetAudioOpen)
 		appAuthRouter.GET("/tg/inviteStats", api.GetCurrentTgInviteStats)
 		appAuthRouter.GET("/tg/inviteRuleConfig", api.GetCurrentTgInviteRuleConfig)
+		appAuthRouter.GET("/taskActivity/list", api.GetAppTaskActivityList)
+		appAuthRouter.POST("/taskActivity/:configId/claim", api.ClaimAppTaskActivity)
+		appAuthRouter.GET("/taskActivity/current", api.GetAppCurrentTaskActivity)
+		appAuthRouter.POST("/taskActivity/records", api.GetAppTaskActivityRecords)
 		appAuthRouter.POST("/tg/rebate/transfer", api.TransferRebateToBalance)
+		appAuthRouter.POST("/tg/wallet/transfer", api.TransferTgWalletBalance)
 		appAuthRouter.POST("/tg/rebate/withdraw", api.AppCreateRebateWithdrawOrder)
 		appAuthRouter.POST("/tg/rebate/list", api.GetCurrentTgUserRebateRecords)
 		appAuthRouter.POST("/cashHistory/list", api.GetCurrentTgCashHistory)
@@ -454,6 +469,7 @@ func InitGin() {
 		appAuthRouter.POST("/lottery/draw", api.DrawLottery)                                    // App端消耗一次抽奖机会
 		appAuthRouter.GET("/lottery/history", api.GetLotteryHistory)                            // App端查询抽奖历史
 		appAuthRouter.POST("/appGame/launch", api.LaunchAppGame)                                // App端获取游戏登录URL
+		appAuthRouter.POST("/gsc/launch", api.LaunchGSCSportGame)                               // App端直接启动 GSC 体育
 		appAuthRouter.POST("/appUserBetRecord/list", api.GetAppCurrentUserBetRecords)           // App端查询当前用户下注记录
 		appAuthRouter.GET("/prizePool/outRecords", api.GetPrizePoolOutRecordsApp)               // App端查询奖池消耗流水
 	}

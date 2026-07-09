@@ -63,6 +63,45 @@ const (
 	rechargeV2GiftMinAmount  float64 = 50 // v2版本充值赠送门槛（满此金额才赠送）
 )
 
+func normalizeRechargeWalletType(value string) (string, error) {
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case "", pojo.RechargeWalletTypeBalance:
+		return pojo.RechargeWalletTypeBalance, nil
+	case pojo.RechargeWalletTypeSport, "sports", "sport_balance":
+		return pojo.RechargeWalletTypeSport, nil
+	default:
+		return "", errors.New("invalid_recharge_wallet_type")
+	}
+}
+
+func rechargeWalletColumn(walletType string) string {
+	if walletType == pojo.RechargeWalletTypeSport {
+		return "sport_balance"
+	}
+	return "balance"
+}
+
+func rechargeWalletBalance(user pojo.TgUser, walletType string) float64 {
+	if walletType == pojo.RechargeWalletTypeSport {
+		return user.SportBalance
+	}
+	return user.Balance
+}
+
+func rechargeWalletCashMark(walletType string) string {
+	if walletType == pojo.RechargeWalletTypeSport {
+		return "体育钱包充值到账"
+	}
+	return "充值到账"
+}
+
+func rechargeWalletCashDesc(walletType string, orderNo string) string {
+	if walletType == pojo.RechargeWalletTypeSport {
+		return fmt.Sprintf("充值订单%s到账体育钱包", orderNo)
+	}
+	return fmt.Sprintf("充值订单%s到账", orderNo)
+}
+
 var (
 	rechargeGiftAsynqOnce   sync.Once
 	rechargeGiftAsynqClient *asynq.Client
@@ -179,6 +218,16 @@ func SetRechargeOrder(db *gorm.DB, req pojo.RechargeOrderSet) (result pojo.Recha
 		if dbOrder.ID == 0 {
 			return result, errors.New("record_not_found_update")
 		}
+		if strings.TrimSpace(req.WalletType) == "" {
+			req.WalletType = dbOrder.WalletType
+		}
+	}
+	walletType, walletErr := normalizeRechargeWalletType(req.WalletType)
+	if walletErr != nil {
+		return result, walletErr
+	}
+	req.WalletType = walletType
+	if req.ID > 0 {
 		_ = copier.Copy(&dbOrder, &req)
 		err = db.Save(&dbOrder).Error
 	} else {
@@ -263,6 +312,7 @@ func GetCurrentUserPendingRechargeNotifications(db *gorm.DB, userID int64) ([]po
 			Amount:               utils.Truncate2(order.Amount),
 			CreditAmount:         order.CreditAmount,
 			BonusAmount:          utils.Truncate2(order.BonusAmount),
+			WalletType:           order.WalletType,
 			Status:               order.Status,
 			IsFirstRecharge:      order.IsFirstRecharge,
 			PayTime:              order.PayTime,
@@ -345,6 +395,11 @@ func appCreateRechargeOrder(db *gorm.DB, userID int64, req pojo.RechargeOrderApp
 	req.Currency = strings.ToUpper(strings.TrimSpace(req.Currency))
 	req.MerchantOrderNo = strings.TrimSpace(req.MerchantOrderNo)
 	req.Amount = floorRechargeAmount(req.Amount)
+	walletType, walletErr := normalizeRechargeWalletType(req.WalletType)
+	if walletErr != nil {
+		return result, walletErr
+	}
+	req.WalletType = walletType
 	if req.Amount <= 0 {
 		return result, errors.New("recharge_amount_positive")
 	}
@@ -421,11 +476,14 @@ func appCreateRechargeOrder(db *gorm.DB, userID int64, req pojo.RechargeOrderApp
 	if err != nil {
 		return result, err
 	}
+	if req.WalletType == pojo.RechargeWalletTypeSport && activityType == rechargeActivityTypeV2Gift {
+		activityType = 0
+	}
 	activityCode := strings.TrimSpace(req.ActivityCode)
 	if forcedActivityType != nil {
 		activityCode = rechargeActivityCodeByType(activityType)
 	}
-	if shouldConfirmUnfinishedActivityCycleForRecharge(activityType) && !req.ConfirmUnfinishedActivityCycle {
+	if req.WalletType == pojo.RechargeWalletTypeBalance && shouldConfirmUnfinishedActivityCycleForRecharge(activityType) && !req.ConfirmUnfinishedActivityCycle {
 		activeCycle, cycleErr := GetActiveWithdrawActivityCycle(db, userID)
 		if cycleErr != nil {
 			return result, cycleErr
@@ -508,6 +566,7 @@ func appCreateRechargeOrder(db *gorm.DB, userID int64, req pojo.RechargeOrderApp
 		Fee:             0,
 		NetAmount:       providerAmount,
 		BonusAmount:     0,
+		WalletType:      req.WalletType,
 		Status:          0, // 待支付
 		ProviderTradeNo: providerTradeNo,
 		IsDev:           devFlag,
@@ -540,6 +599,7 @@ func appCreateRechargeOrder(db *gorm.DB, userID int64, req pojo.RechargeOrderApp
 		Status:          order.Status,
 		CreditAmount:    order.CreditAmount,
 		BonusAmount:     order.BonusAmount,
+		WalletType:      order.WalletType,
 		PayURL:          payResp.PayURL,
 	}
 	return result, nil
@@ -656,10 +716,16 @@ func ProcessRechargeOrderSuccess(db *gorm.DB, orderNo string, providerTradeNo st
 		if user.ID == 0 {
 			return errors.New(utils.I18nMessage("user_not_found_with_id", map[string]interface{}{"userId": order.UserId}))
 		}
+		walletType, walletErr := normalizeRechargeWalletType(order.WalletType)
+		if walletErr != nil {
+			return walletErr
+		}
+		order.WalletType = walletType
+		startWalletBalance := rechargeWalletBalance(user, walletType)
 		isFirstRecharge := user.RechargeAmount <= 0
 		bonusAmount := 0.0
-		log.Printf("[recharge] pay callback begin orderNo=%s userID=%d tablePrefix=%q amount=%.2f fee=%.2f status=%d activityType=%s userBalance=%.2f userRechargeAmount=%.2f isFirstRecharge=%t providerTradeNo=%s payAmount=%.2f",
-			order.OrderNo, user.ID, tablePrefix, order.Amount, order.Fee, order.Status, formatRechargeActivityType(order.ActivityType), user.Balance, user.RechargeAmount, isFirstRecharge, providerTradeNo, payAmount)
+		log.Printf("[recharge] pay callback begin orderNo=%s userID=%d tablePrefix=%q amount=%.2f fee=%.2f status=%d activityType=%s walletType=%s walletBalance=%.2f userRechargeAmount=%.2f isFirstRecharge=%t providerTradeNo=%s payAmount=%.2f",
+			order.OrderNo, user.ID, tablePrefix, order.Amount, order.Fee, order.Status, formatRechargeActivityType(order.ActivityType), walletType, startWalletBalance, user.RechargeAmount, isFirstRecharge, providerTradeNo, payAmount)
 
 		now := time.Now()
 		creditBaseAmount := rechargeCallbackCreditBaseAmount(order.Amount, payAmount)
@@ -679,39 +745,47 @@ func ProcessRechargeOrderSuccess(db *gorm.DB, orderNo string, providerTradeNo st
 			"provider_status":   "SUCCESS",
 			"provider_trade_no": providerTradeNo,
 			"is_first_recharge": isFirstRecharge,
+			"wallet_type":       walletType,
 		}
 		if err := tx.Model(&pojo.RechargeOrder{}).Where("id = ?", order.ID).Updates(updates).Error; err != nil {
 			return err
 		}
 		order.Amount = creditBaseAmount
-		order.CreditAmount = &creditBaseAmount
+		order.CreditAmount = &creditAmount
 		order.BonusAmount = bonusAmount
 		order.PayTime = &now
 		order.Status = 1
 		log.Printf("[recharge] pay callback order marked success orderNo=%s userID=%d tablePrefix=%q creditAmount=%.2f bonusAmount=%.2f isFirstRecharge=%t activityType=%s",
 			order.OrderNo, user.ID, tablePrefix, creditAmount, bonusAmount, isFirstRecharge, formatRechargeActivityType(order.ActivityType))
 
-		if err := tx.Model(&pojo.TgUser{}).Where("id = ?", user.ID).Updates(map[string]any{
-			"balance":         gorm.Expr("balance + ?", creditAmount),
-			"gift_amount":     gorm.Expr("gift_amount + ?", bonusAmount),
-			"gift_total":      gorm.Expr("gift_total + ?", bonusAmount),
+		walletColumn := rechargeWalletColumn(walletType)
+		userUpdates := map[string]any{
+			walletColumn:      gorm.Expr(walletColumn+" + ?", creditAmount),
 			"recharge_amount": gorm.Expr("recharge_amount + ?", creditBaseAmount),
 			"free_lottery_count": gorm.Expr(
 				"free_lottery_count + ?",
 				calculateRechargeFreeLotteryCount(creditBaseAmount),
 			),
-		}).Error; err != nil {
+		}
+		if walletType == pojo.RechargeWalletTypeBalance {
+			userUpdates["gift_amount"] = gorm.Expr("gift_amount + ?", bonusAmount)
+			userUpdates["gift_total"] = gorm.Expr("gift_total + ?", bonusAmount)
+		}
+		if err := tx.Model(&pojo.TgUser{}).Where("id = ?", user.ID).Updates(userUpdates).Error; err != nil {
 			return err
 		}
-		log.Printf("[recharge] pay callback user credited orderNo=%s userID=%d tablePrefix=%q rechargeCredit=%.2f activityBaseGift=%.2f startBalance=%.2f lotteryCount=%d",
-			order.OrderNo, user.ID, tablePrefix, creditAmount, bonusAmount, user.Balance, calculateRechargeFreeLotteryCount(creditBaseAmount))
+		log.Printf("[recharge] pay callback user credited orderNo=%s userID=%d tablePrefix=%q walletType=%s rechargeCredit=%.2f activityBaseGift=%.2f startBalance=%.2f lotteryCount=%d",
+			order.OrderNo, user.ID, tablePrefix, walletType, creditAmount, bonusAmount, startWalletBalance, calculateRechargeFreeLotteryCount(creditBaseAmount))
 		if err := ApplyInviteRechargeRebate(tx, order, now); err != nil {
 			return err
 		}
 		if _, err := EnsureInviteValidUser(tx, user.ID, now); err != nil {
 			return err
 		}
-		if order.ActivityType == nil || *order.ActivityType != rechargeActivityTypeV2Gift {
+		if err := ApplyTaskActivityRechargeProgress(tx, order, now); err != nil {
+			return err
+		}
+		if walletType == pojo.RechargeWalletTypeBalance && (order.ActivityType == nil || *order.ActivityType != rechargeActivityTypeV2Gift) {
 			if err := AddUserWithdrawRestrictedBalance(tx, user, bonusAmount, clampRechargeRestrictedCredit(creditBaseAmount-order.Fee)); err != nil {
 				return err
 			}
@@ -721,10 +795,10 @@ func ProcessRechargeOrderSuccess(db *gorm.DB, orderNo string, providerTradeNo st
 			UserId:          user.ID,
 			AwardUni:        fmt.Sprintf("recharge_%s", order.OrderNo),
 			Amount:          creditAmount,
-			StartAmount:     user.Balance,
-			EndAmount:       utils.Truncate2(user.Balance + creditAmount),
-			CashMark:        "充值到账",
-			CashDesc:        fmt.Sprintf("充值订单%s到账", order.OrderNo),
+			StartAmount:     startWalletBalance,
+			EndAmount:       utils.Truncate2(startWalletBalance + creditAmount),
+			CashMark:        rechargeWalletCashMark(walletType),
+			CashDesc:        rechargeWalletCashDesc(walletType, order.OrderNo),
 			Type:            pojo.CashHistoryTypeRechargeCredit,
 			IsGift:          0,
 			FromUserId:      0,
@@ -771,35 +845,37 @@ func ProcessRechargeOrderSuccess(db *gorm.DB, orderNo string, providerTradeNo st
 			return err
 		}
 		// 活动赠送：activity_type=1(三日首充)、2(今日首充)、3(v2充值赠送)
-		if order.ActivityType != nil && *order.ActivityType > 0 {
+		if walletType == pojo.RechargeWalletTypeBalance && order.ActivityType != nil && *order.ActivityType > 0 {
 			log.Printf("[recharge] pay callback apply activity gift orderNo=%s userID=%d activityType=%d tablePrefix=%q", order.OrderNo, user.ID, *order.ActivityType, tablePrefix)
 			if err := applyFirstRechargeActivityGift(tx, order, user, tablePrefix, now); err != nil {
 				return err
 			}
 		} else {
-			log.Printf("[recharge] pay callback skip activity gift orderNo=%s userID=%d activityType=%s", order.OrderNo, user.ID, formatRechargeActivityType(order.ActivityType))
+			log.Printf("[recharge] pay callback skip activity gift orderNo=%s userID=%d activityType=%s walletType=%s", order.OrderNo, user.ID, formatRechargeActivityType(order.ActivityType), walletType)
 		}
-		var latestUser pojo.TgUser
-		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ?", user.ID).First(&latestUser).Error; err != nil {
-			return err
-		}
-		if order.ActivityType != nil && *order.ActivityType == rechargeActivityTypeV2Gift {
-			if err := EnsureWithdrawFlowBatchForRechargeV2(tx, latestUser, order, user.Balance); err != nil {
+		if walletType == pojo.RechargeWalletTypeBalance {
+			var latestUser pojo.TgUser
+			if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ?", user.ID).First(&latestUser).Error; err != nil {
 				return err
 			}
-		} else if order.ActivityType != nil && *order.ActivityType > 0 {
-			if err := EnsureWithdrawActivityCycleForRecharge(
-				tx,
-				latestUser,
-				order,
-				GetWithdrawActivityCycleMultiplier(tx),
-				GetWithdrawActivityBalanceThreshold(tx),
-				rechargeActivityCodeByType(*order.ActivityType),
-			); err != nil {
+			if order.ActivityType != nil && *order.ActivityType == rechargeActivityTypeV2Gift {
+				if err := EnsureWithdrawFlowBatchForRechargeV2(tx, latestUser, order, user.Balance); err != nil {
+					return err
+				}
+			} else if order.ActivityType != nil && *order.ActivityType > 0 {
+				if err := EnsureWithdrawActivityCycleForRecharge(
+					tx,
+					latestUser,
+					order,
+					GetWithdrawActivityCycleMultiplier(tx),
+					GetWithdrawActivityBalanceThreshold(tx),
+					rechargeActivityCodeByType(*order.ActivityType),
+				); err != nil {
+					return err
+				}
+			} else if err := RefreshActiveWithdrawActivityCycleForRecharge(tx, latestUser, order); err != nil {
 				return err
 			}
-		} else if err := RefreshActiveWithdrawActivityCycleForRecharge(tx, latestUser, order); err != nil {
-			return err
 		}
 		successUserID = order.UserId
 		successOrderNo = order.OrderNo
@@ -882,10 +958,16 @@ func rechargeOrderDevCallback(db *gorm.DB, orderNo string, tablePrefix string) e
 		if user.ID == 0 {
 			return errors.New("user_not_found")
 		}
+		walletType, walletErr := normalizeRechargeWalletType(order.WalletType)
+		if walletErr != nil {
+			return walletErr
+		}
+		order.WalletType = walletType
+		startWalletBalance := rechargeWalletBalance(user, walletType)
 		isFirstRecharge := user.RechargeAmount <= 0
 		bonusAmount := 0.0
-		log.Printf("[recharge] manual callback begin orderNo=%s userID=%d tablePrefix=%q amount=%.2f fee=%.2f status=%d activityType=%s userBalance=%.2f userRechargeAmount=%.2f isFirstRecharge=%t",
-			order.OrderNo, user.ID, tablePrefix, order.Amount, order.Fee, order.Status, formatRechargeActivityType(order.ActivityType), user.Balance, user.RechargeAmount, isFirstRecharge)
+		log.Printf("[recharge] manual callback begin orderNo=%s userID=%d tablePrefix=%q amount=%.2f fee=%.2f status=%d activityType=%s walletType=%s walletBalance=%.2f userRechargeAmount=%.2f isFirstRecharge=%t",
+			order.OrderNo, user.ID, tablePrefix, order.Amount, order.Fee, order.Status, formatRechargeActivityType(order.ActivityType), walletType, startWalletBalance, user.RechargeAmount, isFirstRecharge)
 
 		now := time.Now()
 		creditAmount := utils.Truncate2(order.Amount - order.Fee + bonusAmount)
@@ -905,6 +987,7 @@ func rechargeOrderDevCallback(db *gorm.DB, orderNo string, tablePrefix string) e
 				"notify_count":      gorm.Expr("notify_count + 1"),
 				"provider_status":   providerStatus,
 				"is_first_recharge": isFirstRecharge,
+				"wallet_type":       walletType,
 			}).Error; err != nil {
 			return err
 		}
@@ -913,21 +996,25 @@ func rechargeOrderDevCallback(db *gorm.DB, orderNo string, tablePrefix string) e
 		order.PayTime = &now
 		order.Status = 1
 
+		walletColumn := rechargeWalletColumn(walletType)
+		userUpdates := map[string]any{
+			walletColumn:      gorm.Expr(walletColumn+" + ?", creditAmount),
+			"recharge_amount": gorm.Expr("recharge_amount + ?", order.Amount),
+			"free_lottery_count": gorm.Expr(
+				"free_lottery_count + ?",
+				calculateRechargeFreeLotteryCount(order.Amount),
+			),
+		}
+		if walletType == pojo.RechargeWalletTypeBalance {
+			userUpdates["gift_amount"] = gorm.Expr("gift_amount + ?", bonusAmount)
+			userUpdates["gift_total"] = gorm.Expr("gift_total + ?", bonusAmount)
+		}
 		if err := tx.Model(&pojo.TgUser{}).
 			Where("id = ?", user.ID).
-			Updates(map[string]any{
-				"balance":         gorm.Expr("balance + ?", creditAmount),
-				"gift_amount":     gorm.Expr("gift_amount + ?", bonusAmount),
-				"gift_total":      gorm.Expr("gift_total + ?", bonusAmount),
-				"recharge_amount": gorm.Expr("recharge_amount + ?", order.Amount),
-				"free_lottery_count": gorm.Expr(
-					"free_lottery_count + ?",
-					calculateRechargeFreeLotteryCount(order.Amount),
-				),
-			}).Error; err != nil {
+			Updates(userUpdates).Error; err != nil {
 			return err
 		}
-		if order.ActivityType == nil || *order.ActivityType != rechargeActivityTypeV2Gift {
+		if walletType == pojo.RechargeWalletTypeBalance && (order.ActivityType == nil || *order.ActivityType != rechargeActivityTypeV2Gift) {
 			if err := AddUserWithdrawRestrictedBalance(tx, user, bonusAmount, clampRechargeRestrictedCredit(order.Amount-order.Fee)); err != nil {
 				return err
 			}
@@ -937,10 +1024,10 @@ func rechargeOrderDevCallback(db *gorm.DB, orderNo string, tablePrefix string) e
 			UserId:          user.ID,
 			AwardUni:        fmt.Sprintf("recharge_%s", order.OrderNo),
 			Amount:          creditAmount,
-			StartAmount:     user.Balance,
-			EndAmount:       utils.Truncate2(user.Balance + creditAmount),
-			CashMark:        "充值到账",
-			CashDesc:        fmt.Sprintf("充值订单%s到账", order.OrderNo),
+			StartAmount:     startWalletBalance,
+			EndAmount:       utils.Truncate2(startWalletBalance + creditAmount),
+			CashMark:        rechargeWalletCashMark(walletType),
+			CashDesc:        rechargeWalletCashDesc(walletType, order.OrderNo),
 			Type:            pojo.CashHistoryTypeRechargeCredit,
 			IsGift:          0,
 			FromUserId:      0,
@@ -994,15 +1081,15 @@ func rechargeOrderDevCallback(db *gorm.DB, orderNo string, tablePrefix string) e
 		}
 
 		// 活动赠送：activity_type=1(三日首充)、2(今日首充)、3(v2充值赠送)
-		if order.ActivityType != nil && *order.ActivityType > 0 {
+		if walletType == pojo.RechargeWalletTypeBalance && order.ActivityType != nil && *order.ActivityType > 0 {
 			log.Printf("[recharge] manual callback apply activity gift orderNo=%s userID=%d activityType=%d tablePrefix=%q", order.OrderNo, user.ID, *order.ActivityType, tablePrefix)
 			if err := applyFirstRechargeActivityGift(tx, order, user, tablePrefix, now); err != nil {
 				return err
 			}
 		} else {
-			log.Printf("[recharge] manual callback skip activity gift orderNo=%s userID=%d activityType=%s", order.OrderNo, user.ID, formatRechargeActivityType(order.ActivityType))
+			log.Printf("[recharge] manual callback skip activity gift orderNo=%s userID=%d activityType=%s walletType=%s", order.OrderNo, user.ID, formatRechargeActivityType(order.ActivityType), walletType)
 		}
-		if order.ActivityType != nil && *order.ActivityType == rechargeActivityTypeV2Gift {
+		if walletType == pojo.RechargeWalletTypeBalance && order.ActivityType != nil && *order.ActivityType == rechargeActivityTypeV2Gift {
 			var latestUser pojo.TgUser
 			if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ?", user.ID).First(&latestUser).Error; err != nil {
 				return err
@@ -1046,6 +1133,7 @@ func pushRechargeSuccessFrontendNotification(db *gorm.DB, orderNo string) {
 		Amount:               utils.Truncate2(order.Amount),
 		CreditAmount:         order.CreditAmount,
 		BonusAmount:          utils.Truncate2(order.BonusAmount),
+		WalletType:           order.WalletType,
 		Status:               order.Status,
 		IsFirstRecharge:      order.IsFirstRecharge,
 		PayTime:              order.PayTime,

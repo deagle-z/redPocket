@@ -29,12 +29,30 @@ type Config struct {
 	R2       R2Config       `yaml:"r2"`
 	Pay      PayConfig      `yaml:"pay"`
 	Game     GameConfig     `yaml:"game"`
+	GSCGame  GSCGameConfig  `yaml:"gscGame"`
 }
 
 type GameConfig struct {
 	APIURL    string `yaml:"apiUrl"`    // 游戏厂商 API 地址
 	AppID     string `yaml:"appId"`     // 商户号（商户名称）
 	AppSecret string `yaml:"appSecret"` // 签名密钥
+}
+
+type GSCGameConfig struct {
+	OperatorURL           string            `yaml:"operatorUrl"`           // GSC+ operator_url
+	ProductCode           int               `yaml:"productCode"`           // 产品唯一标识
+	OperatorCode          string            `yaml:"operatorCode"`          // 运营商唯一标识
+	SecretKey             string            `yaml:"secretKey"`             // GSC+ 签名密钥
+	GameType              string            `yaml:"gameType"`              // 可选游戏类型过滤
+	SupportCurrency       string            `yaml:"supportCurrency"`       // 可选币种过滤，空则不过滤
+	Currency              string            `yaml:"currency"`              // 启动游戏使用的货币
+	Password              string            `yaml:"password"`              // 启动游戏会员密码
+	LaunchPlatform        string            `yaml:"launchPlatform"`        // 启动游戏平台类型
+	LaunchLanguage        string            `yaml:"launchLanguage"`        // 启动游戏语言代码
+	OperatorLobbyURL      string            `yaml:"operatorLobbyUrl"`      // 客户端站点URL
+	DefaultMemberPassword string            `yaml:"defaultMemberPassword"` // 用户无明文密码时的默认会员密码
+	PageSize              int               `yaml:"pageSize"`              // 单页拉取数量
+	CategoryMap           map[string]string `yaml:"categoryMap"`           // GSC game_type 到本地 category_code 映射
 }
 
 type PayConfig struct {

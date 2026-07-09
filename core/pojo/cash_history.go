@@ -51,6 +51,7 @@ const (
 	CashHistoryTypeVipWeeklySalary        int8 = 25 // VIP周薪
 	CashHistoryTypeInviteRebateTierReward int8 = 26 // 邀请返佣阶梯奖励
 	CashHistoryTypeRegisterGift           int8 = 27 // 注册赠送
+	CashHistoryTypeWalletTransfer         int8 = 28 // 钱包余额转换
 )
 
 type CashHistoryResp struct {

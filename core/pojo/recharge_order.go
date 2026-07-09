@@ -6,25 +6,29 @@ const (
 	RechargeFrontendNotifyPending int8 = 0
 	RechargeFrontendNotifySent    int8 = 1
 	RechargeFrontendNotifyAcked   int8 = 2
+
+	RechargeWalletTypeBalance = "balance"
+	RechargeWalletTypeSport   = "sport"
 )
 
 type RechargeOrder struct { // 充值记录/充值订单表
 	BaseModel
-	TenantId             int64      `json:"tenantId" gorm:"column:tenant_id;type:bigint"`                                                               // 租户ID
-	AppId                *int64     `json:"appId" gorm:"column:app_id;type:bigint"`                                                                     // 应用/项目ID（可选）
-	UserId               int64      `json:"userId" gorm:"column:user_id;type:bigint;index:idx_recharge_order_user_first_recharge,priority:1"`           // 用户ID
-	SourceChannelID      *int64     `json:"sourceChannelId" gorm:"column:source_channel_id;type:bigint;index"`                                          // 来源渠道ID
-	AccountId            *string    `json:"accountId" gorm:"column:account_id;type:varchar(64)"`                                                        // 账号ID/外部账号标识（可选）
-	OrderNo              string     `json:"orderNo" gorm:"column:order_no;type:varchar(64);uniqueIndex"`                                                // 平台充值订单号（唯一）
-	MerchantOrderNo      *string    `json:"merchantOrderNo" gorm:"column:merchant_order_no;type:varchar(64)"`                                           // 商户侧订单号/前端单号（可选）
-	Channel              string     `json:"channel" gorm:"column:channel;type:varchar(32)"`                                                             // 充值渠道
-	PayMethod            *string    `json:"payMethod" gorm:"column:pay_method;type:varchar(32)"`                                                        // 支付方式/子渠道
-	Currency             string     `json:"currency" gorm:"column:currency;type:varchar(8);default:USD"`                                                // 币种
-	Amount               float64    `json:"amount" gorm:"column:amount;type:numeric(18,2)"`                                                             // 充值金额
-	Fee                  float64    `json:"fee" gorm:"column:fee;type:numeric(18,2);default:0"`                                                         // 手续费
-	NetAmount            float64    `json:"netAmount" gorm:"column:net_amount;type:numeric(18,2)"`                                                      // 三方换算金额/净额
-	CreditAmount         *float64   `json:"creditAmount" gorm:"column:credit_amount;type:numeric(18,2)"`                                                // 实际入账金额（可选）
-	BonusAmount          float64    `json:"bonusAmount" gorm:"column:bonus_amount;type:numeric(18,2);default:0"`                                        // 赠送金额
+	TenantId             int64      `json:"tenantId" gorm:"column:tenant_id;type:bigint"`                                                     // 租户ID
+	AppId                *int64     `json:"appId" gorm:"column:app_id;type:bigint"`                                                           // 应用/项目ID（可选）
+	UserId               int64      `json:"userId" gorm:"column:user_id;type:bigint;index:idx_recharge_order_user_first_recharge,priority:1"` // 用户ID
+	SourceChannelID      *int64     `json:"sourceChannelId" gorm:"column:source_channel_id;type:bigint;index"`                                // 来源渠道ID
+	AccountId            *string    `json:"accountId" gorm:"column:account_id;type:varchar(64)"`                                              // 账号ID/外部账号标识（可选）
+	OrderNo              string     `json:"orderNo" gorm:"column:order_no;type:varchar(64);uniqueIndex"`                                      // 平台充值订单号（唯一）
+	MerchantOrderNo      *string    `json:"merchantOrderNo" gorm:"column:merchant_order_no;type:varchar(64)"`                                 // 商户侧订单号/前端单号（可选）
+	Channel              string     `json:"channel" gorm:"column:channel;type:varchar(32)"`                                                   // 充值渠道
+	PayMethod            *string    `json:"payMethod" gorm:"column:pay_method;type:varchar(32)"`                                              // 支付方式/子渠道
+	Currency             string     `json:"currency" gorm:"column:currency;type:varchar(8);default:USD"`                                      // 币种
+	Amount               float64    `json:"amount" gorm:"column:amount;type:numeric(18,2)"`                                                   // 充值金额
+	Fee                  float64    `json:"fee" gorm:"column:fee;type:numeric(18,2);default:0"`                                               // 手续费
+	NetAmount            float64    `json:"netAmount" gorm:"column:net_amount;type:numeric(18,2)"`                                            // 三方换算金额/净额
+	CreditAmount         *float64   `json:"creditAmount" gorm:"column:credit_amount;type:numeric(18,2)"`                                      // 实际入账金额（可选）
+	BonusAmount          float64    `json:"bonusAmount" gorm:"column:bonus_amount;type:numeric(18,2);default:0"`                              // 赠送金额
+	WalletType           string     `json:"walletType" gorm:"column:wallet_type;type:varchar(32);not null;default:balance;comment:入账钱包 balance=电子钱包 sport=体育钱包"`
 	Status               int        `json:"status" gorm:"column:status;type:tinyint;default:0;index:idx_recharge_order_user_first_recharge,priority:3"` // 状态
 	PayTime              *time.Time `json:"payTime" gorm:"column:pay_time;type:datetime(3)"`                                                            // 支付成功时间
 	ExpireTime           *time.Time `json:"expireTime" gorm:"column:expire_time;type:datetime(3)"`                                                      // 过期时间（可选）
@@ -79,6 +83,7 @@ type RechargeOrderSet struct {
 	NetAmount       float64    `json:"netAmount"`
 	CreditAmount    *float64   `json:"creditAmount"`
 	BonusAmount     float64    `json:"bonusAmount"`
+	WalletType      string     `json:"walletType"`
 	Status          int        `json:"status"`
 	PayTime         *time.Time `json:"payTime"`
 	ExpireTime      *time.Time `json:"expireTime"`
@@ -115,6 +120,7 @@ type RechargeOrderBack struct {
 	NetAmount            float64    `json:"netAmount"`
 	CreditAmount         *float64   `json:"creditAmount"`
 	BonusAmount          float64    `json:"bonusAmount"`
+	WalletType           string     `json:"walletType"`
 	Status               int        `json:"status"`
 	PayTime              *time.Time `json:"payTime"`
 	ExpireTime           *time.Time `json:"expireTime"`
@@ -152,6 +158,7 @@ type RechargeOrderAppReq struct {
 	ReturnURL                      string            `json:"-"`                              // 内部字段：同步跳转URL
 	ActivityType                   int8              `json:"activityType"`                   // 活动类型 0无 1首充 2今日首充
 	ActivityCode                   string            `json:"activityCode"`                   // 活动编码：first_recharge_3day / today_first_recharge
+	WalletType                     string            `json:"walletType"`                     // 入账钱包：balance=电子钱包，sport=体育钱包；默认 balance
 	ConfirmUnfinishedActivityCycle bool              `json:"confirmUnfinishedActivityCycle"` // 是否确认在未结束活动周期内继续普通充值
 }
 
@@ -201,6 +208,7 @@ type RechargeOrderAppBack struct {
 	Status                             int                `json:"status"`                                       // 订单状态
 	CreditAmount                       *float64           `json:"creditAmount"`                                 // 入账金额
 	BonusAmount                        float64            `json:"bonusAmount"`                                  // 活动赠送金额
+	WalletType                         string             `json:"walletType"`                                   // 入账钱包
 	PayURL                             string             `json:"payUrl"`                                       // 支付链接
 	CryptoPayment                      *CryptoPaymentBack `json:"cryptoPayment,omitempty"`                      // 虚拟货币支付信息
 	NeedConfirmUnfinishedActivityCycle bool               `json:"needConfirmUnfinishedActivityCycle,omitempty"` // 是否需要确认未结束活动周期
@@ -218,6 +226,7 @@ type RechargeOrderFrontendNotifyItem struct {
 	Amount               float64    `json:"amount"`
 	CreditAmount         *float64   `json:"creditAmount"`
 	BonusAmount          float64    `json:"bonusAmount"`
+	WalletType           string     `json:"walletType"`
 	Status               int        `json:"status"`
 	IsFirstRecharge      bool       `json:"isFirstRecharge"`
 	PayTime              *time.Time `json:"payTime"`

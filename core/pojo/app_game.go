@@ -117,7 +117,8 @@ type AppGameLaunchReq struct {
 }
 
 type AppGameLaunchResp struct {
-	URL string `json:"url"`
+	URL     string `json:"url"`
+	Content string `json:"content,omitempty"`
 }
 
 type AppGameSyncResp struct {

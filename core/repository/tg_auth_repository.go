@@ -964,6 +964,7 @@ func GetCurrentTgUserInfo(db *gorm.DB, accessSecret string, token string) (pojo.
 		Avatar:                    user.Avatar,
 		TenantId:                  user.TenantId,
 		Balance:                   utils.Truncate2(user.Balance),
+		SportBalance:              utils.Truncate2(user.SportBalance),
 		TrialBalance:              utils.Truncate2(user.TrialBalance),
 		Uid:                       user.Uid,
 		Username:                  user.Username,

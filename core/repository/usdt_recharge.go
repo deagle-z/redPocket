@@ -235,6 +235,7 @@ func createCryptoRechargeOrder(db *gorm.DB, userID int64, req pojo.CryptoRecharg
 			Fee:             0,
 			NetAmount:       UsdtMicroAmountToFloat(expectedAmountMicro),
 			BonusAmount:     0,
+			WalletType:      pojo.RechargeWalletTypeBalance,
 			Status:          0,
 			ExpireTime:      &expireTime,
 			Provider:        &provider,
@@ -277,6 +278,7 @@ func createCryptoRechargeOrder(db *gorm.DB, userID int64, req pojo.CryptoRecharg
 			Status:          order.Status,
 			CreditAmount:    order.CreditAmount,
 			BonusAmount:     order.BonusAmount,
+			WalletType:      order.WalletType,
 			CryptoPayment: &pojo.CryptoPaymentBack{
 				Network:         pojo.CryptoRechargeNetworkTRC20,
 				Token:           pojo.CryptoRechargeTokenUSDT,

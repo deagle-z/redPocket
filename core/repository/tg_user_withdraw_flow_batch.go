@@ -84,6 +84,47 @@ func EnsureWithdrawFlowBatchForRechargeV2(tx *gorm.DB, user pojo.TgUser, order p
 	return tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&batch).Error
 }
 
+func EnsureWithdrawFlowBatchForWalletTransfer(tx *gorm.DB, user pojo.TgUser, sourceID int64, sourceOrderNo string, amount float64, preTransferBalance float64) error {
+	if tx == nil || user.ID <= 0 || sourceID <= 0 {
+		return nil
+	}
+	creditAmount := utils.Truncate2(amount)
+	if creditAmount <= 0 {
+		return nil
+	}
+
+	threshold := GetWithdrawActivityBalanceThreshold(tx)
+	if clampNonNegative(preTransferBalance) <= threshold {
+		if err := CloseActiveWithdrawFlowBatches(tx, user.ID, pojo.WithdrawFlowBatchClosedReasonBalanceBelowThreshold); err != nil {
+			return err
+		}
+	}
+
+	withdrawMultiplier := loadWithdrawFlowBatchMultiplier(tx, withdrawFlowBatchWithdrawLimitConfigKey, defaultWithdrawFlowBatchWithdrawMultiplier, "钱包转换入账金额提现所需流水倍数")
+	requiredFlow := utils.Truncate2(creditAmount * withdrawMultiplier)
+	if requiredFlow <= 0 {
+		return nil
+	}
+	batch := pojo.TgUserWithdrawFlowBatch{
+		TenantID:           user.TenantId,
+		UserID:             user.ID,
+		SourceType:         pojo.WithdrawFlowBatchSourceWalletTransfer,
+		SourceOrderID:      sourceID,
+		SourceOrderNo:      strings.TrimSpace(sourceOrderNo),
+		ActivityType:       0,
+		ActivityCode:       pojo.WithdrawFlowBatchSourceWalletTransfer,
+		CreditAmount:       creditAmount,
+		BonusAmount:        0,
+		BaseAmount:         creditAmount,
+		WithdrawMultiplier: withdrawMultiplier,
+		GiftMultiplier:     0,
+		RequiredFlow:       requiredFlow,
+		CompletedFlow:      0,
+		Status:             pojo.WithdrawFlowBatchStatusActive,
+	}
+	return tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&batch).Error
+}
+
 // EnsureWithdrawFlowBatchForGift 为纯赠送金额创建 v2 提现流水批次（所需流水 = 赠送额 × 赠送倍数）。
 // 佣金转余额(sourceType=rebate_transfer)使用单独的 rebate_transfer_withdraw_limit 配置。
 // sourceOrderNo 需全局唯一以防重复建批次。

@@ -1223,6 +1223,127 @@ func TransferRebateToBalance(ctx *gin.Context) {
 	})
 }
 
+// TransferTgWalletBalance 当前用户钱包余额转换；当前只允许 sport -> balance。
+func TransferTgWalletBalance(ctx *gin.Context) {
+	userIDRaw, ok := ctx.Get("userId")
+	if !ok {
+		utils.UnauthorizedBack(ctx, "token_invalid")
+		return
+	}
+	userID, ok := userIDRaw.(int64)
+	if !ok || userID <= 0 {
+		utils.UnauthorizedBack(ctx, "token_invalid")
+		return
+	}
+
+	var req pojo.TgWalletTransferReq
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	req.Amount = utils.Truncate2(req.Amount)
+	fromWallet := strings.ToLower(strings.TrimSpace(req.FromWallet))
+	toWallet := strings.ToLower(strings.TrimSpace(req.ToWallet))
+	if fromWallet == "" {
+		fromWallet = pojo.RechargeWalletTypeSport
+	}
+	if toWallet == "" {
+		toWallet = pojo.RechargeWalletTypeBalance
+	}
+	if req.Amount <= 0 {
+		utils.ErrorBack(ctx, "invalid_amount")
+		return
+	}
+	if fromWallet != pojo.RechargeWalletTypeSport || toWallet != pojo.RechargeWalletTypeBalance {
+		utils.ErrorBack(ctx, "wallet_transfer_direction_disabled")
+		return
+	}
+
+	db := ctx.MustGet("db").(*gorm.DB)
+	var result pojo.TgWalletTransferBack
+	err := db.Transaction(func(tx *gorm.DB) error {
+		var user pojo.TgUser
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ?", userID).First(&user).Error; err != nil {
+			return err
+		}
+		if user.Status != 1 {
+			return fmt.Errorf("user_disabled_contact_admin")
+		}
+		if req.Amount > utils.Truncate2(user.SportBalance) {
+			return fmt.Errorf("sport_balance_insufficient")
+		}
+
+		newBalance := utils.Truncate2(user.Balance + req.Amount)
+		newSportBalance := utils.Truncate2(user.SportBalance - req.Amount)
+		if err := tx.Model(&pojo.TgUser{}).
+			Where("id = ?", user.ID).
+			Updates(map[string]any{
+				"balance":       gorm.Expr("balance + ?", req.Amount),
+				"sport_balance": gorm.Expr("sport_balance - ?", req.Amount),
+			}).Error; err != nil {
+			return err
+		}
+
+		awardUniBase := fmt.Sprintf("wallet_transfer_%d_%d", user.ID, time.Now().UnixNano())
+		sportOutHistory := pojo.CashHistory{
+			UserId:          user.ID,
+			AwardUni:        awardUniBase + "_sport_out",
+			Amount:          -req.Amount,
+			StartAmount:     utils.Truncate2(user.SportBalance),
+			EndAmount:       newSportBalance,
+			CashMark:        "体育钱包转出",
+			CashDesc:        fmt.Sprintf("体育钱包转入电子钱包%.2f", req.Amount),
+			Type:            pojo.CashHistoryTypeWalletTransfer,
+			IsGift:          0,
+			FromUserId:      0,
+			SourceChannelID: user.SourceChannelID,
+		}
+		if err := tx.Create(&sportOutHistory).Error; err != nil {
+			return err
+		}
+		balanceInHistory := pojo.CashHistory{
+			UserId:          user.ID,
+			AwardUni:        awardUniBase + "_balance_in",
+			Amount:          req.Amount,
+			StartAmount:     utils.Truncate2(user.Balance),
+			EndAmount:       newBalance,
+			CashMark:        "电子钱包转入",
+			CashDesc:        fmt.Sprintf("体育钱包转入电子钱包%.2f", req.Amount),
+			Type:            pojo.CashHistoryTypeWalletTransfer,
+			IsGift:          0,
+			FromUserId:      0,
+			SourceChannelID: user.SourceChannelID,
+		}
+		if err := tx.Create(&balanceInHistory).Error; err != nil {
+			return err
+		}
+		if err := repository.EnsureWithdrawFlowBatchForWalletTransfer(
+			tx,
+			user,
+			balanceInHistory.ID,
+			balanceInHistory.AwardUni,
+			req.Amount,
+			user.Balance,
+		); err != nil {
+			return err
+		}
+
+		result = pojo.TgWalletTransferBack{
+			FromWallet:     fromWallet,
+			ToWallet:       toWallet,
+			TransferAmount: req.Amount,
+			Balance:        newBalance,
+			SportBalance:   newSportBalance,
+		}
+		return nil
+	})
+	if err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	utils.SuccessObjBack(ctx, result)
+}
+
 // GetCurrentTgCashHistory 当前TG用户流水列表（分页，排除抽成）
 func GetCurrentTgCashHistory(ctx *gin.Context) {
 	userIDRaw, ok := ctx.Get("userId")

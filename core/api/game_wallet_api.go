@@ -239,7 +239,7 @@ func handleGameCashTransfer(db *gorm.DB, req pojo.GameCashTransferInOutReq) (flo
 
 	// 游戏元数据查询(带缓存)放在事务外，避免占用行锁时间
 	g0 := time.Now()
-	gameInfo := getGameCashTransferGameInfo(db, req.GameID)
+	gameInfo := getGameCashTransferGameInfo(db, req.GameID, req.PlatformCode)
 	roundAggregated := gameCashTransferIsRoundAggregated(gameInfo)
 	tGameInfo = time.Since(g0)
 
@@ -444,6 +444,7 @@ func validateGameCashTransferAmount(req pojo.GameCashTransferInOutReq, amount fl
 
 type gameCashTransferGameInfo struct {
 	ThirdGameID  string
+	PlatformCode string
 	GameName     string
 	IsFishing    bool
 	IsLiveCasino bool
@@ -460,29 +461,43 @@ const gameInfoCacheTTL = 5 * time.Minute
 
 // getGameCashTransferGameInfo 带 TTL 缓存的游戏信息查询（游戏元数据基本不变，避免每次下注都查库）。
 // 仅缓存命中(找到)的结果，未找到不缓存以便新游戏及时生效。
-func getGameCashTransferGameInfo(db *gorm.DB, thirdGameID string) gameCashTransferGameInfo {
-	key := strings.TrimSpace(thirdGameID)
-	if key == "" {
+func getGameCashTransferGameInfo(db *gorm.DB, thirdGameID string, platformCode string) gameCashTransferGameInfo {
+	gameID := strings.TrimSpace(thirdGameID)
+	if gameID == "" {
 		return gameCashTransferGameInfo{}
 	}
+	platformCode = strings.ToLower(strings.TrimSpace(platformCode))
+	key := gameCashTransferGameInfoCacheKey(gameID, platformCode)
 	if v, ok := gameInfoCache.Load(key); ok {
 		if c, ok2 := v.(cachedGameInfo); ok2 && time.Since(c.at) < gameInfoCacheTTL {
 			return c.info
 		}
 	}
-	info, found := lookupGameCashTransferGameInfo(db, key)
+	info, found := lookupGameCashTransferGameInfo(db, gameID, platformCode)
 	if found {
 		gameInfoCache.Store(key, cachedGameInfo{info: info, at: time.Now()})
 	}
 	return info
 }
 
-func lookupGameCashTransferGameInfo(db *gorm.DB, thirdGameID string) (gameCashTransferGameInfo, bool) {
+func gameCashTransferGameInfoCacheKey(thirdGameID string, platformCode string) string {
+	thirdGameID = strings.TrimSpace(thirdGameID)
+	platformCode = strings.ToLower(strings.TrimSpace(platformCode))
+	if platformCode == "" {
+		return thirdGameID
+	}
+	return platformCode + "|" + thirdGameID
+}
+
+func lookupGameCashTransferGameInfo(db *gorm.DB, thirdGameID string, platformCode string) (gameCashTransferGameInfo, bool) {
 	var appGame pojo.AppGame
-	err := db.Model(&pojo.AppGame{}).
-		Select("third_game_id, game_name, category_code, type").
-		Where("third_game_id = ? AND COALESCE(deleted_flag, 0) = 0", strings.TrimSpace(thirdGameID)).
-		First(&appGame).Error
+	query := db.Model(&pojo.AppGame{}).
+		Select("third_game_id, platform_code, game_name, category_code, type").
+		Where("third_game_id = ? AND COALESCE(deleted_flag, 0) = 0", strings.TrimSpace(thirdGameID))
+	if strings.TrimSpace(platformCode) != "" {
+		query = query.Where("LOWER(COALESCE(platform_code, '')) = ?", strings.ToLower(strings.TrimSpace(platformCode)))
+	}
+	err := query.First(&appGame).Error
 	if err != nil {
 		return gameCashTransferGameInfo{}, false
 	}
@@ -491,6 +506,7 @@ func lookupGameCashTransferGameInfo(db *gorm.DB, thirdGameID string) (gameCashTr
 	isLiveCasino := categoryCode == "casino" || (appGame.Type != nil && *appGame.Type == 2)
 	return gameCashTransferGameInfo{
 		ThirdGameID:  appGameStringValue(appGame.ThirdGameID),
+		PlatformCode: appGamePlatformCode(appGame.PlatformCode),
 		GameName:     appGameStringValue(appGame.GameName),
 		IsFishing:    isFishing,
 		IsLiveCasino: isLiveCasino,
@@ -509,7 +525,13 @@ func createGameBetRecord(tx *gorm.DB, user pojo.TgUser, req pojo.GameCashTransfe
 	gameID := strings.TrimSpace(req.GameID)
 	roundID := strings.TrimSpace(req.RoundID)
 	tid := strings.TrimSpace(req.TID)
-	platformCode := "hg"
+	platformCode := strings.ToLower(strings.TrimSpace(req.PlatformCode))
+	if platformCode == "" {
+		platformCode = strings.ToLower(strings.TrimSpace(gameInfo.PlatformCode))
+	}
+	if platformCode == "" {
+		platformCode = "hg"
+	}
 	gameName := gameInfo.GameName
 	roundEnd := 0
 	if req.IsEnd {

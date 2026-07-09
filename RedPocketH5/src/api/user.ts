@@ -48,6 +48,7 @@ export interface TgCurrentUserInfo {
   avatar?: string
   tenantId?: number
   balance?: number
+  sportBalance?: number
   country?: string
   uid?: string
   username?: string
@@ -639,8 +640,26 @@ export interface TgRebateTransferReq {
   amount: number
 }
 
+export interface TgWalletTransferReq {
+  amount: number
+  fromWallet?: 'sport' | 'balance'
+  toWallet?: 'sport' | 'balance'
+}
+
+export interface TgWalletTransferResp {
+  fromWallet: string
+  toWallet: string
+  transferAmount: number
+  balance: number
+  sportBalance: number
+}
+
 export function transferRebateToBalance(data: TgRebateTransferReq) {
   return request.post<ApiResult<TgRebateTransferResp>>('/api/v1/app/tg/rebate/transfer', data)
+}
+
+export function transferTgWalletBalance(data: TgWalletTransferReq) {
+  return request.post<ApiResult<TgWalletTransferResp>>('/api/v1/app/tg/wallet/transfer', data)
 }
 
 export function bindCurrentTgEmail(data: TgBindEmailReq) {
