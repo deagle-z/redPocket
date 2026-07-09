@@ -431,6 +431,8 @@ func InitGin() {
 		appAuthRouter.GET("/tg/inviteStats", api.GetCurrentTgInviteStats)
 		appAuthRouter.GET("/tg/inviteRuleConfig", api.GetCurrentTgInviteRuleConfig)
 		appAuthRouter.GET("/taskActivity/list", api.GetAppTaskActivityList)
+		appAuthRouter.POST("/taskActivity/claim", api.ClaimAppTaskActivity)
+		appAuthRouter.POST("/taskActivity/reward", api.RewardAppTaskActivity)
 		appAuthRouter.POST("/taskActivity/:configId/claim", api.ClaimAppTaskActivity)
 		appAuthRouter.GET("/taskActivity/current", api.GetAppCurrentTaskActivity)
 		appAuthRouter.POST("/taskActivity/records", api.GetAppTaskActivityRecords)

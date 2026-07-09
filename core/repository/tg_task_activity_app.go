@@ -12,60 +12,43 @@ import (
 	"gorm.io/gorm/clause"
 )
 
+type taskActivityProgressCandidate struct {
+	Config          pojo.TgTaskActivityConfig
+	QualifiedCount  int
+	TotalRecharge   float64
+	ProgressPercent float64
+	Matched         bool
+}
+
 func GetAppTaskActivityList(db *gorm.DB, userID int64, lang string) ([]pojo.TgTaskActivityAppItem, error) {
 	now := time.Now()
-	if err := expireUserTaskActivityRecords(db, userID, now); err != nil {
+	if err := settleUserTaskActivityRecords(db, userID, now); err != nil {
 		return nil, err
 	}
 
-	var configs []pojo.TgTaskActivityConfig
-	if err := db.Model(&pojo.TgTaskActivityConfig{}).
-		Where("status = ?", 1).
-		Where("(start_at IS NULL OR start_at <= ?) AND (end_at IS NULL OR end_at > ?)", now, now).
-		Order("sort asc, id desc").
-		Find(&configs).Error; err != nil {
+	if record, ok, err := getProgressTaskActivityRecord(db, userID, false); err != nil {
+		return nil, err
+	} else if ok {
+		return []pojo.TgTaskActivityAppItem{taskActivityAppItemFromRecord(record, lang, now)}, nil
+	}
+
+	configs, err := taskActivityConfigsAt(db, now, taskActivityRewardDescOrder())
+	if err != nil {
 		return nil, err
 	}
 	if len(configs) == 0 {
 		return []pojo.TgTaskActivityAppItem{}, nil
 	}
-
-	configIDs := make([]int64, 0, len(configs))
-	for _, cfg := range configs {
-		configIDs = append(configIDs, cfg.ID)
-	}
-	var records []pojo.TgTaskActivityRecord
-	if err := db.Where("user_id = ? AND config_id IN ? AND status IN ?", userID, configIDs, taskActivityActiveRecordStatuses()).
-		Order("id desc").
-		Find(&records).Error; err != nil {
-		return nil, err
-	}
-	recordByConfig := map[int64]pojo.TgTaskActivityRecord{}
-	for _, record := range records {
-		if _, exists := recordByConfig[record.ConfigID]; exists {
-			continue
-		}
-		recordByConfig[record.ConfigID] = record
-	}
-
-	result := make([]pojo.TgTaskActivityAppItem, 0, len(configs))
-	for _, cfg := range configs {
-		record, ok := recordByConfig[cfg.ID]
-		if ok {
-			result = append(result, taskActivityAppItemFromRecord(record, lang, now))
-			continue
-		}
-		result = append(result, taskActivityAppItemFromConfig(cfg, lang))
-	}
-	return result, nil
+	return []pojo.TgTaskActivityAppItem{taskActivityAppItemFromConfig(configs[0], lang)}, nil
 }
 
-func ClaimAppTaskActivity(db *gorm.DB, userID int64, configID int64, lang string) (pojo.TgTaskActivityAppItem, error) {
-	if userID <= 0 || configID <= 0 {
+func ClaimAppTaskActivity(db *gorm.DB, userID int64, lang string) (pojo.TgTaskActivityAppItem, error) {
+	if userID <= 0 {
 		return pojo.TgTaskActivityAppItem{}, errors.New("invalid_params")
 	}
 	now := time.Now()
 	var record pojo.TgTaskActivityRecord
+
 	err := db.Transaction(func(tx *gorm.DB) error {
 		var user pojo.TgUser
 		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
@@ -74,42 +57,31 @@ func ClaimAppTaskActivity(db *gorm.DB, userID int64, configID int64, lang string
 			First(&user).Error; err != nil {
 			return err
 		}
-		if err := expireUserTaskActivityRecords(tx, userID, now); err != nil {
+		if err := settleUserTaskActivityRecords(tx, userID, now); err != nil {
 			return err
 		}
-		var existing pojo.TgTaskActivityRecord
-		err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
-			Where("user_id = ? AND status IN ?", userID, taskActivityActiveRecordStatuses()).
-			Order("id desc").
-			First(&existing).Error
-		if err == nil && existing.ID > 0 {
-			if existing.ConfigID != configID {
-				return errors.New("task_activity_has_active")
-			}
+		if existing, ok, err := getProgressTaskActivityRecord(tx, userID, true); err != nil {
+			return err
+		} else if ok {
 			record = existing
 			return nil
 		}
-		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-			return err
-		}
 
-		var cfg pojo.TgTaskActivityConfig
-		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ?", configID).First(&cfg).Error; err != nil {
+		configs, err := taskActivityConfigsAt(tx, now, taskActivityRewardDescOrder())
+		if err != nil {
 			return err
 		}
-		if cfg.ID == 0 || cfg.Status != 1 {
+		if len(configs) == 0 {
 			return errors.New("task_activity_not_found")
 		}
-		if cfg.StartAt != nil && cfg.StartAt.After(now) {
-			return errors.New("task_activity_not_started")
-		}
-		if cfg.EndAt != nil && !cfg.EndAt.After(now) {
-			return errors.New("task_activity_ended")
+		cfg := configs[0]
+		durationMinutes := maxTaskActivityDurationMinutes(configs)
+		if durationMinutes <= 0 {
+			return errors.New("task_activity_duration_invalid")
 		}
 
-		deadlineAt := now.Add(time.Duration(cfg.DurationMinutes) * time.Minute)
 		record = pojo.TgTaskActivityRecord{
-			ConfigID:               cfg.ID,
+			ConfigID:               0,
 			UserID:                 userID,
 			Title:                  cfg.Title,
 			TitleI18n:              cfg.TitleI18n,
@@ -117,16 +89,16 @@ func ClaimAppTaskActivity(db *gorm.DB, userID int64, configID int64, lang string
 			SubTitleI18n:           cfg.SubTitleI18n,
 			LevelCode:              cfg.LevelCode,
 			LevelName:              cfg.LevelName,
-			TaskType:               cfg.TaskType,
+			TaskType:               normalizeTaskActivityTaskType(cfg.TaskType),
 			RequiredInviteCount:    cfg.RequiredInviteCount,
 			RequiredRechargeAmount: utils.Truncate2(cfg.RequiredRechargeAmount),
-			DurationMinutes:        cfg.DurationMinutes,
+			DurationMinutes:        durationMinutes,
 			RewardAmount:           utils.Truncate2(cfg.RewardAmount),
-			RewardCurrency:         cfg.RewardCurrency,
-			RewardTarget:           cfg.RewardTarget,
+			RewardCurrency:         normalizeTaskActivityRewardCurrency(cfg.RewardCurrency),
+			RewardTarget:           normalizeTaskActivityRewardTarget(cfg.RewardTarget),
 			Status:                 pojo.TaskActivityRecordStatusProgress,
 			ClaimedAt:              now,
-			DeadlineAt:             deadlineAt,
+			DeadlineAt:             now.Add(time.Duration(durationMinutes) * time.Minute),
 		}
 		return tx.Create(&record).Error
 	})
@@ -136,19 +108,53 @@ func ClaimAppTaskActivity(db *gorm.DB, userID int64, configID int64, lang string
 	return taskActivityAppItemFromRecord(record, lang, time.Now()), nil
 }
 
+func RewardAppTaskActivity(db *gorm.DB, userID int64, lang string) (pojo.TgTaskActivityAppItem, error) {
+	if userID <= 0 {
+		return pojo.TgTaskActivityAppItem{}, errors.New("invalid_params")
+	}
+	now := time.Now()
+	var record pojo.TgTaskActivityRecord
+
+	err := db.Transaction(func(tx *gorm.DB) error {
+		if err := settleUserTaskActivityRecords(tx, userID, now); err != nil {
+			return err
+		}
+		current, ok, err := getProgressTaskActivityRecord(tx, userID, true)
+		if err != nil {
+			return err
+		}
+		if !ok {
+			return errors.New("task_activity_no_active")
+		}
+		candidate, matched, err := selectTaskActivityCandidate(tx, current)
+		if err != nil {
+			return err
+		}
+		if !matched {
+			return errors.New("task_activity_not_reached")
+		}
+		if err := rewardTaskActivityRecord(tx, current, candidate.Config, candidate.QualifiedCount, candidate.TotalRecharge, now); err != nil {
+			return err
+		}
+		return tx.Where("id = ?", current.ID).First(&record).Error
+	})
+	if err != nil {
+		return pojo.TgTaskActivityAppItem{}, err
+	}
+	return taskActivityAppItemFromRecord(record, lang, time.Now()), nil
+}
+
 func GetAppCurrentTaskActivity(db *gorm.DB, userID int64, lang string) (*pojo.TgTaskActivityAppItem, error) {
 	now := time.Now()
-	if err := expireUserTaskActivityRecords(db, userID, now); err != nil {
+	if err := settleUserTaskActivityRecords(db, userID, now); err != nil {
 		return nil, err
 	}
-	var record pojo.TgTaskActivityRecord
-	if err := db.Where("user_id = ? AND status IN ?", userID, taskActivityActiveRecordStatuses()).
-		Order("id desc").
-		First(&record).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, nil
-		}
+	record, ok, err := getProgressTaskActivityRecord(db, userID, false)
+	if err != nil {
 		return nil, err
+	}
+	if !ok {
+		return nil, nil
 	}
 	item := taskActivityAppItemFromRecord(record, lang, now)
 	return &item, nil
@@ -163,7 +169,7 @@ func GetAppTaskActivityRecords(db *gorm.DB, userID int64, page pojo.PageInfo, la
 		page.CurrentPage = 0
 	}
 	now := time.Now()
-	if err := expireUserTaskActivityRecords(db, userID, now); err != nil {
+	if err := settleUserTaskActivityRecords(db, userID, now); err != nil {
 		return result, err
 	}
 
@@ -214,51 +220,77 @@ func ApplyTaskActivityRechargeProgress(tx *gorm.DB, order pojo.RechargeOrder, oc
 		return err
 	}
 	for _, record := range records {
-		qualifiedCount, totalRecharge, err := taskActivityProgressForRecord(tx, record)
+		candidate, _, err := selectTaskActivityCandidate(tx, record)
 		if err != nil {
 			return err
 		}
-		updates := map[string]any{
-			"progress_invite_count":    qualifiedCount,
-			"progress_recharge_count":  qualifiedCount,
-			"progress_recharge_amount": utils.Truncate2(totalRecharge),
-		}
-		if qualifiedCount >= record.RequiredInviteCount {
-			if err := rewardTaskActivityRecord(tx, record, qualifiedCount, totalRecharge, occurredAt); err != nil {
-				return err
-			}
+		if candidate.Config.ID == 0 {
 			continue
 		}
-		if err := tx.Model(&pojo.TgTaskActivityRecord{}).Where("id = ? AND status = ?", record.ID, pojo.TaskActivityRecordStatusProgress).Updates(updates).Error; err != nil {
+		if err := tx.Model(&pojo.TgTaskActivityRecord{}).
+			Where("id = ? AND status = ?", record.ID, pojo.TaskActivityRecordStatusProgress).
+			Updates(taskActivityCandidateUpdates(candidate, pojo.TaskActivityRecordStatusProgress, nil, nil, 0)).Error; err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func rewardTaskActivityRecord(tx *gorm.DB, record pojo.TgTaskActivityRecord, qualifiedCount int, totalRecharge float64, rewardedAt time.Time) error {
+func settleUserTaskActivityRecords(db *gorm.DB, userID int64, now time.Time) error {
+	if userID <= 0 {
+		return nil
+	}
+	var records []pojo.TgTaskActivityRecord
+	if err := db.Clauses(clause.Locking{Strength: "UPDATE"}).
+		Where("user_id = ? AND status = ? AND deadline_at <= ?", userID, pojo.TaskActivityRecordStatusProgress, now).
+		Find(&records).Error; err != nil {
+		return err
+	}
+	for _, record := range records {
+		candidate, matched, err := selectTaskActivityCandidate(db, record)
+		if err != nil {
+			return err
+		}
+		if matched {
+			if err := rewardTaskActivityRecord(db, record, candidate.Config, candidate.QualifiedCount, candidate.TotalRecharge, now); err != nil {
+				return err
+			}
+			continue
+		}
+		updates := map[string]any{
+			"status": pojo.TaskActivityRecordStatusExpired,
+		}
+		if candidate.Config.ID > 0 {
+			updates = taskActivityCandidateUpdates(candidate, pojo.TaskActivityRecordStatusExpired, nil, nil, 0)
+		}
+		if err := db.Model(&pojo.TgTaskActivityRecord{}).
+			Where("id = ? AND status = ?", record.ID, pojo.TaskActivityRecordStatusProgress).
+			Updates(updates).Error; err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func rewardTaskActivityRecord(tx *gorm.DB, record pojo.TgTaskActivityRecord, cfg pojo.TgTaskActivityConfig, qualifiedCount int, totalRecharge float64, rewardedAt time.Time) error {
 	idempotencyKey := fmt.Sprintf("task_activity_reward:%d", record.ID)
 	var existing pojo.TgUserRebateRecord
 	tx.Where("idempotency_key = ?", idempotencyKey).First(&existing)
 	if existing.ID > 0 {
 		return tx.Model(&pojo.TgTaskActivityRecord{}).
 			Where("id = ? AND status = ?", record.ID, pojo.TaskActivityRecordStatusProgress).
-			Updates(map[string]any{
-				"progress_invite_count":    qualifiedCount,
-				"progress_recharge_count":  qualifiedCount,
-				"progress_recharge_amount": utils.Truncate2(totalRecharge),
-				"status":                   pojo.TaskActivityRecordStatusRewarded,
-				"completed_at":             rewardedAt,
-				"rewarded_at":              rewardedAt,
-				"rebate_record_id":         existing.ID,
-			}).Error
+			Updates(taskActivityCandidateUpdates(taskActivityProgressCandidate{
+				Config:         cfg,
+				QualifiedCount: qualifiedCount,
+				TotalRecharge:  totalRecharge,
+			}, pojo.TaskActivityRecordStatusRewarded, &rewardedAt, &rewardedAt, existing.ID)).Error
 	}
 
 	var user pojo.TgUser
 	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ?", record.UserID).First(&user).Error; err != nil {
 		return err
 	}
-	rewardAmount := utils.Truncate2(record.RewardAmount)
+	rewardAmount := utils.Truncate2(cfg.RewardAmount)
 	if rewardAmount <= 0 {
 		return errors.New("task_activity_reward_amount_invalid")
 	}
@@ -269,7 +301,7 @@ func rewardTaskActivityRecord(tx *gorm.DB, record pojo.TgTaskActivityRecord, qua
 		return err
 	}
 	tenantID := user.TenantId
-	remark := fmt.Sprintf("task_activity_reward record_id=%d", record.ID)
+	remark := fmt.Sprintf("task_activity_reward record_id=%d config_id=%d", record.ID, cfg.ID)
 	rebateRecord := pojo.TgUserRebateRecord{
 		TenantId:       &tenantID,
 		SubUserId:      record.UserID,
@@ -279,7 +311,7 @@ func rewardTaskActivityRecord(tx *gorm.DB, record pojo.TgTaskActivityRecord, qua
 		SourceAmount:   utils.Truncate2(totalRecharge),
 		RebateRate:     0,
 		RebateAmount:   rewardAmount,
-		Currency:       normalizeTaskActivityRewardCurrency(record.RewardCurrency),
+		Currency:       normalizeTaskActivityRewardCurrency(cfg.RewardCurrency),
 		Status:         1,
 		SettledAt:      &rewardedAt,
 		IdempotencyKey: idempotencyKey,
@@ -290,18 +322,68 @@ func rewardTaskActivityRecord(tx *gorm.DB, record pojo.TgTaskActivityRecord, qua
 	}
 	return tx.Model(&pojo.TgTaskActivityRecord{}).
 		Where("id = ? AND status = ?", record.ID, pojo.TaskActivityRecordStatusProgress).
-		Updates(map[string]any{
-			"progress_invite_count":    qualifiedCount,
-			"progress_recharge_count":  qualifiedCount,
-			"progress_recharge_amount": utils.Truncate2(totalRecharge),
-			"status":                   pojo.TaskActivityRecordStatusRewarded,
-			"completed_at":             rewardedAt,
-			"rewarded_at":              rewardedAt,
-			"rebate_record_id":         rebateRecord.ID,
-		}).Error
+		Updates(taskActivityCandidateUpdates(taskActivityProgressCandidate{
+			Config:         cfg,
+			QualifiedCount: qualifiedCount,
+			TotalRecharge:  totalRecharge,
+		}, pojo.TaskActivityRecordStatusRewarded, &rewardedAt, &rewardedAt, rebateRecord.ID)).Error
 }
 
-func taskActivityProgressForRecord(tx *gorm.DB, record pojo.TgTaskActivityRecord) (int, float64, error) {
+func getProgressTaskActivityRecord(db *gorm.DB, userID int64, lock bool) (pojo.TgTaskActivityRecord, bool, error) {
+	var record pojo.TgTaskActivityRecord
+	query := db.Where("user_id = ? AND status IN ?", userID, taskActivityActiveRecordStatuses()).Order("id desc")
+	if lock {
+		query = query.Clauses(clause.Locking{Strength: "UPDATE"})
+	}
+	if err := query.First(&record).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return record, false, nil
+		}
+		return record, false, err
+	}
+	return record, true, nil
+}
+
+func selectTaskActivityCandidate(tx *gorm.DB, record pojo.TgTaskActivityRecord) (taskActivityProgressCandidate, bool, error) {
+	configs, err := taskActivityConfigsForRecord(tx, record)
+	if err != nil {
+		return taskActivityProgressCandidate{}, false, err
+	}
+	var best taskActivityProgressCandidate
+	hasBest := false
+	for _, cfg := range configs {
+		qualifiedCount, totalRecharge, err := taskActivityProgressForThreshold(tx, record, cfg.RequiredRechargeAmount)
+		if err != nil {
+			return taskActivityProgressCandidate{}, false, err
+		}
+		progressPercent := float64(0)
+		if cfg.RequiredInviteCount > 0 {
+			progressPercent = utils.Truncate2(float64(qualifiedCount) / float64(cfg.RequiredInviteCount) * 100)
+			if progressPercent > 100 {
+				progressPercent = 100
+			}
+		}
+		candidate := taskActivityProgressCandidate{
+			Config:          cfg,
+			QualifiedCount:  qualifiedCount,
+			TotalRecharge:   totalRecharge,
+			ProgressPercent: progressPercent,
+			Matched:         cfg.RequiredInviteCount > 0 && qualifiedCount >= cfg.RequiredInviteCount,
+		}
+		if candidate.Matched {
+			return candidate, true, nil
+		}
+		if !hasBest ||
+			candidate.ProgressPercent > best.ProgressPercent ||
+			(candidate.ProgressPercent == best.ProgressPercent && candidate.Config.RewardAmount > best.Config.RewardAmount) {
+			best = candidate
+			hasBest = true
+		}
+	}
+	return best, false, nil
+}
+
+func taskActivityProgressForThreshold(tx *gorm.DB, record pojo.TgTaskActivityRecord, requiredRechargeAmount float64) (int, float64, error) {
 	type progressRow struct {
 		QualifiedCount int
 		TotalRecharge  float64
@@ -318,18 +400,88 @@ func taskActivityProgressForRecord(tx *gorm.DB, record pojo.TgTaskActivityRecord
 	var row progressRow
 	err := tx.Table("(?) AS q", subQuery).
 		Select("COUNT(1) AS qualified_count, COALESCE(SUM(q.total_recharge), 0) AS total_recharge").
-		Where("q.total_recharge >= ?", record.RequiredRechargeAmount).
+		Where("q.total_recharge >= ?", utils.Truncate2(requiredRechargeAmount)).
 		Scan(&row).Error
 	return row.QualifiedCount, utils.Truncate2(row.TotalRecharge), err
 }
 
-func expireUserTaskActivityRecords(db *gorm.DB, userID int64, now time.Time) error {
-	if userID <= 0 {
-		return nil
+func taskActivityConfigsAt(db *gorm.DB, at time.Time, order string) ([]pojo.TgTaskActivityConfig, error) {
+	var configs []pojo.TgTaskActivityConfig
+	if order == "" {
+		order = "sort asc, id desc"
 	}
-	return db.Model(&pojo.TgTaskActivityRecord{}).
-		Where("user_id = ? AND status = ? AND deadline_at < ?", userID, pojo.TaskActivityRecordStatusProgress, now).
-		Update("status", pojo.TaskActivityRecordStatusExpired).Error
+	err := db.Model(&pojo.TgTaskActivityConfig{}).
+		Where("status = ?", 1).
+		Where("task_type = ?", pojo.TaskActivityTypeInviteRecharge).
+		Where("(start_at IS NULL OR start_at <= ?) AND (end_at IS NULL OR end_at > ?)", at, at).
+		Order(order).
+		Find(&configs).Error
+	return configs, err
+}
+
+func taskActivityConfigsForRecord(db *gorm.DB, record pojo.TgTaskActivityRecord) ([]pojo.TgTaskActivityConfig, error) {
+	at := record.ClaimedAt
+	if at.IsZero() {
+		at = time.Now()
+	}
+	return taskActivityConfigsAt(db, at, taskActivityRewardDescOrder())
+}
+
+func taskActivityCandidateUpdates(candidate taskActivityProgressCandidate, status int8, completedAt *time.Time, rewardedAt *time.Time, rebateRecordID int64) map[string]any {
+	updates := map[string]any{
+		"progress_invite_count":    candidate.QualifiedCount,
+		"progress_recharge_count":  candidate.QualifiedCount,
+		"progress_recharge_amount": utils.Truncate2(candidate.TotalRecharge),
+		"status":                   status,
+	}
+	if candidate.Config.ID > 0 {
+		for key, value := range taskActivityConfigSnapshotUpdates(candidate.Config) {
+			updates[key] = value
+		}
+	}
+	if completedAt != nil {
+		updates["completed_at"] = *completedAt
+	}
+	if rewardedAt != nil {
+		updates["rewarded_at"] = *rewardedAt
+	}
+	if rebateRecordID > 0 {
+		updates["rebate_record_id"] = rebateRecordID
+	}
+	return updates
+}
+
+func taskActivityConfigSnapshotUpdates(cfg pojo.TgTaskActivityConfig) map[string]any {
+	return map[string]any{
+		"config_id":                cfg.ID,
+		"title":                    cfg.Title,
+		"title_i18n":               cfg.TitleI18n,
+		"sub_title":                cfg.SubTitle,
+		"sub_title_i18n":           cfg.SubTitleI18n,
+		"level_code":               cfg.LevelCode,
+		"level_name":               cfg.LevelName,
+		"task_type":                normalizeTaskActivityTaskType(cfg.TaskType),
+		"required_invite_count":    cfg.RequiredInviteCount,
+		"required_recharge_amount": utils.Truncate2(cfg.RequiredRechargeAmount),
+		"duration_minutes":         cfg.DurationMinutes,
+		"reward_amount":            utils.Truncate2(cfg.RewardAmount),
+		"reward_currency":          normalizeTaskActivityRewardCurrency(cfg.RewardCurrency),
+		"reward_target":            normalizeTaskActivityRewardTarget(cfg.RewardTarget),
+	}
+}
+
+func maxTaskActivityDurationMinutes(configs []pojo.TgTaskActivityConfig) int {
+	maxValue := 0
+	for _, cfg := range configs {
+		if cfg.DurationMinutes > maxValue {
+			maxValue = cfg.DurationMinutes
+		}
+	}
+	return maxValue
+}
+
+func taskActivityRewardDescOrder() string {
+	return "reward_amount desc, required_invite_count desc, required_recharge_amount desc, sort asc, id desc"
 }
 
 func taskActivityActiveRecordStatuses() []int8 {
@@ -350,7 +502,7 @@ func taskActivityAppItemFromConfig(cfg pojo.TgTaskActivityConfig, lang string) p
 		DurationMinutes:        cfg.DurationMinutes,
 		RewardAmount:           utils.Truncate2(cfg.RewardAmount),
 		RewardCurrency:         normalizeTaskActivityRewardCurrency(cfg.RewardCurrency),
-		RewardTarget:           cfg.RewardTarget,
+		RewardTarget:           normalizeTaskActivityRewardTarget(cfg.RewardTarget),
 		Claimed:                false,
 		ProgressPercent:        0,
 	}
@@ -383,7 +535,7 @@ func taskActivityAppItemFromRecord(record pojo.TgTaskActivityRecord, lang string
 		DurationMinutes:        record.DurationMinutes,
 		RewardAmount:           utils.Truncate2(record.RewardAmount),
 		RewardCurrency:         normalizeTaskActivityRewardCurrency(record.RewardCurrency),
-		RewardTarget:           record.RewardTarget,
+		RewardTarget:           normalizeTaskActivityRewardTarget(record.RewardTarget),
 		Claimed:                true,
 		Status:                 &status,
 		ClaimedAt:              &claimedAt,
@@ -436,4 +588,20 @@ func normalizeTaskActivityRewardCurrency(currency string) string {
 		return "USD"
 	}
 	return currency
+}
+
+func normalizeTaskActivityTaskType(taskType string) string {
+	taskType = strings.TrimSpace(taskType)
+	if taskType == "" {
+		return pojo.TaskActivityTypeInviteRecharge
+	}
+	return taskType
+}
+
+func normalizeTaskActivityRewardTarget(target string) string {
+	target = strings.TrimSpace(target)
+	if target == "" {
+		return pojo.TaskActivityRewardTargetRebate
+	}
+	return target
 }

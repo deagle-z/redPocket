@@ -5,7 +5,6 @@ import (
 	"BaseGoUni/core/repository"
 	"BaseGoUni/core/utils"
 	"io"
-	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -38,21 +37,36 @@ func GetAppTaskActivityList(ctx *gin.Context) {
 //	@Summary		App端领取任务活动
 //	@Tags			App任务活动
 //	@Produce		json
-//	@Param			configId	path	int	true	"任务配置ID"
 //	@Success		200	{object}	pojo.TgTaskActivityAppItem
-//	@Router			/api/v1/app/taskActivity/:configId/claim [post]
+//	@Router			/api/v1/app/taskActivity/claim [post]
 func ClaimAppTaskActivity(ctx *gin.Context) {
 	userID, ok := currentAppTaskActivityUserID(ctx)
 	if !ok {
 		return
 	}
-	configID, err := strconv.ParseInt(ctx.Param("configId"), 10, 64)
-	if err != nil || configID <= 0 {
-		utils.ErrorBack(ctx, "invalid_params")
+	db := ctx.MustGet("db").(*gorm.DB)
+	result, err := repository.ClaimAppTaskActivity(db, userID, taskActivityRequestLang(ctx))
+	if err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	utils.SuccessObjBack(ctx, result)
+}
+
+// RewardAppTaskActivity godoc
+//
+//	@Summary		App端手动领取任务活动佣金
+//	@Tags			App任务活动
+//	@Produce		json
+//	@Success		200	{object}	pojo.TgTaskActivityAppItem
+//	@Router			/api/v1/app/taskActivity/reward [post]
+func RewardAppTaskActivity(ctx *gin.Context) {
+	userID, ok := currentAppTaskActivityUserID(ctx)
+	if !ok {
 		return
 	}
 	db := ctx.MustGet("db").(*gorm.DB)
-	result, err := repository.ClaimAppTaskActivity(db, userID, configID, taskActivityRequestLang(ctx))
+	result, err := repository.RewardAppTaskActivity(db, userID, taskActivityRequestLang(ctx))
 	if err != nil {
 		utils.ErrorBack(ctx, err.Error())
 		return
