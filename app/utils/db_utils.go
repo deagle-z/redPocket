@@ -66,6 +66,8 @@ func InitDb() (firstInit bool, err error) {
 	sqlDB.SetMaxOpenConns(5)
 	sqlDB.SetConnMaxLifetime(5 * time.Minute)
 	sqlDB.SetConnMaxIdleTime(30 * time.Second)
+	log.Print("init mysql: register prefix db sharding hook...\n")
+	utils.RegisterPrefixDbInitializer("cash_history_sharding", InitShardingHook)
 	log.Print("init mysql: init tables...\n")
 	firstInit, err = InitTables(utils.CsConfig.DefaultHost.TablePrefix)
 	if shouldSkipAutoMigrate() {

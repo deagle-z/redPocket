@@ -12,6 +12,7 @@ import (
 	"reflect"
 	"regexp"
 	"strings"
+	"sync"
 )
 
 type ShardRule struct {
@@ -29,6 +30,8 @@ var shardRules = map[reflect.Type]*ShardRule{
 		AllTableName: pojo.AllCashHistoryShardingName,
 	},
 }
+
+var shardingHookDBs sync.Map
 
 var prefixTables = map[string]bool{
 	//pojo2.TestTableName:    true,
@@ -63,6 +66,13 @@ func getQueryVale(tx *gorm.DB, rule ShardRule) (result interface{}) {
 }
 
 func InitShardingHook(tx *gorm.DB) {
+	if tx == nil {
+		return
+	}
+	key := fmt.Sprintf("%p", tx)
+	if _, loaded := shardingHookDBs.LoadOrStore(key, struct{}{}); loaded {
+		return
+	}
 	tx.Callback().Row().Before("gorm:row").Register("custom_create_hook", BeforeRHook) // 查询sql
 	tx.Callback().Create().Before("gorm:create").Register("custom_create_hook", BeforeCudHook)
 	tx.Callback().Update().Before("gorm:update").Register("custom_update_hook", BeforeCudHook)

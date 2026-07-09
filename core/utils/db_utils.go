@@ -10,17 +10,59 @@ import (
 	"log"
 	"os"
 	"strings"
+	"sync"
 	"time"
 )
 
 var Db *gorm.DB
 
 var dbPool = make(map[string]*gorm.DB)
+var dbPoolMu sync.RWMutex
+var prefixDbInitializers = make(map[string]func(*gorm.DB))
+
+func RegisterPrefixDbInitializer(name string, initializer func(*gorm.DB)) {
+	name = strings.TrimSpace(name)
+	if name == "" || initializer == nil {
+		return
+	}
+
+	dbPoolMu.Lock()
+	prefixDbInitializers[name] = initializer
+	existingDbs := make([]*gorm.DB, 0, len(dbPool))
+	for _, db := range dbPool {
+		existingDbs = append(existingDbs, db)
+	}
+	dbPoolMu.Unlock()
+
+	for _, db := range existingDbs {
+		initializer(db)
+	}
+}
+
+func runPrefixDbInitializers(db *gorm.DB) {
+	if db == nil {
+		return
+	}
+	dbPoolMu.RLock()
+	initializers := make([]func(*gorm.DB), 0, len(prefixDbInitializers))
+	for _, initializer := range prefixDbInitializers {
+		initializers = append(initializers, initializer)
+	}
+	dbPoolMu.RUnlock()
+
+	for _, initializer := range initializers {
+		initializer(db)
+	}
+}
 
 func NewPrefixDb(prefix string) (db *gorm.DB) {
+	dbPoolMu.RLock()
 	if existingDb, ok := dbPool[prefix]; ok {
+		dbPoolMu.RUnlock()
 		return existingDb
 	}
+	dbPoolMu.RUnlock()
+
 	db = Db.Session(&gorm.Session{
 		NewDB: true,
 	})
@@ -86,13 +128,21 @@ func NewPrefixDb(prefix string) (db *gorm.DB) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	sqlDB.SetMaxIdleConns(maxIdle)              // 设置最大空闲连接数
-	sqlDB.SetMaxOpenConns(maxOpen)             // 设置最大连接数
-	sqlDB.SetConnMaxLifetime(connMaxLifetime)  // 设置连接保持时间
-	sqlDB.SetConnMaxIdleTime(connMaxIdleTime)  // 设置闲置保持时间
+	sqlDB.SetMaxIdleConns(maxIdle)            // 设置最大空闲连接数
+	sqlDB.SetMaxOpenConns(maxOpen)            // 设置最大连接数
+	sqlDB.SetConnMaxLifetime(connMaxLifetime) // 设置连接保持时间
+	sqlDB.SetConnMaxIdleTime(connMaxIdleTime) // 设置闲置保持时间
 	ctx := context.WithValue(context.Background(), KeyDbPrefix, prefix)
 	newDb = newDb.WithContext(ctx)
+	runPrefixDbInitializers(newDb)
+
+	dbPoolMu.Lock()
+	if existingDb, ok := dbPool[prefix]; ok {
+		dbPoolMu.Unlock()
+		return existingDb
+	}
 	dbPool[prefix] = newDb
+	dbPoolMu.Unlock()
 	return newDb
 }
 

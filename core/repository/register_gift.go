@@ -57,12 +57,9 @@ func ApplyRegisterGift(tx *gorm.DB, user *pojo.TgUser) error {
 		return nil
 	}
 	awardUni := buildRegisterGiftAwardUni(user.ID)
-	cashHistoryTable := registerGiftCashHistoryTableName(user.ID)
 
 	var existing pojo.CashHistory
-	err := tx.Table(cashHistoryTable).
-		Where("user_id = ? AND award_uni = ?", user.ID, awardUni).
-		First(&existing).Error
+	err := tx.Where("user_id = ? AND award_uni = ?", user.ID, awardUni).First(&existing).Error
 	if err == nil && existing.ID > 0 {
 		return nil
 	}
@@ -97,7 +94,7 @@ func ApplyRegisterGift(tx *gorm.DB, user *pojo.TgUser) error {
 		FromUserId:      0,
 		SourceChannelID: lockedUser.SourceChannelID,
 	}
-	if err := tx.Table(cashHistoryTable).Create(&history).Error; err != nil {
+	if err := tx.Create(&history).Error; err != nil {
 		return err
 	}
 
@@ -132,9 +129,4 @@ func ApplyRegisterGift(tx *gorm.DB, user *pojo.TgUser) error {
 
 func buildRegisterGiftAwardUni(userID int64) string {
 	return fmt.Sprintf("register_gift_%d", userID)
-}
-
-func registerGiftCashHistoryTableName(userID int64) string {
-	shardIndex := int(userID % int64(pojo.CashHistoryShards))
-	return cashHistoryShardTableName(shardIndex)
 }
