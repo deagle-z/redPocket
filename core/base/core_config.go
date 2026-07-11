@@ -60,6 +60,7 @@ type PayConfig struct {
 	Gctpkmxn  GctpkPayConfig     `yaml:"gctpkmxn"`
 	Gctpkbrl  GctpkPayConfig     `yaml:"gctpkbrl"`
 	Vcpaymxn  VcpayMxnPayConfig  `yaml:"vcpaymxn"`
+	Hopopay   HopopayPayConfig   `yaml:"hopopay"`
 	UsdtTrc20 UsdtTrc20PayConfig `yaml:"usdtTrc20"`
 }
 
@@ -78,6 +79,15 @@ type VcpayMxnPayConfig struct {
 	AppID           string `yaml:"appId"`           // APP ID
 	AppKey          string `yaml:"appKey"`          // MD5 签名 key
 	BaseURL         string `yaml:"baseUrl"`         // API 根地址
+	NotifyURL       string `yaml:"notifyUrl"`       // 代收异步回调地址
+	PageURL         string `yaml:"pageUrl"`         // 支付完成跳转地址
+	PayoutNotifyURL string `yaml:"payoutNotifyUrl"` // 代付异步回调地址
+}
+
+type HopopayPayConfig struct {
+	BaseURL         string `yaml:"baseUrl"`         // API 根地址
+	MerchantID      string `yaml:"merchantId"`      // 商户号
+	Secret          string `yaml:"secret"`          // MD5 签名密钥
 	NotifyURL       string `yaml:"notifyUrl"`       // 代收异步回调地址
 	PageURL         string `yaml:"pageUrl"`         // 支付完成跳转地址
 	PayoutNotifyURL string `yaml:"payoutNotifyUrl"` // 代付异步回调地址

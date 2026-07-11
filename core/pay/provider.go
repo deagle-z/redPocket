@@ -8,12 +8,16 @@ import (
 
 // PayRequest 发起支付的请求参数
 type PayRequest struct {
+	UserID         int64
+	UserUID        string
 	OrderNo        string
 	Amount         float64
 	ProviderAmount float64
 	Currency       string
 	PayMethod      string
 	CountryCode    string
+	ClientIP       string
+	UserIP         string
 	ExtraFields    map[string]string
 	NotifyURL      string
 	ReturnURL      string
@@ -43,10 +47,14 @@ func ResolveOrderAmount(req PayRequest) float64 {
 
 // PayoutRequest 代付下单请求参数
 type PayoutRequest struct {
+	UserID         int64
+	UserUID        string
 	OrderNo        string
 	Amount         float64
 	ProviderAmount float64
 	Currency       string
+	ClientIP       string
+	UserIP         string
 	AccName        string            // 收款人姓名
 	AccNo          string            // 收款账号/卡号
 	BankCode       string            // 银行编码

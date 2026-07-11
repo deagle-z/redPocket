@@ -5,6 +5,7 @@ import (
 	"BaseGoUni/core/utils"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -18,6 +19,30 @@ type taskActivityProgressCandidate struct {
 	TotalRecharge   float64
 	ProgressPercent float64
 	Matched         bool
+}
+
+const (
+	taskActivityCustomEnabledKey         = "task_activity_custom_enabled"
+	taskActivityCustomRechargeAmountKey  = "task_activity_custom_recharge_amount"
+	taskActivityCustomRewardPerUserKey   = "task_activity_custom_reward_per_user"
+	taskActivityCustomDurationMinutesKey = "task_activity_custom_duration_minutes"
+	taskActivityCustomRewardCurrencyKey  = "task_activity_custom_reward_currency"
+
+	taskActivityCustomDefaultInviteCount     = 1
+	taskActivityCustomMinInviteCount         = 1
+	taskActivityCustomMaxInviteCount         = 1000
+	taskActivityCustomDefaultRechargeAmount  = 50
+	taskActivityCustomDefaultRewardPerUser   = 5
+	taskActivityCustomDefaultDurationMinutes = 1440
+	taskActivityCustomDefaultRewardCurrency  = "USD"
+)
+
+type taskActivityCustomSettings struct {
+	Enabled         bool
+	RechargeAmount  float64
+	RewardPerUser   float64
+	DurationMinutes int
+	RewardCurrency  string
 }
 
 func GetAppTaskActivityList(db *gorm.DB, userID int64, lang string) ([]pojo.TgTaskActivityAppItem, error) {
@@ -36,17 +61,19 @@ func GetAppTaskActivityList(db *gorm.DB, userID int64, lang string) ([]pojo.TgTa
 	if err != nil {
 		return nil, err
 	}
-	if len(configs) == 0 {
-		return []pojo.TgTaskActivityAppItem{}, nil
-	}
-	items := make([]pojo.TgTaskActivityAppItem, 0, len(configs))
+	items := make([]pojo.TgTaskActivityAppItem, 0, len(configs)+1)
 	for _, cfg := range configs {
 		items = append(items, taskActivityAppItemFromConfig(cfg, lang))
+	}
+	if customCfg, ok, err := taskActivityCustomConfig(db, taskActivityCustomDefaultInviteCount); err != nil {
+		return nil, err
+	} else if ok {
+		items = append(items, taskActivityAppItemFromConfig(customCfg, lang))
 	}
 	return items, nil
 }
 
-func ClaimAppTaskActivity(db *gorm.DB, userID int64, lang string) (pojo.TgTaskActivityAppItem, error) {
+func ClaimAppTaskActivity(db *gorm.DB, userID int64, req pojo.TgTaskActivityClaimReq, lang string) (pojo.TgTaskActivityAppItem, error) {
 	if userID <= 0 {
 		return pojo.TgTaskActivityAppItem{}, errors.New("invalid_params")
 	}
@@ -71,6 +98,18 @@ func ClaimAppTaskActivity(db *gorm.DB, userID int64, lang string) (pojo.TgTaskAc
 			return nil
 		}
 
+		if strings.EqualFold(strings.TrimSpace(req.LevelCode), pojo.TaskActivityLevelCustom) {
+			cfg, ok, err := taskActivityCustomConfig(tx, req.InviteCount)
+			if err != nil {
+				return err
+			}
+			if !ok {
+				return errors.New("task_activity_custom_disabled")
+			}
+			record = newTaskActivityRecordFromConfig(userID, cfg, now, cfg.DurationMinutes)
+			return tx.Create(&record).Error
+		}
+
 		configs, err := taskActivityConfigsAt(tx, now, taskActivityDisplayOrder())
 		if err != nil {
 			return err
@@ -84,26 +123,7 @@ func ClaimAppTaskActivity(db *gorm.DB, userID int64, lang string) (pojo.TgTaskAc
 			return errors.New("task_activity_duration_invalid")
 		}
 
-		record = pojo.TgTaskActivityRecord{
-			ConfigID:               0,
-			UserID:                 userID,
-			Title:                  cfg.Title,
-			TitleI18n:              cfg.TitleI18n,
-			SubTitle:               cfg.SubTitle,
-			SubTitleI18n:           cfg.SubTitleI18n,
-			LevelCode:              cfg.LevelCode,
-			LevelName:              cfg.LevelName,
-			TaskType:               normalizeTaskActivityTaskType(cfg.TaskType),
-			RequiredInviteCount:    cfg.RequiredInviteCount,
-			RequiredRechargeAmount: utils.Truncate2(cfg.RequiredRechargeAmount),
-			DurationMinutes:        durationMinutes,
-			RewardAmount:           utils.Truncate2(cfg.RewardAmount),
-			RewardCurrency:         normalizeTaskActivityRewardCurrency(cfg.RewardCurrency),
-			RewardTarget:           normalizeTaskActivityRewardTarget(cfg.RewardTarget),
-			Status:                 pojo.TaskActivityRecordStatusProgress,
-			ClaimedAt:              now,
-			DeadlineAt:             now.Add(time.Duration(durationMinutes) * time.Minute),
-		}
+		record = newTaskActivityRecordFromConfig(userID, cfg, now, durationMinutes)
 		return tx.Create(&record).Error
 	})
 	if err != nil {
@@ -228,7 +248,7 @@ func ApplyTaskActivityRechargeProgress(tx *gorm.DB, order pojo.RechargeOrder, oc
 		if err != nil {
 			return err
 		}
-		if candidate.Config.ID == 0 {
+		if !usableTaskActivityCandidate(candidate) {
 			continue
 		}
 		if err := tx.Model(&pojo.TgTaskActivityRecord{}).
@@ -264,7 +284,7 @@ func settleUserTaskActivityRecords(db *gorm.DB, userID int64, now time.Time) err
 		updates := map[string]any{
 			"status": pojo.TaskActivityRecordStatusExpired,
 		}
-		if candidate.Config.ID > 0 {
+		if usableTaskActivityCandidate(candidate) {
 			updates = taskActivityCandidateUpdates(candidate, pojo.TaskActivityRecordStatusExpired, nil, nil, 0)
 		}
 		if err := db.Model(&pojo.TgTaskActivityRecord{}).
@@ -424,6 +444,9 @@ func taskActivityConfigsAt(db *gorm.DB, at time.Time, order string) ([]pojo.TgTa
 }
 
 func taskActivityConfigsForRecord(db *gorm.DB, record pojo.TgTaskActivityRecord) ([]pojo.TgTaskActivityConfig, error) {
+	if isCustomTaskActivityRecord(record) {
+		return []pojo.TgTaskActivityConfig{taskActivityConfigFromRecord(record)}, nil
+	}
 	at := record.ClaimedAt
 	if at.IsZero() {
 		at = time.Now()
@@ -474,6 +497,189 @@ func taskActivityConfigSnapshotUpdates(cfg pojo.TgTaskActivityConfig) map[string
 	}
 }
 
+func newTaskActivityRecordFromConfig(userID int64, cfg pojo.TgTaskActivityConfig, claimedAt time.Time, durationMinutes int) pojo.TgTaskActivityRecord {
+	return pojo.TgTaskActivityRecord{
+		ConfigID:               0,
+		UserID:                 userID,
+		Title:                  cfg.Title,
+		TitleI18n:              cfg.TitleI18n,
+		SubTitle:               cfg.SubTitle,
+		SubTitleI18n:           cfg.SubTitleI18n,
+		LevelCode:              cfg.LevelCode,
+		LevelName:              cfg.LevelName,
+		TaskType:               normalizeTaskActivityTaskType(cfg.TaskType),
+		RequiredInviteCount:    cfg.RequiredInviteCount,
+		RequiredRechargeAmount: utils.Truncate2(cfg.RequiredRechargeAmount),
+		DurationMinutes:        durationMinutes,
+		RewardAmount:           utils.Truncate2(cfg.RewardAmount),
+		RewardCurrency:         normalizeTaskActivityRewardCurrency(cfg.RewardCurrency),
+		RewardTarget:           normalizeTaskActivityRewardTarget(cfg.RewardTarget),
+		Status:                 pojo.TaskActivityRecordStatusProgress,
+		ClaimedAt:              claimedAt,
+		DeadlineAt:             claimedAt.Add(time.Duration(durationMinutes) * time.Minute),
+	}
+}
+
+func isCustomTaskActivityRecord(record pojo.TgTaskActivityRecord) bool {
+	return strings.EqualFold(strings.TrimSpace(record.LevelCode), pojo.TaskActivityLevelCustom)
+}
+
+func usableTaskActivityCandidate(candidate taskActivityProgressCandidate) bool {
+	return candidate.Config.ID > 0 || strings.EqualFold(strings.TrimSpace(candidate.Config.LevelCode), pojo.TaskActivityLevelCustom)
+}
+
+func taskActivityConfigFromRecord(record pojo.TgTaskActivityRecord) pojo.TgTaskActivityConfig {
+	return pojo.TgTaskActivityConfig{
+		BaseModel:              pojo.BaseModel{ID: record.ConfigID},
+		Title:                  record.Title,
+		TitleI18n:              record.TitleI18n,
+		SubTitle:               record.SubTitle,
+		SubTitleI18n:           record.SubTitleI18n,
+		LevelCode:              record.LevelCode,
+		LevelName:              record.LevelName,
+		Status:                 1,
+		TaskType:               normalizeTaskActivityTaskType(record.TaskType),
+		RequiredInviteCount:    record.RequiredInviteCount,
+		RequiredRechargeAmount: utils.Truncate2(record.RequiredRechargeAmount),
+		DurationMinutes:        record.DurationMinutes,
+		RewardAmount:           utils.Truncate2(record.RewardAmount),
+		RewardCurrency:         normalizeTaskActivityRewardCurrency(record.RewardCurrency),
+		RewardTarget:           normalizeTaskActivityRewardTarget(record.RewardTarget),
+	}
+}
+
+func taskActivityCustomConfig(db *gorm.DB, inviteCount int) (pojo.TgTaskActivityConfig, bool, error) {
+	settings, ok, err := taskActivityCustomSettingsFromSysConfig(db)
+	if err != nil || !ok {
+		return pojo.TgTaskActivityConfig{}, ok, err
+	}
+	inviteCount = normalizeTaskActivityCustomInviteCount(inviteCount)
+	rewardAmount := utils.Truncate2(settings.RewardPerUser * float64(inviteCount))
+	rechargeAmount := utils.Truncate2(settings.RechargeAmount)
+	currency := normalizeTaskActivityRewardCurrency(settings.RewardCurrency)
+	return pojo.TgTaskActivityConfig{
+		Title:                  "自定义任务",
+		SubTitle:               fmt.Sprintf("邀请%d位好友注册并且充值≥%s%s", inviteCount, formatTaskActivityAmountText(rechargeAmount), currency),
+		LevelCode:              pojo.TaskActivityLevelCustom,
+		LevelName:              "自定义任务",
+		Status:                 1,
+		TaskType:               pojo.TaskActivityTypeInviteRecharge,
+		RequiredInviteCount:    inviteCount,
+		RequiredRechargeAmount: rechargeAmount,
+		DurationMinutes:        settings.DurationMinutes,
+		RewardAmount:           rewardAmount,
+		RewardCurrency:         currency,
+		RewardTarget:           pojo.TaskActivityRewardTargetRebate,
+	}, true, nil
+}
+
+func taskActivityCustomSettingsFromSysConfig(db *gorm.DB) (taskActivityCustomSettings, bool, error) {
+	enabledRaw, err := taskActivitySysConfigValue(db, taskActivityCustomEnabledKey, "1", "自定义邀请任务开关")
+	if err != nil {
+		return taskActivityCustomSettings{}, false, err
+	}
+	if !taskActivityConfigEnabled(enabledRaw) {
+		return taskActivityCustomSettings{}, false, nil
+	}
+
+	rechargeRaw, err := taskActivitySysConfigValue(db, taskActivityCustomRechargeAmountKey, strconv.FormatFloat(taskActivityCustomDefaultRechargeAmount, 'f', -1, 64), "自定义邀请任务单人充值门槛")
+	if err != nil {
+		return taskActivityCustomSettings{}, false, err
+	}
+	rewardRaw, err := taskActivitySysConfigValue(db, taskActivityCustomRewardPerUserKey, strconv.FormatFloat(taskActivityCustomDefaultRewardPerUser, 'f', -1, 64), "自定义邀请任务单人奖励金额")
+	if err != nil {
+		return taskActivityCustomSettings{}, false, err
+	}
+	durationRaw, err := taskActivitySysConfigValue(db, taskActivityCustomDurationMinutesKey, strconv.Itoa(taskActivityCustomDefaultDurationMinutes), "自定义邀请任务限制分钟")
+	if err != nil {
+		return taskActivityCustomSettings{}, false, err
+	}
+	currencyRaw, err := taskActivitySysConfigValue(db, taskActivityCustomRewardCurrencyKey, taskActivityCustomDefaultRewardCurrency, "自定义邀请任务奖励币种")
+	if err != nil {
+		return taskActivityCustomSettings{}, false, err
+	}
+
+	settings := taskActivityCustomSettings{
+		Enabled:         true,
+		RechargeAmount:  positiveFloatOrDefault(rechargeRaw, taskActivityCustomDefaultRechargeAmount),
+		RewardPerUser:   positiveFloatOrDefault(rewardRaw, taskActivityCustomDefaultRewardPerUser),
+		DurationMinutes: positiveIntOrDefault(durationRaw, taskActivityCustomDefaultDurationMinutes),
+		RewardCurrency:  normalizeTaskActivityRewardCurrency(currencyRaw),
+	}
+	return settings, true, nil
+}
+
+func taskActivitySysConfigValue(db *gorm.DB, configKey string, defaultValue string, configDesc string) (string, error) {
+	var cfg pojo.SysConfig
+	err := db.Where("config_key = ?", configKey).First(&cfg).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		cfg = pojo.SysConfig{
+			ConfigKey:   configKey,
+			ConfigValue: defaultValue,
+			ConfigDesc:  configDesc,
+		}
+		if createErr := db.Clauses(clause.OnConflict{DoNothing: true}).Create(&cfg).Error; createErr != nil {
+			return "", createErr
+		}
+		return defaultValue, nil
+	}
+	if err != nil {
+		return "", err
+	}
+	value := strings.TrimSpace(cfg.ConfigValue)
+	if value == "" {
+		return defaultValue, nil
+	}
+	return value, nil
+}
+
+func taskActivityConfigEnabled(value string) bool {
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case "", "1", "true", "on", "yes", "enabled":
+		return true
+	default:
+		return false
+	}
+}
+
+func normalizeTaskActivityCustomInviteCount(value int) int {
+	if value <= 0 {
+		return taskActivityCustomDefaultInviteCount
+	}
+	if value < taskActivityCustomMinInviteCount {
+		return taskActivityCustomMinInviteCount
+	}
+	if value > taskActivityCustomMaxInviteCount {
+		return taskActivityCustomMaxInviteCount
+	}
+	return value
+}
+
+func positiveFloatOrDefault(value string, defaultValue float64) float64 {
+	parsed, err := strconv.ParseFloat(strings.TrimSpace(value), 64)
+	if err != nil || parsed <= 0 {
+		return defaultValue
+	}
+	return utils.Truncate2(parsed)
+}
+
+func positiveIntOrDefault(value string, defaultValue int) int {
+	parsed, err := strconv.Atoi(strings.TrimSpace(value))
+	if err != nil || parsed <= 0 {
+		return defaultValue
+	}
+	return parsed
+}
+
+func formatTaskActivityAmountText(value float64) string {
+	text := strconv.FormatFloat(utils.Truncate2(value), 'f', 2, 64)
+	text = strings.TrimRight(strings.TrimRight(text, "0"), ".")
+	if text == "" {
+		return "0"
+	}
+	return text
+}
+
 func maxTaskActivityDurationMinutes(configs []pojo.TgTaskActivityConfig) int {
 	maxValue := 0
 	for _, cfg := range configs {
@@ -517,6 +723,9 @@ func taskActivityAppItemFromConfig(cfg pojo.TgTaskActivityConfig, lang string) p
 }
 
 func taskActivityAppItemsFromRecordConfigs(db *gorm.DB, record pojo.TgTaskActivityRecord, lang string, now time.Time) ([]pojo.TgTaskActivityAppItem, error) {
+	if isCustomTaskActivityRecord(record) {
+		return []pojo.TgTaskActivityAppItem{taskActivityAppItemFromRecord(record, lang, now)}, nil
+	}
 	configs, err := taskActivityConfigsAt(db, record.ClaimedAt, taskActivityDisplayOrder())
 	if err != nil {
 		return nil, err
@@ -525,13 +734,22 @@ func taskActivityAppItemsFromRecordConfigs(db *gorm.DB, record pojo.TgTaskActivi
 		return []pojo.TgTaskActivityAppItem{taskActivityAppItemFromRecord(record, lang, now)}, nil
 	}
 
-	items := make([]pojo.TgTaskActivityAppItem, 0, len(configs))
+	items := make([]pojo.TgTaskActivityAppItem, 0, len(configs)+1)
 	for _, cfg := range configs {
 		qualifiedCount, totalRecharge, err := taskActivityProgressForThreshold(db, record, cfg.RequiredRechargeAmount)
 		if err != nil {
 			return nil, err
 		}
 		items = append(items, taskActivityAppItemFromConfigAndRecord(cfg, record, qualifiedCount, totalRecharge, lang, now))
+	}
+	if customCfg, ok, err := taskActivityCustomConfig(db, taskActivityCustomDefaultInviteCount); err != nil {
+		return nil, err
+	} else if ok {
+		qualifiedCount, totalRecharge, err := taskActivityProgressForThreshold(db, record, customCfg.RequiredRechargeAmount)
+		if err != nil {
+			return nil, err
+		}
+		items = append(items, taskActivityAppItemFromConfigAndRecord(customCfg, record, qualifiedCount, totalRecharge, lang, now))
 	}
 	return items, nil
 }

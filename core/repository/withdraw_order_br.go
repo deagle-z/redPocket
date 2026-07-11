@@ -677,7 +677,7 @@ func submitWithdrawPayout(db *gorm.DB, order *pojo.WithdrawOrderBr) error {
 	}
 	var user pojo.TgUser
 	if order.UserId > 0 {
-		_ = db.Select("uid, username, first_name, email, phone").
+		_ = db.Select("uid, username, first_name, email, phone, ip").
 			Where("id = ?", order.UserId).
 			First(&user).Error
 	}
@@ -693,19 +693,22 @@ func submitWithdrawPayout(db *gorm.DB, order *pojo.WithdrawOrderBr) error {
 	accNo := firstWithdrawValue(
 		ptrValue(order.PixKey),
 		ptrValue(order.AccountNumber),
-		withdrawCountryFieldValue(extraFields, countryCode, "accNo", "accountNumber", "pixKey", "cardNo", "clabe"),
+		withdrawCountryFieldValue(extraFields, countryCode, "accNo", "accountNumber", "bankNumber", "pixKey", "cardNo", "clabe"),
 	)
 	bankCode := firstWithdrawValue(
 		ptrValue(order.BankCode),
 		withdrawCountryFieldValue(extraFields, countryCode, "bankCode", "bnakCode", "bank"),
 	)
 	req := pay.PayoutRequest{
+		UserID:   order.UserId,
+		UserUID:  user.Uid,
+		UserIP:   ptrValue(user.Ip),
 		OrderNo:  merchantOrderNo,
 		Amount:   amount,
 		Currency: strings.TrimSpace(order.Currency),
 		AccName: firstWithdrawValue(
 			ptrValue(order.ReceiverName),
-			withdrawCountryFieldValue(extraFields, countryCode, "accName", "receiverName", "name", "fullName", "accountName"),
+			withdrawCountryFieldValue(extraFields, countryCode, "accName", "receiverName", "name", "fullName", "accountName", "bankAccountName"),
 			ptrValue(user.FirstName),
 			ptrValue(user.Username),
 			user.Uid,

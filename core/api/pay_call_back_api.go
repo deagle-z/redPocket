@@ -2,6 +2,7 @@ package api
 
 import (
 	"BaseGoUni/core/base"
+	"BaseGoUni/core/pay/hopopay"
 	"BaseGoUni/core/pay/vcpaymxn"
 	"BaseGoUni/core/pojo"
 	"BaseGoUni/core/repository"
@@ -14,6 +15,7 @@ import (
 	"log"
 	"strconv"
 	"strings"
+	"time"
 )
 
 type gctpkConfigResolver func(req gctpkNotifyReq) (base.GctpkPayConfig, string, error)
@@ -145,6 +147,222 @@ func VcpayMxnPayoutCallback(ctx *gin.Context) {
 	}
 
 	ctx.String(200, "SUCCESS")
+}
+
+// HopopayPayinCallback HOPOPAY 代收异步回调（公开接口，无需 token）
+// POST /api/v1/pay/hopopay/notify
+func HopopayPayinCallback(ctx *gin.Context) {
+	var req hopopayPayinNotifyReq
+	raw, ok := bindHopopayCallback(ctx, &req)
+	if !ok {
+		return
+	}
+	if err := validateHopopayCallback(raw); err != nil {
+		log.Printf("[HOPOPAY Notify] 验签失败 providerOrderNo=%s merchantOrderNo=%s err=%v", req.OrderNo, req.AppOrderID, err)
+		ctx.String(400, "fail")
+		return
+	}
+
+	db := ctx.MustGet("db").(*gorm.DB)
+	hostInfo := ctx.MustGet("hostInfo").(pojo.HostInfo)
+	localOrderNo := strings.TrimSpace(req.AppOrderID)
+	providerOrderNo := strings.TrimSpace(req.OrderNo)
+	if localOrderNo == "" {
+		log.Printf("[HOPOPAY Notify] 商户订单号为空 providerOrderNo=%s", providerOrderNo)
+		ctx.String(400, "fail")
+		return
+	}
+
+	switch req.Status {
+	case 3:
+		payAmount := req.PayAmount.Float64()
+		if payAmount <= 0 {
+			payAmount = req.Amount.Float64()
+		}
+		if err := repository.ProcessRechargeOrderSuccess(db, localOrderNo, providerOrderNo, payAmount, hostInfo.TablePrefix); err != nil {
+			log.Printf("[HOPOPAY Notify] 入账失败 localOrderNo=%s providerOrderNo=%s status=%d err=%v", localOrderNo, providerOrderNo, req.Status, err)
+			ctx.String(500, "fail")
+			return
+		}
+	case 2, 4, 5, 9:
+		if err := repository.ProcessRechargeOrderClosed(db, localOrderNo); err != nil {
+			log.Printf("[HOPOPAY Notify] 关闭订单失败 localOrderNo=%s providerOrderNo=%s status=%d err=%v", localOrderNo, providerOrderNo, req.Status, err)
+			ctx.String(500, "fail")
+			return
+		}
+	default:
+		// pending / paying statuses are acknowledged without changing the local order.
+	}
+
+	ctx.String(200, "ok")
+}
+
+// HopopayPayoutCallback HOPOPAY 代付/提现异步回调（公开接口，无需 token）
+// POST /api/v1/pay/hopopay/payoutNotify
+func HopopayPayoutCallback(ctx *gin.Context) {
+	var req hopopayPayoutNotifyReq
+	raw, ok := bindHopopayCallback(ctx, &req)
+	if !ok {
+		return
+	}
+	if err := validateHopopayCallback(raw); err != nil {
+		log.Printf("[HOPOPAY Payout Notify] 验签失败 providerOrderNo=%s merchantOrderNo=%s err=%v", req.OrderNo, req.AppOrderID, err)
+		ctx.String(400, "fail")
+		return
+	}
+
+	db := ctx.MustGet("db").(*gorm.DB)
+	localOrderNo := strings.TrimSpace(req.AppOrderID)
+	providerOrderNo := strings.TrimSpace(req.OrderNo)
+	if localOrderNo == "" {
+		log.Printf("[HOPOPAY Payout Notify] 商户订单号为空 providerOrderNo=%s", providerOrderNo)
+		ctx.String(400, "fail")
+		return
+	}
+
+	success := req.Status == 3
+	failed := req.Status == 2 || req.Status == 5 || req.Status == 6 || req.Status == 9
+	if success || failed {
+		if err := repository.ProcessWithdrawOrderPayoutCallback(db, repository.WithdrawPayoutCallback{
+			LocalOrderNo:     localOrderNo,
+			ProviderPayoutNo: providerOrderNo,
+			ProviderStatus:   fmt.Sprintf("%d", req.Status),
+			ProviderAmount:   req.Amount.Float64(),
+			ResultCode:       fmt.Sprintf("HOPOPAY_STATUS_%d", req.Status),
+			ResultMsg:        hopopayCallbackMessage(req.Message, req.Status),
+			ProviderPayTime:  formatHopopayUnixTime(req.PayAt.Int64()),
+			Success:          success,
+			Failed:           failed,
+		}); err != nil {
+			log.Printf("[HOPOPAY Payout Notify] 处理提现回调失败 localOrderNo=%s providerOrderNo=%s status=%d err=%v", localOrderNo, providerOrderNo, req.Status, err)
+			ctx.String(500, "fail")
+			return
+		}
+	}
+
+	ctx.String(200, "ok")
+}
+
+func bindHopopayCallback(ctx *gin.Context, target any) (map[string]json.RawMessage, bool) {
+	body, err := ctx.GetRawData()
+	if err != nil || len(bytes.TrimSpace(body)) == 0 {
+		ctx.String(400, "fail")
+		return nil, false
+	}
+	var raw map[string]json.RawMessage
+	if err := json.Unmarshal(body, &raw); err != nil {
+		ctx.String(400, "fail")
+		return nil, false
+	}
+	if err := json.Unmarshal(body, target); err != nil {
+		ctx.String(400, "fail")
+		return nil, false
+	}
+	return raw, true
+}
+
+func validateHopopayCallback(raw map[string]json.RawMessage) error {
+	cfg := utils.GlobalConfig.Pay.Hopopay
+	if strings.TrimSpace(cfg.Secret) == "" {
+		return fmt.Errorf("HOPOPAY callback config missing secret")
+	}
+	if !hopopay.VerifyRawJSONSignature(raw, cfg.Secret) {
+		return fmt.Errorf("signature invalid")
+	}
+	return nil
+}
+
+func hopopayCallbackMessage(message string, status int) string {
+	if trimmed := strings.TrimSpace(message); trimmed != "" {
+		return trimmed
+	}
+	return fmt.Sprintf("HOPOPAY status %d", status)
+}
+
+func formatHopopayUnixTime(seconds int64) string {
+	if seconds <= 0 {
+		return ""
+	}
+	return time.Unix(seconds, 0).Format(time.RFC3339)
+}
+
+type hopopayPayinNotifyReq struct {
+	Status     int              `json:"status"`
+	OrderNo    string           `json:"order_no"`
+	AppOrderID string           `json:"app_order_id"`
+	Amount     hopopayFlexFloat `json:"amount"`
+	Fee        hopopayFlexFloat `json:"fee"`
+	NetAmount  hopopayFlexFloat `json:"net_amount"`
+	PayAmount  hopopayFlexFloat `json:"pay_amount"`
+	PayAt      hopopayFlexInt   `json:"pay_at"`
+	Message    string           `json:"message"`
+	Time       hopopayFlexInt   `json:"time"`
+	Type       string           `json:"type"`
+	Signature  string           `json:"signature"`
+}
+
+type hopopayPayoutNotifyReq struct {
+	Status     int              `json:"status"`
+	OrderNo    string           `json:"order_no"`
+	AppOrderID string           `json:"app_order_id"`
+	Amount     hopopayFlexFloat `json:"amount"`
+	Fee        hopopayFlexFloat `json:"fee"`
+	NetAmount  hopopayFlexFloat `json:"net_amount"`
+	PayAt      hopopayFlexInt   `json:"pay_at"`
+	Message    string           `json:"message"`
+	Time       hopopayFlexInt   `json:"time"`
+	Type       string           `json:"type"`
+	Signature  string           `json:"signature"`
+}
+
+type hopopayFlexFloat float64
+
+func (v *hopopayFlexFloat) UnmarshalJSON(data []byte) error {
+	data = bytes.TrimSpace(data)
+	if bytes.Equal(data, []byte("null")) || len(data) == 0 {
+		*v = 0
+		return nil
+	}
+	var n float64
+	if err := json.Unmarshal(data, &n); err == nil {
+		*v = hopopayFlexFloat(n)
+		return nil
+	}
+	var text string
+	if err := json.Unmarshal(data, &text); err == nil {
+		parsed, _ := strconv.ParseFloat(strings.TrimSpace(text), 64)
+		*v = hopopayFlexFloat(parsed)
+	}
+	return nil
+}
+
+func (v hopopayFlexFloat) Float64() float64 {
+	return float64(v)
+}
+
+type hopopayFlexInt int64
+
+func (v *hopopayFlexInt) UnmarshalJSON(data []byte) error {
+	data = bytes.TrimSpace(data)
+	if bytes.Equal(data, []byte("null")) || len(data) == 0 {
+		*v = 0
+		return nil
+	}
+	var n int64
+	if err := json.Unmarshal(data, &n); err == nil {
+		*v = hopopayFlexInt(n)
+		return nil
+	}
+	var text string
+	if err := json.Unmarshal(data, &text); err == nil {
+		parsed, _ := strconv.ParseInt(strings.TrimSpace(text), 10, 64)
+		*v = hopopayFlexInt(parsed)
+	}
+	return nil
+}
+
+func (v hopopayFlexInt) Int64() int64 {
+	return int64(v)
 }
 
 func handleGctpkPayinCallback(ctx *gin.Context, resolveConfig gctpkConfigResolver) {

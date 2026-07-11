@@ -1,6 +1,6 @@
 import { http } from "@/utils/http";
 
-export type TaskActivityLevelCode = "primary" | "middle" | "advanced";
+export type TaskActivityLevelCode = "primary" | "middle" | "advanced" | "custom";
 export type TaskActivityType = "invite_recharge";
 export type TaskActivityRewardTarget = "rebate";
 

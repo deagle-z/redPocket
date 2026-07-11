@@ -626,11 +626,11 @@ func applyWithdrawReceiverSnapshot(req *pojo.WithdrawOrderBrSet, countryCode str
 	for k, v := range fieldValues {
 		values[k] = v
 	}
-	req.ReceiverName = firstOptional(countryCode, values, "receiverName", "accName", "name", "fullName", "accountName")
+	req.ReceiverName = firstOptional(countryCode, values, "receiverName", "accName", "name", "fullName", "accountName", "bankAccountName")
 	req.ReceiverDocument = firstOptional(countryCode, values, "receiverDocument", "identityNo", "document", "cpf", "idNumber")
 	req.ReceiverDocumentType = firstOptional(countryCode, values, "receiverDocumentType", "documentType")
 	req.PixKeyType = firstOptional(countryCode, values, "pixKeyType", "identityType")
-	req.PixKey = firstOptional(countryCode, values, "pixKey", "accNo", "accountNumber")
+	req.PixKey = firstOptional(countryCode, values, "pixKey", "accNo", "accountNumber", "bankNumber")
 	req.BankCode = firstOptional(countryCode, values, "bankCode", "bnakCode")
 	req.BankName = firstOptional(countryCode, values, "bankName")
 	req.BranchNumber = firstOptional(countryCode, values, "branchNumber", "agency")

@@ -363,6 +363,8 @@ func InitGin() {
 		payCallbackRouter.POST("/gctpkbrl/payoutNotify", api.GctpkBrlPayoutCallback) // GCTPK BRL 代付/提现回调
 		payCallbackRouter.POST("/vcpaymxn/notify", api.VcpayMxnPayinCallback)        // VCPAY MXN 代收回调
 		payCallbackRouter.POST("/vcpaymxn/payoutNotify", api.VcpayMxnPayoutCallback) // VCPAY MXN 代付/提现回调
+		payCallbackRouter.POST("/hopopay/notify", api.HopopayPayinCallback)          // HOPOPAY 代收回调
+		payCallbackRouter.POST("/hopopay/payoutNotify", api.HopopayPayoutCallback)   // HOPOPAY 代付/提现回调
 	}
 
 	appRouter := router.Group("/api/v1/app")

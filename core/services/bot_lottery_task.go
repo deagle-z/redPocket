@@ -17,7 +17,7 @@ import (
 
 const (
 	botLotteryConfigKey         = "bot_grap_second"
-	botLotteryTablePrefix       = "redv2"
+	botLotteryTablePrefix       = "redUs"
 	botLotteryDefaultSecond     = 30
 	botLotteryMinPositiveSecond = 3
 )

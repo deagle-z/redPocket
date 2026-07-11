@@ -519,12 +519,16 @@ func appCreateRechargeOrder(db *gorm.DB, userID int64, req pojo.RechargeOrderApp
 		}
 
 		payResp, err = provider.CreateOrder(pay.PayRequest{
+			UserID:         userID,
+			UserUID:        tgUser.Uid,
 			OrderNo:        orderNo,
 			Amount:         req.Amount,
 			ProviderAmount: providerAmount,
 			Currency:       req.Currency,
 			PayMethod:      req.PayMethod,
 			CountryCode:    req.CountryCode,
+			ClientIP:       req.ClientIP,
+			UserIP:         ptrValue(tgUser.Ip),
 			ExtraFields:    req.ExtraFields,
 			ReturnURL:      req.ReturnURL,
 		})

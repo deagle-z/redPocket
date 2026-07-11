@@ -162,6 +162,7 @@ func AppCreateRechargeOrder(ctx *gin.Context) {
 		utils.ErrorBack(ctx, "参数格式错误")
 		return
 	}
+	req.ClientIP = ctx.ClientIP()
 	userIDRaw, ok := ctx.Get("userId")
 	if !ok {
 		utils.UnauthorizedBack(ctx, "token is invalid")
@@ -198,6 +199,7 @@ func AppCreateRechargeOrderV2(ctx *gin.Context) {
 		utils.ErrorBack(ctx, "参数格式错误")
 		return
 	}
+	req.ClientIP = ctx.ClientIP()
 	req.ReturnURL = ctx.GetHeader("Referer")
 	userIDRaw, ok := ctx.Get("userId")
 	if !ok {
@@ -342,6 +344,7 @@ func AdminCreateRechargeOrderV2(ctx *gin.Context) {
 	if strings.TrimSpace(req.ReturnURL) == "" {
 		req.ReturnURL = defaultAdminRechargeReturnURL
 	}
+	req.ClientIP = ctx.ClientIP()
 
 	db := ctx.MustGet("db").(*gorm.DB)
 	hostInfo := ctx.MustGet("hostInfo").(pojo.HostInfo)

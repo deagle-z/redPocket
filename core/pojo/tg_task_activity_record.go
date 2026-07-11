@@ -114,6 +114,11 @@ type TgTaskActivityAppRecordResp struct {
 	BasePageResponse[TgTaskActivityAppItem]
 }
 
+type TgTaskActivityClaimReq struct {
+	LevelCode   string `json:"levelCode"`
+	InviteCount int    `json:"inviteCount"`
+}
+
 var TgTaskActivityRecordTableName = "tg_task_activity_record"
 
 func (TgTaskActivityRecord) TableName() string {

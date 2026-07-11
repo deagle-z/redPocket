@@ -33,7 +33,8 @@ const recordStatusTypeMap: Record<
 const levelNameMap: Record<TaskActivityLevelCode, string> = {
   primary: "初级任务",
   middle: "中级任务",
-  advanced: "高级任务"
+  advanced: "高级任务",
+  custom: "自定义任务"
 };
 
 function getStatusLabel(status: number) {

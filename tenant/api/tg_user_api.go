@@ -236,6 +236,7 @@ func TenantCreateRechargeOrderV2(ctx *gin.Context) {
 	if strings.TrimSpace(req.ReturnURL) == "" {
 		req.ReturnURL = defaultTenantRechargeReturnURL
 	}
+	req.ClientIP = ctx.ClientIP()
 	hostInfo := ctx.MustGet("hostInfo").(pojo.HostInfo)
 	result, err := tenantRepo.AdminCreateRechargeOrderV2(getDB(ctx), tenantID, req, hostInfo.TablePrefix)
 	if err != nil {

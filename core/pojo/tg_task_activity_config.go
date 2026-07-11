@@ -8,6 +8,7 @@ const (
 	TaskActivityLevelPrimary  = "primary"
 	TaskActivityLevelMiddle   = "middle"
 	TaskActivityLevelAdvanced = "advanced"
+	TaskActivityLevelCustom   = "custom"
 
 	TaskActivityRewardTargetRebate = "rebate"
 )

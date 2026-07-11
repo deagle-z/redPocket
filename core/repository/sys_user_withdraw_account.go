@@ -279,7 +279,7 @@ func withdrawAccountBindingFields(values map[string]any) withdrawAccountBindingF
 			result.accNoMXNW = value
 		case "accnamemxnw":
 			result.accNameMXNW = value
-		case "clabe", "accountnumber", "accountno", "cardno", "cardnumber", "pixkey", "bankaccount", "bankaccountno":
+		case "clabe", "accountnumber", "accountno", "banknumber", "cardno", "cardnumber", "pixkey", "bankaccount", "bankaccountno":
 			if value != "" {
 				result.extraAccNos = append(result.extraAccNos, value)
 			}

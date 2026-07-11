@@ -44,8 +44,13 @@ func ClaimAppTaskActivity(ctx *gin.Context) {
 	if !ok {
 		return
 	}
+	var req pojo.TgTaskActivityClaimReq
+	if err := ctx.ShouldBindJSON(&req); err != nil && err != io.EOF {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
 	db := ctx.MustGet("db").(*gorm.DB)
-	result, err := repository.ClaimAppTaskActivity(db, userID, taskActivityRequestLang(ctx))
+	result, err := repository.ClaimAppTaskActivity(db, userID, req, taskActivityRequestLang(ctx))
 	if err != nil {
 		utils.ErrorBack(ctx, err.Error())
 		return
