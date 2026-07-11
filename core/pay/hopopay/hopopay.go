@@ -466,8 +466,8 @@ func firstNonEmpty(values ...string) string {
 	return ""
 }
 
-func amountNumber(amount float64) json.Number {
-	return json.Number(fmt.Sprintf("%.2f", utils.Truncate2(amount)))
+func amountNumber(amount float64) float64 {
+	return utils.Truncate2(amount)
 }
 
 func newNonce() string {

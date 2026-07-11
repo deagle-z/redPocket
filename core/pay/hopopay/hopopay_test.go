@@ -30,8 +30,11 @@ func TestBuildPayinParamsUsesFixedAndroidPlatform(t *testing.T) {
 	if params["app_user_id"] != "12345" {
 		t.Fatalf("app_user_id = %v", params["app_user_id"])
 	}
-	if params["amount"] != json.Number("20.00") {
+	if params["amount"] != float64(20) {
 		t.Fatalf("amount = %v", params["amount"])
+	}
+	if got := signValueToString(params["amount"]); got != "20" {
+		t.Fatalf("signed amount = %q", got)
 	}
 	if params["callback_url"] != "https://merchant.test/pay/notify" {
 		t.Fatalf("callback_url = %v", params["callback_url"])
@@ -85,6 +88,22 @@ func TestBuildPayoutParamsUsesFixedAndroidPlatform(t *testing.T) {
 	}
 	if params["extra_params"] != `{"platform":"android"}` {
 		t.Fatalf("extra_params = %v", params["extra_params"])
+	}
+}
+
+func TestAmountNumberMatchesMerchantSignerFormat(t *testing.T) {
+	tests := []struct {
+		amount float64
+		want   string
+	}{
+		{amount: 100, want: "100"},
+		{amount: 20.5, want: "20.5"},
+		{amount: 20.567, want: "20.56"},
+	}
+	for _, tt := range tests {
+		if got := signValueToString(amountNumber(tt.amount)); got != tt.want {
+			t.Fatalf("signValueToString(amountNumber(%v)) = %q, want %q", tt.amount, got, tt.want)
+		}
 	}
 }
 
