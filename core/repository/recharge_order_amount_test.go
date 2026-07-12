@@ -26,6 +26,44 @@ func TestFloorRechargeAmount(t *testing.T) {
 	}
 }
 
+func TestNormalizeRechargeOrderAmount(t *testing.T) {
+	tests := []struct {
+		name   string
+		amount float64
+		want   float64
+	}{
+		{name: "integer amount is unchanged", amount: 50, want: 50},
+		{name: "decimal amount keeps two decimals", amount: 29.99, want: 29.99},
+		{name: "extra precision is truncated", amount: 29.999, want: 29.99},
+		{name: "amount below one keeps cents", amount: 0.99, want: 0.99},
+		{name: "negative amount becomes zero", amount: -1, want: 0},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := normalizeRechargeOrderAmount(tt.amount); got != tt.want {
+				t.Fatalf("normalizeRechargeOrderAmount(%v) = %v, want %v", tt.amount, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestFormatRechargeMinAmount(t *testing.T) {
+	tests := []struct {
+		amount float64
+		want   string
+	}{
+		{amount: 29.99, want: "29.99"},
+		{amount: 50, want: "50"},
+	}
+
+	for _, tt := range tests {
+		if got := formatRechargeMinAmount(tt.amount); got != tt.want {
+			t.Fatalf("formatRechargeMinAmount(%v) = %q, want %q", tt.amount, got, tt.want)
+		}
+	}
+}
+
 func TestCalculateRechargeProviderAmount(t *testing.T) {
 	tests := []struct {
 		name   string

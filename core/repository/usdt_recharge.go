@@ -143,7 +143,7 @@ func createCryptoRechargeOrder(db *gorm.DB, userID int64, req pojo.CryptoRecharg
 	}
 	if minAmount > 0 && req.Amount < minAmount {
 		return result, errors.New(utils.I18nMessage("recharge_v2_min_amount", map[string]interface{}{
-			"min": fmt.Sprintf("%.0f", minAmount),
+			"min": formatRechargeMinAmount(minAmount),
 		}))
 	}
 

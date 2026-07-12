@@ -58,9 +58,9 @@ const (
 	rechargeActivityTypeTodayFirst        int8 = 2
 	rechargeActivityTypeV2Gift            int8 = 3
 
-	rechargeV2MinAmount      float64 = 50 // v2版本充值最低金额
-	AdminRechargeV2MinAmount float64 = 1  // 后台手动拉起v2充值最低金额
-	rechargeV2GiftMinAmount  float64 = 50 // v2版本充值赠送门槛（满此金额才赠送）
+	rechargeV2MinAmount      float64 = 29.99 // v2版本充值最低金额
+	AdminRechargeV2MinAmount float64 = 1     // 后台手动拉起v2充值最低金额
+	rechargeV2GiftMinAmount  float64 = 50    // v2版本充值赠送门槛（满此金额才赠送）
 )
 
 func normalizeRechargeWalletType(value string) (string, error) {
@@ -394,7 +394,7 @@ func appCreateRechargeOrder(db *gorm.DB, userID int64, req pojo.RechargeOrderApp
 	req.PayMethod = strings.TrimSpace(req.PayMethod)
 	req.Currency = strings.ToUpper(strings.TrimSpace(req.Currency))
 	req.MerchantOrderNo = strings.TrimSpace(req.MerchantOrderNo)
-	req.Amount = floorRechargeAmount(req.Amount)
+	req.Amount = normalizeRechargeOrderAmount(req.Amount)
 	walletType, walletErr := normalizeRechargeWalletType(req.WalletType)
 	if walletErr != nil {
 		return result, walletErr
@@ -405,7 +405,7 @@ func appCreateRechargeOrder(db *gorm.DB, userID int64, req pojo.RechargeOrderApp
 	}
 	if forcedActivityType != nil && *forcedActivityType == rechargeActivityTypeV2Gift && minAmount > 0 && req.Amount < minAmount {
 		return result, errors.New(utils.I18nMessage("recharge_v2_min_amount", map[string]interface{}{
-			"min": fmt.Sprintf("%.0f", minAmount),
+			"min": formatRechargeMinAmount(minAmount),
 		}))
 	}
 	if req.Channel == "" {
@@ -661,6 +661,21 @@ func floorRechargeAmount(amount float64) float64 {
 		return 0
 	}
 	return math.Floor(amount)
+}
+
+func normalizeRechargeOrderAmount(amount float64) float64 {
+	if amount <= 0 || math.IsNaN(amount) || math.IsInf(amount, 0) {
+		return 0
+	}
+	return utils.Truncate2(amount)
+}
+
+func formatRechargeMinAmount(amount float64) string {
+	amount = utils.Truncate2(amount)
+	if math.Mod(amount, 1) == 0 {
+		return fmt.Sprintf("%.0f", amount)
+	}
+	return fmt.Sprintf("%.2f", amount)
 }
 
 func addRechargeOrderBonusAmount(tx *gorm.DB, orderID int64, bonusAmount float64) error {
