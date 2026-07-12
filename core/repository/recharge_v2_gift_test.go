@@ -75,6 +75,28 @@ func TestRechargeGiftBaseAmountPrefersActualCreditAmount(t *testing.T) {
 	}
 }
 
+func TestRechargeCallbackCreditBaseAmountAddsOneCentForConfiguredDisplayAmounts(t *testing.T) {
+	tests := []struct {
+		name        string
+		orderAmount float64
+		payAmount   float64
+		want        float64
+	}{
+		{name: "listed amount with provider pay amount", orderAmount: 49.99, payAmount: 49.99, want: 50},
+		{name: "listed amount without provider pay amount", orderAmount: 99.99, payAmount: 0, want: 100},
+		{name: "unlisted xx99 amount unchanged", orderAmount: 59.99, payAmount: 59.99, want: 59.99},
+		{name: "provider already returned rounded amount", orderAmount: 29.99, payAmount: 30, want: 30},
+		{name: "non xx99 amount unchanged", orderAmount: 50, payAmount: 50, want: 50},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := rechargeCallbackCreditBaseAmount(tt.orderAmount, tt.payAmount); got != tt.want {
+				t.Fatalf("rechargeCallbackCreditBaseAmount(%.2f, %.2f) = %.2f, want %.2f", tt.orderAmount, tt.payAmount, got, tt.want)
+			}
+		})
+	}
+}
+
 func TestCalculateRechargeFreeLotteryCount(t *testing.T) {
 	tests := []struct {
 		amount float64

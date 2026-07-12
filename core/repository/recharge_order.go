@@ -674,10 +674,36 @@ func addRechargeOrderBonusAmount(tx *gorm.DB, orderID int64, bonusAmount float64
 }
 
 func rechargeCallbackCreditBaseAmount(orderAmount float64, payAmount float64) float64 {
+	orderAmount = utils.Truncate2(orderAmount)
 	if payAmount > 0 {
-		return utils.Truncate2(payAmount)
+		payAmount = utils.Truncate2(payAmount)
+		if rechargeDisplayAmountRequiresOneCentCredit(orderAmount) && payAmount == orderAmount {
+			return rechargeOneCentCreditAmount(orderAmount)
+		}
+		return payAmount
 	}
-	return utils.Truncate2(orderAmount)
+	return rechargeCreditBaseAmountFromOrderAmount(orderAmount)
+}
+
+func rechargeCreditBaseAmountFromOrderAmount(orderAmount float64) float64 {
+	orderAmount = utils.Truncate2(orderAmount)
+	if rechargeDisplayAmountRequiresOneCentCredit(orderAmount) {
+		return rechargeOneCentCreditAmount(orderAmount)
+	}
+	return orderAmount
+}
+
+func rechargeOneCentCreditAmount(amount float64) float64 {
+	return utils.Truncate2(amount + 0.01)
+}
+
+func rechargeDisplayAmountRequiresOneCentCredit(amount float64) bool {
+	switch utils.Truncate2(amount) {
+	case 29.99, 39.99, 49.99, 99.99, 149.99, 199.99, 249.99, 299.99, 399.99, 499.99:
+		return true
+	default:
+		return false
+	}
 }
 
 func calculateRechargeFreeLotteryCount(amount float64) int {
@@ -974,7 +1000,8 @@ func rechargeOrderDevCallback(db *gorm.DB, orderNo string, tablePrefix string) e
 			order.OrderNo, user.ID, tablePrefix, order.Amount, order.Fee, order.Status, formatRechargeActivityType(order.ActivityType), walletType, startWalletBalance, user.RechargeAmount, isFirstRecharge)
 
 		now := time.Now()
-		creditAmount := utils.Truncate2(order.Amount - order.Fee + bonusAmount)
+		creditBaseAmount := rechargeCreditBaseAmountFromOrderAmount(order.Amount)
+		creditAmount := utils.Truncate2(creditBaseAmount - order.Fee + bonusAmount)
 		if creditAmount < 0 {
 			creditAmount = 0
 		}
@@ -995,6 +1022,7 @@ func rechargeOrderDevCallback(db *gorm.DB, orderNo string, tablePrefix string) e
 			}).Error; err != nil {
 			return err
 		}
+		order.Amount = creditBaseAmount
 		order.CreditAmount = &creditAmount
 		order.BonusAmount = bonusAmount
 		order.PayTime = &now
@@ -1003,10 +1031,10 @@ func rechargeOrderDevCallback(db *gorm.DB, orderNo string, tablePrefix string) e
 		walletColumn := rechargeWalletColumn(walletType)
 		userUpdates := map[string]any{
 			walletColumn:      gorm.Expr(walletColumn+" + ?", creditAmount),
-			"recharge_amount": gorm.Expr("recharge_amount + ?", order.Amount),
+			"recharge_amount": gorm.Expr("recharge_amount + ?", creditBaseAmount),
 			"free_lottery_count": gorm.Expr(
 				"free_lottery_count + ?",
-				calculateRechargeFreeLotteryCount(order.Amount),
+				calculateRechargeFreeLotteryCount(creditBaseAmount),
 			),
 		}
 		if walletType == pojo.RechargeWalletTypeBalance {
@@ -1019,7 +1047,7 @@ func rechargeOrderDevCallback(db *gorm.DB, orderNo string, tablePrefix string) e
 			return err
 		}
 		if walletType == pojo.RechargeWalletTypeBalance && (order.ActivityType == nil || *order.ActivityType != rechargeActivityTypeV2Gift) {
-			if err := AddUserWithdrawRestrictedBalance(tx, user, bonusAmount, clampRechargeRestrictedCredit(order.Amount-order.Fee)); err != nil {
+			if err := AddUserWithdrawRestrictedBalance(tx, user, bonusAmount, clampRechargeRestrictedCredit(creditBaseAmount-order.Fee)); err != nil {
 				return err
 			}
 		}
@@ -1046,7 +1074,7 @@ func rechargeOrderDevCallback(db *gorm.DB, orderNo string, tablePrefix string) e
 				UserId:          user.ID,
 				AwardUni:        fmt.Sprintf("recharge_gift_%s", order.OrderNo),
 				Amount:          bonusAmount,
-				StartAmount:     utils.Truncate2(user.Balance + order.Amount - order.Fee),
+				StartAmount:     utils.Truncate2(user.Balance + creditBaseAmount - order.Fee),
 				EndAmount:       utils.Truncate2(user.Balance + creditAmount),
 				CashMark:        "首充赠送",
 				CashDesc:        fmt.Sprintf("首充赠送彩金%s，赠送%.2f", order.OrderNo, bonusAmount),
