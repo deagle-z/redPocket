@@ -73,6 +73,7 @@ func TestCalculateRechargeProviderAmount(t *testing.T) {
 	}{
 		{name: "floors converted provider amount", amount: 10, rate: 5.06, want: 50},
 		{name: "keeps integer converted provider amount", amount: 10, rate: 5, want: 50},
+		{name: "keeps cents when rate is one", amount: 29.99, rate: 1, want: 29.99},
 		{name: "uses original amount when rate is missing", amount: 50.6, rate: 0, want: 50.6},
 	}
 

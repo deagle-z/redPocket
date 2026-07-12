@@ -653,6 +653,9 @@ func calculateRechargeProviderAmount(amount float64, rate float64) float64 {
 	if rate <= 0 {
 		return amount
 	}
+	if rate == 1 {
+		return normalizeRechargeOrderAmount(amount)
+	}
 	return floorRechargeAmount(amount * rate)
 }
 
