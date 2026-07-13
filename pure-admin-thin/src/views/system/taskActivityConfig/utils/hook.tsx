@@ -14,7 +14,6 @@ import {
   type TaskActivityConfig,
   type TaskActivityLevelCode
 } from "@/api/taskActivityConfig";
-import { withBackstageDisplayCurrency } from "@/utils/currency";
 
 export const levelOptions = [
   { label: "初级任务", value: "primary" },
@@ -30,8 +29,7 @@ export const statusOptions = [
 const levelNameMap: Record<TaskActivityLevelCode, string> = {
   primary: "初级任务",
   middle: "中级任务",
-  advanced: "高级任务",
-  custom: "自定义任务"
+  advanced: "高级任务"
 };
 
 function getLevelName(value: TaskActivityLevelCode) {
@@ -141,8 +139,8 @@ export function useTaskActivityConfig(tableRef: Ref) {
       label: "奖励",
       prop: "rewardAmount",
       minWidth: 130,
-      formatter: ({ rewardAmount }) =>
-        withBackstageDisplayCurrency(formatMoney(rewardAmount))
+      formatter: ({ rewardAmount, rewardCurrency }) =>
+        `${formatMoney(rewardAmount)} ${rewardCurrency || "USD"}`
     },
     {
       label: "奖励账户",

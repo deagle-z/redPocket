@@ -12,7 +12,6 @@ import {
 } from "@/api/withdrawOrderBr";
 import { getSysPayChannelList, type SysPayChannel } from "@/api/sysPayChannel";
 import { getToken } from "@/utils/auth";
-import { withBackstageDisplayCurrency } from "@/utils/currency";
 import { type Ref, computed, reactive, ref, onMounted, toRaw } from "vue";
 import {
   ElAlert,
@@ -60,8 +59,11 @@ function formatMoney(value: number | string | null | undefined) {
     : "0";
 }
 
-function formatMoneyWithCurrency(value: number | string | null | undefined) {
-  return withBackstageDisplayCurrency(formatMoney(value));
+function formatMoneyWithCurrency(
+  value: number | string | null | undefined,
+  currency?: string | null
+) {
+  return `${formatMoney(value)} ${currency || ""}`.trim();
 }
 
 function formatDateTime(value?: string | null) {
@@ -227,7 +229,8 @@ export function useWithdrawOrderBr(tableRef: Ref) {
       label: "净打款",
       prop: "netAmount",
       minWidth: 120,
-      formatter: ({ netAmount }) => formatMoneyWithCurrency(netAmount)
+      formatter: ({ netAmount, currency }) =>
+        formatMoneyWithCurrency(netAmount, currency)
     },
     {
       label: "渠道",
@@ -347,7 +350,11 @@ export function useWithdrawOrderBr(tableRef: Ref) {
         // ignore invalid historical extra data
       }
     }
-    return row.currency ? "US" : "";
+    const currencyCountryMap: Record<string, string> = {
+      BRL: "BR",
+      MXN: "MX"
+    };
+    return currencyCountryMap[String(row.currency || "").toUpperCase()] || "";
   }
 
   async function loadWithdrawPayChannels(countryCode: string) {

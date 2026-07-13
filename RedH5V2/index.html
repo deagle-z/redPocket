@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content"
+    />
+    <meta name="theme-color" content="#060608" />
+    <script>
+      (function () {
+        try {
+          var theme = localStorage.getItem('ppmx_theme')
+          if (theme !== 'light' && theme !== 'dark') theme = 'dark'
+
+          document.documentElement.dataset.theme = theme
+          document.documentElement.style.colorScheme = theme
+
+          var meta = document.querySelector('meta[name="theme-color"]')
+          if (meta) meta.setAttribute('content', theme === 'light' ? '#ffffff' : '#060608')
+        } catch (error) {
+          document.documentElement.dataset.theme = 'dark'
+          document.documentElement.style.colorScheme = 'dark'
+        }
+      })()
+    </script>
+    <link
+      href="%BASE_URL%fonts/montserrat/montserrat.css"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="%BASE_URL%vendor/fontawesome/css/all.min.css"
+    />
+    <link rel="icon" type="image/png" href="%BASE_URL%images/ppmx/logo.png" />
+    <link rel="apple-touch-icon" href="%BASE_URL%pwa-192x192.png" />
+    <title>PP.BET</title>
+    <style>
+      #app-loading {
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        display: grid;
+        place-items: center;
+        padding: 24px;
+        color: #f5f5f7;
+        font-family:
+          "Montserrat",
+          system-ui,
+          -apple-system,
+          "Segoe UI",
+          sans-serif;
+        background:
+          radial-gradient(640px 420px at 50% 24%, rgba(200, 16, 46, 0.22), transparent 62%),
+          radial-gradient(560px 360px at 58% 38%, rgba(255, 215, 0, 0.08), transparent 64%),
+          linear-gradient(180deg, #060608 0%, #08080b 58%, #050507 100%);
+        opacity: 1;
+        transition:
+          opacity 0.38s ease,
+          visibility 0.38s ease;
+      }
+
+      #app-loading.is-leaving {
+        visibility: hidden;
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      #app-loading::before {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        content: "";
+        background:
+          linear-gradient(rgba(255, 255, 255, 0.028) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255, 255, 255, 0.028) 1px, transparent 1px);
+        background-size: 44px 44px;
+        mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.7), transparent 78%);
+      }
+
+      .app-loading__panel {
+        position: relative;
+        display: grid;
+        justify-items: center;
+        width: min(320px, 88vw);
+        padding: 34px 28px 30px;
+        background: transparent;
+      }
+
+      .app-loading__mark-wrap {
+        position: relative;
+        display: grid;
+        place-items: center;
+        width: 112px;
+        height: 112px;
+        margin-bottom: 18px;
+      }
+
+      .app-loading__mark-wrap::before {
+        position: absolute;
+        inset: 0;
+        content: "";
+        border-radius: 28px;
+        background: conic-gradient(from 0deg, rgba(255, 215, 0, 0), #ffd700, #c8102e, rgba(255, 215, 0, 0));
+        filter: drop-shadow(0 0 24px rgba(255, 215, 0, 0.28));
+        animation: app-loading-spin 1.25s linear infinite;
+      }
+
+      .app-loading__mark {
+        position: relative;
+        z-index: 1;
+        display: grid;
+        place-items: center;
+        width: 86px;
+        height: 86px;
+        overflow: hidden;
+        background: transparent;
+        border-radius: 24px;
+        box-shadow:
+          inset 0 2px 0 rgba(255, 255, 255, 0.45),
+          0 16px 38px rgba(200, 16, 46, 0.42);
+      }
+
+      .app-loading__mark img {
+        display: block;
+        width: 100%;
+        height: 100%;
+      }
+
+      .app-loading__mark::after {
+        position: absolute;
+        inset: -30% auto -30% -60%;
+        width: 52%;
+        content: "";
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.38), transparent);
+        transform: rotate(18deg);
+        animation: app-loading-shine 1.75s ease-in-out infinite;
+      }
+
+      .app-loading__brand {
+        position: relative;
+        z-index: 1;
+        margin: 0;
+        font-size: 28px;
+        font-weight: 900;
+        line-height: 1;
+        letter-spacing: 0;
+      }
+
+      .app-loading__brand span {
+        color: #ffd700;
+      }
+
+      .app-loading__tagline {
+        position: relative;
+        z-index: 1;
+        margin: 8px 0 22px;
+        font-size: 8px;
+        font-weight: 800;
+        color: #f0bc3d;
+        letter-spacing: 2.6px;
+      }
+
+      .app-loading__bar {
+        position: relative;
+        z-index: 1;
+        width: 168px;
+        height: 4px;
+        overflow: hidden;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 999px;
+      }
+
+      .app-loading__bar::before {
+        position: absolute;
+        inset: 0;
+        width: 48%;
+        content: "";
+        background: linear-gradient(90deg, #c8102e, #ffd700);
+        border-radius: inherit;
+        box-shadow: 0 0 18px rgba(255, 215, 0, 0.52);
+        animation: app-loading-bar 1.15s ease-in-out infinite;
+      }
+
+      .app-loading__text {
+        position: relative;
+        z-index: 1;
+        margin-top: 14px;
+        font-size: 11px;
+        font-weight: 800;
+        color: rgba(245, 245, 247, 0.72);
+        letter-spacing: 2px;
+        text-transform: uppercase;
+      }
+
+      html[data-theme="light"] #app-loading {
+        color: #17171b;
+        background:
+          radial-gradient(640px 420px at 50% 24%, rgba(200, 16, 46, 0.13), transparent 62%),
+          radial-gradient(560px 360px at 58% 38%, rgba(255, 215, 0, 0.24), transparent 64%),
+          linear-gradient(180deg, #fffaf1 0%, #f6f4ef 58%, #efe9df 100%);
+      }
+
+      html[data-theme="light"] #app-loading::before {
+        background:
+          linear-gradient(rgba(48, 33, 24, 0.045) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(48, 33, 24, 0.045) 1px, transparent 1px);
+      }
+
+      html[data-theme="light"] .app-loading__tagline {
+        color: #a06d00;
+      }
+
+      html[data-theme="light"] .app-loading__bar {
+        background: rgba(26, 26, 32, 0.1);
+      }
+
+      html[data-theme="light"] .app-loading__text {
+        color: rgba(23, 23, 27, 0.62);
+      }
+
+      @keyframes app-loading-spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      @keyframes app-loading-shine {
+        0%,
+        40% {
+          transform: translateX(0) rotate(18deg);
+        }
+
+        100% {
+          transform: translateX(310%) rotate(18deg);
+        }
+      }
+
+      @keyframes app-loading-bar {
+        0% {
+          transform: translateX(-105%);
+        }
+
+        55%,
+        100% {
+          transform: translateX(230%);
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .app-loading__mark-wrap::before,
+        .app-loading__mark::after,
+        .app-loading__bar::before {
+          animation: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app-loading" role="status" aria-live="polite" aria-label="Loading PP.BET">
+      <div class="app-loading__panel">
+        <div class="app-loading__mark-wrap" aria-hidden="true">
+          <div class="app-loading__mark">
+            <img src="%BASE_URL%images/ppmx/logo.png" alt="" />
+          </div>
+        </div>
+        <p class="app-loading__brand">PP<span>.</span>BET</p>
+        <p class="app-loading__tagline">CASINO · SPORTS · USA</p>
+        <div class="app-loading__bar" aria-hidden="true"></div>
+        <p class="app-loading__text">Loading</p>
+      </div>
+    </div>
+    <div id="app"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

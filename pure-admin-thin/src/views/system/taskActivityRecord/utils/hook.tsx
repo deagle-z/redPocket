@@ -9,7 +9,6 @@ import {
 } from "@/api/taskActivityRecord";
 import { levelOptions } from "@/views/system/taskActivityConfig/utils/hook";
 import type { TaskActivityLevelCode } from "@/api/taskActivityConfig";
-import { withBackstageDisplayCurrency } from "@/utils/currency";
 
 export const recordStatusOptions = [
   { label: "进行中", value: 0 },
@@ -33,8 +32,7 @@ const recordStatusTypeMap: Record<
 const levelNameMap: Record<TaskActivityLevelCode, string> = {
   primary: "初级任务",
   middle: "中级任务",
-  advanced: "高级任务",
-  custom: "自定义任务"
+  advanced: "高级任务"
 };
 
 function getStatusLabel(status: number) {
@@ -142,8 +140,8 @@ export function useTaskActivityRecord(tableRef: Ref) {
       label: "奖励",
       prop: "rewardAmount",
       minWidth: 130,
-      formatter: ({ rewardAmount }) =>
-        withBackstageDisplayCurrency(formatMoney(rewardAmount))
+      formatter: ({ rewardAmount, rewardCurrency }) =>
+        `${formatMoney(rewardAmount)} ${rewardCurrency || "USD"}`
     },
     {
       label: "状态",

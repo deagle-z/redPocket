@@ -1,0 +1,47 @@
+{
+  "name": "ppmx-h5",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "packageManager": "pnpm@11.5.0",
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc -b && vite build",
+    "build:staging": "vue-tsc -b && vite build --mode staging",
+    "build:production": "vue-tsc -b && vite build --mode production",
+    "check:dist": "node scripts/check-dist.mjs",
+    "test:e2e": "playwright test",
+    "test:unit": "vitest run",
+    "preview": "vite preview --host 0.0.0.0",
+    "typecheck": "vue-tsc -b --noEmit"
+  },
+  "dependencies": {
+    "@fingerprintjs/fingerprintjs": "^5.2.0",
+    "@vueuse/core": "latest",
+    "axios": "latest",
+    "pinia": "latest",
+    "qrcode": "^1.5.4",
+    "vant": "latest",
+    "vue": "latest",
+    "vue-i18n": "latest",
+    "vue-router": "latest",
+    "workbox-window": "^7.4.1"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.61.1",
+    "@tailwindcss/vite": "latest",
+    "@tsconfig/node22": "latest",
+    "@types/node": "latest",
+    "@vant/auto-import-resolver": "latest",
+    "@vitejs/plugin-vue": "latest",
+    "@vue/tsconfig": "latest",
+    "tailwindcss": "latest",
+    "typescript": "6.0.3",
+    "unplugin-auto-import": "latest",
+    "unplugin-vue-components": "latest",
+    "vite": "latest",
+    "vite-plugin-pwa": "latest",
+    "vitest": "^4.1.7",
+    "vue-tsc": "latest"
+  }
+}

@@ -7,7 +7,6 @@ import {
   getTgUserRebateList,
   type TgUserRebateRecord
 } from "@/api/tgUserRebate";
-import { withBackstageDisplayCurrency } from "@/utils/currency";
 
 const sourceTypeOptions = [
   { label: "下注流水", value: 1 },
@@ -95,8 +94,8 @@ export function useRebateRecord(tableRef: Ref) {
       label: "来源金额",
       prop: "sourceAmount",
       minWidth: 120,
-      formatter: ({ sourceAmount }) =>
-        withBackstageDisplayCurrency(formatMoney(sourceAmount))
+      formatter: ({ sourceAmount, currency }) =>
+        `${formatMoney(sourceAmount)} ${currency}`
     },
     {
       label: "反水比例(%)",
@@ -108,8 +107,8 @@ export function useRebateRecord(tableRef: Ref) {
       label: "反水金额",
       prop: "rebateAmount",
       minWidth: 120,
-      formatter: ({ rebateAmount }) =>
-        withBackstageDisplayCurrency(formatMoney(rebateAmount))
+      formatter: ({ rebateAmount, currency }) =>
+        `${formatMoney(rebateAmount)} ${currency}`
     },
     {
       label: "状态",

@@ -6,7 +6,6 @@ import { useRenderIcon } from "@/components/ReIcon/src/hooks";
 import { deviceDetection } from "@pureadmin/utils";
 import { ElMessageBox } from "element-plus";
 import { message } from "@/utils/message";
-import { BACKSTAGE_DISPLAY_CURRENCY } from "@/utils/currency";
 import {
   getAdminCountryRechargeInfo,
   getSysCountryList,
@@ -156,9 +155,6 @@ const rechargeForm = reactive({
   payMethod: "",
   merchantOrderNo: ""
 });
-const rechargeDisplayCurrency = computed(() =>
-  rechargeForm.currency ? BACKSTAGE_DISPLAY_CURRENCY : ""
-);
 const subStatsPagination = reactive({
   currentPage: 1,
   pageSize: 10,
@@ -412,12 +408,12 @@ function selectDefaultRechargeCountry(row: TgUser) {
   const preferredCountry = preferred
     ? rechargeCountries.value.find(item => item.countryCode === preferred)
     : undefined;
-  const usCountry = rechargeCountries.value.find(
-    item => item.countryCode === "US"
+  const mxCountry = rechargeCountries.value.find(
+    item => item.countryCode === "MX"
   );
   return (
     preferredCountry?.countryCode ||
-    usCountry?.countryCode ||
+    mxCountry?.countryCode ||
     rechargeCountries.value[0]?.countryCode ||
     ""
   );
@@ -1166,7 +1162,7 @@ function handleSubStatsNextPage() {
           </el-select>
         </el-form-item>
         <el-form-item label="币种">
-          <el-input :model-value="rechargeDisplayCurrency" readonly />
+          <el-input v-model="rechargeForm.currency" readonly />
         </el-form-item>
         <el-form-item label="充值通道" required>
           <el-select
