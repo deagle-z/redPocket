@@ -6,13 +6,13 @@ import (
 )
 
 func TestCanLaunchAppGameAfterMinimumRecharge(t *testing.T) {
-	if !canLaunchAppGame(50, false) {
+	if !canLaunchAppGame(49.99, false) {
 		t.Fatalf("canLaunchAppGame() = false, want true")
 	}
 }
 
 func TestCanLaunchAppGameRejectsRechargeBelowMinimumWithoutRebateTransfer(t *testing.T) {
-	if canLaunchAppGame(49.99, false) {
+	if canLaunchAppGame(49.98, false) {
 		t.Fatalf("canLaunchAppGame() = true, want false")
 	}
 }

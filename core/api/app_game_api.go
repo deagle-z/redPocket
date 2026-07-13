@@ -14,7 +14,7 @@ import (
 )
 
 const hgGameAssetDomain = "https://hgapi.com"
-const appGameLaunchMinimumRechargeAmount = 50.0
+const appGameLaunchMinimumRechargeAmount = 49.99
 
 // GetAppGames godoc
 //
