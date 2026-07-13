@@ -13,7 +13,7 @@ import (
 
 const (
 	nginxConfDir = "/etc/nginx/conf.d"
-	h5RootDir    = "/home/service/red/redtest"
+	h5RootDir    = "/home/service/red/usChat"
 )
 
 var bindDomainPattern = regexp.MustCompile(`^(\*\.)?([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$`)
