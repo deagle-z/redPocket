@@ -1,0 +1,147 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+> This file covers the `RedH5V2` frontend only. The parent repository has a backend-focused `CLAUDE.md` for the Go backend. Do not apply Go backend instructions here.
+
+## Commands
+
+```bash
+# Install dependencies
+pnpm install
+
+# Start dev server (port 5173, proxies /api to http://127.0.0.1:8080)
+pnpm dev
+
+# Type check
+pnpm typecheck
+
+# Unit tests
+pnpm test:unit
+
+# Run a single test file
+pnpm test:unit -- src/utils/money.test.ts
+
+# Production build
+pnpm build
+
+# Staging / production mode
+pnpm build:staging
+pnpm build:production
+
+# Validate dist artifacts after build
+pnpm check:dist
+```
+
+## Architecture
+
+### Tech Stack
+Vue 3 `<script setup>` + TypeScript + Vite + pnpm. Vant UI components, Tailwind CSS v4 (via `@tailwindcss/vite`), Pinia, `vue-i18n`, `vite-plugin-pwa`, Axios, Vitest.
+
+### Routing
+File-based routing via `vue-router/vite` from `src/pages/`. Pages under `src/pages/ppmx-home/**` and `src/pages/**/components/**` are excluded from route generation.
+
+Use `definePage()` in each page component to set route metadata:
+```ts
+definePage({
+  name: 'home',
+  meta: { title: '首页', requiresAuth: false, keepAlive: true, tabbar: true },
+})
+```
+
+Route meta fields (declared in `src/types/router-meta.d.ts`):
+- `requiresAuth` — guarded in `src/router/index.ts`; unauthenticated users are sent to `/profile?auth=register`
+- `keepAlive` — component is included in the root `KeepAlive`; keep names stable with `keepAliveNames` in `App.vue`
+- `tabbar` — shows `AppTabbar` on mobile only
+- `shell` — `'default'` (AppShell) | `'ppmx'` (PpmxHomeShell) | `'none'` (bare router-view); defaults to `'default'`
+
+### Shells
+`App.vue` dispatches each route to one of three shells based on `route.meta.shell`:
+- `AppShell` — standard mobile/PC layout with PC topbar and optional mobile tabbar
+- `PpmxHomeShell` — landing-page-style shell for the PP.MX home experience
+- bare `<template>` — no layout wrapper
+
+### State and Auth
+Pinia setup stores live in `src/stores/`. Both are auto-imported everywhere.
+
+- `useAppStore` — locale and theme (persisted to localStorage)
+- `useUserStore` — JWT token, user profile, login/register/logout actions
+
+Auth token is stored via `src/utils/authToken.ts`. HTTP injects `Authorization: Bearer <token>` by default. On 401, `src/utils/http.ts` fires the `AUTH_EXPIRED_EVENT`, which the user store handles by clearing the session, then redirects to `#/profile?auth=login`.
+
+### HTTP Layer (`src/utils/http.ts`)
+Single Axios instance with interceptors. Do not create a second instance. Use the typed helpers:
+```ts
+import { get, post, put, patch, del, upload, download, HttpError } from '@/utils/http'
+```
+
+Default request behavior:
+- Unwraps backend envelope `{ code, data, msg }` and returns `data`
+- Shows Vant error toast on failure (`meta.showError = false` to suppress)
+- Retries on network/5xx errors when `meta.retry > 0`
+- Deduplicates concurrent identical requests when `meta.dedupe = true`
+
+API modules belong in `src/api/`. Do not inline raw Axios calls in page or store files.
+
+**API failure policy:** failed API views must render `AppState` with a retry path. Do not fall back to static/mock data to mask production API failures.
+
+### Layout and Responsive
+`useResponsiveLayout()` uses `matchMedia('(min-width: 1024px)')`:
+- `< 1024px` → mobile H5 layout
+- `≥ 1024px` → PC layout
+
+`AppShell` renders the PC topbar and places `AppTabbar` for mobile. When testing visual changes, verify both a mobile viewport (~390×844) and a desktop viewport (~1440×900).
+
+### Styles
+Two intentionally-separated stylesheets:
+- `src/assets/styles/theme.css` — visual tokens: dark obsidian background, red/gold brand palette, glass surfaces, Vant CSS overrides, `.glass-panel`, `.soft-badge`, `.eyebrow` utilities
+- `src/assets/styles/main.css` — Tailwind import, global box-sizing, app-shell layout, page layout, responsive breakpoints
+
+Put color/visual treatment in `theme.css`; put dimensions, layout, and media queries in `main.css`. Default visual direction: dark, premium, red/gold glassmorphism, `8px` radius.
+
+### i18n
+Three locales under `src/locales/`: `es-MX` (primary), `en-US`, `zh-CN`. Strings go in all three files. Use `useI18n()` (auto-imported) in components. The i18n instance is also available directly via `import { i18n } from '@/plugins/i18n'` for use outside Vue components.
+
+### Auto Imports
+`unplugin-auto-import` auto-imports Vue APIs, Vue Router APIs, Pinia APIs, VueUse APIs, `useI18n`, all composables under `src/composables/`, and all stores under `src/stores/` and `src/stores/modules/`. Vant components are auto-resolved by `unplugin-vue-components`. Do not import these manually.
+
+Generated declarations (`src/types/auto-imports.d.ts`, `src/types/components.d.ts`, `src/types/typed-router.d.ts`) are regenerated by build/typecheck. Do not hand-edit them.
+
+### Key Utilities (prefer these over new ad hoc implementations)
+- Money: `src/utils/money.ts` — `formatMoney`, `toCent`, `toDisplayCents` (backend amounts are in cents)
+- TTL storage: `src/utils/storage.ts` + `src/composables/useTtlLocalStorage.ts`
+- Page state machine: `src/composables/usePageState.ts` — use for loading/empty/error lifecycle in every page
+- Submit protection: `src/composables/useSubmitLock.ts`
+- Order polling: `src/composables/useOrderPolling.ts`
+- Runtime config / force update: `src/utils/runtime.ts` — reads from `VITE_FORCE_UPDATE_URL`
+- Event tracking: `src/utils/tracker.ts`
+- PWA: `src/pwa.ts`
+
+### WebSocket
+`src/plugins/websocket.ts` provides a singleton WS client. `App.vue` manages its lifecycle (connect on login, disconnect on logout). Typed event listeners: `wsClient.on('event_name', handler)`. Recharge success and prize pool balance updates arrive over WS.
+
+### PWA
+Configured in `vite.config.ts` via `VitePWA`. API routes (`/^\/api\//`) are excluded from navigation fallback. Offline fallback is `public/offline.html`. After production builds always run `pnpm check:dist`.
+
+## Environment Variables
+
+| Variable | Purpose |
+|---|---|
+| `VITE_API_BASE_URL` | Axios `baseURL` |
+| `VITE_API_PROXY_TARGET` | Dev server proxy target (default `http://127.0.0.1:8080`) |
+| `VITE_CDN_BASE_URL` / `VITE_APP_BASE` | Build base path |
+| `VITE_TRACKING_ENDPOINT` | Analytics endpoint |
+| `VITE_RELEASE_VERSION` | Version string for force-update comparison |
+| `VITE_FORCE_UPDATE_URL` | URL polled for `AppRuntimeConfig` JSON |
+| `VITE_WS_URL` | WebSocket endpoint |
+| `VITE_FACEBOOK_PIXEL_ID` | Facebook Pixel ID |
+
+## Coding Conventions
+
+- Composition API and `<script setup>` only.
+- Shared cross-module TypeScript types belong in `src/types/business.ts`.
+- Do not duplicate loading/error/empty logic — use `usePageState()`.
+- Do not duplicate submit protection — use `useSubmitLock()`.
+- Do not hand-write polling loops — use `useOrderPolling()`.
+- Money and balances are stored as integer cents on the backend; use `toDisplayCents` / `formatMoney` for display.
+- Only touch files inside `RedH5V2/` unless the user explicitly asks otherwise.
