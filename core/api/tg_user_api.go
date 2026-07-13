@@ -1033,7 +1033,6 @@ func GetCurrentTgInviteStats(ctx *gin.Context) {
 		AvailableCommission:    utils.Truncate2(user.RebateAmount),
 		TodayCommission:        utils.Truncate2(todayCommission),
 		RebateWithdrawDisabled: user.RebateWithdrawDisabled,
-		RechargeRebateRates:    strings.TrimSpace(user.RechargeRebateRates),
 	})
 }
 
@@ -1105,7 +1104,6 @@ func GetCurrentTgInviteRuleConfig(ctx *gin.Context) {
 	}
 
 	firstLevelRebate := parseConfigFloat("first_level_rebate", "0")
-	rechargeRebateRates := repository.GetInviteRechargeRebateRates(db)
 	rebateWithdrawFeeFixed, rebateWithdrawFeePercent := repository.RebateWithdrawFee(db)
 	utils.SuccessObjBack(ctx, pojo.TgInviteRuleConfigBack{
 		LuckySendCommission:       parseConfigFloat("lucky_send_commission", "5"),
@@ -1118,7 +1116,6 @@ func GetCurrentTgInviteRuleConfig(ctx *gin.Context) {
 		InviteValidMinBet:         repository.InviteValidMinBet,
 		SendMinAmount:             sendMinAmount,
 		SendMaxAmount:             sendMaxAmount,
-		InviteRechargeRebateRates: rechargeRebateRates[:],
 		RebateWithdrawFeeFixed:    rebateWithdrawFeeFixed,
 		RebateWithdrawFeePercent:  rebateWithdrawFeePercent,
 		BindDomain:                bindDomain,

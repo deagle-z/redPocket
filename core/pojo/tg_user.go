@@ -361,7 +361,6 @@ type TgInviteStatsBack struct {
 	AvailableCommission    float64 `json:"availableCommission"`
 	TodayCommission        float64 `json:"todayCommission"`
 	RebateWithdrawDisabled int8    `json:"rebateWithdrawDisabled"`
-	RechargeRebateRates    string  `json:"rechargeRebateRates"`
 }
 
 type TgInviteRuleConfigBack struct {
@@ -375,8 +374,6 @@ type TgInviteRuleConfigBack struct {
 	InviteValidMinBet         float64 `json:"inviteValidMinBet"`
 	SendMinAmount             float64 `json:"sendMinAmount"`
 	SendMaxAmount             float64 `json:"sendMaxAmount"`
-	// InviteRechargeRebateRates 充值返佣比例档位(%)：[第1次, 第2次, 第3次及以上]，前后端统一取此值。
-	InviteRechargeRebateRates []float64 `json:"inviteRechargeRebateRates"`
 	// RebateWithdrawFeeFixed 佣金提现固定手续费（如 4.25）。
 	RebateWithdrawFeeFixed float64 `json:"rebateWithdrawFeeFixed"`
 	// RebateWithdrawFeePercent 佣金提现百分比手续费(%)（如 1.5）。手续费=固定+金额×百分比。

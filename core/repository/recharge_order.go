@@ -824,9 +824,6 @@ func ProcessRechargeOrderSuccess(db *gorm.DB, orderNo string, providerTradeNo st
 		}
 		log.Printf("[recharge] pay callback user credited orderNo=%s userID=%d tablePrefix=%q walletType=%s rechargeCredit=%.2f activityBaseGift=%.2f startBalance=%.2f lotteryCount=%d",
 			order.OrderNo, user.ID, tablePrefix, walletType, creditAmount, bonusAmount, startWalletBalance, calculateRechargeFreeLotteryCount(creditBaseAmount))
-		if err := ApplyInviteRechargeRebate(tx, order, now); err != nil {
-			return err
-		}
 		if _, err := EnsureInviteValidUser(tx, user.ID, now); err != nil {
 			return err
 		}
@@ -1122,10 +1119,6 @@ func rechargeOrderDevCallback(db *gorm.DB, orderNo string, tablePrefix string) e
 			return err
 		}
 
-		// 邀请充值返佣（手动回调同样发放；此时 is_dev 尚未置位，且发放/计次均不排除手动单）
-		if err := ApplyInviteRechargeRebate(tx, order, now); err != nil {
-			return err
-		}
 		if _, err := EnsureInviteValidUser(tx, user.ID, now); err != nil {
 			return err
 		}
