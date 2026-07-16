@@ -43,8 +43,8 @@ const ppmxLanguageOptions: Array<{
   triggerLabel: string
   country: string
 }> = [
-  { locale: 'es', region: 'US', label: 'Español', triggerLabel: 'Español', country: 'United States' },
-  { locale: 'en', region: 'US', label: 'English', triggerLabel: 'English', country: 'United States' },
+  { locale: 'es', region: 'MX', label: 'Español', triggerLabel: 'Español', country: 'México' },
+  { locale: 'en', region: 'MX', label: 'English', triggerLabel: 'English', country: 'Mexico' },
   { locale: 'zh', region: 'CN', label: '简体中文', triggerLabel: '中文', country: 'China' },
 ]
 const headerBalance = computed(() => formatMoney(toDisplayCents(userStore.userInfo?.balance), {

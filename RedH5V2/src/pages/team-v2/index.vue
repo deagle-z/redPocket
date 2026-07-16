@@ -12,6 +12,7 @@ import {
   rewardTaskActivity,
   transferRebateToBalance,
 } from '@/api/user'
+import { APP_CURRENCY } from '@/config/market'
 import { HttpError } from '@/utils/http'
 import { formatMoney, toCent } from '@/utils/money'
 import PpmxButton from '@/components/PpmxButton.vue'
@@ -210,7 +211,7 @@ function formatTaskConfigAmount(value: number | string | undefined | null) {
 function taskSubtitleText(task: TaskActivityItem | null | undefined) {
   const count = Math.max(0, Math.trunc(numberValue(task?.requiredInviteCount)))
   const amount = formatTaskConfigAmount(task?.requiredRechargeAmount)
-  const currency = String(task?.rewardCurrency || 'USD').trim() || 'USD'
+  const currency = String(task?.rewardCurrency || APP_CURRENCY).trim() || APP_CURRENCY
 
   return t('ppmx.team.taskInviteRewardRequirement', {
     count: formatCount(count),
@@ -661,7 +662,7 @@ onBeforeUnmount(() => {
         />
 
         <template v-else-if="teamLoaded">
-          <section id="teamV2TaskCard" class="ppmx-team-v2-task reveal in">
+          <section>
             <div class="ppmx-team-v2-task__head">
               <h2 class="ppmx-display">
                 <i class="fa-solid fa-bullseye" />
@@ -749,7 +750,7 @@ onBeforeUnmount(() => {
               <div class="ppmx-team-v2-commission__main">
                 <div>
                   <span>{{ t('ppmx.team.commissionAvailable') }}</span>
-                  <strong>{{ formatAmount(stats?.availableCommission) }} <em>USD</em></strong>
+                  <strong>{{ formatAmount(stats?.availableCommission) }} <em>{{ APP_CURRENCY }}</em></strong>
                 </div>
                 <div class="ppmx-team-v2-commission__actions">
                   <button type="button" @click="openTransferModal">
@@ -913,7 +914,7 @@ onBeforeUnmount(() => {
         <p class="ppmx-team-transfer-sub">{{ t('ppmx.team.commissionTransferSub') }}</p>
         <label class="ppmx-withdraw-field">
           <span>{{ t('ppmx.team.commissionTransferAvailable') }}</span>
-          <strong>{{ formatAmount(stats?.availableCommission) }} <em>USD</em></strong>
+          <strong>{{ formatAmount(stats?.availableCommission) }} <em>{{ APP_CURRENCY }}</em></strong>
         </label>
         <label class="ppmx-withdraw-field">
           <span>{{ t('ppmx.team.commissionTransferAmountLabel') }}</span>

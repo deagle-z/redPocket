@@ -314,11 +314,11 @@ function formatCheckinAmount(value?: number, showCurrency = false) {
     maximumFractionDigits: 2,
   })
 
-  return showCurrency ? `+$${formatted} USD` : `+$${formatted}`
+  return showCurrency ? `+$${formatted} MXN` : `+$${formatted}`
 }
 
 function formatCheckinMysteryAmount(showCurrency = false) {
-  return showCurrency ? '+$? USD' : '+$?'
+  return showCurrency ? '+$? MXN' : '+$?'
 }
 
 function formatCheckinTileAmount(value: number, index: number) {
@@ -723,11 +723,11 @@ onBeforeUnmount(() => {
 
         <div class="ppmx-footer-bottom">
           <div class="ppmx-footer-bottom__inner">
-            <div>© 2026 PP.BET · <span>{{ t('ppmx.home.footerRights') }}</span></div>
+            <div>© 2026 PP.MX · <span>{{ t('ppmx.home.footerRights') }}</span></div>
             <div class="ppmx-footer-badges">
-              <span><strong>+21</strong></span>
+              <span><strong>+18</strong></span>
               <span>Responsible Gaming</span>
-              <span>1-800-GAMBLER</span>
+              <span>PP.MX SUPPORT</span>
             </div>
           </div>
         </div>

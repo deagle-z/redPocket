@@ -1,13 +1,26 @@
 <script setup lang="ts">
 import '@/assets/styles/pp-mx-home.css'
-import type { WithdrawAccountItem } from '@/api/user'
+import type {
+  AppCountryItem,
+  RechargeField,
+  RechargeFieldOption,
+  WithdrawAccountItem,
+} from '@/api/user'
 import {
   addWithdrawAccount,
   deleteWithdrawAccount,
+  getAppCountries,
+  getCountryWithdrawFields,
   getWithdrawAccounts,
   setDefaultWithdrawAccount,
   updateWithdrawAccount,
 } from '@/api/user'
+import {
+  APP_COUNTRY_CODE,
+  APP_COUNTRY_NAME,
+  APP_COUNTRY_NAME_LOCAL,
+  APP_CURRENCY,
+} from '@/config/market'
 import type { PageStateStatus } from '@/types/business'
 import { showConfirmDialog, showToast } from 'vant'
 import PpmxSkeleton from '@/components/PpmxSkeleton.vue'
@@ -25,31 +38,24 @@ definePage({
   },
 })
 
-const US_COUNTRY_CODE = 'US'
-const US_COUNTRY_NAME = 'United States'
-const BANK_CODE_VALUES = ['cashapp', 'paypal'] as const
-type BankCode = typeof BANK_CODE_VALUES[number]
-const BANK_CODE_OPTIONS: Array<{ label: string, value: BankCode }> = [
-  { label: 'Cash App', value: 'cashapp' },
-  { label: 'PayPal', value: 'paypal' },
-]
-type BankFieldKey = 'bankCode' | 'bankNumber' | 'bankAccountName'
-
 const { t } = useI18n()
 const pageStatus = ref<PageStateStatus>('loading')
 const pageError = ref('')
 const accountsLoading = ref(false)
+const countries = ref<AppCountryItem[]>([])
+const selectedCountry = ref<AppCountryItem | null>(null)
+const withdrawFields = ref<RechargeField[]>([])
 const allAccounts = ref<WithdrawAccountItem[]>([])
 const showForm = ref(false)
 const editingId = ref<number | null>(null)
-const fieldValues = ref<Record<BankFieldKey, string>>({
-  bankCode: '',
-  bankNumber: '',
-  bankAccountName: '',
-})
+const fieldValues = ref<Record<string, string>>({})
+
+const activeCountryCode = computed(() => selectedCountry.value?.countryCode || APP_COUNTRY_CODE)
+const activeCountryName = computed(() => selectedCountry.value?.countryNameEn || APP_COUNTRY_NAME)
+const activeCurrencyCode = computed(() => selectedCountry.value?.currencyCode || APP_CURRENCY)
 
 const countryAccounts = computed(() =>
-  allAccounts.value.filter(account => account.countryCode === US_COUNTRY_CODE),
+  allAccounts.value.filter(account => account.countryCode === activeCountryCode.value),
 )
 
 const formTitle = computed(() =>
@@ -64,11 +70,6 @@ const pageStateMessage = computed(() => {
 
 const submitLock = useSubmitLock(submitBankAccount, { minLockMs: 600 })
 const isSubmitting = computed(() => submitLock.locked.value)
-const selectedBankCode = computed(() => normalizeBankCode(fieldValues.value.bankCode))
-const bankNumberPlaceholder = computed(() =>
-  selectedBankCode.value === 'paypal' ? t('bank.paypalPlaceholder') : t('bank.cashappPlaceholder'),
-)
-const bankNumberInputMode = computed(() => selectedBankCode.value === 'paypal' ? 'email' : 'text')
 
 function parseAccountData(raw: string): Record<string, string> {
   try {
@@ -83,25 +84,50 @@ function parseAccountData(raw: string): Record<string, string> {
   }
 }
 
+function normalizeOption(option: unknown): RechargeFieldOption | null {
+  if (!option || typeof option !== 'object') return null
+  const record = option as Record<string, unknown>
+  const label = String(record.label ?? record.name ?? record.value ?? '').trim()
+  const value = String(record.value ?? record.code ?? record.label ?? '').trim()
+
+  return label && value ? { label, value } : null
+}
+
+function fieldOptions(field: RechargeField) {
+  if (!field.optionsJson) return []
+
+  try {
+    const parsed = JSON.parse(field.optionsJson) as unknown
+    if (!Array.isArray(parsed)) return []
+
+    return parsed.map(normalizeOption).filter(Boolean) as RechargeFieldOption[]
+  } catch {
+    return []
+  }
+}
+
+function getFieldInputType(field: RechargeField) {
+  return field.fieldType === 'number' || field.dataType === 'number' ? 'number' : 'text'
+}
+
 function getAccountDisplayLines(account: WithdrawAccountItem) {
   const data = parseAccountData(account.accountData)
-  const bankCode = normalizeBankCode(readAccountValue(data, 'bankCode', 'bank_code', 'bank'))
-  const bankNumber = readAccountValue(data, 'bankNumber', 'bank_number', 'accNo', 'accountNumber', 'pixKey')
-  const bankAccountName = readAccountValue(data, 'bankAccountName', 'bank_account_name', 'accName', 'accountName', 'receiverName', 'name', 'fullName')
 
-  return [
-    { label: t('bank.bankCode'), value: bankCodeLabel(bankCode) || bankCode },
-    { label: t('bank.bankNumber'), value: bankNumber },
-    { label: t('bank.bankAccountName'), value: bankAccountName },
-  ].filter(line => line.value)
+  return withdrawFields.value
+    .map(field => ({
+      label: field.fieldLabel,
+      value: String(data[field.fieldKey] ?? '').trim(),
+    }))
+    .filter(line => line.value)
 }
 
 function initFieldValues(preset: Record<string, string> = {}) {
-  fieldValues.value = {
-    bankCode: normalizeBankCode(readAccountValue(preset, 'bankCode', 'bank_code', 'bank')),
-    bankNumber: readAccountValue(preset, 'bankNumber', 'bank_number', 'accNo', 'accountNumber', 'pixKey'),
-    bankAccountName: readAccountValue(preset, 'bankAccountName', 'bank_account_name', 'accName', 'accountName', 'receiverName', 'name', 'fullName'),
-  }
+  fieldValues.value = Object.fromEntries(
+    withdrawFields.value.map(field => [
+      field.fieldKey,
+      String(preset[field.fieldKey] ?? field.defaultValue ?? '').trim(),
+    ]),
+  )
 }
 
 async function loadAccounts() {
@@ -118,7 +144,22 @@ async function loadBankPage() {
   pageError.value = ''
 
   try {
-    await loadAccounts()
+    countries.value = await getAppCountries()
+    selectedCountry.value = countries.value.find(country => country.countryCode === APP_COUNTRY_CODE) ?? null
+
+    if (!selectedCountry.value) {
+      pageStatus.value = 'empty'
+      pageError.value = t('bank.noMarketCountry', { country: APP_COUNTRY_NAME_LOCAL })
+      return
+    }
+
+    const [fields] = await Promise.all([
+      getCountryWithdrawFields(APP_COUNTRY_CODE),
+      loadAccounts(),
+    ])
+
+    withdrawFields.value = fields ?? []
+    initFieldValues()
     pageStatus.value = 'ready'
   } catch (error) {
     pageError.value = error instanceof Error ? error.message : t('bank.loadFailed')
@@ -127,12 +168,22 @@ async function loadBankPage() {
 }
 
 function openAddForm() {
+  if (!withdrawFields.value.length) {
+    showToast(t('bank.noFields'))
+    return
+  }
+
   editingId.value = null
   initFieldValues()
   showForm.value = true
 }
 
 function openEditForm(account: WithdrawAccountItem) {
+  if (!withdrawFields.value.length) {
+    showToast(t('bank.noFields'))
+    return
+  }
+
   editingId.value = account.id
   initFieldValues(parseAccountData(account.accountData))
   showForm.value = true
@@ -144,80 +195,69 @@ function closeForm() {
   initFieldValues()
 }
 
-function readAccountValue(data: Record<string, string>, ...keys: string[]) {
-  const normalized = new Map<string, string>()
-  for (const [key, value] of Object.entries(data)) {
-    const normalizedKey = normalizeAccountKey(key)
-    if (normalizedKey && !normalized.has(normalizedKey)) {
-      normalized.set(normalizedKey, String(value ?? '').trim())
+function validateBankAccountFields() {
+  for (const field of withdrawFields.value) {
+    const value = String(fieldValues.value[field.fieldKey] ?? '').trim()
+
+    if (field.isRequired && !value) {
+      return t('bank.requiredField', { field: field.fieldLabel })
+    }
+
+    if (field.minLength && value && value.length < field.minLength) {
+      return field.errorTips || t('bank.invalidField', { field: field.fieldLabel })
+    }
+
+    if (field.maxLength && value && value.length > field.maxLength) {
+      return field.errorTips || t('bank.invalidField', { field: field.fieldLabel })
+    }
+
+    if (field.regexRule && value) {
+      try {
+        const regex = new RegExp(field.regexRule)
+        if (!regex.test(value)) {
+          return field.errorTips || t('bank.invalidField', { field: field.fieldLabel })
+        }
+      } catch {
+        return field.errorTips || t('bank.invalidField', { field: field.fieldLabel })
+      }
     }
   }
-  for (const key of keys) {
-    const value = normalized.get(normalizeAccountKey(key))
-    if (value) return value
-  }
-  return ''
-}
-
-function normalizeAccountKey(key: string) {
-  return String(key || '').toLowerCase().replace(/[^a-z0-9]/g, '')
-}
-
-function normalizeBankCode(value: string): BankCode | '' {
-  const normalized = String(value || '').trim().toLowerCase()
-  return normalized === 'cashapp' || normalized === 'paypal' ? normalized : ''
-}
-
-function bankCodeLabel(value: string) {
-  return BANK_CODE_OPTIONS.find(option => option.value === value)?.label ?? ''
-}
-
-function validateBankAccountFields() {
-  const bankCode = normalizeBankCode(fieldValues.value.bankCode)
-  const bankNumber = fieldValues.value.bankNumber.trim()
-  const bankAccountName = fieldValues.value.bankAccountName.trim()
-
-  if (!bankCode) {
-    return t('bank.invalidBankCode')
-  }
-
-  if (bankCode === 'cashapp' && !/^\$[A-Za-z][A-Za-z0-9_]{0,19}$/.test(bankNumber)) {
-    return t('bank.invalidCashapp')
-  }
-
-  if (bankCode === 'paypal' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(bankNumber)) {
-    return t('bank.invalidPaypal')
-  }
-
-  if (!/^[\p{L}][\p{L}\p{M}\s.'-]{1,79}$/u.test(bankAccountName)) {
-    return t('bank.invalidBankAccountName')
-  }
 
   return ''
+}
+
+function buildAccountData() {
+  return JSON.stringify(Object.fromEntries(
+    withdrawFields.value.map(field => [
+      field.fieldKey,
+      String(fieldValues.value[field.fieldKey] ?? '').trim(),
+    ]),
+  ))
 }
 
 async function submitBankAccount() {
+  if (!selectedCountry.value) {
+    showToast(t('bank.noMarketCountry', { country: APP_COUNTRY_NAME_LOCAL }))
+    return
+  }
+
   const message = validateBankAccountFields()
   if (message) {
     showToast(message)
     return
   }
 
-  const accountData = JSON.stringify({
-    bankCode: normalizeBankCode(fieldValues.value.bankCode),
-    bankNumber: fieldValues.value.bankNumber.trim(),
-    bankAccountName: fieldValues.value.bankAccountName.trim(),
-  })
+  const accountData = buildAccountData()
 
   if (editingId.value) {
     await updateWithdrawAccount(editingId.value, {
-      countryCode: US_COUNTRY_CODE,
+      countryCode: activeCountryCode.value,
       accountData,
     })
     showToast(t('bank.toastUpdateSuccess'))
   } else {
     await addWithdrawAccount({
-      countryCode: US_COUNTRY_CODE,
+      countryCode: activeCountryCode.value,
       accountData,
     })
     showToast(t('bank.toastBindSuccess'))
@@ -287,10 +327,10 @@ onMounted(() => {
         <template v-else>
           <section class="ppmx-bank-country reveal">
             <span>
-              <strong>{{ US_COUNTRY_CODE }}</strong>
-              {{ US_COUNTRY_NAME }}
+              <strong>{{ activeCountryCode }}</strong>
+              {{ activeCountryName }}
             </span>
-            <em>USD</em>
+            <em>{{ activeCurrencyCode }}</em>
           </section>
 
           <section id="bankList" class="ppmx-bank-list" :aria-label="t('bank.boundAccounts')">
@@ -345,7 +385,7 @@ onMounted(() => {
                       </p>
                     </div>
                   </div>
-                  <span>{{ account.isDefault === 1 ? t('bank.defaultBadge') : US_COUNTRY_CODE }}</span>
+                  <span>{{ account.isDefault === 1 ? t('bank.defaultBadge') : activeCountryCode }}</span>
                 </div>
                 <footer>
                   <button type="button" @click="openEditForm(account)">
@@ -381,44 +421,36 @@ onMounted(() => {
               <h2>{{ formTitle }}</h2>
             </div>
 
-            <label class="ppmx-bank-field">
+            <label
+              v-for="field in withdrawFields"
+              :key="field.fieldKey"
+              class="ppmx-bank-field"
+            >
               <span>
-                {{ t('bank.bankCode') }}
-                <em>*</em>
+                {{ field.fieldLabel }}
+                <em v-if="field.isRequired">*</em>
               </span>
-              <PpmxSelectInput
-                v-model="fieldValues.bankCode"
-                :options="BANK_CODE_OPTIONS"
-                :placeholder="t('bank.bankCodePlaceholder')"
-                :title="t('bank.bankCode')"
+              <textarea
+                v-if="field.fieldType === 'textarea'"
+                v-model="fieldValues[field.fieldKey]"
+                :maxlength="field.maxLength || undefined"
+                :placeholder="field.fieldPlaceholder || ''"
+                rows="3"
               />
-            </label>
-
-            <label class="ppmx-bank-field">
-              <span>
-                {{ t('bank.bankNumber') }}
-                <em>*</em>
-              </span>
+              <PpmxSelectInput
+                v-else-if="field.fieldType === 'select'"
+                v-model="fieldValues[field.fieldKey]"
+                :options="fieldOptions(field)"
+                :placeholder="field.fieldPlaceholder || t('bank.selectPlaceholder')"
+                :title="field.fieldLabel"
+              />
               <input
-                v-model="fieldValues.bankNumber"
-                type="text"
-                :inputmode="bankNumberInputMode"
-                :maxlength="selectedBankCode === 'paypal' ? 254 : 21"
-                :placeholder="bankNumberPlaceholder"
-              >
-            </label>
-
-            <label class="ppmx-bank-field">
-              <span>
-                {{ t('bank.bankAccountName') }}
-                <em>*</em>
-              </span>
-              <input
-                v-model="fieldValues.bankAccountName"
-                type="text"
-                maxlength="80"
-                :placeholder="t('bank.bankAccountNamePlaceholder')"
-                autocomplete="name"
+                v-else
+                v-model="fieldValues[field.fieldKey]"
+                :type="getFieldInputType(field)"
+                :inputmode="field.fieldType === 'number' ? 'decimal' : 'text'"
+                :maxlength="field.maxLength || undefined"
+                :placeholder="field.fieldPlaceholder || ''"
               >
             </label>
 

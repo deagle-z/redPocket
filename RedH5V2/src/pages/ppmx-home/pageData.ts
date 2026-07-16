@@ -55,7 +55,7 @@ export const ppmxWheelRules = [
   {
     es: 'Promoción exclusiva para mayores de 21 años. Apuesta responsablemente.',
     en: 'Promotion for users aged 21 and above. Please gamble responsibly.',
-    zh: '活动仅限 21 岁以上用户，请理性博彩。',
+    zh: '活动仅限 18 岁以上用户，请理性博彩。',
   },
 ]
 
@@ -100,22 +100,22 @@ export const ppmxPromoItems: PpmxPromoItem[] = [
   {
     id: 'registro',
     tag: { es: 'Regalo de bienvenida', en: 'Welcome gift', zh: '注册礼金' },
-    title: { es: 'Regístrate y gana $38 USD gratis', en: 'Sign up and get $38 USD free', zh: '注册立即赠送 38 美元' },
+    title: { es: 'Regístrate y gana $58 MXN gratis', en: 'Sign up and get $58 MXN free', zh: '注册立即赠送 58 比索' },
     sub: {
-      es: 'Crea tu cuenta en 1 minuto y recibe $38 USD al instante para empezar a jugar.',
-      en: 'Create your account in 1 minute and get $38 USD instantly to start playing.',
-      zh: '1 分钟完成注册，立即获得 38 美元，马上开玩。',
+      es: 'Crea tu cuenta en 1 minuto y recibe $58 MXN al instante para empezar a jugar.',
+      en: 'Create your account in 1 minute and get $58 MXN instantly to start playing.',
+      zh: '1 分钟完成注册，立即获得 58 比索，马上开玩。',
     },
     howTo: {
-      es: 'Regístrate con tu teléfono, verifica tu cuenta y los $38 USD se acreditan automáticamente.',
-      en: 'Register with your phone, verify your account and the $38 USD is credited automatically.',
-      zh: '点击下方立即激活优惠后输入兑换码领取 38 美元新用户注册奖励。',
+      es: 'Regístrate con tu teléfono, verifica tu cuenta y los $58 MXN se acreditan automáticamente.',
+      en: 'Register with your phone, verify your account and the $58 MXN is credited automatically.',
+      zh: '点击下方立即激活优惠后前往我的账户领取 58 比索新用户注册奖励。',
     },
     valid: { es: 'Promoción para nuevos usuarios', en: 'New users only', zh: '仅限新用户' },
     terms: {
-      es: '1 por persona/dispositivo. Rollover 10x. Aplican T&C. +21.',
-      en: '1 per person/device. 10x rollover. T&C apply. 21+.',
-      zh: '每人/每设备限领一次，10 倍流水，适用条款，21 岁以上。',
+      es: '1 por persona/dispositivo. Rollover 10x. Aplican T&C. +18.',
+      en: '1 per person/device. 10x rollover. T&C apply. 18+.',
+      zh: '每人/每设备限领一次，10 倍流水，适用条款，18 岁以上。',
     },
     tone: 'green',
     backgroundImage: '/images/ppmx/promos/registro.jpg',
@@ -137,9 +137,9 @@ export const ppmxPromoItems: PpmxPromoItem[] = [
     },
     valid: { es: 'Para nuevos usuarios · 7 días', en: 'New users · 7 days', zh: '仅限新用户 · 7 天内' },
     terms: {
-      es: 'Solo nuevos usuarios. 1 check-in por día. Rollover 10x. +21.',
-      en: 'New users only. 1 check-in per day. 10x rollover. 21+.',
-      zh: '仅限新用户，每日限签到一次，10 倍流水，21 岁以上。',
+      es: 'Solo nuevos usuarios. 1 check-in por día. Rollover 10x. +18.',
+      en: 'New users only. 1 check-in per day. 10x rollover. 18+.',
+      zh: '仅限新用户，每日限签到一次，10 倍流水，18 岁以上。',
     },
     tone: 'gold',
     backgroundImage: '/images/ppmx/promos/checkin.jpg',
@@ -161,9 +161,9 @@ export const ppmxPromoItems: PpmxPromoItem[] = [
     },
     valid: { es: 'Recompensas permanentes', en: 'Permanent rewards', zh: '长期权益' },
     terms: {
-      es: 'Bono según nivel alcanzado. Rollover 10x. +21.',
-      en: 'Bonus by level reached. 10x rollover. 21+.',
-      zh: '红利依达成等级而定，10 倍流水，21 岁以上。',
+      es: 'Bono según nivel alcanzado. Rollover 10x. +18.',
+      en: 'Bonus by level reached. 10x rollover. 18+.',
+      zh: '红利依达成等级而定，10 倍流水，18 岁以上。',
     },
     tone: 'violet',
     backgroundImage: '/images/ppmx/promos/vip.jpg',
@@ -185,9 +185,9 @@ export const ppmxPromoItems: PpmxPromoItem[] = [
     },
     valid: { es: 'Comisión recurrente en cada recarga', en: 'Recurring commission on every deposit', zh: '每笔充值都返佣 上不封顶' },
     terms: {
-      es: 'Comisión según el número de recarga del referido. +21.',
-      en: 'Commission based on referral deposit count. 21+.',
-      zh: '按下级充值次数计算返佣，21 岁以上。',
+      es: 'Comisión según el número de recarga del referido. +18.',
+      en: 'Commission based on referral deposit count. 18+.',
+      zh: '按下级充值次数计算返佣，18 岁以上。',
     },
     tone: 'pink',
     backgroundImage: '/images/ppmx/promos/invita.jpg',
@@ -209,9 +209,9 @@ export const ppmxPromoItems: PpmxPromoItem[] = [
     },
     valid: { es: 'Válido todos los días', en: 'Valid every day', zh: '每日有效' },
     terms: {
-      es: 'Bono según número de recarga. Rollover 10x. +21.',
-      en: 'Bonus by deposit count. 10x rollover. 21+.',
-      zh: '按充值次数赠送，10 倍流水，21 岁以上。',
+      es: 'Bono según número de recarga. Rollover 10x. +18.',
+      en: 'Bonus by deposit count. 10x rollover. 18+.',
+      zh: '按充值次数赠送，10 倍流水，18 岁以上。',
     },
     tone: 'red',
     backgroundImage: '/images/ppmx/promos/recarga.jpg',
@@ -220,22 +220,22 @@ export const ppmxPromoItems: PpmxPromoItem[] = [
   {
     id: 'download',
     tag: { es: 'App móvil', en: 'Mobile app', zh: '下载 APP' },
-    title: { es: 'Descarga la app PP.BET y gana $8', en: 'Download the PP.BET app and get $30', zh: '下载 PP.BET APP 立即领 $8' },
+    title: { es: 'Descarga la app PP.MX y gana $8', en: 'Download the PP.MX app and get $30', zh: '下载 PP.MX APP 立即领 $8' },
     sub: {
-      es: 'Juega donde quieras: descarga la app, inicia sesión y recibe $30 USD al instante.',
-      en: 'Play anywhere: download the app, log in and get $30 USD instantly.',
-      zh: '随时随地畅玩，下载 APP 并登录即送 8 美元，还有专属推送福利。',
+      es: 'Juega donde quieras: descarga la app, inicia sesión y recibe $30 MXN al instante.',
+      en: 'Play anywhere: download the app, log in and get $30 MXN instantly.',
+      zh: '随时随地畅玩，下载 APP 并登录即送 8 MXN，还有专属推送福利。',
     },
     howTo: {
-      es: 'Pulsa Descargar, instala la app PP.BET, inicia sesión y el bono de $30 se acredita solo.',
-      en: 'Tap Download, install the PP.BET app, log in and the $30 bonus is credited automatically.',
-      zh: '点击下载并安装 PP.BET APP，登录账户后 8 美元自动到账。',
+      es: 'Pulsa Descargar, instala la app PP.MX, inicia sesión y el bono de $30 se acredita solo.',
+      en: 'Tap Download, install the PP.MX app, log in and the $30 bonus is credited automatically.',
+      zh: '点击下载并安装 PP.MX APP，登录账户后 8 MXN自动到账。',
     },
     valid: { es: 'Solo nuevas instalaciones', en: 'New installs only', zh: '仅限新下载用户' },
     terms: {
-      es: '1 por cuenta/dispositivo. Rollover 10x. +21.',
-      en: '1 per account/device. 10x rollover. 21+.',
-      zh: '每账户/设备限领一次，10 倍流水，21 岁以上。',
+      es: '1 por cuenta/dispositivo. Rollover 10x. +18.',
+      en: '1 per account/device. 10x rollover. 18+.',
+      zh: '每账户/设备限领一次，10 倍流水，18 岁以上。',
     },
     tone: 'blue',
     backgroundImage: '/images/ppmx/promos/download.jpg',
@@ -246,9 +246,9 @@ export const ppmxPromoItems: PpmxPromoItem[] = [
     tag: { es: 'Ruleta de la suerte', en: 'Lucky wheel', zh: '幸运转盘' },
     title: { es: 'Gira la ruleta y gana hasta $10,000', en: 'Spin the wheel and win up to $10,000', zh: '幸运转盘每日转 最高赢 $888888' },
     sub: {
-      es: 'Cada día tienes un giro gratis: bonos, giros y hasta $10,000 USD te esperan. Por cada recarga de ≥$200 recibes un giro gratis (con $400 son dos giros, y así sucesivamente).',
-      en: 'Every day you get a free spin: bonuses, spins and up to $10,000 USD await. Each single deposit of ≥$200 grants one free spin ($400 gives two spins, and so on).',
-      zh: '参与游戏获得免费旋转，获得奖励、免费旋转及最高 888888 美元等你拿。（每达到 10000 流水即可自动获得一次免费幸运转盘旋转次数）单次充值金额≧$200元赠送一次免费旋转。（若充值$400则赠送两次免费旋转依次类推）',
+      es: 'Cada día tienes un giro gratis: bonos, giros y hasta $10,000 MXN te esperan. Por cada recarga de ≥$200 recibes un giro gratis (con $400 son dos giros, y así sucesivamente).',
+      en: 'Every day you get a free spin: bonuses, spins and up to $10,000 MXN await. Each single deposit of ≥$200 grants one free spin ($400 gives two spins, and so on).',
+      zh: '参与游戏获得免费旋转，获得奖励、免费旋转及最高 888888 MXN等你拿。（每达到 10000 流水即可自动获得一次免费幸运转盘旋转次数）单次充值金额≧$200元赠送一次免费旋转。（若充值$400则赠送两次免费旋转依次类推）',
     },
     howTo: {
       es: 'Entra a la Ruleta de la suerte, usa tu giro gratis diario y reclama el premio que caiga.',
@@ -257,9 +257,9 @@ export const ppmxPromoItems: PpmxPromoItem[] = [
     },
     valid: { es: 'Un giro gratis al día', en: 'One free spin per day', zh: '2026 年' },
     terms: {
-      es: '1 giro gratis/día. Rollover según premio. +21.',
-      en: '1 free spin/day. Rollover varies by prize. 21+.',
-      zh: '参与游戏免费获得旋转次数，10 倍流水，21 岁以上。',
+      es: '1 giro gratis/día. Rollover según premio. +18.',
+      en: '1 free spin/day. Rollover varies by prize. 18+.',
+      zh: '参与游戏免费获得旋转次数，10 倍流水，18 岁以上。',
     },
     tone: 'pink',
     backgroundImage: '/images/ppmx/promos/wheel.jpg',
@@ -374,8 +374,8 @@ export const ppmxAccountExtraItems: PpmxAccountHubItem[] = [
 ]
 
 export const ppmxDownloadText = {
-  eyebrow: { es: 'App oficial PP.BET', en: 'Official PP.BET app', zh: 'PP.BET 官方 App' },
-  title: { es: 'Descarga la App PP.BET', en: 'Download the PP.BET App', zh: '下载 PP.BET App' },
+  eyebrow: { es: 'App oficial PP.MX', en: 'Official PP.MX app', zh: 'PP.MX 官方 App' },
+  title: { es: 'Descarga la App PP.MX', en: 'Download the PP.MX App', zh: '下载 PP.MX App' },
   sub: {
     es: 'Juega más rápido, recibe bonos exclusivos y notificaciones de pago al instante. Disponible para iOS y Android.',
     en: 'Play faster, get exclusive bonuses and instant payment notifications. Available for iOS and Android.',
@@ -480,9 +480,9 @@ export const ppmxGuideText = {
     zh: '了解每项活动的规则与参与方式，把奖励最大化。',
   },
   foot: {
-    es: 'Aplican términos y condiciones. Juega de forma responsable · +21.',
-    en: 'Terms and conditions apply. Play responsibly · 21+.',
-    zh: '适用条款与条件，请理性博彩 · 21+。',
+    es: 'Aplican términos y condiciones. Juega de forma responsable · +18.',
+    en: 'Terms and conditions apply. Play responsibly · 18+.',
+    zh: '适用条款与条件，请理性博彩 · 18+。',
   },
 } satisfies Record<string, import('./types').LocalizedText>
 
@@ -498,7 +498,7 @@ export const ppmxGuideCards: PpmxGuideCard[] = [
       en: 'Sign in every day and claim your reward. The more consecutive days, the bigger the 7-day cumulative prize.',
       zh: '每天登录领取奖励，连续签到天数越多，7 天累计奖励越丰厚。',
     },
-    tag: { es: 'Hasta $??? USD / semana', en: 'Up to $??? USD / week', zh: '每周最高 $??? USD' },
+    tag: { es: 'Hasta $??? MXN / semana', en: 'Up to $??? MXN / week', zh: '每周最高 $??? MXN' },
   },
   {
     id: 'wheel',
@@ -507,9 +507,9 @@ export const ppmxGuideCards: PpmxGuideCard[] = [
     tone: 'gold',
     title: { es: 'Ruleta de la suerte', en: 'Lucky wheel', zh: '幸运转盘' },
     description: {
-      es: 'Juega para ganar giros gratis: premios, giros y hasta $888,888 USD te esperan. (Por cada $10,000 de apuesta acumulada obtienes un giro gratis automático.)',
-      en: 'Play to earn free spins: prizes, free spins and up to $888,888 USD await. (Every $10,000 wagered automatically grants one free wheel spin.)',
-      zh: '参与游戏获得免费旋转，获得奖励、免费旋转及最高 888888 美元等你拿。（每达到 10000 流水即可自动获得一次免费幸运转盘旋转次数）',
+      es: 'Juega para ganar giros gratis: premios, giros y hasta $888,888 MXN te esperan. (Por cada $10,000 de apuesta acumulada obtienes un giro gratis automático.)',
+      en: 'Play to earn free spins: prizes, free spins and up to $888,888 MXN await. (Every $10,000 wagered automatically grants one free wheel spin.)',
+      zh: '参与游戏获得免费旋转，获得奖励、免费旋转及最高 888888 MXN等你拿。（每达到 10000 流水即可自动获得一次免费幸运转盘旋转次数）',
     },
     tag: { es: 'Giro gratis diario', en: 'Daily free spin', zh: '每日免费旋转' },
   },
@@ -550,7 +550,7 @@ export const ppmxGuideCards: PpmxGuideCard[] = [
       en: 'Complete your registration to activate your new-user welcome reward.',
       zh: '完成注册即可激活新人欢迎奖励。',
     },
-    tag: { es: '100% · $38 USD al instante', en: '100% · $38 USD instantly', zh: '100% 立即获得 $38 美元' },
+    tag: { es: '100% · $58 MXN al instante', en: '100% · $58 MXN instantly', zh: '100% 立即获得 $58 比索' },
   },
   {
     id: 'download',
@@ -559,11 +559,11 @@ export const ppmxGuideCards: PpmxGuideCard[] = [
     tone: 'blue',
     title: { es: 'App móvil', en: 'Mobile app', zh: '下载 APP' },
     description: {
-      es: 'Juega donde quieras: descarga la app, inicia sesión y recibe $8 USD, con beneficios exclusivos por notificaciones.',
-      en: 'Play anywhere: download the app, log in and get $8 USD, plus exclusive push perks.',
-      zh: '随时随地畅玩，下载 APP 并登录即送 8 美元，还有专属推送福利。',
+      es: 'Juega donde quieras: descarga la app, inicia sesión y recibe $8 MXN, con beneficios exclusivos por notificaciones.',
+      en: 'Play anywhere: download the app, log in and get $8 MXN, plus exclusive push perks.',
+      zh: '随时随地畅玩，下载 APP 并登录即送 8 MXN，还有专属推送福利。',
     },
-    tag: { es: 'Inicia sesión y gana $8 USD', en: 'Log in & get $8 USD', zh: '登录即送 $8 USD' },
+    tag: { es: 'Inicia sesión y gana $8 MXN', en: 'Log in & get $8 MXN', zh: '登录即送 $8 MXN' },
   },
 ]
 

@@ -6,7 +6,7 @@ import {
 } from './usePpmxGameHome'
 
 describe('usePpmxGameHome data mapping', () => {
-  it('maps backend game items into PP.BET game tiles', () => {
+  it('maps backend game items into PP.MX game tiles', () => {
     expect(
       mapAppHomeGame({
         gameId: 1001,

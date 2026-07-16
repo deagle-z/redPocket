@@ -1,6 +1,5 @@
 import { del, get, post, upload } from '@/utils/http'
-import type { UnitedStatesCountryCode } from '@/utils/usPhone'
-import { US_COUNTRY_CODE } from '@/utils/usPhone'
+import { APP_COUNTRY_CODE, type AppCountryCode } from '@/config/market'
 import { getSourceChannelCode, normalizeSourceChannelCode } from '@/utils/sourceChannel'
 
 export interface LoginParams {
@@ -16,12 +15,12 @@ export interface LoginResult {
 export interface LoginByPhoneParams {
   phone: string
   password: string
-  country?: UnitedStatesCountryCode
+  country?: AppCountryCode
 }
 
 export interface RegisterByPhoneParams {
   phone: string
-  country?: UnitedStatesCountryCode
+  country?: AppCountryCode
   firstName?: string
   password: string
   inviteCode?: string
@@ -32,18 +31,18 @@ export interface RegisterByPhoneParams {
 
 export interface CheckRegisterPhoneParams {
   phone: string
-  country?: UnitedStatesCountryCode
+  country?: AppCountryCode
 }
 
 export interface CheckRegisterPhoneResp {
   phone: string
-  country: UnitedStatesCountryCode
+  country: AppCountryCode
   available: boolean
 }
 
 export interface ForgotPasswordByPhoneParams {
   phone: string
-  country: UnitedStatesCountryCode
+  country: AppCountryCode
   code: string
   newPassword: string
 }
@@ -54,7 +53,7 @@ export interface TgBindEmailReq {
 
 export interface TgBindPhoneReq {
   phone: string
-  country: UnitedStatesCountryCode
+  country: AppCountryCode
   code: string
 }
 
@@ -618,7 +617,7 @@ export function profileApi() {
 
 export function loginByPhone(data: LoginByPhoneParams) {
   return post<LoginResult>('/v1/app/tg/phoneLogin', {
-    country: US_COUNTRY_CODE,
+    country: APP_COUNTRY_CODE,
     ...data,
   })
 }
@@ -626,7 +625,7 @@ export function loginByPhone(data: LoginByPhoneParams) {
 export function checkRegisterPhone(data: CheckRegisterPhoneParams) {
   return post<CheckRegisterPhoneResp>('/v1/app/tg/checkRegisterPhone', {
     phone: data.phone,
-    country: data.country ?? US_COUNTRY_CODE,
+    country: data.country ?? APP_COUNTRY_CODE,
   }, {
     meta: {
       auth: false,
@@ -635,7 +634,7 @@ export function checkRegisterPhone(data: CheckRegisterPhoneParams) {
   })
 }
 
-export function sendTgSmsCode(phone: string, country: UnitedStatesCountryCode = US_COUNTRY_CODE) {
+export function sendTgSmsCode(phone: string, country: AppCountryCode = APP_COUNTRY_CODE) {
   return post('/v1/app/tg/sendSMSCode', {
     phone,
     country,
@@ -661,7 +660,7 @@ export function bindCurrentTgEmail(data: TgBindEmailReq) {
 }
 
 export function bindCurrentTgPhone(data: TgBindPhoneReq) {
-  return post<{ phone: string; country: UnitedStatesCountryCode }>('/v1/app/tg/bindPhone', data)
+  return post<{ phone: string; country: AppCountryCode }>('/v1/app/tg/bindPhone', data)
 }
 
 function resolveSourceChannelCode(data: RegisterByPhoneParams) {
@@ -677,7 +676,7 @@ export function registerByPhone(data: RegisterByPhoneParams) {
 
   return post<LoginResult>('/v1/app/tg/registerByPhone', {
     phone: data.phone,
-    country: data.country ?? US_COUNTRY_CODE,
+    country: data.country ?? APP_COUNTRY_CODE,
     firstName: data.firstName,
     password: data.password,
     inviteCode: data.inviteCode,

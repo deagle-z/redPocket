@@ -4,7 +4,6 @@ import { showToast } from 'vant'
 import { ppmxPromoItems } from '../ppmx-home/pageData'
 import PpmxPageChrome from '../ppmx-home/components/PpmxPageChrome.vue'
 import PpmxPromoDetail from '../ppmx-home/components/PpmxPromoDetail.vue'
-import PpmxPromoCodeModal from '@/components/PpmxPromoCodeModal.vue'
 
 definePage({
   name: 'promo-detail',
@@ -28,7 +27,6 @@ const selectedPromoId = computed(() => {
 const selectedPromo = computed(() => (
   ppmxPromoItems.find((promo) => promo.id === selectedPromoId.value) ?? null
 ))
-const promoCodeModalOpen = ref(false)
 
 function requireRegisterAuth() {
   return pageChromeRef.value?.requireRegisterAuth() ?? false
@@ -52,7 +50,7 @@ function claimPromo() {
   }
 
   if (selectedPromoId.value === 'registro' || selectedPromoId.value === 'register') {
-    promoCodeModalOpen.value = true
+    void router.push('/profile')
     return
   }
 
@@ -81,7 +79,5 @@ watchEffect(() => {
         />
       </section>
     </PpmxPageChrome>
-
-    <PpmxPromoCodeModal v-model="promoCodeModalOpen" />
   </main>
 </template>

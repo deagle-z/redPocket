@@ -25,7 +25,7 @@ const props = withDefaults(
     showCancel: true,
     confirmLoading: false,
     closeOnBackdrop: true,
-    ariaLabel: 'PP.BET dialog',
+    ariaLabel: 'PP.MX dialog',
   },
 )
 

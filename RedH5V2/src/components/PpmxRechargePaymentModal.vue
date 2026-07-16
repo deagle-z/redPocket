@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { RechargeOrderAppBack } from '@/api/user'
+import { APP_CURRENCY } from '@/config/market'
 import { showFailToast, showSuccessToast } from 'vant'
 import PpmxButton from '@/components/PpmxButton.vue'
 
@@ -12,7 +13,7 @@ const props = withDefaults(defineProps<{
   modelValue: boolean
   order: RechargeOrderAppBack | null
 }>(), {
-  currencyFallback: 'USD',
+  currencyFallback: APP_CURRENCY,
 })
 
 const emit = defineEmits<{

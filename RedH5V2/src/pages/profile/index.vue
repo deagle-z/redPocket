@@ -8,6 +8,11 @@ import {
   redeemExchangeCode,
   transferTgWalletBalance,
 } from '@/api/user'
+import {
+  APP_COUNTRY_CODE,
+  APP_CURRENCY,
+  APP_CURRENCY_SYMBOL,
+} from '@/config/market'
 import { formatMoney, fromCent, toDisplayCents } from '@/utils/money'
 import { showToast } from 'vant'
 import PpmxActionCard from '@/components/PpmxActionCard.vue'
@@ -42,12 +47,11 @@ const route = useRoute()
 const router = useRouter()
 const { pickText } = usePpmxLocale()
 const pageChromeRef = ref<InstanceType<typeof PpmxPageChrome> | null>(null)
-const US_COUNTRY_CODE = 'US'
 const FREE_WITHDRAW_COUNT = 1
 const WITHDRAW_FEE_RATE = 0.05
 const profileText = {
   pageTitle: { es: 'Mi cuenta', en: 'My account', zh: '我的账户' },
-  eyebrow: { es: 'Cuenta PP.BET', en: 'PP.BET account', zh: 'PP.BET 账户' },
+  eyebrow: { es: 'Cuenta PP.MX', en: 'PP.MX account', zh: 'PP.MX 账户' },
   guestTitle: { es: 'Necesitas iniciar sesión', en: 'Sign in required', zh: '需要先登录' },
   guestDescription: {
     es: 'Entra para ver tu saldo, depositar, retirar e historial.',
@@ -144,7 +148,7 @@ const profileText = {
     zh: '添加银行账号后即可发起提现。',
   },
   bind: { es: 'Vincular', en: 'Link', zh: '绑定' },
-  moreEyebrow: { es: 'Más en PP.BET', en: 'More in PP.BET', zh: '更多 PP.BET' },
+  moreEyebrow: { es: 'Más en PP.MX', en: 'More in PP.MX', zh: '更多 PP.MX' },
   downloadGuide: { es: 'Descarga y guía', en: 'Download and guide', zh: '下载与指南' },
   accountCenter: { es: 'Centro de cuenta', en: 'Account center', zh: '账户中心' },
   copyId: { es: 'Copiar ID', en: 'Copy ID', zh: '复制 ID' },
@@ -207,7 +211,7 @@ const profileText = {
     en: 'This account cannot request withdrawals right now. Contact support.',
     zh: '当前账户暂不能发起提现，请联系客服。',
   },
-  withdrawMinToast: { es: 'Monto mínimo de retiro: $50.00 USD', en: 'Minimum withdrawal: $50.00 USD', zh: '最低提现金额为 $50.00 USD' },
+  withdrawMinToast: { es: 'Monto mínimo de retiro: $50.00 MXN', en: 'Minimum withdrawal: $50.00 MXN', zh: '最低提现金额为 $50.00 MXN' },
   withdrawBalanceToast: {
     es: 'El monto supera tu saldo disponible.',
     en: 'The amount exceeds your available balance.',
@@ -345,10 +349,10 @@ const withdrawableCents = computed(() =>
   withdrawHasUnfinishedBatch.value ? 0 : withdrawSummaryBalanceCents.value,
 )
 const withdrawWagerRequiredText = computed(() =>
-  formatUsd(withdrawRequiredFlowCents.value),
+  formatMarketMoney(withdrawRequiredFlowCents.value),
 )
 const withdrawWagerCurrentText = computed(() =>
-  formatUsd(withdrawCompletedFlowCents.value),
+  formatMarketMoney(withdrawCompletedFlowCents.value),
 )
 const withdrawMultiplierValue = computed(() => {
   const n = Number(withdrawSummary.value?.withdrawMultiplier)
@@ -382,7 +386,7 @@ const selectedWithdrawAccount = computed(() =>
 )
 const withdrawAccountOptions = computed(() =>
   withdrawAccounts.value
-    .filter(account => account.countryCode === US_COUNTRY_CODE)
+    .filter(account => account.countryCode === APP_COUNTRY_CODE)
     .map(account => ({
       label: formatWithdrawAccountLabel(account),
       value: String(account.id),
@@ -423,8 +427,8 @@ async function loadProfileData() {
   }
 }
 
-function formatUsd(cents: number) {
-  return `${formatMoney(cents, { currency: '$' })} USD`
+function formatMarketMoney(cents: number) {
+  return `${formatMoney(cents, { currency: APP_CURRENCY_SYMBOL })} ${APP_CURRENCY}`
 }
 
 function parseWithdrawAccountData(raw: string) {
@@ -451,7 +455,7 @@ function maskAccountValue(value: string) {
 
 function formatWithdrawAccountLabel(account: WithdrawAccountItem) {
   const data = parseWithdrawAccountData(account.accountData)
-  const bankName = data.bank || data.bankName || data.Bank || data.bankCode || 'ACH'
+  const bankName = data.bank || data.bankName || data.Bank || data.bankCode || 'MX'
   const accountValue = data.accountNumber
     || data.routingNumber
     || data.accountNo
@@ -468,8 +472,8 @@ function syncDefaultWithdrawAccount() {
     return
   }
 
-  const defaultAccount = withdrawAccounts.value.find(account => account.countryCode === US_COUNTRY_CODE && account.isDefault === 1)
-    ?? withdrawAccounts.value.find(account => account.countryCode === US_COUNTRY_CODE)
+  const defaultAccount = withdrawAccounts.value.find(account => account.countryCode === APP_COUNTRY_CODE && account.isDefault === 1)
+    ?? withdrawAccounts.value.find(account => account.countryCode === APP_COUNTRY_CODE)
 
   withdrawAccountId.value = defaultAccount ? String(defaultAccount.id) : ''
 }
@@ -675,7 +679,7 @@ function buildWithdrawFieldValues() {
 function buildWithdrawPayload(): CreateWithdrawOrderReq {
   return {
     amount: Number((withdrawAmountCents.value / 100).toFixed(2)),
-    countryCode: US_COUNTRY_CODE,
+    countryCode: APP_COUNTRY_CODE,
     accountId: Number(withdrawAccountId.value),
     fieldValues: buildWithdrawFieldValues(),
   }
@@ -744,7 +748,7 @@ async function submitPromoCodeRequest() {
     promoModalOpen.value = false
     promoCode.value = ''
     await userStore.loadUserInfo()
-    const amount = formatUsd(toDisplayCents(result.amount))
+    const amount = formatMarketMoney(toDisplayCents(result.amount))
     showToast(pickText(profileText.promoCodeSuccess).replace('{amount}', amount))
   } catch (error) {
     const message = error instanceof Error ? error.message : pickText(profileText.promoCodeFailed)
@@ -1002,7 +1006,7 @@ watch(promoModalOpen, (isOpen) => {
             <div class="ppmx-account-balance__content">
               <span id="accAvatar" class="ppmx-account-avatar">{{ accountAvatarText }}</span>
               <p class="ppmx-eyebrow">{{ pickText(profileText.availableBalance) }}</p>
-              <PpmxMoneyText id="balMain" :cents="accountTotalBalanceCents" suffix="USD" />
+              <PpmxMoneyText id="balMain" :cents="accountTotalBalanceCents" :suffix="APP_CURRENCY" />
               <small>
                 <i class="fa-solid fa-at" />
                 <span id="accHandle">{{ accountHandle }}</span>
@@ -1032,7 +1036,7 @@ watch(promoModalOpen, (isOpen) => {
                 <PpmxMoneyText
                   class="ppmx-account-wallet-row__amount"
                   :cents="wallet.cents"
-                  suffix="USD"
+                  :suffix="APP_CURRENCY"
                 />
                 <button
                   v-if="wallet.id === 'sport'"
@@ -1183,7 +1187,7 @@ watch(promoModalOpen, (isOpen) => {
 
          <section class="ppmx-account-wallet-transfer__source">
            <span>{{ pickText(profileText.walletTransferFrom) }}</span>
-           <PpmxMoneyText :cents="walletTransferSourceBalanceCents" suffix="USD" />
+           <PpmxMoneyText :cents="walletTransferSourceBalanceCents" :suffix="APP_CURRENCY" />
          </section>
 
          <div class="ppmx-account-wallet-transfer__arrow">
@@ -1232,7 +1236,7 @@ watch(promoModalOpen, (isOpen) => {
      <PpmxWithdrawModal
        id="withdrawModal"
       v-model="withdrawModalOpen"
-      eyebrow="ACH"
+      :eyebrow="APP_CURRENCY"
       title-id="withdrawModalTitle"
       :title="pickText(profileText.withdrawTitle)"
       :close-aria-label="pickText(profileText.withdrawClose)"
@@ -1249,7 +1253,7 @@ watch(promoModalOpen, (isOpen) => {
           />
           <template v-else>
             <span>{{ pickText(profileText.withdrawAvailable) }}</span>
-            <strong>{{ formatUsd(withdrawableCents) }}</strong>
+            <strong>{{ formatMarketMoney(withdrawableCents) }}</strong>
           </template>
         </div>
 
@@ -1315,16 +1319,16 @@ watch(promoModalOpen, (isOpen) => {
         <div class="wd-fees">
           <div class="wd-fee-row">
             <span class="wd-fee-k">{{ pickText(profileText.withdrawFee) }}</span>
-            <span class="wd-fee-v">{{ formatUsd(withdrawFeeCents) }}</span>
+            <span class="wd-fee-v">{{ formatMarketMoney(withdrawFeeCents) }}</span>
           </div>
           <div class="wd-fee-row">
             <span class="wd-fee-k">{{ pickText(profileText.withdrawReceive) }}</span>
-            <span class="wd-fee-v wd-fee-v--ok">{{ formatUsd(withdrawReceiveCents) }}</span>
+            <span class="wd-fee-v wd-fee-v--ok">{{ formatMarketMoney(withdrawReceiveCents) }}</span>
           </div>
           <div class="wd-fee-div" />
           <div class="wd-fee-row">
             <span class="wd-fee-k is-strong">{{ pickText(profileText.withdrawDeduct) }}</span>
-            <span class="wd-fee-v--gold">{{ formatUsd(withdrawAmountCents) }}</span>
+            <span class="wd-fee-v--gold">{{ formatMarketMoney(withdrawAmountCents) }}</span>
           </div>
         </div>
 

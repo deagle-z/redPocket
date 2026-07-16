@@ -6,7 +6,7 @@ const baseModalSource = readFileSync(new URL('../../../components/PpmxBaseModal.
 const authSource = readFileSync(new URL('./PpmxAuthModal.vue', import.meta.url), 'utf8') as string
 
 describe('PpmxModal', () => {
-  it('provides the reusable PP.BET modal shell contract', () => {
+  it('provides the reusable PP.MX modal shell contract', () => {
     expect(modalSource).toContain("defineOptions({ name: 'PpmxModal' })")
     expect(modalSource).toContain('PpmxBaseModal')
     expect(baseModalSource).toContain("defineOptions({ name: 'PpmxBaseModal' })")

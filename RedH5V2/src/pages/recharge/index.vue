@@ -2,7 +2,6 @@
 import '@/assets/styles/pp-mx-home.css'
 import type {
   AppCountryItem,
-  AppPayMethodItem,
   AppRechargeChannelItem,
   RechargeField,
   RechargeFieldOption,
@@ -19,6 +18,12 @@ import {
   getCountryRechargeInfo,
   getPendingRechargeNotifications,
 } from '@/api/user'
+import {
+  APP_COUNTRY_CODE,
+  APP_COUNTRY_NAME_LOCAL,
+  APP_CURRENCY,
+  APP_CURRENCY_SYMBOL,
+} from '@/config/market'
 import type { PageStateStatus } from '@/types/business'
 import { formatMoney, toDisplayCents } from '@/utils/money'
 import { rechargeBonusAmountByNumber, rechargeBonusRateByNumber } from '@/utils/rechargeBonus'
@@ -44,19 +49,11 @@ definePage({
   },
 })
 
-const US_COUNTRY_CODE = 'US'
-const APP_CURRENCY = 'USD'
 const CRYPTO_CHANNEL_CODE = 'USDT_TRC20'
-const HOPOPAY_CHANNEL_CODE = 'HOPOPAY'
-const FIXED_HOPOPAY_PAY_METHODS: Record<string, string> = {
-  cash: 'cashapp',
-  apple: 'applepay',
-  google: 'googlepay',
-}
-const rechargeAmounts = [49.99, 99.99, 149.99, 199.99, 249.99, 299.99, 399.99, 499.99] as const
+const rechargeAmounts = [50, 100, 200, 500, 1000, 5000, 10000] as const
 const MIN_RECHARGE_AMOUNT = rechargeAmounts[0]
 
-const { t, locale } = useI18n()
+const { t } = useI18n()
 const userStore = useUserStore()
 const router = useRouter()
 
@@ -90,8 +87,8 @@ const isSelectedCryptoChannel = computed(() => isCryptoRechargeChannel(selectedC
 
 const amount = computed(() => selectedAmount.value)
 
-const formattedAmount = computed(() => formatUsd(amount.value))
-const paymentOrderAmount = computed(() => formatUsd(paymentOrder.value?.amount ?? amount.value))
+const formattedAmount = computed(() => formatMarketAmount(amount.value))
+const paymentOrderAmount = computed(() => formatMarketAmount(paymentOrder.value?.amount ?? amount.value))
 const isFirstRecharge = computed(() => Boolean(rechargeFirstStatus.value?.isFirstRecharge))
 const rechargeNumber = computed(
   () => Number(rechargeFirstStatus.value?.rechargeNumber) || (isFirstRecharge.value ? 1 : 2),
@@ -105,7 +102,7 @@ const effectiveBonusRate = computed(() => isSportsWalletRecharge.value ? 0 :
 const effectiveBonusAmount = computed(() => isSportsWalletRecharge.value ? 0 :
   rechargeBonusAmountByNumber(amount.value, rechargeNumber.value, giftRates.value, giftMinAmount.value),
 )
-const formattedBonusAmount = computed(() => formatUsd(effectiveBonusAmount.value))
+const formattedBonusAmount = computed(() => formatMarketAmount(effectiveBonusAmount.value))
 const showPromo = computed(() => Boolean(rechargeFirstStatus.value) && !isSportsWalletRecharge.value)
 const pageStateMessage = computed(() => {
   if (pageStatus.value === 'loading') return undefined
@@ -115,7 +112,6 @@ const pageStateMessage = computed(() => {
 })
 
 const rechargeWalletOptions = computed(() => [
-  { label: t('recharge.walletBalance'), value: 'balance' },
   { label: t('recharge.walletSport'), value: 'sport' },
 ])
 
@@ -123,20 +119,20 @@ const selectedRechargeWalletBalance = computed(() => (
   isSportsWalletRecharge.value ? userStore.userInfo?.sportBalance : userStore.userInfo?.balance
 ))
 const balanceText = computed(() => {
-  return formatMoney(toDisplayCents(selectedRechargeWalletBalance.value), { currency: '$' })
+  return formatMoney(toDisplayCents(selectedRechargeWalletBalance.value), { currency: APP_CURRENCY_SYMBOL })
 })
 
 const submitLock = useSubmitLock(submitRecharge, { minLockMs: 600 })
 const isSubmitting = computed(() => submitLock.locked.value)
 
-function formatUsd(value: number) {
-  if (!Number.isFinite(value) || value <= 0) return '$0.00'
+function formatMarketAmount(value: number) {
+  if (!Number.isFinite(value) || value <= 0) return `${APP_CURRENCY_SYMBOL}0.00`
 
-  return formatMoney(Math.round(value * 100), { currency: '$' })
+  return formatMoney(Math.round(value * 100), { currency: APP_CURRENCY_SYMBOL })
 }
 
 function formatRechargeTierDisplay(value: number) {
-  return formatUsd(value + 0.01)
+  return formatMarketAmount(value)
 }
 
 function formatPercent(value: number | undefined) {
@@ -153,75 +149,22 @@ function isCryptoRechargeChannel(channel: AppRechargeChannelItem | null | undefi
   return channelCode === CRYPTO_CHANNEL_CODE || providerType === 'native'
 }
 
-function fixedCryptoChannelName() {
-  const currentLocale = String(locale.value || '').toLowerCase()
-  if (currentLocale.startsWith('zh')) return '加密货币'
-  if (currentLocale.startsWith('es')) return 'Cripto'
-
-  return 'Crypto'
-}
-
-function fixedRechargeChannels(): AppRechargeChannelItem[] {
-  return [
-    {
-      id: -2001,
-      channelCode: 'cash',
-      channelName: 'Cash',
-      providerType: 'fixed',
-      icon: null,
-      sort: 1,
-      methods: [],
-    },
-    {
-      id: -2002,
-      channelCode: 'apple',
-      channelName: 'Apple Pay',
-      providerType: 'fixed',
-      icon: null,
-      sort: 2,
-      methods: [],
-    },
-    {
-      id: -2003,
-      channelCode: 'google',
-      channelName: 'Google Pay',
-      providerType: 'fixed',
-      icon: null,
-      sort: 3,
-      methods: [],
-    },
-    {
-      id: -2004,
-      channelCode: CRYPTO_CHANNEL_CODE,
-      channelName: fixedCryptoChannelName(),
-      providerType: 'native',
-      icon: null,
-      sort: 4,
-      methods: [],
-    },
-  ]
-}
-
 function paymentOptionIconClass(channel: AppRechargeChannelItem) {
   if (isCryptoRechargeChannel(channel)) return 'fa-brands fa-bitcoin'
-  if (channel.channelCode === 'apple') return 'fa-brands fa-apple'
-  if (channel.channelCode === 'google') return 'fa-brands fa-google'
 
-  return 'fa-solid fa-dollar-sign'
+  return 'fa-solid fa-credit-card'
 }
 
 function paymentOptionToneClass(channel: AppRechargeChannelItem) {
   if (isCryptoRechargeChannel(channel)) return 'is-crypto'
-  if (channel.channelCode === 'apple') return 'is-apple'
-  if (channel.channelCode === 'google') return 'is-google'
 
   return 'is-cash'
 }
 
 function paymentOptionSubtext(channel: AppRechargeChannelItem) {
-  if (isCryptoRechargeChannel(channel)) return 'BTC · ETH · USDT'
+  if (isCryptoRechargeChannel(channel)) return 'USDT'
 
-  return '即时'
+  return channel.methods?.[0]?.methodName || channel.providerType || ''
 }
 
 function normalizeOption(option: unknown): RechargeFieldOption | null {
@@ -294,17 +237,9 @@ function buildExtraFields() {
   return entries.length ? Object.fromEntries(entries) : undefined
 }
 
-function rechargeProviderChannelCode(channelCode: string) {
-  return FIXED_HOPOPAY_PAY_METHODS[channelCode] ? HOPOPAY_CHANNEL_CODE : channelCode
-}
-
-function rechargePayMethodCode(channelCode: string) {
-  return FIXED_HOPOPAY_PAY_METHODS[channelCode] || selectedPayMethodCode.value || undefined
-}
-
 function hydrateRechargeFieldValues(fields: RechargeField[]) {
   isHydratingRechargeFields.value = true
-  fieldValues.value = getRechargeFieldInitialValues(US_COUNTRY_CODE, userStore.userInfo?.id, fields)
+  fieldValues.value = getRechargeFieldInitialValues(APP_COUNTRY_CODE, userStore.userInfo?.id, fields)
 
   void nextTick(() => {
     isHydratingRechargeFields.value = false
@@ -315,7 +250,7 @@ function persistRechargeFieldValues() {
   if (isHydratingRechargeFields.value || !rechargeFields.value.length) return
 
   setCachedRechargeFieldValues(
-    US_COUNTRY_CODE,
+    APP_COUNTRY_CODE,
     userStore.userInfo?.id,
     rechargeFields.value,
     fieldValues.value,
@@ -325,11 +260,11 @@ function persistRechargeFieldValues() {
 function buildRechargePayload(confirmUnfinishedActivityCycle = false): RechargeOrderAppReq {
   return {
     amount: amount.value,
-    channel: rechargeProviderChannelCode(selectedChannelCode.value),
-    payMethod: rechargePayMethodCode(selectedChannelCode.value),
+    channel: selectedChannelCode.value,
+    payMethod: selectedPayMethodCode.value || undefined,
     walletType: selectedWalletType.value,
-    currency: APP_CURRENCY,
-    countryCode: US_COUNTRY_CODE,
+    currency: selectedCountry.value?.currencyCode || APP_CURRENCY,
+    countryCode: APP_COUNTRY_CODE,
     merchantOrderNo: buildMerchantOrderNo(),
     extraFields: buildExtraFields(),
     confirmUnfinishedActivityCycle,
@@ -347,7 +282,7 @@ async function goToCryptoPay() {
     query: {
       amount: amount.value.toFixed(2),
       channelCode: selectedChannelCode.value,
-      countryCode: US_COUNTRY_CODE,
+      countryCode: APP_COUNTRY_CODE,
       walletType: selectedWalletType.value,
     },
   })
@@ -370,21 +305,21 @@ async function loadRechargePage() {
   try {
     await userStore.loadUserInfo()
     countries.value = await getAppCountries()
-    selectedCountry.value = countries.value.find(country => country.countryCode === US_COUNTRY_CODE) ?? null
+    selectedCountry.value = countries.value.find(country => country.countryCode === APP_COUNTRY_CODE) ?? null
 
     if (!selectedCountry.value) {
       pageStatus.value = 'empty'
-      pageError.value = t('recharge.noUsCountry')
+      pageError.value = t('recharge.noMarketCountry')
       return
     }
 
-    const [, fields] = await Promise.all([
-      getCountryRechargeInfo(US_COUNTRY_CODE),
-      getCountryRechargeFields(US_COUNTRY_CODE),
+    const [info, fields] = await Promise.all([
+      getCountryRechargeInfo(APP_COUNTRY_CODE),
+      getCountryRechargeFields(APP_COUNTRY_CODE),
       refreshRechargeFirstStatus(),
     ])
 
-    channels.value = fixedRechargeChannels()
+    channels.value = info?.channels ?? []
     rechargeFields.value = fields ?? []
     hydrateRechargeFieldValues(rechargeFields.value)
     selectedChannelCode.value = channels.value[0]?.channelCode ?? ''
@@ -449,11 +384,11 @@ async function confirmUnfinishedActivityCycle() {
 async function submitRecharge() {
   formError.value = ''
 
-  if (!selectedCountry.value) throw new Error(t('recharge.noUsCountry'))
+  if (!selectedCountry.value) throw new Error(t('recharge.noMarketCountry'))
   if (!selectedChannel.value) throw new Error(t('recharge.selectChannel'))
   if (!isSelectedCryptoChannel.value && payMethods.value.length && !selectedPayMethod.value) throw new Error(t('recharge.selectPayMethod'))
   if (!Number.isFinite(amount.value) || amount.value <= 0) throw new Error(t('recharge.invalidAmount'))
-  if (amount.value < MIN_RECHARGE_AMOUNT) throw new Error(t('recharge.minAmount', { amount: formatUsd(MIN_RECHARGE_AMOUNT) }))
+  if (amount.value < MIN_RECHARGE_AMOUNT) throw new Error(t('recharge.minAmount', { amount: formatMarketAmount(MIN_RECHARGE_AMOUNT) }))
 
   if (isSelectedCryptoChannel.value) {
     await trackEvent({
@@ -595,10 +530,10 @@ onMounted(() => {
                   <i class="fa-solid fa-wallet" />
                 </span>
                 <p>{{ t('recharge.availableBalance') }}</p>
-                <strong>{{ balanceText }} <em>USD</em></strong>
+                <strong>{{ balanceText }} <em>{{ selectedCountry?.currencyCode || APP_CURRENCY }}</em></strong>
                 <small>
                   <i class="fa-solid fa-location-dot" />
-                  {{ t('recharge.unitedStates') }} · {{ APP_CURRENCY }}
+                  {{ t('recharge.marketCountry', { country: selectedCountry?.countryNameCn || APP_COUNTRY_NAME_LOCAL }) }} · {{ selectedCountry?.currencyCode || APP_CURRENCY }}
                 </small>
               </section>
 
@@ -739,7 +674,7 @@ onMounted(() => {
                 <footer class="ppmx-recharge-submit">
                   <div>
                     <span>{{ t('recharge.payAmount') }}</span>
-                    <strong>{{ formattedAmount }} <em>USD</em></strong>
+                    <strong>{{ formattedAmount }} <em>{{ selectedCountry?.currencyCode || APP_CURRENCY }}</em></strong>
                     <small v-if="showPromo">
                       {{ t('recharge.bonusAmountDesc', { amount: formattedBonusAmount }) }}
                     </small>

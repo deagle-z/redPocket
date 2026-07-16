@@ -11,7 +11,7 @@ vi.mock('@/api/user', () => ({
     username: 'player_1001',
     firstName: 'Player',
     avatar: 'avatar.png',
-    country: 'US',
+    country: 'MX',
     balance: 1200,
     sportBalance: 300,
     hasWithdrawAccount: true,
@@ -60,13 +60,13 @@ describe('user store auth actions', () => {
     const store = useUserStore()
 
     await store.loginByPhone({
-      phone: '12015550123',
+      phone: '525512345678',
       password: 'password123',
-      country: 'US',
+      country: 'MX',
     })
 
     expect(store.token).toBe('access-token-1')
-    expect(store.userInfo?.country).toBe('US')
+    expect(store.userInfo?.country).toBe('MX')
     expect(store.userInfo?.sportBalance).toBe(300)
     expect(store.userInfo?.hasWithdrawAccount).toBe(true)
     expect(window.localStorage.getItem('h5_token')).toContain('access-token-1')
@@ -76,9 +76,9 @@ describe('user store auth actions', () => {
     const store = useUserStore()
 
     await store.loginByPhone({
-      phone: '12015550123',
+      phone: '525512345678',
       password: 'password123',
-      country: 'US',
+      country: 'MX',
     }, { remember: false })
 
     expect(store.token).toBe('access-token-1')
@@ -90,9 +90,9 @@ describe('user store auth actions', () => {
     const store = useUserStore()
 
     await store.loginByPhone({
-      phone: '12015550123',
+      phone: '525512345678',
       password: 'password123',
-      country: 'US',
+      country: 'MX',
     }, { remember: false })
     store.logout()
 
@@ -106,9 +106,9 @@ describe('user store auth actions', () => {
     const store = useUserStore()
 
     await store.loginByPhone({
-      phone: '12015550123',
+      phone: '525512345678',
       password: 'password123',
-      country: 'US',
+      country: 'MX',
     })
 
     window.dispatchEvent(new Event(AUTH_EXPIRED_EVENT))
@@ -123,9 +123,9 @@ describe('user store auth actions', () => {
     const store = useUserStore()
 
     await store.registerByPhone({
-      phone: '12015550123',
+      phone: '525512345678',
       password: 'password123',
-      country: 'US',
+      country: 'MX',
       firstName: 'Player',
     })
 

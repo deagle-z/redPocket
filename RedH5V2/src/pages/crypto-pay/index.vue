@@ -7,6 +7,7 @@ import {
   getCryptoRechargeOptions,
   getCryptoRechargeOrderStatus,
 } from '@/api/user'
+import { APP_CURRENCY } from '@/config/market'
 import QRCode from 'qrcode'
 import { showConfirmDialog, showFailToast, showSuccessToast, showToast } from 'vant'
 import { usePpmxLocale } from '../ppmx-home/composables/usePpmxLocale'
@@ -119,7 +120,7 @@ const networkName = computed(() => {
 
   return network.toUpperCase() === 'TRC20' ? 'Tron (TRC20)' : network
 })
-const platformAmountText = computed(() => `${formatAmount(platformAmount.value)} USD`)
+const platformAmountText = computed(() => `${formatAmount(platformAmount.value)} ${APP_CURRENCY}`)
 const estimatedAmountText = computed(() => {
   const estimatedAmount = selectedOption.value?.estimatedAmount || '--'
 

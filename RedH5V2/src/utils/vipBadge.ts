@@ -148,7 +148,7 @@ export function vipBadgeSVG(i: number, cls?: string): string {
   cr += `</g>`
   g += cr
 
-  // center wordmark "PP.BET" + level number (embossed gold serif)
+  // center wordmark "PP.MX" + level number (embossed gold serif)
   const ff = `font-family='Georgia,"Times New Roman",serif' font-weight="700" text-anchor="middle" dominant-baseline="central"`
   const emb = (txt: string, x: number, y: number, sz: number, ls: string | number): string => {
     const a = `${ff} font-size="${sz}" letter-spacing="${ls}"`
@@ -156,7 +156,7 @@ export function vipBadgeSVG(i: number, cls?: string): string {
            `<text x="${x - 0.5}" y="${y - 0.6}" ${a} fill="#fff7d2" opacity=".5">${txt}</text>` +
            `<text x="${x}" y="${y}" ${a} paint-order="stroke" stroke="#3a2706" stroke-opacity=".55" stroke-width=".6" fill="url(#vtext${u})">${txt}</text>`
   }
-  g += emb('PP.BET', 60, 66, 20, '0.5')
+  g += emb('PP.MX', 60, 66, 20, '0.5')
   g += `<line x1="42" y1="79" x2="78" y2="79" stroke="${gMid}" stroke-opacity=".7" stroke-width=".8"/>`
   g += `<path d="M 42 79 l -3.4 -2.1 v4.2 z" fill="${gTop}" opacity=".85"/>`
   g += `<path d="M 78 79 l 3.4 -2.1 v4.2 z" fill="${gTop}" opacity=".85"/>`

@@ -9,6 +9,7 @@ import { VIP_SVGS } from '@/utils/vipBadge'
 import { claimVipWeeklySalary, getVipLevels, getVipProgress, getVipWeeklySalary } from '@/api/vip'
 import type { VipLevelItem, VipProgressData, VipWeeklySalaryStatus } from '@/api/vip'
 import { HttpError } from '@/utils/http'
+import { APP_CURRENCY, APP_CURRENCY_SYMBOL } from '@/config/market'
 
 definePage({
   name: 'vip',
@@ -99,7 +100,7 @@ const salaryClaimed = computed(() => Boolean(salary.value?.claimed))
 const salaryClaimable = computed(() => Boolean(salary.value?.claimable))
 const salaryAmount = computed(() => Number(salary.value?.weeklySalary ?? 0))
 const salaryAmountText = computed(() =>
-  `$${salaryAmount.value.toLocaleString('en-US', { maximumFractionDigits: 2 })}`,
+  `${APP_CURRENCY_SYMBOL}${salaryAmount.value.toLocaleString('es-MX', { maximumFractionDigits: 2 })} ${APP_CURRENCY}`,
 )
 const salaryNote = computed(() => {
   if (salaryClaimed.value) return tx.salNext
@@ -206,7 +207,9 @@ const remainingPoints = computed(() => {
 function isUnlocked(index: number) { return index <= currentLevelIndex.value }
 
 function fmt(n: number) { return n < 0 ? '♾️' : n.toLocaleString('en-US') }
-function fmtUsd(n: number) { return n < 0 ? '♾️' : n === 0 ? '$0' : '$' + n.toLocaleString('en-US') }
+function fmtMarketMoney(n: number) {
+  return n < 0 ? '♾️' : n === 0 ? `${APP_CURRENCY_SYMBOL}0 ${APP_CURRENCY}` : `${APP_CURRENCY_SYMBOL}${n.toLocaleString('es-MX')} ${APP_CURRENCY}`
+}
 
 // ---- data loading ----
 async function loadVipData() {
@@ -486,12 +489,12 @@ watch(vipLevels, () => { void nextTick(updateLadderNav) })
                 <div class="vip2-req-row">
                   <span class="vip2-req-ic"><i class="fa-solid fa-dice" /></span>
                   <span class="vip2-req-label">{{ pickText(tx.reqPoints) }}</span>
-                  <span class="vip2-req-val">{{ fmtUsd(selectedReq.wager) }}</span>
+                  <span class="vip2-req-val">{{ fmtMarketMoney(selectedReq.wager) }}</span>
                 </div>
                 <div class="vip2-req-row">
                   <span class="vip2-req-ic"><i class="fa-solid fa-wallet" /></span>
                   <span class="vip2-req-label">{{ pickText(tx.reqDeposit) }}</span>
-                  <span class="vip2-req-val">{{ fmtUsd(selectedReq.dep) }}</span>
+                  <span class="vip2-req-val">{{ fmtMarketMoney(selectedReq.dep) }}</span>
                 </div>
               </div>
 
@@ -504,12 +507,12 @@ watch(vipLevels, () => { void nextTick(updateLadderNav) })
                 <div class="vip2-req-row">
                   <span class="vip2-req-ic"><i class="fa-solid fa-percent" /></span>
                   <span class="vip2-req-label">{{ pickText(tx.rwCashback) }}</span>
-                  <span class="vip2-req-val">{{ fmtUsd(selectedReq.cashback) }}</span>
+                  <span class="vip2-req-val">{{ fmtMarketMoney(selectedReq.cashback) }}</span>
                 </div>
                 <div class="vip2-req-row">
                   <span class="vip2-req-ic"><i class="fa-solid fa-sack-dollar" /></span>
                   <span class="vip2-req-label">{{ pickText(tx.reqGift) }}</span>
-                  <span class="vip2-req-val">{{ fmtUsd(selectedReq.gift) }}</span>
+                  <span class="vip2-req-val">{{ fmtMarketMoney(selectedReq.gift) }}</span>
                 </div>
                 <div class="vip2-req-row">
                   <span class="vip2-req-ic"><i class="fa-solid fa-money-bill-transfer" /></span>
@@ -519,7 +522,7 @@ watch(vipLevels, () => { void nextTick(updateLadderNav) })
                 <div class="vip2-req-row">
                   <span class="vip2-req-ic"><i class="fa-solid fa-money-bill-wave" /></span>
                   <span class="vip2-req-label">{{ pickText(tx.rwWdMax) }}</span>
-                  <span class="vip2-req-val">{{ fmtUsd(selectedReq.wdmax) }}</span>
+                  <span class="vip2-req-val">{{ fmtMarketMoney(selectedReq.wdmax) }}</span>
                 </div>
                 <div class="vip2-req-row">
                   <span class="vip2-req-ic"><i class="fa-solid fa-user-tie" /></span>

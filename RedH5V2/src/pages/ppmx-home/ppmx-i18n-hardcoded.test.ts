@@ -43,11 +43,11 @@ const hardcodedCopy: Array<string | RegExp> = [
   'Notificaciones',
   'Cargando juegos',
   'Sin juegos disponibles',
-  'Casino y apuestas deportivas premium en Estados Unidos.',
+  'Casino y apuestas deportivas premium en México.',
 ]
 
-describe('PP.BET page copy localization', () => {
-  it('does not hardcode page copy in the PP.BET view templates', () => {
+describe('PP.MX page copy localization', () => {
+  it('does not hardcode page copy in the PP.MX view templates', () => {
     const offenders = viewSources.flatMap(({ path, source }) =>
       hardcodedCopy
         .filter((copy) => typeof copy === 'string' ? source.includes(copy) : copy.test(source))

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import '@/assets/styles/pp-mx-home.css'
+import { APP_CURRENCY } from '@/config/market'
 import { showToast } from 'vant'
 import { usePpmxLocale } from '../ppmx-home/composables/usePpmxLocale'
 import type { LocalizedText } from '../ppmx-home/types'
@@ -23,9 +24,9 @@ const responsibleText = {
   eyebrow: { es: 'Juego responsable', en: 'Responsible gaming', zh: '责任博彩' },
   title: { es: 'Tú tienes el control', en: 'You are in control', zh: '你掌控节奏' },
   intro: {
-    es: 'El juego debe ser entretenimiento. Si sientes que se sale de control, llama o envía un mensaje al 1-800-GAMBLER. No estás solo.',
-    en: 'Gaming should be entertainment. If you feel it is getting out of control, call or text 1-800-GAMBLER. You are not alone.',
-    zh: '游戏应当只是娱乐。如果你感觉正在失控，请拨打或发送短信至 1-800-GAMBLER。你并不孤单。',
+    es: 'El juego debe ser entretenimiento. Si sientes que se sale de control, pausa y contacta a soporte. No estás solo.',
+    en: 'Gaming should be entertainment. If you feel it is getting out of control, pause and contact support. You are not alone.',
+    zh: '游戏应当只是娱乐。如果你感觉正在失控，请暂停并联系客服。你并不孤单。',
   },
   limitTitle: { es: 'Límite de depósito', en: 'Deposit limit', zh: '存款限额' },
   limitDesc: {
@@ -48,18 +49,18 @@ const responsibleText = {
   apply: { es: 'Aplicar', en: 'Apply', zh: '应用' },
   activate: { es: 'Activar', en: 'Activate', zh: '启用' },
   applied: { es: 'Configuración aplicada', en: 'Setting applied', zh: '设置已应用' },
-  currency: { es: 'USD', en: 'USD', zh: 'USD' },
+  currency: { es: APP_CURRENCY, en: APP_CURRENCY, zh: APP_CURRENCY },
   days: { es: 'días', en: 'days', zh: '天' },
   month: { es: 'mes', en: 'month', zh: '个月' },
   months: { es: 'meses', en: 'months', zh: '个月' },
   permanent: { es: 'Permanente', en: 'Permanent', zh: '永久' },
   helpTitle: { es: '¿Necesitas ayuda?', en: 'Need help?', zh: '需要帮助？' },
   helpSub: {
-    es: 'Si sientes que el juego se sale de control, llama o envía un mensaje al 1-800-GAMBLER.',
-    en: 'If gambling feels out of control, call or text 1-800-GAMBLER for support.',
-    zh: '如果你感觉赌博失控，请拨打或发送短信至 1-800-GAMBLER 寻求支持。',
+    es: 'Si sientes que el juego se sale de control, pausa y contacta a soporte.',
+    en: 'If gambling feels out of control, pause and contact support.',
+    zh: '如果你感觉娱乐失控，请暂停并联系客服。',
   },
-  contact: { es: '1-800-GAMBLER', en: '1-800-GAMBLER', zh: '1-800-GAMBLER' },
+  contact: { es: 'Soporte PP.MX', en: 'PP.MX support', zh: 'PP.MX 客服' },
 } satisfies Record<string, LocalizedText>
 
 const exclusionOptions = [
@@ -99,7 +100,7 @@ function applyResponsibleSetting() {
                   type="number"
                   inputmode="numeric"
                   min="0"
-                  placeholder="USD"
+                  :placeholder="APP_CURRENCY"
                 >
               </label>
               <button class="ppmx-btn-red" type="button" @click="applyResponsibleSetting">

@@ -5,11 +5,11 @@ import PpmxButton from '@/components/PpmxButton.vue'
 import PpmxSubpageLayout from '@/components/PpmxSubpageLayout.vue'
 import { bindCurrentTgPhone, getCurrentUserInfo, sendTgSmsCode } from '@/api/user'
 import {
-  buildUsPhoneWithDialCode,
-  isValidUsNationalPhone,
-  normalizeUsNationalPhone,
-  US_COUNTRY_CODE,
-} from '@/utils/usPhone'
+  buildMxPhoneWithDialCode,
+  isValidMxNationalPhone,
+  normalizeMxNationalPhone,
+  MX_COUNTRY_CODE,
+} from '@/utils/mxPhone'
 import { usePpmxLocale } from '../ppmx-home/composables/usePpmxLocale'
 import type { LocalizedText } from '../ppmx-home/types'
 
@@ -44,7 +44,7 @@ const secPhoneText = {
   getCode: { es: 'Obtener código', en: 'Get code', zh: '获取验证码' },
   sending: { es: 'Enviando', en: 'Sending', zh: '发送中' },
   submit: { es: 'Confirmar cambio', en: 'Confirm change', zh: '确认修改' },
-  invalidNew: { es: 'Ingresa un celular válido de Estados Unidos.', en: 'Enter a valid US mobile number.', zh: '请输入有效的美国手机号。' },
+  invalidNew: { es: 'Ingresa un celular válido de México.', en: 'Enter a valid Mexico mobile number.', zh: '请输入有效的墨西哥手机号。' },
   invalidCode: { es: 'Ingresa un código de 6 dígitos.', en: 'Enter a 6-digit code.', zh: '请输入 6 位验证码。' },
   sent: { es: 'Código enviado por SMS.', en: 'SMS code sent.', zh: '验证码短信已发送。' },
   done: { es: 'Celular actualizado.', en: 'Mobile number updated.', zh: '手机号修改成功。' },
@@ -57,7 +57,7 @@ const countdown = ref(0)
 let countdownTimer: ReturnType<typeof window.setInterval> | null = null
 
 function syncCurrentPhone(phone?: string | null) {
-  const nextPhone = normalizeUsNationalPhone(String(phone || '')).slice(0, 10)
+  const nextPhone = normalizeMxNationalPhone(String(phone || '')).slice(0, 10)
   if (!nextPhone) return
 
   secPhOld.value = nextPhone
@@ -81,19 +81,19 @@ onUnmounted(() => {
 })
 
 function normalizeNewPhoneInput() {
-  secPhNew.value = normalizeUsNationalPhone(secPhNew.value).slice(0, 10)
+  secPhNew.value = normalizeMxNationalPhone(secPhNew.value).slice(0, 10)
 }
 
 function resolveNewPhoneWithCountryCode() {
-  const nationalPhone = normalizeUsNationalPhone(secPhNew.value)
+  const nationalPhone = normalizeMxNationalPhone(secPhNew.value)
   secPhNew.value = nationalPhone.slice(0, 10)
 
-  if (!isValidUsNationalPhone(nationalPhone)) {
+  if (!isValidMxNationalPhone(nationalPhone)) {
     showFailToast(pickText(secPhoneText.invalidNew))
     return ''
   }
 
-  return buildUsPhoneWithDialCode(nationalPhone)
+  return buildMxPhoneWithDialCode(nationalPhone)
 }
 
 function startCountdown() {
@@ -114,7 +114,7 @@ async function sendCode() {
   const phone = resolveNewPhoneWithCountryCode()
   if (!phone) return
 
-  await sendTgSmsCode(phone, US_COUNTRY_CODE)
+  await sendTgSmsCode(phone, MX_COUNTRY_CODE)
   startCountdown()
   showSuccessToast(pickText(secPhoneText.sent))
 }
@@ -142,7 +142,7 @@ async function submitBindPhone() {
 
   await bindCurrentTgPhone({
     phone,
-    country: US_COUNTRY_CODE,
+    country: MX_COUNTRY_CODE,
     code,
   })
 

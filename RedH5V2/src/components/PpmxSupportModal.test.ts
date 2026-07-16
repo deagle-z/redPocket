@@ -11,7 +11,7 @@ const cssSource = readFileSync(new URL('../assets/styles/pp-mx-home.css', import
 const userApiSource = readFileSync(new URL('../api/user.ts', import.meta.url), 'utf8') as string
 
 describe('PpmxSupportModal', () => {
-  it('matches the PP.BET reference support modal contract and loads channels from API', () => {
+  it('matches the PP.MX reference support modal contract and loads channels from API', () => {
     expect(supportSource).toContain("defineOptions({ name: 'PpmxSupportModal' })")
     expect(supportSource).toContain('<Teleport to="body">')
     expect(supportSource).toContain('id="supportModal"')
@@ -48,7 +48,7 @@ describe('PpmxSupportModal', () => {
     expect(userApiSource).not.toContain("'/api/v1/app/domain/serviceLinks'")
   })
 
-  it('is mounted globally by the PP.BET page chrome and opened from support targets', () => {
+  it('is mounted globally by the PP.MX page chrome and opened from support targets', () => {
     expect(chromeSource).toContain("import PpmxSupportModal from '@/components/PpmxSupportModal.vue'")
     expect(chromeSource).toContain('supportModalOpen')
     expect(chromeSource).toContain('function openSupport()')

@@ -7,7 +7,7 @@ import {
 
 describe('recharge wallet type', () => {
   it('defaults to the balance wallet and only accepts supported API values', () => {
-    expect(DEFAULT_RECHARGE_WALLET_TYPE).toBe('balance')
+    expect(DEFAULT_RECHARGE_WALLET_TYPE).toBe('sport')
     expect(RECHARGE_WALLET_TYPE_VALUES).toEqual(['balance', 'sport'])
     expect(isRechargeWalletType('balance')).toBe(true)
     expect(isRechargeWalletType('sport')).toBe(true)

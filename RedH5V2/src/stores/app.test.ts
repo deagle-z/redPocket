@@ -39,7 +39,7 @@ describe('app store theme', () => {
     setActivePinia(createPinia())
   })
 
-  it('defaults to dark when there is no persisted PP.BET theme', () => {
+  it('defaults to dark when there is no persisted PP.MX theme', () => {
     const { documentElement, meta, storage } = installThemeDom()
     const store = useAppStore()
 

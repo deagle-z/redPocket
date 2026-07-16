@@ -9,20 +9,19 @@ const selectInputSource = existsSync(selectInputUrl)
   : ''
 
 describe('bank withdrawal account API integration', () => {
-  it('uses the RedPocketH5 withdrawal-account API contract with United States fixed', () => {
-    expect(bankSource).toContain("const US_COUNTRY_CODE = 'US'")
+  it('uses the backend country withdrawal-field contract for Mexico', () => {
+    expect(bankSource).toContain("import {")
+    expect(bankSource).toContain('APP_COUNTRY_CODE')
+    expect(bankSource).toContain('getAppCountries()')
+    expect(bankSource).toContain('getCountryWithdrawFields(APP_COUNTRY_CODE)')
     expect(bankSource).toContain('getWithdrawAccounts()')
     expect(bankSource).toContain('addWithdrawAccount({')
     expect(bankSource).toContain('updateWithdrawAccount(editingId.value')
     expect(bankSource).toContain('deleteWithdrawAccount(account.id)')
     expect(bankSource).toContain('setDefaultWithdrawAccount(account.id)')
-    expect(bankSource).toContain('countryCode: US_COUNTRY_CODE')
+    expect(bankSource).toContain('countryCode: activeCountryCode.value')
     expect(bankSource).toContain('accountData')
-    expect(bankSource).toContain("bankCode: normalizeBankCode(fieldValues.value.bankCode)")
-    expect(bankSource).toContain("bankNumber: fieldValues.value.bankNumber.trim()")
-    expect(bankSource).toContain("bankAccountName: fieldValues.value.bankAccountName.trim()")
-    expect(bankSource).not.toContain('getCountryWithdrawFields(US_COUNTRY_CODE)')
-    expect(bankSource).not.toContain('getAppCountries')
+    expect(bankSource).toContain('withdrawFields.value.map(field => [')
     expect(bankSource).not.toContain('country-pill')
   })
 
@@ -33,12 +32,11 @@ describe('bank withdrawal account API integration', () => {
     expect(bankSource).not.toContain(':message="t(\'bank.errorMessage\')"')
   })
 
-  it('delegates select input behavior to the shared PP.BET select component', () => {
+  it('delegates select input behavior to the shared PP.MX select component', () => {
     expect(selectInputSource).toContain('defineModel<string>')
     expect(bankSource).toContain('PpmxSelectInput')
-    expect(bankSource).toContain(':options="BANK_CODE_OPTIONS"')
-    expect(bankSource).toContain('v-model="fieldValues.bankCode"')
-    expect(bankSource).not.toContain('<template>\n              <label class="ppmx-bank-field">')
+    expect(bankSource).toContain(':options="fieldOptions(field)"')
+    expect(bankSource).toContain('v-model="fieldValues[field.fieldKey]"')
     expect(bankSource).not.toContain('selectingField')
     expect(bankSource).not.toContain('showFieldPicker')
     expect(bankSource).not.toContain('isSelectOpen(field)')
@@ -68,7 +66,7 @@ describe('bank withdrawal account API integration', () => {
     expect(userApiSource).toContain('post<WithdrawAccountItem>(`/v1/app/withdrawAccount/${id}/update`, data)')
     expect(userApiSource).toContain('del<string>(`/v1/app/withdrawAccount/${id}`)')
     expect(userApiSource).toContain('post<string>(`/v1/app/withdrawAccount/${id}/setDefault`, {})')
+    expect(userApiSource).toContain('`/v1/app/country/${code}/withdrawFields`')
     expect(userApiSource).not.toContain("'/api/v1/app/withdrawAccount")
-    expect(userApiSource).not.toContain('`/api/v1/app/country/${code}/withdrawFields`')
   })
 })

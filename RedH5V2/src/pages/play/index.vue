@@ -33,7 +33,7 @@ let frameTimer: ReturnType<typeof setTimeout> | undefined
 let didRequestExitBalanceRefresh = false
 
 const playText = {
-  fallbackTitle: { es: 'Juego PP.BET', en: 'PP.BET game', zh: 'PP.BET 游戏' },
+  fallbackTitle: { es: 'Juego PP.MX', en: 'PP.MX game', zh: 'PP.MX 游戏' },
   loadingTitle: { es: 'Preparando juego', en: 'Preparing game', zh: '正在准备游戏' },
   openingTitle: { es: 'Abriendo sala segura', en: 'Opening secure room', zh: '正在打开安全游戏房间' },
   secureSession: { es: 'Sesión segura', en: 'Secure session', zh: '安全会话' },
@@ -66,7 +66,7 @@ const gameTitle = computed(() => {
 
   return title || pickText(playText.fallbackTitle)
 })
-const launchLanguage = computed(() => String(locale.value || 'es-US').split('-')[0] || 'es')
+const launchLanguage = computed(() => String(locale.value || 'es-MX').split('-')[0] || 'es')
 
 function clearFrameTimer() {
   if (!frameTimer) return

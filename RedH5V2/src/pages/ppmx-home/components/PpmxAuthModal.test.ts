@@ -13,7 +13,7 @@ describe('PpmxAuthModal business integration', () => {
     expect(authSource).toContain('userStore.loginByPhone')
     expect(authSource).toContain('userStore.registerByPhone')
     expect(authSource).toContain('await checkRegisterPhone({')
-    expect(authSource).toContain('buildUsPhoneWithDialCode')
+    expect(authSource).toContain('buildMxPhoneWithDialCode')
     expect(authSource).not.toContain("function submitLogin() {\n  showToast")
   })
 
@@ -37,7 +37,7 @@ describe('PpmxAuthModal business integration', () => {
     expect(authSource).not.toContain('localStorage.setItem("password')
   })
 
-  it('shows the PP.BET logo on both login and registration modals', () => {
+  it('shows the PP.MX logo on both login and registration modals', () => {
     const logoInstances = authSource.match(/<PpmxLogo \/>/g) ?? []
 
     expect(logoInstances).toHaveLength(2)
@@ -76,15 +76,15 @@ describe('PpmxAuthModal business integration', () => {
     expect(authSource.match(/await router\.push\(AUTH_SUCCESS_REDIRECT\)/g)).toHaveLength(2)
   })
 
-  it('keeps auth phone inputs as US national numbers and adds the dial code only for submit', () => {
-    expect(authSource).toContain('loginForm.phone = normalizeUsNationalPhone(loginForm.phone).slice(0, 10)')
-    expect(authSource).toContain('registerForm.phone = normalizeUsNationalPhone(registerForm.phone).slice(0, 10)')
+  it('keeps auth phone inputs as Mexico national numbers and adds the dial code only for submit', () => {
+    expect(authSource).toContain('loginForm.phone = normalizeMxNationalPhone(loginForm.phone).slice(0, 10)')
+    expect(authSource).toContain('registerForm.phone = normalizeMxNationalPhone(registerForm.phone).slice(0, 10)')
     expect(authSource).toContain('function validateRegisterForm()')
     expect(authSource).toContain('validateRegisterStep(1) && validateRegisterStep(2) && validateRegisterStep(3)')
     expect(authSource).toContain('if (submitting.value || !validateRegisterForm()) return')
-    expect(authSource).toContain('const phone = buildUsPhoneWithDialCode(nationalPhone)')
+    expect(authSource).toContain('const phone = buildMxPhoneWithDialCode(nationalPhone)')
     expect(authSource).toContain('phone,\n      password: loginForm.password')
-    expect(authSource).toContain('phone,\n      country: US_COUNTRY_CODE')
+    expect(authSource).toContain('phone,\n      country: MX_COUNTRY_CODE')
   })
 
   it('does not render social login providers', () => {

@@ -5,6 +5,6 @@ import { getInitialLocale } from '@/utils/locale'
 export const i18n = createI18n({
   legacy: false,
   locale: getInitialLocale(),
-  fallbackLocale: 'en-US',
+  fallbackLocale: 'es-MX',
   messages,
 })

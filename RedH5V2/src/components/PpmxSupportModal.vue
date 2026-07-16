@@ -37,9 +37,9 @@ const supportText = {
   close: { es: 'Cerrar soporte', en: 'Close support', zh: '关闭客服弹窗' },
   open: { es: 'Abrir canal', en: 'Open channel', zh: '打开客服渠道' },
   safe: {
-    es: 'Usa solo canales oficiales PP.BET. Nunca compartas tu contraseña.',
-    en: 'Use PP.BET official channels only. Never share your password.',
-    zh: '请仅使用 PP.BET 官方渠道，切勿泄露密码。',
+    es: 'Usa solo canales oficiales PP.MX. Nunca compartas tu contraseña.',
+    en: 'Use PP.MX official channels only. Never share your password.',
+    zh: '请仅使用 PP.MX 官方渠道，切勿泄露密码。',
   },
   loadingTitle: { es: 'Cargando soporte', en: 'Loading support', zh: '正在加载客服' },
   loadingMessage: {

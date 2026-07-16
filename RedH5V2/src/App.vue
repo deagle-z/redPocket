@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { RechargeSuccessNotification } from '@/api/user'
 import { ackRechargeNotification, getPendingRechargeNotifications } from '@/api/user'
+import { APP_CURRENCY, APP_CURRENCY_SYMBOL } from '@/config/market'
 import { runtimeState, checkForceUpdate } from '@/utils/runtime'
 import { canInstallPwa, promptInstallPwa } from '@/pwa'
 import { resolveAppShell } from '@/utils/appShell'
@@ -97,7 +98,7 @@ function normalizeRechargeSuccessMessage(message: unknown): RechargeSuccessNotif
   return {
     orderNo,
     channel: String(data.channel || ''),
-    currency: String(data.currency || 'USD'),
+    currency: String(data.currency || APP_CURRENCY),
     amount: Number(data.amount || 0),
     creditAmount: data.creditAmount == null ? null : Number(data.creditAmount),
     bonusAmount: data.bonusAmount == null ? null : Number(data.bonusAmount),
@@ -133,8 +134,8 @@ function showRechargeSuccessNotice(notification: RechargeSuccessNotification) {
   })
   rechargeSuccessNotice.amountText = amount > 0
     ? t('recharge.paymentSuccessAmount', {
-      amount: formatMoney(toDisplayCents(amount), { currency: '$' }),
-      currency: notification.currency || 'USD',
+      amount: formatMoney(toDisplayCents(amount), { currency: APP_CURRENCY_SYMBOL }),
+      currency: notification.currency || APP_CURRENCY,
     })
     : ''
   rechargeSuccessNotice.show = true
@@ -174,7 +175,7 @@ async function trackRechargeSuccess(notification: RechargeSuccessNotification) {
     amount,
     creditAmount: Number(notification.creditAmount || 0),
     bonusAmount: Number(notification.bonusAmount || 0),
-    currency: notification.currency || 'USD',
+    currency: notification.currency || APP_CURRENCY,
     channel: notification.channel || '',
     status: notification.status,
     isFirstRecharge: Boolean(notification.isFirstRecharge),
@@ -197,7 +198,7 @@ async function trackRechargeSuccess(notification: RechargeSuccessNotification) {
     trackPurchase({
       orderNo,
       amount,
-      currency: notification.currency || 'USD',
+      currency: notification.currency || APP_CURRENCY,
       eventId,
     })
   }

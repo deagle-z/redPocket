@@ -61,7 +61,7 @@ describe('payment WebSocket integration contract', () => {
     const pixelSource = readSource('src/utils/facebookPixel.ts')
     const zhSource = readSource('src/locales/zh-CN.ts')
     const enSource = readSource('src/locales/en-US.ts')
-    const esSource = readSource('src/locales/es-US.ts')
+    const esSource = readSource('src/locales/es-MX.ts')
 
     expect(pixelSource).toContain('trackPurchase')
     expect(pixelSource).toContain("'Purchase'")

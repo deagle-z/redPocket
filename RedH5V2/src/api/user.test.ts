@@ -26,8 +26,8 @@ describe('user API registration payloads', () => {
 
   it('sends the browser device fingerprint with phone registration', async () => {
     await registerByPhone({
-      phone: '12015550123',
-      country: 'US',
+      phone: '525512345678',
+      country: 'MX',
       firstName: 'Player',
       password: 'password123',
       inviteCode: 'INVITE01',
@@ -36,8 +36,8 @@ describe('user API registration payloads', () => {
     })
 
     expect(post).toHaveBeenCalledWith('/v1/app/tg/registerByPhone', {
-      phone: '12015550123',
-      country: 'US',
+      phone: '525512345678',
+      country: 'MX',
       firstName: 'Player',
       password: 'password123',
       inviteCode: 'INVITE01',
@@ -49,13 +49,13 @@ describe('user API registration payloads', () => {
 
   it('checks phone availability before registration continues', async () => {
     await checkRegisterPhone({
-      phone: '+12015550123',
-      country: 'US',
+      phone: '+525512345678',
+      country: 'MX',
     })
 
     expect(post).toHaveBeenCalledWith('/v1/app/tg/checkRegisterPhone', {
-      phone: '+12015550123',
-      country: 'US',
+      phone: '+525512345678',
+      country: 'MX',
     }, {
       meta: {
         auth: false,
@@ -65,11 +65,11 @@ describe('user API registration payloads', () => {
   })
 
   it('uses the RedPocketH5 phone password reset contract', async () => {
-    await sendTgSmsCode('12015550123', 'US')
+    await sendTgSmsCode('525512345678', 'MX')
 
     expect(post).toHaveBeenCalledWith('/v1/app/tg/sendSMSCode', {
-      phone: '12015550123',
-      country: 'US',
+      phone: '525512345678',
+      country: 'MX',
     }, {
       meta: {
         auth: false,
@@ -78,15 +78,15 @@ describe('user API registration payloads', () => {
     })
 
     await forgotPasswordByPhone({
-      phone: '12015550123',
-      country: 'US',
+      phone: '525512345678',
+      country: 'MX',
       code: '123456',
       newPassword: 'newpass123',
     })
 
     expect(post).toHaveBeenCalledWith('/v1/app/tg/forgotPasswordByPhone', {
-      phone: '12015550123',
-      country: 'US',
+      phone: '525512345678',
+      country: 'MX',
       code: '123456',
       newPassword: 'newpass123',
     }, {
@@ -107,14 +107,14 @@ describe('user API registration payloads', () => {
 
   it('uses the RedPocketH5 current user phone binding contract', async () => {
     await bindCurrentTgPhone({
-      phone: '12015550123',
-      country: 'US',
+      phone: '525512345678',
+      country: 'MX',
       code: '123456',
     })
 
     expect(post).toHaveBeenCalledWith('/v1/app/tg/bindPhone', {
-      phone: '12015550123',
-      country: 'US',
+      phone: '525512345678',
+      country: 'MX',
       code: '123456',
     })
   })

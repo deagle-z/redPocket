@@ -15,7 +15,7 @@ export function highlightPromoText(text: string): string {
     )
     .replace(/(\$\s?[\d.,]+)/g, '<span class="ppmx-promo-highlight">$1</span>')
     .replace(
-      /(\d[\d.,]*\s?(?:美元|dollars?|USD|días?|days?|day|天|veces|倍|giros?|次))/gi,
+      /(\d[\d.,]*\s?(?:MXN|比索|días?|days?|day|天|veces|倍|giros?|次))/gi,
       '<span class="ppmx-promo-highlight">$1</span>',
     )
 }

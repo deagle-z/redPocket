@@ -10,7 +10,7 @@ const props = withDefaults(
     modelValue: boolean
   }>(),
   {
-    ariaLabel: 'PP.BET modal',
+    ariaLabel: 'PP.MX modal',
     cardClass: '',
     closeAriaLabel: 'Cerrar',
     closeOnBackdrop: true,

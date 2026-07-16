@@ -2,20 +2,24 @@
 import '@/assets/styles/pp-mx-home.css'
 import QRCode from 'qrcode'
 import { showToast } from 'vant'
-import type { TaskActivityItem, TgInviteRuleConfig, TgInviteStats } from '@/api/user'
+import type { TaskActivityItem, TgInviteRuleConfig, TgInviteStats, WithdrawAccountItem } from '@/api/user'
 import {
   claimTaskActivity,
+  createRebateWithdrawOrder,
   getCurrentTgInviteRuleConfig,
   getCurrentTgInviteStats,
   getTaskActivityList,
   getTaskActivityRecords,
+  getWithdrawAccounts,
   rewardTaskActivity,
   transferRebateToBalance,
 } from '@/api/user'
+import { APP_COUNTRY_CODE, APP_CURRENCY, APP_CURRENCY_SYMBOL } from '@/config/market'
 import { HttpError } from '@/utils/http'
 import { formatMoney, toCent } from '@/utils/money'
 import PpmxButton from '@/components/PpmxButton.vue'
 import PpmxGuestPanel from '@/components/PpmxGuestPanel.vue'
+import PpmxSelectInput from '@/components/PpmxSelectInput.vue'
 import PpmxWithdrawModal from '@/components/PpmxWithdrawModal.vue'
 import PpmxPageChrome from '../ppmx-home/components/PpmxPageChrome.vue'
 
@@ -42,6 +46,13 @@ const inviteQrDataUrl = ref('')
 const inviteQrError = ref(false)
 const transferModalOpen = ref(false)
 const transferAmount = ref('')
+const commissionWithdrawModalOpen = ref(false)
+const commissionWithdrawAmount = ref('')
+const commissionWithdrawAccountId = ref('')
+const withdrawAccounts = ref<WithdrawAccountItem[]>([])
+const withdrawAccountsLoading = ref(false)
+const withdrawAccountsLoaded = ref(false)
+const withdrawAccountsError = ref(false)
 const taskTier = ref(0)
 const taskActivities = ref<TaskActivityItem[]>([])
 const taskRecords = ref<TaskActivityItem[]>([])
@@ -58,6 +69,7 @@ let taskDeadlineRefreshKey = ''
 
 const CUSTOM_TASK_MIN_INVITE_COUNT = 1
 const CUSTOM_TASK_MAX_INVITE_COUNT = 1000
+const MIN_COMMISSION_WITHDRAW_AMOUNT = 50
 
 const currentLang = computed(() => String(locale.value || '').trim())
 const activeTask = computed(() => taskActivities.value[taskTier.value] ?? taskActivities.value[0] ?? null)
@@ -105,12 +117,56 @@ const transferAmountValue = computed(() => {
 
   return Number.isFinite(normalized) && normalized > 0 ? normalized : 0
 })
+const commissionWithdrawAmountValue = computed(() => {
+  const normalized = Number(commissionWithdrawAmount.value)
+
+  return Number.isFinite(normalized) && normalized > 0 ? normalized : 0
+})
+const commissionWithdrawAmountCents = computed(() => Math.round(commissionWithdrawAmountValue.value * 100))
+const commissionWithdrawFeeCents = computed(() => {
+  if (commissionWithdrawAmountCents.value <= 0) return 0
+
+  const fixedFeeCents = toMoneyCents(ruleConfig.value?.rebateWithdrawFeeFixed)
+  const percentFee = numberValue(ruleConfig.value?.rebateWithdrawFeePercent)
+  const percentFeeCents = percentFee > 0
+    ? Math.round(commissionWithdrawAmountCents.value * percentFee / 100)
+    : 0
+
+  return Math.max(0, fixedFeeCents + percentFeeCents)
+})
+const commissionWithdrawReceiveCents = computed(() =>
+  Math.max(0, commissionWithdrawAmountCents.value - commissionWithdrawFeeCents.value),
+)
+const rebateWithdrawDisabled = computed(() =>
+  Number(stats.value?.rebateWithdrawDisabled ?? userStore.userInfo?.rebateWithdrawDisabled ?? 0) === 1,
+)
+const selectedCommissionWithdrawAccount = computed(() =>
+  withdrawAccounts.value.find(account => String(account.id) === commissionWithdrawAccountId.value) ?? null,
+)
+const commissionWithdrawAccountOptions = computed(() =>
+  withdrawAccounts.value
+    .filter(account => account.countryCode === APP_COUNTRY_CODE)
+    .map(account => ({
+      label: formatWithdrawAccountLabel(account),
+      value: String(account.id),
+    })),
+)
 const transferSubmitLock = useSubmitLock(submitTransferOrder, { minLockMs: 600 })
+const commissionWithdrawSubmitLock = useSubmitLock(submitCommissionWithdrawOrder, { minLockMs: 600 })
 const isTransferSubmitting = computed(() => transferSubmitLock.locked.value)
+const isCommissionWithdrawSubmitting = computed(() => commissionWithdrawSubmitLock.locked.value)
 const transferSubmitDisabled = computed(() =>
   isTransferSubmitting.value
   || transferAmountValue.value <= 0
   || transferAmountValue.value > availableCommissionCents.value / 100,
+)
+const commissionWithdrawSubmitDisabled = computed(() =>
+  isCommissionWithdrawSubmitting.value
+  || withdrawAccountsLoading.value
+  || rebateWithdrawDisabled.value
+  || commissionWithdrawAmountCents.value < MIN_COMMISSION_WITHDRAW_AMOUNT * 100
+  || commissionWithdrawAmountCents.value > availableCommissionCents.value
+  || !commissionWithdrawAccountId.value,
 )
 
 const teamV2Kpis = computed(() => [
@@ -125,6 +181,10 @@ const commissionTiles = computed(() => [
   { id: 'today', value: formatAmount(stats.value?.todayCommission), label: t('ppmx.team.commissionToday') },
   { id: 'pending', value: formatCount(stats.value?.todayRechargeUsers), label: t('ppmx.team.statTodayRechargeUsers') },
 ])
+
+const rechargeRebateRows = [
+  { id: 'first', icon: 'fa-bolt', labelKey: 'rechargeRebateFirst', rate: 10, top: true },
+] as const
 
 const ruleItems = computed(() => [
   t('ppmx.team.ruleItem4'),
@@ -157,6 +217,48 @@ function toMoneyCents(value: number | string | undefined | null) {
 
 function formatAmount(value: number | string | undefined | null) {
   return formatMoney(toMoneyCents(value), { currency: '$' })
+}
+
+function formatMarketMoney(cents: number | { value: number }) {
+  const value = typeof cents === 'number' ? cents : cents.value
+
+  return `${formatMoney(value, { currency: APP_CURRENCY_SYMBOL })} ${APP_CURRENCY}`
+}
+
+function parseWithdrawAccountData(raw: string) {
+  try {
+    const parsed = JSON.parse(raw) as unknown
+    if (!parsed || typeof parsed !== 'object') return {}
+
+    return Object.fromEntries(
+      Object.entries(parsed as Record<string, unknown>).map(([key, value]) => [key, String(value ?? '')]),
+    )
+  } catch {
+    return {}
+  }
+}
+
+function maskAccountValue(value: string) {
+  const cleanValue = value.trim()
+  if (!cleanValue) return ''
+
+  const suffix = cleanValue.slice(-4)
+
+  return suffix ? `**** ${suffix}` : cleanValue
+}
+
+function formatWithdrawAccountLabel(account: WithdrawAccountItem) {
+  const data = parseWithdrawAccountData(account.accountData)
+  const bankName = data.bank || data.bankName || data.Bank || data.bankCode || 'MX'
+  const accountValue = data.accountNumber
+    || data.routingNumber
+    || data.accountNo
+    || data.cardNo
+    || Object.values(data).find(value => /\d{4,}/.test(value))
+    || String(account.id)
+  const masked = maskAccountValue(accountValue)
+
+  return masked ? `${bankName} · ${masked}` : bankName
 }
 
 function normalizeTaskActivities(value: TaskActivityItem[] | undefined | null) {
@@ -219,7 +321,7 @@ function formatTaskConfigAmount(value: number | string | undefined | null) {
 function taskSubtitleText(task: TaskActivityItem | null | undefined) {
   const count = Math.max(0, Math.trunc(numberValue(task?.requiredInviteCount)))
   const amount = formatTaskConfigAmount(task?.requiredRechargeAmount)
-  const currency = String(task?.rewardCurrency || 'USD').trim() || 'USD'
+  const currency = String(task?.rewardCurrency || APP_CURRENCY).trim() || APP_CURRENCY
 
   return t('ppmx.team.taskInviteRewardRequirement', {
     count: formatCount(count),
@@ -484,13 +586,100 @@ function openTransferModal() {
   transferModalOpen.value = true
 }
 
+function openCommissionWithdrawModal() {
+  if (!requireRegisterAuth()) return
+  if (rebateWithdrawDisabled.value) {
+    showToast(t('ppmx.team.commissionWithdrawDisabledToast'))
+    return
+  }
+
+  commissionWithdrawModalOpen.value = true
+  if (!withdrawAccountsLoaded.value && !withdrawAccountsLoading.value) {
+    loadCommissionWithdrawAccounts()
+  }
+}
+
 function closeTransferModal() {
   transferModalOpen.value = false
+}
+
+function closeCommissionWithdrawModal() {
+  commissionWithdrawModalOpen.value = false
 }
 
 function transferAllCommission() {
   const availableUnits = availableCommissionCents.value / 100
   transferAmount.value = availableUnits > 0 ? availableUnits.toFixed(2) : ''
+}
+
+function withdrawAllCommission() {
+  const availableUnits = availableCommissionCents.value / 100
+  commissionWithdrawAmount.value = availableUnits > 0 ? availableUnits.toFixed(2) : ''
+}
+
+function syncDefaultCommissionWithdrawAccount() {
+  if (
+    commissionWithdrawAccountId.value
+    && commissionWithdrawAccountOptions.value.some(option => option.value === commissionWithdrawAccountId.value)
+  ) {
+    return
+  }
+
+  const defaultAccount = withdrawAccounts.value.find(account => account.countryCode === APP_COUNTRY_CODE && account.isDefault === 1)
+    ?? withdrawAccounts.value.find(account => account.countryCode === APP_COUNTRY_CODE)
+
+  commissionWithdrawAccountId.value = defaultAccount ? String(defaultAccount.id) : ''
+}
+
+async function loadCommissionWithdrawAccounts() {
+  withdrawAccountsLoading.value = true
+  withdrawAccountsError.value = false
+
+  try {
+    withdrawAccounts.value = await getWithdrawAccounts()
+    withdrawAccountsLoaded.value = true
+    syncDefaultCommissionWithdrawAccount()
+  } catch {
+    withdrawAccounts.value = []
+    withdrawAccountsError.value = true
+    withdrawAccountsLoaded.value = false
+    commissionWithdrawAccountId.value = ''
+  } finally {
+    withdrawAccountsLoading.value = false
+  }
+}
+
+function buildCommissionWithdrawFieldValues() {
+  const account = selectedCommissionWithdrawAccount.value
+  if (!account) return undefined
+
+  const entries = Object.entries(parseWithdrawAccountData(account.accountData))
+    .map(([key, value]) => [key, value.trim()] as const)
+    .filter(([, value]) => value)
+
+  return entries.length ? Object.fromEntries(entries) : undefined
+}
+
+function validateCommissionWithdrawSubmit() {
+  if (rebateWithdrawDisabled.value) return t('ppmx.team.commissionWithdrawDisabledToast')
+  if (commissionWithdrawAmountCents.value < MIN_COMMISSION_WITHDRAW_AMOUNT * 100) return t('ppmx.team.commissionWithdrawMinToast')
+  if (commissionWithdrawAmountCents.value > availableCommissionCents.value) return t('ppmx.team.commissionWithdrawBalanceToast')
+  if (withdrawAccountsError.value) return t('ppmx.team.commissionWithdrawAccountsError')
+  if (!commissionWithdrawAccountId.value) return t('ppmx.team.commissionWithdrawAccountRequired')
+
+  return ''
+}
+
+function getCommissionWithdrawErrorMessage(error: unknown) {
+  const message = error instanceof Error ? error.message.trim() : ''
+
+  if (!message) return t('ppmx.team.commissionWithdrawFailed')
+  if (message === 'invalid_amount') return t('ppmx.team.commissionWithdrawAmountRequired')
+  if (message === 'rebate_withdraw_disabled' || message === 'withdraw_disabled') return t('ppmx.team.commissionWithdrawDisabledToast')
+  if (message === 'rebate_amount_insufficient' || message === 'user_balance_insufficient') return t('ppmx.team.commissionWithdrawBalanceToast')
+  if (message === 'account_not_found' || message === 'account_country_mismatch') return t('ppmx.team.commissionWithdrawAccountsError')
+
+  return message
 }
 
 async function submitTransferOrder() {
@@ -537,9 +726,46 @@ function submitTransfer() {
   void transferSubmitLock.run().catch(() => {})
 }
 
+async function submitCommissionWithdrawOrder() {
+  const message = validateCommissionWithdrawSubmit()
+  if (message) {
+    showToast(message)
+    return
+  }
+
+  try {
+    const order = await createRebateWithdrawOrder({
+      amount: Number((commissionWithdrawAmountCents.value / 100).toFixed(2)),
+      countryCode: APP_COUNTRY_CODE,
+      accountId: Number(commissionWithdrawAccountId.value),
+      fieldValues: buildCommissionWithdrawFieldValues(),
+    })
+
+    closeCommissionWithdrawModal()
+    commissionWithdrawAmount.value = ''
+    showToast(order.orderNo
+      ? t('ppmx.team.commissionWithdrawSuccessWithOrder', { orderNo: order.orderNo })
+      : t('ppmx.team.commissionWithdrawSuccess'),
+    )
+
+    await Promise.allSettled([
+      loadTeamData(),
+      userStore.loadUserInfo(),
+    ])
+  } catch (error) {
+    showToast(getCommissionWithdrawErrorMessage(error))
+    void loadTeamData()
+  }
+}
+
+function submitCommissionWithdraw() {
+  void commissionWithdrawSubmitLock.run().catch(() => {})
+}
+
 function openBank() {
   if (!requireRegisterAuth()) return
 
+  closeCommissionWithdrawModal()
   void router.push('/bank')
 }
 
@@ -702,96 +928,35 @@ onBeforeUnmount(() => {
         />
 
         <template v-else-if="teamLoaded">
-          <section id="teamV2TaskCard" class="ppmx-team-v2-task reveal in">
-            <div class="ppmx-team-v2-task__head">
-              <h2 class="ppmx-display">
-                <i class="fa-solid fa-bullseye" />
-                <span>{{ t('ppmx.team.rebateTitle') }}</span>
-              </h2>
-              <button class="ppmx-team-v2-history" type="button" @click="openTaskHistory">
-                <i class="fa-solid fa-clock-rotate-left" />
-                <span>{{ t('ppmx.team.taskHistory') }}</span>
-              </button>
-            </div>
+          <section class="ppmx-team-rebate ppmx-glass reveal in">
+            <h2 class="ppmx-display">
+              <i class="fa-solid fa-coins" />
+              <span>{{ t('ppmx.team.rechargeRebateTitle') }}</span>
+            </h2>
+            <p>{{ t('ppmx.team.rechargeRebateDescription') }}</p>
 
-            <div v-if="taskActivities.length > 1" id="teamV2TaskTiers" class="ppmx-team-v2-task__tiers">
-              <button
-                v-for="(tier, index) in taskActivities"
-                :key="`${tier.configId}-${tier.recordId || 0}`"
-                type="button"
-                :class="{ 'is-active': taskTier === index, 'is-custom': isCustomTask(tier) }"
-                @click="taskTier = index"
-              >
-                <span>{{ taskLevelText(tier) }}</span>
-                <small v-if="!isCustomTask(tier)">{{ formatCount(tier.requiredInviteCount) }} {{ t('ppmx.team.statValidUsers') }}</small>
-              </button>
-            </div>
-
-            <article v-if="activeTask" class="ppmx-team-v2-task__card" :class="{ 'is-custom': isCustomTask(activeTask) }">
-              <span class="ppmx-team-v2-task__icon">
-                <i :class="isCustomTask(activeTask) ? 'fa-solid fa-sliders' : 'fa-solid fa-user-group'" />
-              </span>
-              <div>
-                <strong>{{ isCustomTask(activeTask) ? taskLevelText(activeTask) : t('ppmx.team.taskInviteRewardTitle') }}</strong>
-                <p>{{ taskSubtitleText(activeTask) }}</p>
-              </div>
-              <div class="ppmx-team-v2-task__reward">
-                <b>+{{ taskRewardText(activeTask) }}</b>
-                <div v-if="activeTaskRunning" class="ppmx-team-v2-task__actions">
-                  <div class="ppmx-team-v2-countdown" aria-live="polite">
-                    <i class="fa-solid fa-fire" />
-                    <span>{{ activeTaskCountdownText }}</span>
-                  </div>
-                  <button
-                    class="ppmx-btn-gold"
-                    type="button"
-                    :disabled="taskRewardClaiming"
-                    @click="claimTeamTaskReward"
-                  >
-                    {{ taskRewardClaiming ? t('ppmx.team.taskClaiming') : t('ppmx.team.taskRewardClaim') }}
-                  </button>
-                </div>
-                <button
-                  v-else
-                  class="ppmx-btn-gold"
-                  type="button"
-                  :disabled="taskClaiming || !canClaimTask(activeTask)"
-                  @click="claimTeamTask"
+            <div class="ppmx-team-rebate__table">
+              <div class="ppmx-team-rebate__rows">
+                <article
+                  v-for="row in rechargeRebateRows"
+                  :key="row.id"
+                  class="ppmx-team-rebate__row"
+                  :class="{ 'is-top': row.top }"
                 >
-                  {{ taskClaiming ? t('ppmx.team.taskClaiming') : taskStatusText(activeTask) }}
-                </button>
+                  <span class="ppmx-team-rebate__range">
+                    <i class="fa-solid" :class="row.icon" />
+                    <span>{{ t(`ppmx.team.${row.labelKey}`) }}</span>
+                  </span>
+                  <span class="ppmx-team-rebate__value">
+                    <strong class="ppmx-team-rebate__amount">
+                      {{ row.rate }}<em>%</em>
+                    </strong>
+                    <em class="ppmx-team-rebate__example">
+                      {{ t('ppmx.team.rechargeRebateExample', { rate: row.rate }) }}
+                    </em>
+                  </span>
+                </article>
               </div>
-            </article>
-            <div v-if="activeTask && isCustomTask(activeTask) && !activeTask.claimed" class="ppmx-team-v2-task__custom">
-              <span>{{ t('ppmx.team.taskInviteCountLabel') }}</span>
-              <div>
-                <button type="button" :disabled="activeTask.requiredInviteCount <= CUSTOM_TASK_MIN_INVITE_COUNT" @click="adjustCustomInviteCount(-1)">
-                  <i class="fa-solid fa-minus" />
-                </button>
-                <strong>{{ formatCount(activeTask.requiredInviteCount) }}</strong>
-                <button type="button" :disabled="activeTask.requiredInviteCount >= CUSTOM_TASK_MAX_INVITE_COUNT" @click="adjustCustomInviteCount(1)">
-                  <i class="fa-solid fa-plus" />
-                </button>
-              </div>
-            </div>
-            <article v-if="!activeTask" class="ppmx-team-v2-task__card ppmx-team-v2-task__card--empty">
-              <span class="ppmx-team-v2-task__icon">
-                <i class="fa-solid fa-bullseye" />
-              </span>
-              <div>
-                <strong>{{ t('ppmx.team.taskNoActivity') }}</strong>
-                <p>{{ t('ppmx.team.taskNoActivityDesc') }}</p>
-              </div>
-            </article>
-
-            <div v-if="activeTask" class="ppmx-team-v2-task__progress">
-              <span>
-                {{ activeTaskRunning ? t('ppmx.team.taskInProgress') : t('ppmx.team.taskProgressLabel') }}
-                {{ formatCount(activeTask.progressInviteCount) }}/{{ formatCount(activeTask.requiredInviteCount) }}
-              </span>
-              <b>{{ taskProgress }}%</b>
-              <em v-if="activeTaskRunning">{{ taskNeedText(activeTask) }}</em>
-              <div><i :style="{ width: `${taskProgress}%` }" /></div>
             </div>
           </section>
 
@@ -802,14 +967,14 @@ onBeforeUnmount(() => {
               <div class="ppmx-team-v2-commission__main">
                 <div>
                   <span>{{ t('ppmx.team.commissionAvailable') }}</span>
-                  <strong>{{ formatAmount(stats?.availableCommission) }} <em>USD</em></strong>
+                  <strong>{{ formatAmount(stats?.availableCommission) }} <em>{{ APP_CURRENCY }}</em></strong>
                 </div>
                 <div class="ppmx-team-v2-commission__actions">
                   <button type="button" @click="openTransferModal">
                     <i class="fa-solid fa-right-left" />
                     <span>{{ t('ppmx.team.commissionTransfer') }}</span>
                   </button>
-                  <button class="is-gold" type="button" @click="openBank">
+                  <button class="is-gold" type="button" @click="openCommissionWithdrawModal">
                     <i class="fa-solid fa-money-bill-transfer" />
                     <span>{{ t('ppmx.team.commissionWithdraw') }}</span>
                   </button>
@@ -954,6 +1119,108 @@ onBeforeUnmount(() => {
     </PpmxWithdrawModal>
 
     <PpmxWithdrawModal
+      id="teamV2CommissionWithdrawModal"
+      v-model="commissionWithdrawModalOpen"
+      :eyebrow="t('ppmx.team.commissionEyebrow')"
+      title-id="teamV2CommissionWithdrawModalTitle"
+      :title="t('ppmx.team.commissionWithdrawTitle')"
+      :close-aria-label="t('ppmx.team.commissionWithdrawClose')"
+      @close="closeCommissionWithdrawModal"
+    >
+      <form class="ppmx-team-transfer-form" @submit.prevent="submitCommissionWithdraw">
+        <p class="ppmx-team-transfer-sub">{{ t('ppmx.team.commissionWithdrawReviewDesc') }}</p>
+
+        <label class="ppmx-withdraw-field">
+          <span>{{ t('ppmx.team.commissionWithdrawAvailable') }}</span>
+          <strong>{{ formatAmount(stats?.availableCommission) }} <em>{{ APP_CURRENCY }}</em></strong>
+        </label>
+
+        <label class="ppmx-withdraw-field">
+          <span>{{ t('ppmx.team.commissionWithdrawAmountLabel') }}</span>
+          <div class="ppmx-team-transfer-row">
+            <input
+              v-model="commissionWithdrawAmount"
+              inputmode="decimal"
+              min="50"
+              step="0.01"
+              type="number"
+              :placeholder="t('ppmx.team.commissionWithdrawAmountPlaceholder')"
+            >
+            <button type="button" class="ppmx-team-transfer-all" @click="withdrawAllCommission">
+              {{ t('ppmx.team.commissionTransferAll') }}
+            </button>
+          </div>
+        </label>
+
+        <div class="wd-fee-card">
+          <div class="wd-fee-row">
+            <span class="wd-fee-k">{{ t('ppmx.team.commissionWithdrawFee') }}</span>
+            <span class="wd-fee-v">{{ formatMarketMoney(commissionWithdrawFeeCents) }}</span>
+          </div>
+          <div class="wd-fee-row">
+            <span class="wd-fee-k">{{ t('ppmx.team.commissionWithdrawReceive') }}</span>
+            <span class="wd-fee-v--gold">{{ formatMarketMoney(commissionWithdrawReceiveCents) }}</span>
+          </div>
+          <div class="wd-fee-row">
+            <span class="wd-fee-k is-strong">{{ t('ppmx.team.commissionWithdrawDeduct') }}</span>
+            <span class="wd-fee-v--gold">{{ formatMarketMoney(commissionWithdrawAmountCents) }}</span>
+          </div>
+        </div>
+
+        <label class="ppmx-withdraw-field">
+          <span>{{ t('ppmx.team.commissionWithdrawAccount') }}</span>
+          <p v-if="withdrawAccountsLoading && !commissionWithdrawAccountOptions.length" class="ppmx-team-transfer-sub">
+            {{ t('ppmx.team.commissionWithdrawAccountsLoading') }}
+          </p>
+          <PpmxSelectInput
+            v-else
+            v-model="commissionWithdrawAccountId"
+            :options="commissionWithdrawAccountOptions"
+            :placeholder="t('ppmx.team.commissionWithdrawAccountPlaceholder')"
+            :title="t('ppmx.team.commissionWithdrawAccount')"
+            :disabled="withdrawAccountsLoading || !commissionWithdrawAccountOptions.length"
+          />
+        </label>
+
+        <div
+          v-if="withdrawAccountsError || (!withdrawAccountsLoading && !commissionWithdrawAccountOptions.length)"
+          class="ppmx-withdraw-account-note"
+          :class="{ 'is-error': withdrawAccountsError }"
+        >
+          <i class="fa-solid" :class="withdrawAccountsError ? 'fa-triangle-exclamation' : 'fa-link'" />
+          <span>
+            {{ t(withdrawAccountsError ? 'ppmx.team.commissionWithdrawAccountsError' : 'ppmx.team.commissionWithdrawAccountNote') }}
+          </span>
+          <button type="button" @click="openBank">
+            {{ t('ppmx.team.commissionWithdrawGoBank') }}
+          </button>
+        </div>
+
+        <div class="wd-rules">
+          <h3>{{ t('ppmx.team.commissionWithdrawRulesTitle') }}</h3>
+          <ul>
+            <li>{{ t('ppmx.team.commissionWithdrawRule1') }}</li>
+            <li>{{ t('ppmx.team.commissionWithdrawRule2') }}</li>
+            <li>{{ t('ppmx.team.commissionWithdrawRule3') }}</li>
+          </ul>
+        </div>
+
+        <PpmxButton
+          block
+          size="lg"
+          type="submit"
+          variant="gold"
+          :disabled="commissionWithdrawSubmitDisabled"
+          :loading="isCommissionWithdrawSubmitting"
+        >
+          {{ isCommissionWithdrawSubmitting
+            ? t('ppmx.team.commissionWithdrawSubmitting')
+            : t('ppmx.team.commissionWithdrawConfirm') }}
+        </PpmxButton>
+      </form>
+    </PpmxWithdrawModal>
+
+    <PpmxWithdrawModal
       id="teamV2TransferModal"
       v-model="transferModalOpen"
       :eyebrow="t('ppmx.team.commissionEyebrow')"
@@ -966,7 +1233,7 @@ onBeforeUnmount(() => {
         <p class="ppmx-team-transfer-sub">{{ t('ppmx.team.commissionTransferSub') }}</p>
         <label class="ppmx-withdraw-field">
           <span>{{ t('ppmx.team.commissionTransferAvailable') }}</span>
-          <strong>{{ formatAmount(stats?.availableCommission) }} <em>USD</em></strong>
+          <strong>{{ formatAmount(stats?.availableCommission) }} <em>{{ APP_CURRENCY }}</em></strong>
         </label>
         <label class="ppmx-withdraw-field">
           <span>{{ t('ppmx.team.commissionTransferAmountLabel') }}</span>

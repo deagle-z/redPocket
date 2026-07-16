@@ -12,7 +12,7 @@ import {
   ppmxTrustItems,
 } from './data'
 
-describe('PP.BET home reference data', () => {
+describe('PP.MX home reference data', () => {
   it('contains the reference home shell navigation data', () => {
     expect(ppmxNavItems.map((item) => item.id)).toEqual([
       'home',
@@ -45,9 +45,9 @@ describe('PP.BET home reference data', () => {
     ])
     expect(ppmxBanners.every((banner) => banner.image?.startsWith('/images/ppmx/promos/'))).toBe(true)
     expect(ppmxBanners.every((banner) => banner.background.includes('url("/images/ppmx/promos/'))).toBe(true)
-    expect(ppmxNotices[0].text.zh).toContain('38 美元')
+    expect(ppmxNotices[0].text.zh).toContain('58 比索')
     expect(ppmxNotices[2].text.zh).toContain('最高 30%返利')
-    expect(ppmxBanners[0].amountHtml?.es).toContain('38')
+    expect(ppmxBanners[0].amountHtml?.es).toContain('58')
     expect(ppmxBanners[2].amountHtml?.es).toContain('188,888')
     expect(ppmxBanners[3].id).toBe('invita')
     expect(ppmxBanners[3].sub.zh).toContain('每位有效用户最高可享充值金额50%佣金')

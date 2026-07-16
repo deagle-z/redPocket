@@ -4,7 +4,7 @@ import PpmxHome from '../ppmx-home/PpmxHome.vue'
 definePage({
   name: 'home',
   meta: {
-    title: 'PP.BET',
+    title: 'PP.MX',
     keepAlive: true,
     tabbar: false,
     shell: 'ppmx',

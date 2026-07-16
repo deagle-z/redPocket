@@ -6,7 +6,7 @@ describe('usePpmxLocale', () => {
   it('resolves global app locale to the reference home locale', () => {
     expect(resolvePpmxLocale('zh-CN')).toBe('zh')
     expect(resolvePpmxLocale('en-US')).toBe('en')
-    expect(resolvePpmxLocale('es-US')).toBe('es')
+    expect(resolvePpmxLocale('es-MX')).toBe('es')
     expect(resolvePpmxLocale('fr-FR')).toBe('es')
   })
 
@@ -22,9 +22,9 @@ describe('usePpmxLocale', () => {
     expect(locale.pickText({ en: 'Home', es: 'Inicio', zh: '首页' })).toBe('首页')
   })
 
-  it('shares locale changes across PP.BET components', () => {
-    const headerLocale = usePpmxLocale('es-US')
-    const pageLocale = usePpmxLocale('es-US')
+  it('shares locale changes across PP.MX components', () => {
+    const headerLocale = usePpmxLocale('es-MX')
+    const pageLocale = usePpmxLocale('es-MX')
 
     headerLocale.setHomeLocale('en')
 

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 const { readFileSync } = await import('node:' + 'fs')
 
-describe('PP.BET screenshot workflow', () => {
+describe('PP.MX screenshot workflow', () => {
   it('captures the required reference and Vue home viewports', () => {
     const script = readFileSync(
       new URL('../../../scripts/capture-ppmx-screenshots.mjs', import.meta.url),

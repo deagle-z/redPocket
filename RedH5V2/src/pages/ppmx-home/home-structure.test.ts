@@ -7,7 +7,7 @@ const chromeSource = readFileSync(
   'utf8',
 ) as string
 
-describe('PP.BET home replica structure', () => {
+describe('PP.MX home replica structure', () => {
   it('assembles the reference home sections through dedicated components', () => {
     for (const componentName of [
       'PpmxPageChrome',
@@ -33,7 +33,7 @@ describe('PP.BET home replica structure', () => {
     }
   })
 
-  it('renders the PP.BET reference footer under the trust section', () => {
+  it('renders the PP.MX reference footer under the trust section', () => {
     expect(homeSource).toContain('ppmx-footer')
     expect(homeSource).toContain('ppmxFooterColumns')
     expect(homeSource).toContain('ppmxSocialItems')
@@ -47,10 +47,10 @@ describe('PP.BET home replica structure', () => {
     expect(homeSource).toContain('<ul>')
     expect(homeSource).toContain('<li v-for="link in column.links"')
     expect(homeSource).toContain('Responsible Gaming')
-    expect(homeSource).toContain('1-800-GAMBLER')
+    expect(homeSource).toContain('PP.MX SUPPORT')
   })
 
-  it('opens PP.BET auth modals instead of routing home login actions away', () => {
+  it('opens PP.MX auth modals instead of routing home login actions away', () => {
     expect(chromeSource).toContain("openAuth('login')")
     expect(homeSource).toContain("openAuth('register')")
     expect(chromeSource).toContain('authModalOpen')
@@ -117,7 +117,7 @@ describe('PP.BET home replica structure', () => {
     expect(chromeSource).toContain('id="drawer"')
   })
 
-  it('loads dynamic game categories while keeping the PP.BET tile structure', () => {
+  it('loads dynamic game categories while keeping the PP.MX tile structure', () => {
     expect(homeSource).toContain("import { usePpmxGameHome } from './composables/usePpmxGameHome'")
     expect(homeSource).toContain('const gameHome = usePpmxGameHome()')
     expect(homeSource).toContain('void gameHome.loadGameHome()')

@@ -8,7 +8,7 @@ const rechargeModalSource = readFileSync(new URL('../../components/PpmxRechargeM
 const rechargePaymentModalSource = readFileSync(new URL('../../components/PpmxRechargePaymentModal.vue', import.meta.url), 'utf8')
 const zhLocaleSource = readFileSync(new URL('../../locales/zh-CN.ts', import.meta.url), 'utf8')
 const enLocaleSource = readFileSync(new URL('../../locales/en-US.ts', import.meta.url), 'utf8')
-const esLocaleSource = readFileSync(new URL('../../locales/es-US.ts', import.meta.url), 'utf8')
+const esLocaleSource = readFileSync(new URL('../../locales/es-MX.ts', import.meta.url), 'utf8')
 
 describe('profile dynamic user data', () => {
   it('loads profile data for logged-in sessions and renders explicit loading/error/empty states', () => {
@@ -21,10 +21,10 @@ describe('profile dynamic user data', () => {
     expect(profileSource).toContain('@retry="loadProfileData"')
   })
 
-  it('does not fall back to hardcoded PP.BET account data when a logged-in profile is missing', () => {
-    expect(profileSource).not.toContain("|| 'pp.bet'")
-    expect(profileSource).not.toContain(": 'ID PP.BET'")
-    expect(profileSource).not.toContain('class="ppmx-account-avatar">pp.bet</span>')
+  it('does not fall back to hardcoded PP.MX account data when a logged-in profile is missing', () => {
+    expect(profileSource).not.toContain("|| 'pp.mx'")
+    expect(profileSource).not.toContain(": 'ID PP.MX'")
+    expect(profileSource).not.toContain('class="ppmx-account-avatar">pp.mx</span>')
   })
 
   it('keeps deposit, withdraw, and withdrawal account actions on one mobile row', () => {
@@ -120,10 +120,11 @@ describe('profile dynamic user data', () => {
     expect(rechargeModalSource).toContain('id="depositModal"')
     expect(rechargeModalSource).toContain('async function goToCryptoPay()')
     expect(rechargeModalSource).toContain("path: '/crypto-pay'")
-    expect(rechargeModalSource).toContain("channelName: 'Cash'")
-    expect(rechargeModalSource).toContain("channelName: 'Apple Pay'")
-    expect(rechargeModalSource).toContain("channelName: 'Google Pay'")
-    expect(rechargeModalSource).toContain('channelCode: CRYPTO_CHANNEL_CODE')
+    expect(rechargeModalSource).toContain('getCountryRechargeInfo(APP_COUNTRY_CODE)')
+    expect(rechargeModalSource).toContain('channels: info?.channels ?? []')
+    expect(rechargeModalSource).not.toContain("channelName: 'Cash'")
+    expect(rechargeModalSource).not.toContain("channelName: 'Apple Pay'")
+    expect(rechargeModalSource).not.toContain("channelName: 'Google Pay'")
     expect(rechargeModalSource).not.toContain('v-for="method in payMethods"')
     expect(rechargePaymentModalSource).toContain('id="paymentModal"')
     expect(rechargePaymentModalSource).toContain('class="ppmx-recharge-modal ppmx-recharge-payment-modal"')
@@ -153,7 +154,7 @@ describe('profile dynamic user data', () => {
     expect(esLocaleSource).toContain('Si el monto abierto para pagar es distinto del monto a pagar')
   })
 
-  it('matches the PP.BET Apple withdraw modal reference structure', () => {
+  it('matches the PP.MX Apple withdraw modal reference structure', () => {
     expect(profileSource).toContain('id="withdrawModal"')
     expect(profileSource).toContain("withdrawWagerComplete ? 'wd-badge--ok' : 'wd-badge--bad'")
     expect(profileSource).toContain('<div class="wd-rules">')
@@ -174,18 +175,18 @@ describe('profile dynamic user data', () => {
     expect(userApiSource).toContain('meta: { showError: false }')
   })
 
-  it('uses 50 USD as the minimum for regular withdrawals', () => {
+  it('uses 50 MXN as the minimum for regular withdrawals', () => {
     expect(profileSource).toContain('const withdrawMinCents = 5_000')
     expect(profileSource).toContain('min="50"')
-    expect(profileSource).toContain('Monto mínimo de retiro: $50.00 USD')
-    expect(profileSource).toContain('Minimum withdrawal: $50.00 USD')
-    expect(profileSource).toContain('最低提现金额为 $50.00 USD')
+    expect(profileSource).toContain('Monto mínimo de retiro: $50.00 MXN')
+    expect(profileSource).toContain('Minimum withdrawal: $50.00 MXN')
+    expect(profileSource).toContain('最低提现金额为 $50.00 MXN')
     expect(profileSource).toContain('Monto mínimo de retiro: 50.')
     expect(profileSource).toContain('Minimum withdrawal amount: 50.')
     expect(profileSource).toContain('最低提现金额：50。')
 
-    expect(esLocaleSource).toContain("commissionWithdrawMinToast: 'Monto mínimo de retiro de comisión: $50.00 USD'")
-    expect(enLocaleSource).toContain("commissionWithdrawMinToast: 'Minimum commission withdrawal: $50.00 USD'")
-    expect(zhLocaleSource).toContain("commissionWithdrawMinToast: '最低佣金提现金额为 $50.00 USD'")
+    expect(esLocaleSource).toContain("commissionWithdrawMinToast: 'Monto mínimo de retiro de comisión: $50.00 MXN'")
+    expect(enLocaleSource).toContain("commissionWithdrawMinToast: 'Minimum commission withdrawal: $50.00 MXN'")
+    expect(zhLocaleSource).toContain("commissionWithdrawMinToast: '最低佣金提现金额为 $50.00 MXN'")
   })
 })

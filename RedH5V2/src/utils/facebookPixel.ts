@@ -1,3 +1,5 @@
+import { APP_CURRENCY } from '@/config/market'
+
 export const FACEBOOK_PIXEL_ID_KEY = 'facebook_pixel_id'
 
 declare global {
@@ -120,7 +122,7 @@ export function trackFacebookPixelEvent(
 
 export function trackCompleteRegistration(eventId?: string) {
   return trackFacebookPixelEvent('CompleteRegistration', {
-    content_name: 'PP.BET Register',
+    content_name: 'PP.MX Register',
     status: 'completed',
   }, eventId)
 }
@@ -140,8 +142,8 @@ export function trackPurchase(payload: FacebookPurchasePayload) {
 
   return trackFacebookPixelEvent('Purchase', {
     value: amount,
-    currency: payload.currency || 'USD',
-    content_name: 'PP.BET Recharge',
+    currency: payload.currency || APP_CURRENCY,
+    content_name: 'PP.MX Recharge',
     orderNo,
   }, payload.eventId)
 }

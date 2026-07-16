@@ -6,7 +6,7 @@ import { ppmxPromoItems, ppmxWheelRules } from './pageData'
 
 const oldRolloverPattern = /15\s*[xX]\b|15\s*×|15\s*倍流水|15倍流水|15\s*倍/
 
-describe('PP.BET rollover copy', () => {
+describe('PP.MX rollover copy', () => {
   it('uses 10x rollover wording across home, promo, and locale copy', () => {
     const copy = JSON.stringify({
       messages,
