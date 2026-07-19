@@ -565,6 +565,18 @@ describe('PP.BET home CSS contract', () => {
     expect(normalizedDialog).toContain('html[data-theme="light"] .ppmx-dialog__card.is-gold .ppmx-dialog__button--confirm { color: #fff; background: linear-gradient(180deg, #ff5a5a, #ff1a1a);')
   })
 
+  it('keeps the team task card contained on narrow mobile viewports', () => {
+    const normalized = normalizeCss(css)
+
+    expect(normalized).toContain('.ppmx-team-v2-task, .ppmx-team-v2-invite, .ppmx-team-v2-rules { min-width: 0; max-width: 100%; padding: 22px; overflow: hidden;')
+    expect(normalized).toContain('.ppmx-team-v2-task__tiers { display: flex; gap: 8px; max-width: 100%; min-width: 0; margin-top: 16px; overflow-x: auto; }')
+    expect(normalized).toContain('.ppmx-team-v2-task__reward { display: grid; gap: 8px; min-width: 0; max-width: 100%; justify-items: end; }')
+    expect(normalized).toContain('.ppmx-team-v2-task__tiers button { flex: 0 0 min(38vw, 136px); width: min(38vw, 136px); min-width: 0;')
+    expect(normalized).toContain('.ppmx-team-v2-task__reward { grid-column: 1 / -1; grid-template-columns: 1fr; align-items: stretch; justify-items: stretch; }')
+    expect(normalized).toContain('.ppmx-team-v2-task__reward button { width: 100%; min-width: 0; min-height: 48px;')
+    expect(normalized).toContain('.ppmx-team-v2-task__actions .ppmx-team-v2-countdown, .ppmx-team-v2-task__actions button { flex: 1 1 100%; min-width: 0; }')
+  })
+
   it('keeps the casino grid loading state readable in light mode', () => {
     const normalized = normalizeCss(css)
 
