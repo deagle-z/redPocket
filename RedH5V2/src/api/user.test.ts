@@ -6,6 +6,7 @@ import {
   bindCurrentTgPhone,
   checkRegisterPhone,
   forgotPasswordByPhone,
+  loginByPhone,
   registerByPhone,
   sendTgSmsCode,
 } from './user'
@@ -17,6 +18,16 @@ vi.mock('@/utils/http', () => ({
 vi.mock('@/utils/sourceChannel', () => ({
   getSourceChannelCode: vi.fn(() => 'STORED'),
   normalizeSourceChannelCode: vi.fn((value?: string) => String(value || '').trim().toUpperCase()),
+}))
+
+vi.mock('@/utils/deviceInfo', () => ({
+  getDeviceInfo: vi.fn(async () => ({
+    deviceFingerprint: 'visitor-device-id',
+    devicePlatform: 'android',
+    deviceModel: 'SM-S918B',
+    deviceOS: 'Android',
+    deviceOSVersion: '13',
+  })),
 }))
 
 describe('user API registration payloads', () => {
@@ -44,6 +55,29 @@ describe('user API registration payloads', () => {
       sourceChannelCode: 'FB01',
       channelCode: 'FB01',
       deviceFingerprint: 'visitor-device-id',
+      devicePlatform: 'android',
+      deviceModel: 'SM-S918B',
+      deviceOS: 'Android',
+      deviceOSVersion: '13',
+    })
+  })
+
+  it('sends complete browser device information with phone login', async () => {
+    await loginByPhone({
+      phone: '525512345678',
+      country: 'MX',
+      password: 'password123',
+    })
+
+    expect(post).toHaveBeenCalledWith('/v1/app/tg/phoneLogin', {
+      phone: '525512345678',
+      country: 'MX',
+      password: 'password123',
+      deviceFingerprint: 'visitor-device-id',
+      devicePlatform: 'android',
+      deviceModel: 'SM-S918B',
+      deviceOS: 'Android',
+      deviceOSVersion: '13',
     })
   })
 

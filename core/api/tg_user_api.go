@@ -476,6 +476,8 @@ func RegisterTgByEmail(ctx *gin.Context) {
 		req.InviteCode,
 		ip,
 		region,
+		req.TgDeviceInfoReq,
+		ctx.GetHeader("User-Agent"),
 	)
 	if err != nil {
 		utils.ErrorBack(ctx, err.Error())
@@ -525,7 +527,8 @@ func RegisterTgByPhone(ctx *gin.Context) {
 		inviteCode,
 		ip,
 		region,
-		req.DeviceFingerprint,
+		req.TgDeviceInfoReq,
+		ctx.GetHeader("User-Agent"),
 		tempHostInfo.TablePrefix,
 	)
 	if err != nil {
@@ -648,6 +651,22 @@ func LoginTgByPhone(ctx *gin.Context) {
 		return
 	}
 	utils.SuccessObjBack(ctx, data)
+}
+
+// ReportCurrentTgUserDeviceInfo 保存已登录用户最近一次设备信息。
+func ReportCurrentTgUserDeviceInfo(ctx *gin.Context) {
+	var req pojo.TgDeviceInfoReq
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		utils.ErrorBack(ctx, "invalid_params")
+		return
+	}
+	userID := ctx.MustGet("userId").(int64)
+	db := ctx.MustGet("db").(*gorm.DB)
+	if err := repository.ReportTgUserDeviceInfo(db, userID, req, ctx.GetHeader("User-Agent")); err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	utils.SuccessBack(ctx, "success")
 }
 
 // ForgotPasswordByEmail 忘记密码

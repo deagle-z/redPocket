@@ -10,6 +10,7 @@ type TgAuthLoginReq struct {
 	Hash              string `json:"hash"`
 	SourceChannelCode string `json:"sourceChannelCode"`
 	ChannelCode       string `json:"channelCode"`
+	TgDeviceInfoReq
 }
 
 type TgAuthLoginBack struct {

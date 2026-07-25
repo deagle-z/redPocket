@@ -15,17 +15,23 @@ type TgUser struct {
 	TgName    *string `gorm:"column:tg_name;size:64;index;comment:Telegram @用户名（如@Osanvnei）" json:"tgName"`
 	FirstName *string `gorm:"size:128;comment:Telegram 名（first_name / 展示名）" json:"first_name"`
 
-	Avatar            *string `gorm:"size:1024;comment:头像URL" json:"avatar"`
-	Password          string  `gorm:"size:128;comment:password" json:"password"`
-	PasswordPlain     *string `gorm:"column:password_plain;size:64;comment:密码明文" json:"passwordPlain"`
-	Email             string  `gorm:"size:255;comment:email" json:"email"`
-	Phone             *string `gorm:"column:phone;size:32;index;comment:手机号码" json:"phone"`
-	Country           *string `gorm:"column:country;size:64;comment:国家" json:"country"`
-	Ip                *string `gorm:"column:ip;size:64;comment:注册IP" json:"ip"`
-	Region            *string `gorm:"column:region;size:16;comment:注册地区/国家码" json:"region"`
-	DeviceFingerprint *string `gorm:"column:device_fingerprint;size:64;index:idx_tg_user_device_fingerprint;comment:注册设备指纹哈希" json:"deviceFingerprint"`
-	Remark            *string `gorm:"column:remark;type:varchar(255);comment:备注" json:"remark"`
-	IsBot             bool    `gorm:"column:is_bot;not null;default:false;index:idx_tg_user_register_time,priority:1;index:idx_tg_user_tenant_register_time,priority:2;comment:是否机器人" json:"is_bot"`
+	Avatar            *string    `gorm:"size:1024;comment:头像URL" json:"avatar"`
+	Password          string     `gorm:"size:128;comment:password" json:"password"`
+	PasswordPlain     *string    `gorm:"column:password_plain;size:64;comment:密码明文" json:"passwordPlain"`
+	Email             string     `gorm:"size:255;comment:email" json:"email"`
+	Phone             *string    `gorm:"column:phone;size:32;index;comment:手机号码" json:"phone"`
+	Country           *string    `gorm:"column:country;size:64;comment:国家" json:"country"`
+	Ip                *string    `gorm:"column:ip;size:64;comment:注册IP" json:"ip"`
+	Region            *string    `gorm:"column:region;size:16;comment:注册地区/国家码" json:"region"`
+	DeviceFingerprint *string    `gorm:"column:device_fingerprint;size:64;index:idx_tg_user_device_fingerprint;comment:最近设备指纹哈希" json:"deviceFingerprint"`
+	DevicePlatform    *string    `gorm:"column:device_platform;size:16;comment:最近设备平台(android/ios/windows/macos/linux/chromeos)" json:"devicePlatform"`
+	DeviceModel       *string    `gorm:"column:device_model;size:128;comment:最近设备型号或浏览器可识别设备名称" json:"deviceModel"`
+	DeviceOS          *string    `gorm:"column:device_os;size:32;comment:最近设备操作系统" json:"deviceOS"`
+	DeviceOSVersion   *string    `gorm:"column:device_os_version;size:64;comment:最近设备操作系统版本" json:"deviceOSVersion"`
+	DeviceUserAgent   *string    `gorm:"column:device_user_agent;type:varchar(1024);comment:最近设备User-Agent" json:"deviceUserAgent"`
+	DeviceReportedAt  *time.Time `gorm:"column:device_reported_at;type:datetime(3);comment:最近设备信息上报时间" json:"deviceReportedAt"`
+	Remark            *string    `gorm:"column:remark;type:varchar(255);comment:备注" json:"remark"`
+	IsBot             bool       `gorm:"column:is_bot;not null;default:false;index:idx_tg_user_register_time,priority:1;index:idx_tg_user_tenant_register_time,priority:2;comment:是否机器人" json:"is_bot"`
 
 	TgID int64 `gorm:"column:tg_id;index;comment:Telegram 用户ID（唯一且稳定）" json:"tg_id"`
 
@@ -66,20 +72,21 @@ type TgUser struct {
 
 type TgUserSearch struct {
 	PageInfo
-	TgID              int64  `json:"tgId"`       // Telegram用户ID
-	Uid               string `json:"uid"`        // 用户UID
-	Username          string `json:"username"`   // Telegram用户名
-	TgName            string `json:"tgName"`     // Telegram @用户名
-	FirstName         string `json:"firstName"`  // 展示名
-	Phone             string `json:"phone"`      // 手机号码
-	Country           string `json:"country"`    // 国家
-	Ip                string `json:"ip"`         // 注册IP
-	Region            string `json:"region"`     // 注册地区/国家码
-	IsBot             *bool  `json:"isBot"`      // 是否机器人
-	Status            *int8  `json:"status"`     // 状态
-	ParentID          *int64 `json:"parentId"`   // 上级/邀请人用户ID
-	ParentUid         string `json:"parentUid"`  // 上级/邀请人UID
-	InviteCode        string `json:"inviteCode"` // 邀请码
+	TgID              int64  `json:"tgId"`           // Telegram用户ID
+	Uid               string `json:"uid"`            // 用户UID
+	Username          string `json:"username"`       // Telegram用户名
+	TgName            string `json:"tgName"`         // Telegram @用户名
+	FirstName         string `json:"firstName"`      // 展示名
+	Phone             string `json:"phone"`          // 手机号码
+	Country           string `json:"country"`        // 国家
+	Ip                string `json:"ip"`             // 注册IP
+	Region            string `json:"region"`         // 注册地区/国家码
+	DevicePlatform    string `json:"devicePlatform"` // 最近设备平台
+	IsBot             *bool  `json:"isBot"`          // 是否机器人
+	Status            *int8  `json:"status"`         // 状态
+	ParentID          *int64 `json:"parentId"`       // 上级/邀请人用户ID
+	ParentUid         string `json:"parentUid"`      // 上级/邀请人UID
+	InviteCode        string `json:"inviteCode"`     // 邀请码
 	SourceChannelID   int64  `json:"sourceChannelId"`
 	SourceChannelCode string `json:"sourceChannelCode"`
 	TenantId          int64  `json:"tenantId"`
@@ -202,6 +209,7 @@ type TgEmailRegisterReq struct {
 	SourceChannelCode string `json:"sourceChannelCode"`
 	ChannelCode       string `json:"channelCode"`
 	Referrer          string `json:"referrer"`
+	TgDeviceInfoReq
 }
 
 type TgPhoneRegisterReq struct {
@@ -214,18 +222,30 @@ type TgPhoneRegisterReq struct {
 	SourceChannelCode string `json:"sourceChannelCode"`
 	ChannelCode       string `json:"channelCode"`
 	Referrer          string `json:"referrer"`
-	DeviceFingerprint string `json:"deviceFingerprint"`
+	TgDeviceInfoReq
 }
 
 type TgEmailLoginReq struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
+	TgDeviceInfoReq
 }
 
 type TgPhoneLoginReq struct {
 	Phone    string `json:"phone"`
 	Country  string `json:"country"`
 	Password string `json:"password"`
+	TgDeviceInfoReq
+}
+
+// TgDeviceInfoReq 是 H5 能够从浏览器明确获取的设备信息。
+// User-Agent 由服务端直接读取请求头，不接受客户端字段覆盖。
+type TgDeviceInfoReq struct {
+	DeviceFingerprint string `json:"deviceFingerprint"`
+	DevicePlatform    string `json:"devicePlatform"`
+	DeviceModel       string `json:"deviceModel"`
+	DeviceOS          string `json:"deviceOS"`
+	DeviceOSVersion   string `json:"deviceOSVersion"`
 }
 
 type TgForgotPasswordReq struct {
@@ -386,44 +406,51 @@ type TgInviteRuleConfigBack struct {
 }
 
 type TgUserBack struct {
-	ID                        int64     `json:"id"`
-	Uid                       string    `json:"uid"`
-	CreatedAt                 time.Time `json:"createdAt"`
-	UpdatedAt                 time.Time `json:"updatedAt"`
-	Username                  *string   `json:"username"`
-	TgName                    *string   `json:"tgName"`
-	FirstName                 *string   `json:"firstName"`
-	Avatar                    *string   `json:"avatar"`
-	PasswordPlain             *string   `json:"passwordPlain"`
-	Phone                     *string   `json:"phone"`
-	Country                   *string   `json:"country"`
-	Ip                        *string   `json:"ip"`
-	Region                    *string   `json:"region"`
-	Remark                    *string   `json:"remark"`
-	TgID                      int64     `json:"tgId"`
-	Balance                   float64   `json:"balance"`
-	SportBalance              float64   `json:"sportBalance"`
-	TrialBalance              float64   `json:"trialBalance"`
-	GiftAmount                float64   `json:"giftAmount"`
-	GiftTotal                 float64   `json:"giftTotal"`
-	RebateAmount              float64   `json:"rebateAmount"`
-	RebateTotalAmount         float64   `json:"rebateTotalAmount"`
-	RebateRate                float64   `json:"rebateRate"`
-	RebateType                int8      `json:"rebateType"`
-	RebateWithdrawDisabled    int8      `json:"rebateWithdrawDisabled"`
-	RechargeRebateRates       string    `json:"rechargeRebateRates"`
-	FreeLotteryCount          int       `json:"freeLotteryCount"`
-	FlowLotteryTotalCount     int       `json:"flowLotteryTotalCount"`
-	FlowLotteryAvailableCount int       `json:"flowLotteryAvailableCount"`
-	FlowLotteryBaseFlow       float64   `json:"flowLotteryBaseFlow"`
-	FlowLotteryBaseRecordID   int64     `json:"flowLotteryBaseRecordId"`
-	Status                    int8      `json:"status"`
-	ParentID                  *int64    `json:"parentId"`
-	ParentUid                 *string   `json:"parentUid"`
-	InviteCode                *string   `json:"inviteCode"`
-	SourceChannelID           *int64    `json:"sourceChannelId"`
-	SourceChannelCode         *string   `json:"sourceChannelCode"`
-	TenantId                  int64     `json:"tenantId"`
+	ID                        int64      `json:"id"`
+	Uid                       string     `json:"uid"`
+	CreatedAt                 time.Time  `json:"createdAt"`
+	UpdatedAt                 time.Time  `json:"updatedAt"`
+	Username                  *string    `json:"username"`
+	TgName                    *string    `json:"tgName"`
+	FirstName                 *string    `json:"firstName"`
+	Avatar                    *string    `json:"avatar"`
+	PasswordPlain             *string    `json:"passwordPlain"`
+	Phone                     *string    `json:"phone"`
+	Country                   *string    `json:"country"`
+	Ip                        *string    `json:"ip"`
+	Region                    *string    `json:"region"`
+	DeviceFingerprint         *string    `json:"deviceFingerprint"`
+	DevicePlatform            *string    `json:"devicePlatform"`
+	DeviceModel               *string    `json:"deviceModel"`
+	DeviceOS                  *string    `json:"deviceOS"`
+	DeviceOSVersion           *string    `json:"deviceOSVersion"`
+	DeviceUserAgent           *string    `json:"deviceUserAgent"`
+	DeviceReportedAt          *time.Time `json:"deviceReportedAt"`
+	Remark                    *string    `json:"remark"`
+	TgID                      int64      `json:"tgId"`
+	Balance                   float64    `json:"balance"`
+	SportBalance              float64    `json:"sportBalance"`
+	TrialBalance              float64    `json:"trialBalance"`
+	GiftAmount                float64    `json:"giftAmount"`
+	GiftTotal                 float64    `json:"giftTotal"`
+	RebateAmount              float64    `json:"rebateAmount"`
+	RebateTotalAmount         float64    `json:"rebateTotalAmount"`
+	RebateRate                float64    `json:"rebateRate"`
+	RebateType                int8       `json:"rebateType"`
+	RebateWithdrawDisabled    int8       `json:"rebateWithdrawDisabled"`
+	RechargeRebateRates       string     `json:"rechargeRebateRates"`
+	FreeLotteryCount          int        `json:"freeLotteryCount"`
+	FlowLotteryTotalCount     int        `json:"flowLotteryTotalCount"`
+	FlowLotteryAvailableCount int        `json:"flowLotteryAvailableCount"`
+	FlowLotteryBaseFlow       float64    `json:"flowLotteryBaseFlow"`
+	FlowLotteryBaseRecordID   int64      `json:"flowLotteryBaseRecordId"`
+	Status                    int8       `json:"status"`
+	ParentID                  *int64     `json:"parentId"`
+	ParentUid                 *string    `json:"parentUid"`
+	InviteCode                *string    `json:"inviteCode"`
+	SourceChannelID           *int64     `json:"sourceChannelId"`
+	SourceChannelCode         *string    `json:"sourceChannelCode"`
+	TenantId                  int64      `json:"tenantId"`
 }
 
 type TgUserResp struct {
@@ -431,49 +458,56 @@ type TgUserResp struct {
 }
 
 type TgUserAdminBack struct {
-	ID                        int64     `json:"id"`
-	Uid                       string    `json:"uid"`
-	CreatedAt                 time.Time `json:"createdAt"`
-	UpdatedAt                 time.Time `json:"updatedAt"`
-	Username                  *string   `json:"username"`
-	TgName                    *string   `json:"tgName"`
-	FirstName                 *string   `json:"firstName"`
-	Avatar                    *string   `json:"avatar"`
-	PasswordPlain             *string   `json:"passwordPlain"`
-	Phone                     *string   `json:"phone"`
-	Country                   *string   `json:"country"`
-	Ip                        *string   `json:"ip"`
-	Region                    *string   `json:"region"`
-	Remark                    *string   `json:"remark"`
-	IsBot                     bool      `json:"isBot"`
-	TgID                      int64     `json:"tgId"`
-	Balance                   float64   `json:"balance"`
-	SportBalance              float64   `json:"sportBalance"`
-	TrialBalance              float64   `json:"trialBalance"`
-	TotalFlow                 float64   `json:"totalFlow"`
-	SubUserCount              int64     `json:"subUserCount"`
-	GiftAmount                float64   `json:"giftAmount"`
-	GiftTotal                 float64   `json:"giftTotal"`
-	RebateAmount              float64   `json:"rebateAmount"`
-	RebateTotalAmount         float64   `json:"rebateTotalAmount"`
-	RebateRate                float64   `json:"rebateRate"`
-	RebateType                int8      `json:"rebateType"`
-	RebateWithdrawDisabled    int8      `json:"rebateWithdrawDisabled"`
-	RechargeRebateRates       string    `json:"rechargeRebateRates"`
-	FreeLotteryCount          int       `json:"freeLotteryCount"`
-	FlowLotteryTotalCount     int       `json:"flowLotteryTotalCount"`
-	FlowLotteryAvailableCount int       `json:"flowLotteryAvailableCount"`
-	FlowLotteryBaseFlow       float64   `json:"flowLotteryBaseFlow"`
-	FlowLotteryBaseRecordID   int64     `json:"flowLotteryBaseRecordId"`
-	Status                    int8      `json:"status"`
-	ParentID                  *int64    `json:"parentId"`
-	ParentUid                 *string   `json:"parentUid"`
-	InviteCode                *string   `json:"inviteCode"`
-	SourceChannelID           *int64    `json:"sourceChannelId"`
-	SourceChannelCode         *string   `json:"sourceChannelCode"`
-	TenantId                  int64     `json:"tenantId"`
-	TenantName                *string   `json:"tenantName"`
-	AudioOpen                 int8      `json:"audio_open"`
+	ID                        int64      `json:"id"`
+	Uid                       string     `json:"uid"`
+	CreatedAt                 time.Time  `json:"createdAt"`
+	UpdatedAt                 time.Time  `json:"updatedAt"`
+	Username                  *string    `json:"username"`
+	TgName                    *string    `json:"tgName"`
+	FirstName                 *string    `json:"firstName"`
+	Avatar                    *string    `json:"avatar"`
+	PasswordPlain             *string    `json:"passwordPlain"`
+	Phone                     *string    `json:"phone"`
+	Country                   *string    `json:"country"`
+	Ip                        *string    `json:"ip"`
+	Region                    *string    `json:"region"`
+	DeviceFingerprint         *string    `json:"deviceFingerprint"`
+	DevicePlatform            *string    `json:"devicePlatform"`
+	DeviceModel               *string    `json:"deviceModel"`
+	DeviceOS                  *string    `json:"deviceOS"`
+	DeviceOSVersion           *string    `json:"deviceOSVersion"`
+	DeviceUserAgent           *string    `json:"deviceUserAgent"`
+	DeviceReportedAt          *time.Time `json:"deviceReportedAt"`
+	Remark                    *string    `json:"remark"`
+	IsBot                     bool       `json:"isBot"`
+	TgID                      int64      `json:"tgId"`
+	Balance                   float64    `json:"balance"`
+	SportBalance              float64    `json:"sportBalance"`
+	TrialBalance              float64    `json:"trialBalance"`
+	TotalFlow                 float64    `json:"totalFlow"`
+	SubUserCount              int64      `json:"subUserCount"`
+	GiftAmount                float64    `json:"giftAmount"`
+	GiftTotal                 float64    `json:"giftTotal"`
+	RebateAmount              float64    `json:"rebateAmount"`
+	RebateTotalAmount         float64    `json:"rebateTotalAmount"`
+	RebateRate                float64    `json:"rebateRate"`
+	RebateType                int8       `json:"rebateType"`
+	RebateWithdrawDisabled    int8       `json:"rebateWithdrawDisabled"`
+	RechargeRebateRates       string     `json:"rechargeRebateRates"`
+	FreeLotteryCount          int        `json:"freeLotteryCount"`
+	FlowLotteryTotalCount     int        `json:"flowLotteryTotalCount"`
+	FlowLotteryAvailableCount int        `json:"flowLotteryAvailableCount"`
+	FlowLotteryBaseFlow       float64    `json:"flowLotteryBaseFlow"`
+	FlowLotteryBaseRecordID   int64      `json:"flowLotteryBaseRecordId"`
+	Status                    int8       `json:"status"`
+	ParentID                  *int64     `json:"parentId"`
+	ParentUid                 *string    `json:"parentUid"`
+	InviteCode                *string    `json:"inviteCode"`
+	SourceChannelID           *int64     `json:"sourceChannelId"`
+	SourceChannelCode         *string    `json:"sourceChannelCode"`
+	TenantId                  int64      `json:"tenantId"`
+	TenantName                *string    `json:"tenantName"`
+	AudioOpen                 int8       `json:"audio_open"`
 }
 
 type TgUserAdminResp struct {

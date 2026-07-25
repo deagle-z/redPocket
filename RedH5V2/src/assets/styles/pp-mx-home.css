@@ -8651,8 +8651,7 @@ html[data-theme="light"] .ppmx-responsible-exclusion__item {
 }
 
 .ppmx-recharge-modal .ppmx-recharge-submit {
-  position: sticky;
-  bottom: 0;
+  position: static;
   z-index: 3;
   grid-template-columns: 1fr;
   gap: 10px;
@@ -11187,7 +11186,7 @@ html[data-theme="light"] .ppmx-responsible-exclusion__item {
   }
 
   .ppmx-recharge-promo__list {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: 1fr;
   }
 
   .ppmx-recharge-promo-card {
@@ -11232,8 +11231,8 @@ html[data-theme="light"] .ppmx-responsible-exclusion__item {
     font-size: 8px;
   }
 
-  .ppmx-recharge-amount-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+  .ppmx-recharge-modal .ppmx-recharge-amount-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
   }
 
@@ -11245,8 +11244,7 @@ html[data-theme="light"] .ppmx-responsible-exclusion__item {
   }
 
   .ppmx-recharge-submit {
-    position: sticky;
-    bottom: calc(84px + env(safe-area-inset-bottom));
+    position: static;
     z-index: 3;
     grid-template-columns: 1fr;
     padding: 12px;

@@ -148,8 +148,8 @@ func InitTables(prefix string) (firstInit bool, err error) {
 	if err = db.AutoMigrate(&pojo.ExchangeCode{}, &pojo.ExchangeCodeRedeem{}); err != nil {
 		panic(err)
 	}
-	log.Print("init tables: ensure tg_user device fingerprint schema...\n")
-	if err = ensureTgUserDeviceFingerprintSchema(db); err != nil {
+	log.Print("init tables: ensure tg_user device schema...\n")
+	if err = ensureTgUserDeviceSchema(db); err != nil {
 		panic(err)
 	}
 	log.Print("init tables: ensure tg_user invite valid schema...\n")
@@ -227,11 +227,21 @@ func shouldSkipAutoMigrate() bool {
 	return value == "1" || strings.EqualFold(value, "true")
 }
 
-func ensureTgUserDeviceFingerprintSchema(db *gorm.DB) error {
+func ensureTgUserDeviceSchema(db *gorm.DB) error {
 	migrator := db.Migrator()
-	if !migrator.HasColumn(&pojo.TgUser{}, "DeviceFingerprint") {
-		if err := migrator.AddColumn(&pojo.TgUser{}, "DeviceFingerprint"); err != nil {
-			return err
+	for _, column := range []string{
+		"DeviceFingerprint",
+		"DevicePlatform",
+		"DeviceModel",
+		"DeviceOS",
+		"DeviceOSVersion",
+		"DeviceUserAgent",
+		"DeviceReportedAt",
+	} {
+		if !migrator.HasColumn(&pojo.TgUser{}, column) {
+			if err := migrator.AddColumn(&pojo.TgUser{}, column); err != nil {
+				return err
+			}
 		}
 	}
 	if !migrator.HasIndex(&pojo.TgUser{}, "idx_tg_user_device_fingerprint") {

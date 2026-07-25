@@ -11,6 +11,15 @@ const statusOptions = [
   { label: "删除", value: -1 }
 ];
 
+const devicePlatformOptions = [
+  { label: "Android", value: "android" },
+  { label: "iOS", value: "ios" },
+  { label: "Windows", value: "windows" },
+  { label: "macOS", value: "macos" },
+  { label: "Linux", value: "linux" },
+  { label: "Chrome OS", value: "chromeos" }
+];
+
 function getStatusLabel(status: number) {
   const match = statusOptions.find(item => item.value === status);
   return match ? match.label : "-";
@@ -58,6 +67,7 @@ export function useTgUser(_tableRef: Ref) {
     username: "",
     firstName: "",
     phone: "",
+    devicePlatform: "",
     parentUid: "",
     inviteCode: "",
     status: undefined as number | undefined
@@ -217,6 +227,51 @@ export function useTgUser(_tableRef: Ref) {
       formatter: ({ region }) => formatNullable(region)
     },
     {
+      label: "设备平台",
+      prop: "devicePlatform",
+      minWidth: 110,
+      formatter: ({ devicePlatform }) => formatNullable(devicePlatform)
+    },
+    {
+      label: "设备型号",
+      prop: "deviceModel",
+      minWidth: 150,
+      formatter: ({ deviceModel }) => formatNullable(deviceModel)
+    },
+    {
+      label: "操作系统",
+      prop: "deviceOS",
+      minWidth: 120,
+      formatter: ({ deviceOS }) => formatNullable(deviceOS)
+    },
+    {
+      label: "系统版本",
+      prop: "deviceOSVersion",
+      minWidth: 120,
+      formatter: ({ deviceOSVersion }) => formatNullable(deviceOSVersion)
+    },
+    {
+      label: "设备指纹",
+      prop: "deviceFingerprint",
+      minWidth: 220,
+      formatter: ({ deviceFingerprint }) => formatNullable(deviceFingerprint)
+    },
+    {
+      label: "User-Agent",
+      prop: "deviceUserAgent",
+      minWidth: 320,
+      formatter: ({ deviceUserAgent }) => formatNullable(deviceUserAgent)
+    },
+    {
+      label: "设备上报时间",
+      prop: "deviceReportedAt",
+      minWidth: 170,
+      formatter: ({ deviceReportedAt }) =>
+        deviceReportedAt
+          ? dayjs(deviceReportedAt).format("YYYY-MM-DD HH:mm:ss")
+          : "-"
+    },
+    {
       label: "状态",
       prop: "status",
       minWidth: 90,
@@ -320,6 +375,7 @@ export function useTgUser(_tableRef: Ref) {
     dataList,
     pagination,
     statusOptions,
+    devicePlatformOptions,
     onSearch,
     resetForm,
     handleSizeChange,

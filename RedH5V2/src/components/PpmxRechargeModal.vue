@@ -117,6 +117,7 @@ const pageStateMessage = computed(() => {
 })
 
 const rechargeWalletOptions = computed(() => [
+  { label: t('recharge.walletBalance'), value: 'balance' },
   { label: t('recharge.walletSport'), value: 'sport' },
 ])
 

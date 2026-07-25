@@ -419,6 +419,7 @@ func InitGin() {
 		appRouter.POST("/lucky/recentWinners", api.GetRecentLuckyWinnersApp) // 不校验token
 		appAuthRouter.POST("/tg/logout", api.TgLogout)
 		appAuthRouter.GET("/tg/currentUserInfo", api.GetCurrentTgUserInfo)
+		appAuthRouter.POST("/tg/deviceInfo", api.ReportCurrentTgUserDeviceInfo)
 		appAuthRouter.GET("/tg/withdrawSummary", api.GetCurrentTgWithdrawSummary)
 		appAuthRouter.GET("/tg/withdrawActivityFlow", api.GetCurrentTgWithdrawActivityFlow)
 		appAuthRouter.GET("/withdraw/v2/summary", api.GetCurrentTgWithdrawFlowBatchSummary)

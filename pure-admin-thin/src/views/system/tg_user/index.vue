@@ -42,6 +42,7 @@ const {
   dataList,
   pagination,
   statusOptions,
+  devicePlatformOptions,
   onSearch,
   resetForm,
   handleSizeChange,
@@ -805,6 +806,21 @@ function handleSubStatsNextPage() {
           >
             <el-option
               v-for="item in statusOptions"
+              :key="item.value"
+              :label="item.label"
+              :value="item.value"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="设备平台：" prop="devicePlatform">
+          <el-select
+            v-model="form.devicePlatform"
+            placeholder="请选择设备平台"
+            clearable
+            class="!w-[180px]"
+          >
+            <el-option
+              v-for="item in devicePlatformOptions"
               :key="item.value"
               :label="item.label"
               :value="item.value"

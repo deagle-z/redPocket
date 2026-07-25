@@ -1,6 +1,8 @@
 import { del, get, post, upload } from '@/utils/http'
 import { APP_COUNTRY_CODE, type AppCountryCode } from '@/config/market'
 import { getSourceChannelCode, normalizeSourceChannelCode } from '@/utils/sourceChannel'
+import type { DeviceInfoPayload } from '@/utils/deviceInfo'
+import { getDeviceInfo } from '@/utils/deviceInfo'
 
 export interface LoginParams {
   username: string
@@ -615,10 +617,13 @@ export function profileApi() {
   return get<Profile>('/user/profile')
 }
 
-export function loginByPhone(data: LoginByPhoneParams) {
+export async function loginByPhone(data: LoginByPhoneParams) {
+  const deviceInfo = await getDeviceInfo()
+
   return post<LoginResult>('/v1/app/tg/phoneLogin', {
     country: APP_COUNTRY_CODE,
     ...data,
+    ...deviceInfo,
   })
 }
 
@@ -671,8 +676,12 @@ function resolveSourceChannelCode(data: RegisterByPhoneParams) {
   )
 }
 
-export function registerByPhone(data: RegisterByPhoneParams) {
+export async function registerByPhone(data: RegisterByPhoneParams) {
   const sourceChannelCode = resolveSourceChannelCode(data)
+  const deviceInfo = await getDeviceInfo()
+  if (data.deviceFingerprint?.trim()) {
+    deviceInfo.deviceFingerprint = data.deviceFingerprint.trim()
+  }
 
   return post<LoginResult>('/v1/app/tg/registerByPhone', {
     phone: data.phone,
@@ -682,12 +691,16 @@ export function registerByPhone(data: RegisterByPhoneParams) {
     inviteCode: data.inviteCode,
     sourceChannelCode,
     channelCode: sourceChannelCode,
-    deviceFingerprint: data.deviceFingerprint,
+    ...deviceInfo,
   })
 }
 
 export function getCurrentUserInfo() {
   return get<CurrentUserInfo>('/v1/app/tg/currentUserInfo')
+}
+
+export function reportCurrentTgDeviceInfo(data: DeviceInfoPayload) {
+  return post('/v1/app/tg/deviceInfo', data)
 }
 
 export interface UserRechargeCount {

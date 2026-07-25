@@ -27,6 +27,10 @@ func TgAuthLogin(db *gorm.DB, hostInfo pojo.HostInfo, req pojo.TgAuthLoginReq, o
 	if err = utils.VerifyTelegramLoginWidget(utils.GlobalConfig.Telegram.BotToken, req, time.Now()); err != nil {
 		return result, err
 	}
+	deviceInfo, err := normalizeTgDeviceInfo(req.TgDeviceInfoReq, onlineUser.Browser, false)
+	if err != nil {
+		return result, err
+	}
 
 	var dbUser pojo.TgUser
 	createdUser := false
@@ -36,7 +40,7 @@ func TgAuthLogin(db *gorm.DB, hostInfo pojo.HostInfo, req pojo.TgAuthLoginReq, o
 			if !errors.Is(queryErr, gorm.ErrRecordNotFound) {
 				return queryErr
 			}
-			newUser, createErr := createTgUserFromAuth(tx, req, onlineUser.Ip, region)
+			newUser, createErr := createTgUserFromAuth(tx, req, onlineUser.Ip, region, deviceInfo)
 			if createErr != nil {
 				return createErr
 			}
@@ -64,6 +68,9 @@ func TgAuthLogin(db *gorm.DB, hostInfo pojo.HostInfo, req pojo.TgAuthLoginReq, o
 		}
 		if !stringPtrEquals(dbUser.Avatar, avatar) {
 			updates["avatar"] = avatar
+		}
+		for field, value := range deviceInfo.updates() {
+			updates[field] = value
 		}
 		if len(updates) > 0 {
 			if err := tx.Model(&pojo.TgUser{}).Where("id = ?", dbUser.ID).Updates(updates).Error; err != nil {
@@ -166,6 +173,9 @@ func TgEmailLogin(db *gorm.DB, hostInfo pojo.HostInfo, req pojo.TgEmailLoginReq,
 	if err = bcrypt.CompareHashAndPassword([]byte(dbUser.Password), []byte(req.Password)); err != nil {
 		return result, errors.New("account_or_password_incorrect")
 	}
+	if err = updateTgUserDeviceInfo(db, dbUser.ID, req.TgDeviceInfoReq, onlineUser.Browser); err != nil {
+		return result, err
+	}
 
 	return CreateTgLoginSession(hostInfo, dbUser, email, onlineUser)
 }
@@ -199,11 +209,14 @@ func TgPhoneLogin(db *gorm.DB, hostInfo pojo.HostInfo, req pojo.TgPhoneLoginReq,
 	if err = bcrypt.CompareHashAndPassword([]byte(dbUser.Password), []byte(req.Password)); err != nil {
 		return result, errors.New("account_or_password_incorrect")
 	}
+	if err = updateTgUserDeviceInfo(db, dbUser.ID, req.TgDeviceInfoReq, onlineUser.Browser); err != nil {
+		return result, err
+	}
 
 	return CreateTgLoginSession(hostInfo, dbUser, phone, onlineUser)
 }
 
-func createTgUserFromAuth(tx *gorm.DB, req pojo.TgAuthLoginReq, ip string, region string) (pojo.TgUser, error) {
+func createTgUserFromAuth(tx *gorm.DB, req pojo.TgAuthLoginReq, ip string, region string, deviceInfo normalizedTgDeviceInfo) (pojo.TgUser, error) {
 	displayName := strings.TrimSpace(req.FirstName)
 	if displayName == "" {
 		displayName = fmt.Sprintf("User_%d", req.ID)
@@ -245,6 +258,7 @@ func createTgUserFromAuth(tx *gorm.DB, req pojo.TgAuthLoginReq, ip string, regio
 			TenantId:          0,
 			RebateRate:        defaultRebateRate,
 		}
+		deviceInfo.apply(&newUser)
 		if sourceChannel != nil {
 			newUser.SourceChannelID = &sourceChannel.ID
 			newUser.SourceChannelCode = &sourceChannel.ChannelCode
@@ -433,7 +447,7 @@ func CheckTgRegisterPhoneAvailable(db *gorm.DB, phone string, country string) (s
 }
 
 // RegisterTgByEmail 邮箱注册。
-func RegisterTgByEmail(db *gorm.DB, email string, firstName string, password string, code string, sourceChannelCode string, tenantID int64, inviteCode string, ip string, region string) (pojo.TgUser, error) {
+func RegisterTgByEmail(db *gorm.DB, email string, firstName string, password string, code string, sourceChannelCode string, tenantID int64, inviteCode string, ip string, region string, deviceReq pojo.TgDeviceInfoReq, userAgent string) (pojo.TgUser, error) {
 	email = strings.TrimSpace(strings.ToLower(email))
 	firstName = strings.TrimSpace(firstName)
 	code = strings.TrimSpace(code)
@@ -448,6 +462,10 @@ func RegisterTgByEmail(db *gorm.DB, email string, firstName string, password str
 	}
 	if len(code) != 6 {
 		return pojo.TgUser{}, errors.New("code_format_error")
+	}
+	deviceInfo, err := normalizeTgDeviceInfo(deviceReq, userAgent, false)
+	if err != nil {
+		return pojo.TgUser{}, err
 	}
 
 	codeKey := fmt.Sprintf("bgu_tg_email_code_%s", email)
@@ -527,6 +545,7 @@ func RegisterTgByEmail(db *gorm.DB, email string, firstName string, password str
 				TenantId:          tenantID,
 				RebateRate:        defaultRebateRate,
 			}
+			deviceInfo.apply(&user)
 			if sourceChannel != nil {
 				user.SourceChannelID = &sourceChannel.ID
 				user.SourceChannelCode = &sourceChannel.ChannelCode
@@ -555,7 +574,7 @@ func RegisterTgByEmail(db *gorm.DB, email string, firstName string, password str
 }
 
 // RegisterTgByPhone 手机号注册。
-func RegisterTgByPhone(db *gorm.DB, phone string, country string, firstName string, password string, sourceChannelCode string, tenantID int64, inviteCode string, ip string, region string, deviceFingerprint string, tablePrefix string) (pojo.TgUser, error) {
+func RegisterTgByPhone(db *gorm.DB, phone string, country string, firstName string, password string, sourceChannelCode string, tenantID int64, inviteCode string, ip string, region string, deviceReq pojo.TgDeviceInfoReq, userAgent string, tablePrefix string) (pojo.TgUser, error) {
 	firstName = strings.TrimSpace(firstName)
 	normalizedPhone, normalizedCountry, err := CheckTgRegisterPhoneAvailable(db, phone, country)
 	if err != nil {
@@ -570,10 +589,11 @@ func RegisterTgByPhone(db *gorm.DB, phone string, country string, firstName stri
 		return pojo.TgUser{}, errors.New("password_length_6_64")
 	}
 
-	deviceFingerprintHash, err := normalizeRegisterDeviceFingerprint(deviceFingerprint)
+	deviceInfo, err := normalizeTgDeviceInfo(deviceReq, userAgent, true)
 	if err != nil {
 		return pojo.TgUser{}, err
 	}
+	deviceFingerprintHash := *deviceInfo.fingerprint
 
 	passwordHash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
@@ -650,6 +670,7 @@ func RegisterTgByPhone(db *gorm.DB, phone string, country string, firstName stri
 				TenantId:          tenantID,
 				RebateRate:        defaultRebateRate,
 			}
+			deviceInfo.apply(&newUser)
 			if sourceChannel != nil {
 				newUser.SourceChannelID = &sourceChannel.ID
 				newUser.SourceChannelCode = &sourceChannel.ChannelCode

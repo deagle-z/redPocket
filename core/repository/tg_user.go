@@ -51,6 +51,9 @@ func GetTgUsers(db *gorm.DB, search pojo.TgUserSearch) (result pojo.TgUserAdminR
 	if search.Region != "" {
 		query = query.Where("u.region = ?", strings.TrimSpace(strings.ToUpper(search.Region)))
 	}
+	if devicePlatform := strings.ToLower(strings.TrimSpace(search.DevicePlatform)); devicePlatform != "" {
+		query = query.Where("u.device_platform = ?", devicePlatform)
+	}
 	if search.IsBot != nil {
 		query = query.Where("u.is_bot = ?", *search.IsBot)
 	}

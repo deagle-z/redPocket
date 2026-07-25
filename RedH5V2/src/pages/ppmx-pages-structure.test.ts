@@ -938,7 +938,7 @@ describe('PP.MX routed pages structure', () => {
     }
   })
 
-  it('switches the recharge available balance with the selected wallet', () => {
+  it('offers balance and sports recharge wallets and switches the available balance', () => {
     const rechargePageSource = readSource('src/pages/recharge/index.vue')
     const rechargeModalSource = readSource('src/components/PpmxRechargeModal.vue')
 
@@ -947,10 +947,10 @@ describe('PP.MX routed pages structure', () => {
       expect(source).toContain('userStore.userInfo?.sportBalance')
       expect(source).toContain('userStore.userInfo?.balance')
       expect(source).toContain('formatMoney(toDisplayCents(selectedRechargeWalletBalance.value)')
+      expect(source).toContain("value: 'balance'")
       expect(source).toContain("value: 'sport'")
+      expect(source).toContain("t('recharge.walletBalance')")
       expect(source).toContain("t('recharge.walletSport')")
-      expect(source).not.toContain("value: 'balance'")
-      expect(source).not.toContain("t('recharge.walletBalance')")
       expect(source).not.toContain('formatMoney(toDisplayCents(userStore.userInfo?.balance)')
     }
   })

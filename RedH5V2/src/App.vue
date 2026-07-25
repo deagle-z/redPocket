@@ -9,6 +9,7 @@ import { createThirdPartyEventId, trackAttributionEvent } from '@/utils/attribut
 import { trackPurchase } from '@/utils/facebookPixel'
 import { formatMoney, toDisplayCents } from '@/utils/money'
 import { incrementLocalRechargeCount } from '@/utils/rechargeCount'
+import { reportDeviceInfoOncePerDay } from '@/utils/deviceReport'
 import { getTtlStorage, setTtlStorage } from '@/utils/storage'
 import { trackEvent } from '@/utils/tracker'
 import wsClient, { closeWebSocket, connectWebSocket } from '@/plugins/websocket'
@@ -284,9 +285,10 @@ async function refreshCurrentUserInfo() {
   if (!userStore.token) return
 
   try {
-    await userStore.loadUserInfo()
+    const user = await userStore.loadUserInfo()
+    await reportDeviceInfoOncePerDay(user.id)
   } catch (error) {
-    console.warn('[auth] load current user failed:', error)
+    console.warn('[auth] load user or report device info failed:', error)
   }
 }
 

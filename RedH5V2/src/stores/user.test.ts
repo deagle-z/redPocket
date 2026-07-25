@@ -18,6 +18,7 @@ vi.mock('@/api/user', () => ({
   })),
   loginByPhone: vi.fn(async () => ({ accessToken: 'access-token-1' })),
   registerByPhone: vi.fn(async () => ({ token: 'registered-token' })),
+  reportCurrentTgDeviceInfo: vi.fn(async () => undefined),
 }))
 
 function installWindowStorage() {

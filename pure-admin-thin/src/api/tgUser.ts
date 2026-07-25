@@ -35,6 +35,13 @@ export type TgUser = {
   remark?: string | null;
   ip?: string | null;
   region?: string | null;
+  deviceFingerprint?: string | null;
+  devicePlatform?: string | null;
+  deviceModel?: string | null;
+  deviceOS?: string | null;
+  deviceOSVersion?: string | null;
+  deviceUserAgent?: string | null;
+  deviceReportedAt?: string | null;
   tenantId?: number;
   tenantName?: string | null;
 };
@@ -47,6 +54,7 @@ export type TgUserSearch = {
   username?: string;
   firstName?: string;
   phone?: string;
+  devicePlatform?: string;
   isBot?: boolean;
   status?: number;
   parentId?: number;

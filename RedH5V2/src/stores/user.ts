@@ -11,6 +11,7 @@ import {
 import { AUTH_EXPIRED_EVENT } from '@/utils/authEvents'
 import { clearAuthToken, getAuthToken, setAuthToken } from '@/utils/authToken'
 import { setLocalRechargeCount } from '@/utils/rechargeCount'
+import { markDeviceInfoReportedToday } from '@/utils/deviceReport'
 
 export interface UserInfo {
   id: number | string
@@ -102,7 +103,10 @@ export const useUserStore = defineStore('user', () => {
       }
 
       setToken(nextToken, options.remember ?? true)
-      await loadUserInfo()
+      const user = await loadUserInfo()
+      if (user.id !== '') {
+        markDeviceInfoReportedToday(user.id)
+      }
 
       return userInfo.value
     } catch (error) {
@@ -121,7 +125,10 @@ export const useUserStore = defineStore('user', () => {
       }
 
       setToken(nextToken)
-      await loadUserInfo()
+      const user = await loadUserInfo()
+      if (user.id !== '') {
+        markDeviceInfoReportedToday(user.id)
+      }
 
       return userInfo.value
     } catch (error) {
