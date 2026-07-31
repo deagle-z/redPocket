@@ -19,11 +19,14 @@ import (
 	"time"
 
 	"github.com/hibiken/asynq"
+	"gorm.io/gorm"
 )
 
 const (
 	usdtTrc20ScanPageLimit     = 10
 	usdtTrc20ScanLimit         = 200
+	usdtTrc20ConfirmationLag   = 3 * time.Minute
+	usdtTrc20RescanOverlap     = 10 * time.Minute
 	TaskTypeUsdtRechargeExpire = "usdt_recharge:expire"
 )
 
@@ -108,37 +111,129 @@ func RunUsdtRechargeScanForPrefix(tablePrefix string) error {
 	if err != nil {
 		return err
 	}
-	if !cfg.Enabled || strings.TrimSpace(cfg.ReceiveAddress) == "" {
-		return nil
+	currentReceiveAddress := ""
+	currentContractAddress := ""
+	if cfg.Enabled {
+		cfg, err = repository.ValidateUsdtTrc20RuntimeConfig(tablePrefix)
+		if err != nil {
+			return err
+		}
+		currentReceiveAddress = cfg.ReceiveAddress
+		currentContractAddress = cfg.ContractAddress
 	}
-	minTimestamp, pendingCount, err := repository.GetUsdtRechargeScanMinTimestamp(db)
+	targets, err := repository.ListCryptoRechargeScanTargets(
+		db,
+		pojo.CryptoRechargeNetworkTRC20,
+		pojo.CryptoRechargeTokenUSDT,
+		currentReceiveAddress,
+		currentContractAddress,
+	)
 	if err != nil {
 		return err
 	}
-	if pendingCount == 0 {
+	var scanErrors []error
+	for _, target := range targets {
+		if ownershipErr := repository.ValidateCryptoScanTargetOwnership(tablePrefix, pojo.CryptoRechargeNetworkTRC20, target.ReceiveAddress); ownershipErr != nil {
+			scanErrors = append(scanErrors, fmt.Errorf("address %s ownership: %w", target.ReceiveAddress, ownershipErr))
+			continue
+		}
+		targetCfg := cfg
+		targetCfg.ReceiveAddress = target.ReceiveAddress
+		targetCfg.ContractAddress = target.ContractAddress
+		if targetErr := runUsdtRechargeScanTarget(db, tablePrefix, targetCfg); targetErr != nil {
+			scanErrors = append(scanErrors, fmt.Errorf("address %s contract %s: %w", target.ReceiveAddress, target.ContractAddress, targetErr))
+		}
+	}
+	return errors.Join(scanErrors...)
+}
+
+func runUsdtRechargeScanTarget(db *gorm.DB, tablePrefix string, cfg repository.UsdtTrc20RuntimeConfig) error {
+	lockKey := fmt.Sprintf("crypto_recharge_scan:%s:%s:%s:%s", tablePrefix, pojo.CryptoRechargeNetworkTRC20, cfg.ReceiveAddress, cfg.ContractAddress)
+	scanLock, acquired, err := utils.AcquireOwnedLock(lockKey, 5*time.Minute)
+	if err != nil {
+		return err
+	}
+	if !acquired {
 		return nil
 	}
-	txs, err := fetchTronGridTRC20Transactions(cfg, minTimestamp)
+	defer scanLock.Release()
+	heartbeat := startCryptoScanLockHeartbeat(scanLock)
+	defer heartbeat.Stop()
+
+	minTimestamp, _, err := repository.GetCryptoRechargeScanMinTimestampForTarget(
+		db,
+		pojo.CryptoRechargeNetworkTRC20,
+		pojo.CryptoRechargeTokenUSDT,
+		cfg.ReceiveAddress,
+		cfg.ContractAddress,
+	)
+	if err != nil {
+		return err
+	}
+	cursor, err := repository.GetCryptoRechargeScanCursor(
+		db,
+		pojo.CryptoRechargeNetworkTRC20,
+		pojo.CryptoRechargeTokenUSDT,
+		cfg.ReceiveAddress,
+		cfg.ContractAddress,
+	)
+	if err != nil {
+		return err
+	}
+	if cursor.LastBlockTimestamp <= 0 && minTimestamp <= 0 {
+		cursor.LastBlockTimestamp = tronGridSafeScanTarget(time.Now())
+		return repository.SaveCryptoRechargeScanCursor(db, cursor)
+	}
+	txs, nextCursor, err := fetchTronGridTRC20Transactions(cfg, minTimestamp, cursor)
 	if err != nil {
 		return err
 	}
 	for _, txRecord := range txs {
 		if err := repository.ProcessUsdtRechargeTx(db, tablePrefix, txRecord); err != nil {
-			log.Printf("[usdt_recharge] process tx failed prefix=%s tx=%s err=%v", tablePrefix, txRecord.TxID, err)
+			return fmt.Errorf("process tx %s: %w", txRecord.TxID, err)
 		}
 	}
-	return nil
+	if err = heartbeat.StopAndVerify(); err != nil {
+		return err
+	}
+	return repository.SaveCryptoRechargeScanCursor(db, nextCursor)
 }
 
-func fetchTronGridTRC20Transactions(cfg repository.UsdtTrc20RuntimeConfig, minTimestamp int64) ([]pojo.UsdtRechargeTx, error) {
+func fetchTronGridTRC20Transactions(
+	cfg repository.UsdtTrc20RuntimeConfig,
+	minTimestamp int64,
+	cursor pojo.CryptoRechargeScanCursor,
+) ([]pojo.UsdtRechargeTx, pojo.CryptoRechargeScanCursor, error) {
 	result := make([]pojo.UsdtRechargeTx, 0)
-	fingerprint := ""
+	scanMinTimestamp := minTimestamp
+	overlapMilliseconds := usdtTrc20RescanOverlap.Milliseconds()
+	if cursor.LastBlockTimestamp > 0 {
+		overlapStart := cursor.LastBlockTimestamp - overlapMilliseconds
+		if overlapStart < 0 {
+			overlapStart = 0
+		}
+		if overlapStart > scanMinTimestamp {
+			scanMinTimestamp = overlapStart
+		}
+	}
+	targetTimestamp := cursor.TargetBlockTimestamp
+	if targetTimestamp <= 0 {
+		targetTimestamp = tronGridSafeScanTarget(time.Now())
+	}
+	if cursor.LastBlockTimestamp > 0 && targetTimestamp < cursor.LastBlockTimestamp {
+		targetTimestamp = cursor.LastBlockTimestamp
+	}
+	fingerprint := strings.TrimSpace(cursor.PaginationCursor)
+	completed := false
 	for page := 0; page < usdtTrc20ScanPageLimit; page++ {
-		resp, err := requestTronGridTRC20Page(cfg, minTimestamp, fingerprint)
+		resp, err := requestTronGridTRC20Page(cfg, scanMinTimestamp, targetTimestamp, fingerprint)
 		if err != nil {
-			return result, err
+			return result, cursor, err
 		}
 		for _, tx := range resp.Data {
+			if tx.BlockTimestamp > targetTimestamp {
+				continue
+			}
 			record, ok := buildUsdtRechargeTxRecord(cfg, tx)
 			if ok {
 				result = append(result, record)
@@ -146,13 +241,31 @@ func fetchTronGridTRC20Transactions(cfg repository.UsdtTrc20RuntimeConfig, minTi
 		}
 		fingerprint = strings.TrimSpace(resp.Meta.Fingerprint)
 		if fingerprint == "" {
+			completed = true
 			break
 		}
+		cursor.PaginationCursor = fingerprint
+		cursor.TargetBlockTimestamp = targetTimestamp
+		// Preserve the exact lower bound while an initial paginated scan is in progress.
+		if cursor.LastBlockTimestamp <= 0 && scanMinTimestamp > 0 {
+			cursor.LastBlockTimestamp = scanMinTimestamp + overlapMilliseconds
+		}
 	}
-	return result, nil
+	if completed {
+		cursor.LastBlockTimestamp = targetTimestamp
+		cursor.PaginationCursor = ""
+		cursor.TargetBlockTimestamp = 0
+	} else if cursor.PaginationCursor == "" {
+		return result, cursor, errors.New("usdt_scan_page_limit_reached_without_cursor")
+	}
+	return result, cursor, nil
 }
 
-func requestTronGridTRC20Page(cfg repository.UsdtTrc20RuntimeConfig, minTimestamp int64, fingerprint string) (tronGridTRC20Resp, error) {
+func tronGridSafeScanTarget(now time.Time) int64 {
+	return now.Add(-usdtTrc20ConfirmationLag).UnixMilli()
+}
+
+func requestTronGridTRC20Page(cfg repository.UsdtTrc20RuntimeConfig, minTimestamp int64, maxTimestamp int64, fingerprint string) (tronGridTRC20Resp, error) {
 	var result tronGridTRC20Resp
 	baseURL := strings.TrimRight(cfg.APIBaseURL, "/")
 	reqURL := fmt.Sprintf("%s/v1/accounts/%s/transactions/trc20", baseURL, url.PathEscape(cfg.ReceiveAddress))
@@ -164,6 +277,9 @@ func requestTronGridTRC20Page(cfg repository.UsdtTrc20RuntimeConfig, minTimestam
 	query.Set("order_by", "block_timestamp,desc")
 	if minTimestamp > 0 {
 		query.Set("min_timestamp", strconv.FormatInt(minTimestamp, 10))
+	}
+	if maxTimestamp > 0 {
+		query.Set("max_timestamp", strconv.FormatInt(maxTimestamp, 10))
 	}
 	if strings.TrimSpace(fingerprint) != "" {
 		query.Set("fingerprint", strings.TrimSpace(fingerprint))
@@ -200,10 +316,16 @@ func buildUsdtRechargeTxRecord(cfg repository.UsdtTrc20RuntimeConfig, tx tronGri
 	if strings.TrimSpace(tx.TransactionID) == "" {
 		return pojo.UsdtRechargeTx{}, false
 	}
-	if !strings.EqualFold(strings.TrimSpace(tx.To), strings.TrimSpace(cfg.ReceiveAddress)) {
+	if strings.TrimSpace(tx.To) != strings.TrimSpace(cfg.ReceiveAddress) {
 		return pojo.UsdtRechargeTx{}, false
 	}
-	if !strings.EqualFold(strings.TrimSpace(tx.TokenInfo.Address), strings.TrimSpace(cfg.ContractAddress)) {
+	if strings.TrimSpace(tx.TokenInfo.Address) != strings.TrimSpace(cfg.ContractAddress) {
+		return pojo.UsdtRechargeTx{}, false
+	}
+	if tx.TokenInfo.Decimals != pojo.CryptoRechargeDecimalsUSDT || !strings.EqualFold(strings.TrimSpace(tx.TokenInfo.Symbol), pojo.CryptoRechargeTokenUSDT) {
+		return pojo.UsdtRechargeTx{}, false
+	}
+	if strings.TrimSpace(tx.From) == strings.TrimSpace(cfg.ReceiveAddress) {
 		return pojo.UsdtRechargeTx{}, false
 	}
 	amountMicro, err := normalizeTronTokenValueToMicro(tx.Value, tx.TokenInfo.Decimals)
@@ -219,6 +341,8 @@ func buildUsdtRechargeTxRecord(cfg repository.UsdtTrc20RuntimeConfig, tx tronGri
 		FromAddress:     strings.TrimSpace(tx.From),
 		ToAddress:       strings.TrimSpace(tx.To),
 		AmountMicro:     amountMicro,
+		AmountDecimals:  pojo.CryptoRechargeDecimalsUSDT,
+		AmountAtomic:    strconv.FormatInt(amountMicro, 10),
 		Amount:          repository.FormatUsdtMicroAmount(amountMicro),
 		BlockTimestamp:  tx.BlockTimestamp,
 		RawJSON:         string(raw),

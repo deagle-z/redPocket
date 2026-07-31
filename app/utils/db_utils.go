@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 	"gorm.io/gorm/logger"
 	"gorm.io/plugin/dbresolver"
 	"log"
@@ -13,6 +14,9 @@ import (
 	"strings"
 	"time"
 )
+
+const cryptoRechargeSchemaMigrationKey = "crypto_recharge_hardening"
+const cryptoRechargeSchemaVersion = 1
 
 func InitDb() (firstInit bool, err error) {
 	newLogger := logger.New(
@@ -68,6 +72,17 @@ func InitDb() (firstInit bool, err error) {
 	sqlDB.SetConnMaxIdleTime(30 * time.Second)
 	log.Print("init mysql: register prefix db sharding hook...\n")
 	utils.RegisterPrefixDbInitializer("cash_history_sharding", InitShardingHook)
+	utils.RegisterPrefixDbInitializer("crypto_recharge_schema", func(prefixDB *gorm.DB) {
+		if shouldSkipAutoMigrate() {
+			if verifyErr := verifyCryptoRechargeSchema(prefixDB); verifyErr != nil {
+				panic(verifyErr)
+			}
+		} else {
+			if migrateErr := ensureUsdtRechargeSchema(prefixDB); migrateErr != nil {
+				panic(migrateErr)
+			}
+		}
+	})
 	log.Print("init mysql: init tables...\n")
 	firstInit, err = InitTables(utils.CsConfig.DefaultHost.TablePrefix)
 	if shouldSkipAutoMigrate() {
@@ -126,8 +141,6 @@ func InitTables(prefix string) (firstInit bool, err error) {
 			&pojo.ExchangeCode{},
 			&pojo.ExchangeCodeRedeem{},
 			&pojo.RechargeOrder{},
-			&pojo.UsdtRechargeOrder{},
-			&pojo.UsdtRechargeTx{},
 			&pojo.WithdrawOrderBr{},
 			&pojo.TgUserRebateRecord{},
 			&pojo.TgTaskActivityConfig{},
@@ -391,7 +404,182 @@ func ensureWithdrawOrderBrPerformanceSchema(db *gorm.DB) error {
 }
 
 func ensureUsdtRechargeSchema(db *gorm.DB) error {
-	return db.AutoMigrate(&pojo.UsdtRechargeOrder{}, &pojo.UsdtRechargeTx{})
+	return db.Clauses(dbresolver.Write).Connection(func(connection *gorm.DB) error {
+		var databaseName string
+		if err := connection.Raw("SELECT DATABASE()").Scan(&databaseName).Error; err != nil {
+			return err
+		}
+		lockName := "bgu_crypto_schema_" + databaseName
+		if len(lockName) > 64 {
+			lockName = lockName[:64]
+		}
+		var acquired int
+		if err := connection.Raw("SELECT GET_LOCK(?, 60)", lockName).Scan(&acquired).Error; err != nil {
+			return err
+		}
+		if acquired != 1 {
+			return fmt.Errorf("crypto schema migration lock unavailable for database %q", databaseName)
+		}
+		defer func() {
+			var released int
+			_ = connection.Raw("SELECT RELEASE_LOCK(?)", lockName).Scan(&released).Error
+		}()
+		return ensureUsdtRechargeSchemaLocked(connection)
+	})
+}
+
+func ensureUsdtRechargeSchemaLocked(db *gorm.DB) error {
+	if cryptoRechargeMigrationApplied(db) && verifyCryptoRechargeSchema(db) == nil {
+		return nil
+	}
+	if err := db.AutoMigrate(
+		&pojo.UsdtRechargeOrder{},
+		&pojo.UsdtRechargeTx{},
+		&pojo.CryptoRechargeScanCursor{},
+		&pojo.CryptoRechargeAmountReservation{},
+		&pojo.CryptoRechargeManualSupplement{},
+		&pojo.CryptoRechargeManualProof{},
+		&pojo.CryptoRechargeSchemaVersion{},
+	); err != nil {
+		return err
+	}
+	if err := db.Exec(`
+		UPDATE usdt_recharge_tx
+		SET review_status = ?, exception_code = ?
+		WHERE matched_order_no IS NULL
+			AND review_status = ?
+			AND COALESCE(amount_atomic, '') = ''
+			AND amount_micro > 0
+	`, pojo.CryptoRechargeTxReviewManualRequired, pojo.CryptoRechargeExceptionLegacy, pojo.CryptoRechargeTxReviewNew).Error; err != nil {
+		return err
+	}
+	if err := db.Exec(`
+		UPDATE usdt_recharge_order
+		SET amount_decimals = 6,
+			base_amount_atomic = CAST(base_amount_micro AS CHAR),
+			expected_amount_atomic = CAST(expected_amount_micro AS CHAR)
+		WHERE network = 'TRC20'
+			AND token = 'USDT'
+			AND COALESCE(expected_amount_atomic, '') = ''
+			AND expected_amount_micro > 0
+	`).Error; err != nil {
+		return err
+	}
+	if err := db.Exec(`
+		UPDATE usdt_recharge_tx
+		SET amount_decimals = 6,
+			amount_atomic = CAST(amount_micro AS CHAR)
+		WHERE network = 'TRC20'
+			AND token = 'USDT'
+			AND COALESCE(amount_atomic, '') = ''
+			AND amount_micro > 0
+	`).Error; err != nil {
+		return err
+	}
+	if err := db.Exec(`
+		INSERT IGNORE INTO crypto_recharge_amount_reservation
+			(reservation_key, network, token, receive_address, expected_amount_atomic, order_no, created_at, updated_at)
+		SELECT
+			SHA2(CONCAT_WS('|', network, token, receive_address, expected_amount_atomic), 256),
+			network, token, receive_address, expected_amount_atomic, order_no, NOW(3), NOW(3)
+		FROM usdt_recharge_order
+		WHERE COALESCE(expected_amount_atomic, '') <> ''
+	`).Error; err != nil {
+		return err
+	}
+	marker := pojo.CryptoRechargeSchemaVersion{
+		MigrationKey: cryptoRechargeSchemaMigrationKey,
+		Version:      cryptoRechargeSchemaVersion,
+	}
+	if err := db.Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "migration_key"}},
+		DoUpdates: clause.Assignments(map[string]any{"version": cryptoRechargeSchemaVersion}),
+	}).Create(&marker).Error; err != nil {
+		return err
+	}
+	return verifyCryptoRechargeSchema(db)
+}
+
+func cryptoRechargeMigrationApplied(db *gorm.DB) bool {
+	if db == nil {
+		return false
+	}
+	db = db.Clauses(dbresolver.Write)
+	if !db.Migrator().HasTable(&pojo.CryptoRechargeSchemaVersion{}) {
+		return false
+	}
+	var marker pojo.CryptoRechargeSchemaVersion
+	if err := db.Where("migration_key = ?", cryptoRechargeSchemaMigrationKey).First(&marker).Error; err != nil {
+		return false
+	}
+	return marker.Version >= cryptoRechargeSchemaVersion
+}
+
+func verifyCryptoRechargeSchema(db *gorm.DB) error {
+	if db == nil {
+		return fmt.Errorf("crypto recharge schema database is unavailable")
+	}
+	db = db.Clauses(dbresolver.Write)
+	requiredColumns := []struct {
+		model   any
+		columns []string
+	}{
+		{&pojo.UsdtRechargeOrder{}, []string{"network", "token", "receive_address", "amount_decimals", "base_amount_atomic", "expected_amount_atomic", "paid_amount_atomic"}},
+		{&pojo.UsdtRechargeTx{}, []string{"tx_id", "amount_decimals", "amount_atomic", "block_height", "block_hash", "confirmations", "review_status", "exception_code"}},
+		{&pojo.CryptoRechargeScanCursor{}, []string{"cursor_key", "last_block_height", "last_block_hash", "last_block_timestamp", "pagination_cursor", "target_block_height", "target_block_timestamp", "contract_address"}},
+		{&pojo.CryptoRechargeAmountReservation{}, []string{"reservation_key", "expected_amount_atomic", "order_no"}},
+		{&pojo.CryptoRechargeManualSupplement{}, []string{"order_no", "recharge_order_id", "operator_id", "reason", "status"}},
+		{&pojo.CryptoRechargeManualProof{}, []string{"supplement_id", "source_network", "source_token", "tx_id", "amount_decimals", "amount_atomic"}},
+		{&pojo.CryptoRechargeSchemaVersion{}, []string{"migration_key", "version"}},
+	}
+	for _, required := range requiredColumns {
+		if !db.Migrator().HasTable(required.model) {
+			return fmt.Errorf("crypto recharge schema missing table for %T; apply the production migration before starting with BGU_SKIP_AUTO_MIGRATE=1", required.model)
+		}
+		for _, column := range required.columns {
+			if !db.Migrator().HasColumn(required.model, column) {
+				return fmt.Errorf("crypto recharge schema missing column %s for %T; apply the production migration before starting with BGU_SKIP_AUTO_MIGRATE=1", column, required.model)
+			}
+		}
+	}
+	uniqueColumns := []struct {
+		table  string
+		column string
+	}{
+		{pojo.UsdtRechargeOrderTableName, "order_no"},
+		{pojo.UsdtRechargeTxTableName, "tx_id"},
+		{pojo.CryptoRechargeScanCursorTableName, "cursor_key"},
+		{pojo.CryptoRechargeAmountReservationTableName, "reservation_key"},
+		{pojo.CryptoRechargeAmountReservationTableName, "order_no"},
+		{pojo.CryptoRechargeManualSupplementTableName, "order_no"},
+		{pojo.CryptoRechargeManualProofTableName, "tx_id"},
+		{pojo.CryptoRechargeSchemaVersionTableName, "migration_key"},
+	}
+	for _, required := range uniqueColumns {
+		var count int64
+		if err := db.Raw(`
+			SELECT COUNT(*)
+			FROM (
+				SELECT index_name
+				FROM information_schema.statistics
+				WHERE table_schema = DATABASE()
+					AND table_name = ?
+					AND non_unique = 0
+				GROUP BY index_name
+				HAVING COUNT(*) = 1
+					AND MAX(column_name) = ?
+			) AS single_column_unique_indexes
+		`, required.table, required.column).Scan(&count).Error; err != nil {
+			return err
+		}
+		if count <= 0 {
+			return fmt.Errorf("crypto recharge schema missing unique index on %s.%s; apply the production migration before starting with BGU_SKIP_AUTO_MIGRATE=1", required.table, required.column)
+		}
+	}
+	if !cryptoRechargeMigrationApplied(db) {
+		return fmt.Errorf("crypto recharge schema migration version %d is not applied; run the controlled production migration before starting with BGU_SKIP_AUTO_MIGRATE=1", cryptoRechargeSchemaVersion)
+	}
+	return nil
 }
 
 func ensureRechargeOrderWalletSchema(db *gorm.DB) error {

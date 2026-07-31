@@ -62,6 +62,8 @@ type PayConfig struct {
 	Vcpaymxn  VcpayMxnPayConfig  `yaml:"vcpaymxn"`
 	Hopopay   HopopayPayConfig   `yaml:"hopopay"`
 	UsdtTrc20 UsdtTrc20PayConfig `yaml:"usdtTrc20"`
+	Bitcoin   BitcoinPayConfig   `yaml:"bitcoin"`
+	Ethereum  EthereumPayConfig  `yaml:"ethereum"`
 }
 
 type GctpkPayConfig struct {
@@ -101,6 +103,24 @@ type UsdtTrc20PayConfig struct {
 	DefaultReceiveAddress string `yaml:"defaultReceiveAddress"` // 默认收款地址，可被租户 sys_config 覆盖
 	OrderExpireMinutes    int    `yaml:"orderExpireMinutes"`    // 订单过期分钟数
 	ScanIntervalSeconds   int    `yaml:"scanIntervalSeconds"`   // 扫描间隔秒数
+}
+
+type BitcoinPayConfig struct {
+	Enabled               bool   `yaml:"enabled"`               // 是否启用 BTC Mainnet 扫描
+	EsploraAPIBaseURL     string `yaml:"esploraApiBaseUrl"`     // Esplora API 根地址，部署时配置
+	DefaultReceiveAddress string `yaml:"defaultReceiveAddress"` // 默认 BTC Mainnet 收款地址，可被租户 sys_config 覆盖
+	OrderExpireMinutes    int    `yaml:"orderExpireMinutes"`    // 订单过期分钟数
+	ScanIntervalSeconds   int    `yaml:"scanIntervalSeconds"`   // 扫描间隔秒数
+	MinConfirmations      int    `yaml:"minConfirmations"`      // 最低区块确认数
+}
+
+type EthereumPayConfig struct {
+	Enabled               bool   `yaml:"enabled"`               // 是否启用 ETH Mainnet 扫描
+	RPCURL                string `yaml:"rpcUrl"`                // Ethereum JSON-RPC 地址，部署时配置
+	DefaultReceiveAddress string `yaml:"defaultReceiveAddress"` // 默认 ETH Mainnet 收款地址，可被租户 sys_config 覆盖
+	OrderExpireMinutes    int    `yaml:"orderExpireMinutes"`    // 订单过期分钟数
+	ScanIntervalSeconds   int    `yaml:"scanIntervalSeconds"`   // 扫描间隔秒数
+	MinConfirmations      int    `yaml:"minConfirmations"`      // 最低区块确认数
 }
 
 type TelegramConfig struct {

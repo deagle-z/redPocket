@@ -2,6 +2,8 @@ package utils
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"github.com/go-redis/redis/v8"
@@ -11,6 +13,26 @@ import (
 )
 
 var RD *redis.Client
+
+type OwnedRedisLock struct {
+	key   string
+	token string
+	ttl   time.Duration
+}
+
+var releaseOwnedLockScript = redis.NewScript(`
+if redis.call("get", KEYS[1]) == ARGV[1] then
+  return redis.call("del", KEYS[1])
+end
+return 0
+`)
+
+var renewOwnedLockScript = redis.NewScript(`
+if redis.call("get", KEYS[1]) == ARGV[1] then
+  return redis.call("pexpire", KEYS[1], ARGV[2])
+end
+return 0
+`)
 
 func InitRD() (err error) {
 	RD = redis.NewClient(&redis.Options{
@@ -49,6 +71,60 @@ func IsKeyExistAndGetValue(lockKey string) (bool, string, error) {
 func ReleaseLock(lockKey string) error {
 	_ = RD.Del(context.Background(), lockKey)
 	return nil
+}
+
+func AcquireOwnedLock(lockKey string, ttl time.Duration) (*OwnedRedisLock, bool, error) {
+	if RD == nil {
+		return nil, false, errors.New("redis_not_available")
+	}
+	if lockKey == "" || ttl <= 0 {
+		return nil, false, errors.New("owned_lock_invalid")
+	}
+	tokenBytes := make([]byte, 16)
+	if _, err := rand.Read(tokenBytes); err != nil {
+		return nil, false, err
+	}
+	lock := &OwnedRedisLock{
+		key:   lockKey,
+		token: hex.EncodeToString(tokenBytes),
+		ttl:   ttl,
+	}
+	acquired, err := RD.SetNX(context.Background(), lock.key, lock.token, ttl).Result()
+	if err != nil {
+		return nil, false, err
+	}
+	if !acquired {
+		return nil, false, nil
+	}
+	return lock, true, nil
+}
+
+func (lock *OwnedRedisLock) Renew() error {
+	if lock == nil || RD == nil {
+		return errors.New("owned_lock_not_available")
+	}
+	result, err := renewOwnedLockScript.Run(
+		context.Background(),
+		RD,
+		[]string{lock.key},
+		lock.token,
+		strconv.FormatInt(lock.ttl.Milliseconds(), 10),
+	).Int64()
+	if err != nil {
+		return err
+	}
+	if result != 1 {
+		return errors.New("owned_lock_lost")
+	}
+	return nil
+}
+
+func (lock *OwnedRedisLock) Release() error {
+	if lock == nil || RD == nil {
+		return nil
+	}
+	_, err := releaseOwnedLockScript.Run(context.Background(), RD, []string{lock.key}, lock.token).Result()
+	return err
 }
 
 func GetRdInt64(key string, defaultValue int64) (result int64) {

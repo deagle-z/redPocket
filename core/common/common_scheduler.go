@@ -61,6 +61,8 @@ func InitScheduler() {
 	}, "查询超时处理中代付订单")
 	services.StartBotLotteryTask()
 	services.StartUsdtRechargeScanTask()
+	services.StartBitcoinRechargeScanTask()
+	services.StartEthereumRechargeScanTask()
 	c.Start()
 	log.Println("Scheduler started successfully")
 }

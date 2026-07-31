@@ -226,10 +226,12 @@ func InitGin() {
 		adminGroupLog.POST("/tgUser/rebateWithdrawDisabled", api.SetTgUserRebateWithdrawDisabled) // 修改Telegram用户提现开关
 		adminGroupLog.POST("/tgUser/rechargeRebateRates", api.SetTgUserRechargeRebateRates)       // 修改Telegram用户充值返佣档位(每用户单独)
 		adminGroupLog.POST("/tgUser/rebateAmount", api.AddTgUserRebateAmount)
-		adminGroupLog.POST("/tgUser/rechargeOrder/v2", api.AdminCreateRechargeOrderV2)         // 手动拉起TG用户v2充值订单
-		adminGroupLog.POST("/tgUser/rechargeOrder/crypto", api.AdminCreateCryptoRechargeOrder) // 创建TG用户虚拟货币充值订单
-		adminGroupLog.POST("/tgUser/remark", api.SetTgUserRemark)                              // 修改Telegram用户备注
-		adminGroupLog.DELETE("/tgUser/:id", api.DelTgUser)                                     // 删除Telegram用户
+		adminGroupLog.POST("/tgUser/rechargeOrder/v2", api.AdminCreateRechargeOrderV2)                  // 手动拉起TG用户v2充值订单
+		adminGroupLog.POST("/tgUser/rechargeOrder/crypto", api.AdminCreateCryptoRechargeOrder)          // 创建TG用户虚拟货币充值订单
+		adminGroupLog.POST("/rechargeOrder/crypto/exceptions", api.GetCryptoRechargeExceptions)         // 查询虚拟货币异常付款
+		adminGroupLog.POST("/rechargeOrder/crypto/manualSupplement", api.AdminSupplementCryptoRecharge) // 人工补单
+		adminGroupLog.POST("/tgUser/remark", api.SetTgUserRemark)                                       // 修改Telegram用户备注
+		adminGroupLog.DELETE("/tgUser/:id", api.DelTgUser)                                              // 删除Telegram用户
 		adminGroupLog.POST("/lucky/manualGrab", api.ManualGrabLuckyMoneyAdmin)
 		adminGroupLog.POST("/trialBot/batchCreate", api.BatchCreateTrialBotUsers)
 		adminGroupLog.POST("/trialBot/batchUpdate", api.BatchUpdateTrialBotUsers)

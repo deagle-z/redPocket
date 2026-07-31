@@ -237,7 +237,7 @@ function paymentOptionToneClass(channel: AppRechargeChannelItem) {
 }
 
 function paymentOptionSubtext(channel: AppRechargeChannelItem) {
-  if (isCryptoRechargeChannel(channel)) return 'BTC · ETH · USDT'
+  if (isCryptoRechargeChannel(channel)) return 'USDT · BTC · ETH'
 
   return '即时'
 }

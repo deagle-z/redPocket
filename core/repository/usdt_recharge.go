@@ -13,6 +13,7 @@ import (
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
+	"gorm.io/plugin/dbresolver"
 )
 
 const (
@@ -26,6 +27,15 @@ const (
 	usdtTrc20DefaultScanSeconds     = 10
 	usdtTrc20MicroScale             = int64(1000000)
 	usdtTrc20TailMaxMicro           = int64(9999)
+	cryptoRechargePlatformCurrency  = "USD"
+	cryptoRechargeMaxPlatformAmount = 90071992547409.91
+)
+
+var (
+	errCryptoRechargeTxAlreadyProcessed = errors.New("crypto_tx_already_processed")
+	errCryptoRechargeTxManualReview     = errors.New("crypto_tx_manual_review")
+	errCryptoRechargeOrderUnavailable   = errors.New("crypto_order_unavailable")
+	errCryptoRechargeOrderMismatch      = errors.New("crypto_order_mismatch")
 )
 
 type UsdtTrc20RuntimeConfig struct {
@@ -83,36 +93,56 @@ func validateUsdtTrc20RuntimeConfig(tablePrefix string) (UsdtTrc20RuntimeConfig,
 	if cfg.ReceiveAddress == "" {
 		return cfg, errors.New("usdt_trc20_receive_address_required")
 	}
+	if !isValidTronMainnetAddress(cfg.ReceiveAddress) {
+		return cfg, errors.New("usdt_trc20_receive_address_invalid")
+	}
+	if !isValidTronMainnetAddress(cfg.ContractAddress) {
+		return cfg, errors.New("usdt_trc20_contract_address_invalid")
+	}
+	if err = validateCryptoReceiveAddressUnique(tablePrefix, pojo.CryptoRechargeNetworkTRC20, cfg.ReceiveAddress); err != nil {
+		return cfg, err
+	}
 	if _, err = parsePositiveRat(cfg.PlatformRate); err != nil {
 		return cfg, errors.New("usdt_trc20_platform_rate_invalid")
 	}
 	return cfg, nil
 }
 
+func ValidateUsdtTrc20RuntimeConfig(tablePrefix string) (UsdtTrc20RuntimeConfig, error) {
+	return validateUsdtTrc20RuntimeConfig(tablePrefix)
+}
+
 func GetCryptoRechargeOptions(db *gorm.DB, tablePrefix string, amount float64) (pojo.CryptoRechargeOptionsBack, error) {
-	amount = floorRechargeAmount(amount)
+	amount = normalizeRechargeOrderAmount(amount)
 	result := pojo.CryptoRechargeOptionsBack{PlatformAmount: amount}
 	if amount <= 0 {
 		return result, errors.New("recharge_amount_positive")
 	}
-	cfg, err := validateUsdtTrc20RuntimeConfig(tablePrefix)
+	if amount > cryptoRechargeMaxPlatformAmount {
+		return result, errors.New("recharge_amount_too_large")
+	}
+	configs, err := listEnabledCryptoAssetConfigs(tablePrefix)
 	if err != nil {
 		return result, err
 	}
-	baseAmountMicro, err := calculateUsdtBaseAmountMicro(amount, cfg.PlatformRate)
-	if err != nil {
-		return result, err
+	if len(configs) == 0 {
+		return result, errors.New("crypto_recharge_unavailable")
 	}
-	result.Options = []pojo.CryptoRechargeOptionBack{
-		{
-			Network:         pojo.CryptoRechargeNetworkTRC20,
-			Token:           pojo.CryptoRechargeTokenUSDT,
+	result.Options = make([]pojo.CryptoRechargeOptionBack, 0, len(configs))
+	for _, cfg := range configs {
+		baseAmount, calcErr := calculateCryptoBaseAmountAtomic(amount, cfg.PlatformRate, cfg.Decimals)
+		if calcErr != nil {
+			return result, calcErr
+		}
+		result.Options = append(result.Options, pojo.CryptoRechargeOptionBack{
+			Network:         cfg.Network,
+			Token:           cfg.Token,
 			ContractAddress: cfg.ContractAddress,
 			ReceiveAddress:  cfg.ReceiveAddress,
-			EstimatedAmount: FormatUsdtMicroAmount(baseAmountMicro),
+			EstimatedAmount: formatCryptoAtomicAmount(baseAmount, cfg.Decimals),
 			PlatformRate:    cfg.PlatformRate,
 			PlatformAmount:  amount,
-		},
+		})
 	}
 	return result, nil
 }
@@ -130,16 +160,13 @@ func createCryptoRechargeOrder(db *gorm.DB, userID int64, req pojo.CryptoRecharg
 	req.Token = strings.ToUpper(strings.TrimSpace(req.Token))
 	req.MerchantOrderNo = strings.TrimSpace(req.MerchantOrderNo)
 	req.ActivityCode = strings.TrimSpace(req.ActivityCode)
-	req.Amount = floorRechargeAmount(req.Amount)
+	req.Amount = normalizeRechargeOrderAmount(req.Amount)
 	var result pojo.RechargeOrderAppBack
 	if req.Amount <= 0 {
 		return result, errors.New("recharge_amount_positive")
 	}
-	if req.Network != "" && req.Network != pojo.CryptoRechargeNetworkTRC20 {
-		return result, errors.New("unsupported_crypto_network")
-	}
-	if req.Token != "" && req.Token != pojo.CryptoRechargeTokenUSDT {
-		return result, errors.New("unsupported_crypto_token")
+	if req.Amount > cryptoRechargeMaxPlatformAmount {
+		return result, errors.New("recharge_amount_too_large")
 	}
 	if minAmount > 0 && req.Amount < minAmount {
 		return result, errors.New(utils.I18nMessage("recharge_v2_min_amount", map[string]interface{}{
@@ -147,20 +174,20 @@ func createCryptoRechargeOrder(db *gorm.DB, userID int64, req pojo.CryptoRecharg
 		}))
 	}
 
-	cfg, err := validateUsdtTrc20RuntimeConfig(tablePrefix)
+	cfg, err := getCryptoAssetConfig(tablePrefix, req.Network, req.Token)
 	if err != nil {
 		return result, err
 	}
 
-	lockKey := fmt.Sprintf("usdt_recharge_create:%s:%s", tablePrefix, cfg.ReceiveAddress)
-	locked, lockErr := utils.AcquireLock(lockKey, 10*time.Second)
+	lockKey := fmt.Sprintf("crypto_recharge_create:%s:%s:%s", tablePrefix, cfg.Network, cfg.ReceiveAddress)
+	createLock, locked, lockErr := utils.AcquireOwnedLock(lockKey, 30*time.Second)
 	if lockErr != nil {
 		return result, lockErr
 	}
 	if !locked {
-		return result, errors.New("usdt_recharge_create_busy")
+		return result, errors.New("crypto_recharge_create_busy")
 	}
-	defer utils.ReleaseLock(lockKey)
+	defer createLock.Release()
 
 	err = db.Transaction(func(tx *gorm.DB) error {
 		var tgUser pojo.TgUser
@@ -192,34 +219,50 @@ func createCryptoRechargeOrder(db *gorm.DB, userID int64, req pojo.CryptoRecharg
 			}
 		}
 
-		baseAmountMicro, calcErr := calculateUsdtBaseAmountMicro(req.Amount, cfg.PlatformRate)
+		orderNo := buildRechargeOrderNo()
+		baseAmountAtomic, calcErr := calculateCryptoBaseAmountAtomic(req.Amount, cfg.PlatformRate, cfg.Decimals)
 		if calcErr != nil {
 			return calcErr
 		}
-		expectedAmountMicro, amountErr := allocateUsdtExpectedAmountMicro(tx, cfg.ReceiveAddress, baseAmountMicro)
+		expectedAmountAtomic, amountErr := allocateCryptoExpectedAmountAtomic(tx, cfg, baseAmountAtomic, orderNo)
 		if amountErr != nil {
 			return amountErr
 		}
-		expectedAmount := FormatUsdtMicroAmount(expectedAmountMicro)
+		expectedAmount := formatCryptoAtomicAmount(expectedAmountAtomic, cfg.Decimals)
+		qrContent, qrErr := buildCryptoQRContent(cfg, expectedAmountAtomic, expectedAmount)
+		if qrErr != nil {
+			return qrErr
+		}
+		baseAmountMicro := int64(0)
+		expectedAmountMicro := int64(0)
+		if cfg.Network == pojo.CryptoRechargeNetworkTRC20 && baseAmountAtomic.IsInt64() && expectedAmountAtomic.IsInt64() {
+			baseAmountMicro = baseAmountAtomic.Int64()
+			expectedAmountMicro = expectedAmountAtomic.Int64()
+		}
 
-		orderNo := buildRechargeOrderNo()
 		expireTime := time.Now().Add(time.Duration(cfg.OrderExpireMinutes) * time.Minute)
 		merchantOrderNo := nullableUsdtString(req.MerchantOrderNo)
-		payMethod := pojo.CryptoRechargePayMethodTRC20
-		provider := "native_usdt_trc20"
+		payMethod := cfg.PayMethod
+		provider := cfg.Provider
 		extra := map[string]any{
 			"cryptoPayment": map[string]any{
-				"network":             pojo.CryptoRechargeNetworkTRC20,
-				"token":               pojo.CryptoRechargeTokenUSDT,
-				"contractAddress":     cfg.ContractAddress,
-				"receiveAddress":      cfg.ReceiveAddress,
-				"platformRate":        cfg.PlatformRate,
-				"baseAmountMicro":     baseAmountMicro,
-				"expectedAmountMicro": expectedAmountMicro,
-				"expectedAmount":      expectedAmount,
+				"network":              cfg.Network,
+				"token":                cfg.Token,
+				"contractAddress":      cfg.ContractAddress,
+				"receiveAddress":       cfg.ReceiveAddress,
+				"platformRate":         cfg.PlatformRate,
+				"amountDecimals":       cfg.Decimals,
+				"baseAmountAtomic":     baseAmountAtomic.String(),
+				"expectedAmountAtomic": expectedAmountAtomic.String(),
+				"baseAmountMicro":      baseAmountMicro,
+				"expectedAmountMicro":  expectedAmountMicro,
+				"expectedAmount":       expectedAmount,
 			},
 		}
-		extraBytes, _ := json.Marshal(extra)
+		extraBytes, marshalErr := json.Marshal(extra)
+		if marshalErr != nil {
+			return marshalErr
+		}
 		extraStr := string(extraBytes)
 
 		order := pojo.RechargeOrder{
@@ -228,12 +271,12 @@ func createCryptoRechargeOrder(db *gorm.DB, userID int64, req pojo.CryptoRecharg
 			SourceChannelID: tgUser.SourceChannelID,
 			OrderNo:         orderNo,
 			MerchantOrderNo: merchantOrderNo,
-			Channel:         pojo.CryptoRechargeChannelUSDTTRC20,
+			Channel:         cfg.Channel,
 			PayMethod:       &payMethod,
-			Currency:        pojo.CryptoRechargeCurrencyUSDT,
+			Currency:        cryptoRechargePlatformCurrency,
 			Amount:          req.Amount,
 			Fee:             0,
-			NetAmount:       UsdtMicroAmountToFloat(expectedAmountMicro),
+			NetAmount:       req.Amount,
 			BonusAmount:     0,
 			WalletType:      pojo.RechargeWalletTypeBalance,
 			Status:          0,
@@ -247,21 +290,24 @@ func createCryptoRechargeOrder(db *gorm.DB, userID int64, req pojo.CryptoRecharg
 		}
 
 		usdtOrder := pojo.UsdtRechargeOrder{
-			TenantId:            tgUser.TenantId,
-			UserId:              userID,
-			SourceChannelID:     tgUser.SourceChannelID,
-			OrderNo:             orderNo,
-			Network:             pojo.CryptoRechargeNetworkTRC20,
-			Token:               pojo.CryptoRechargeTokenUSDT,
-			ContractAddress:     cfg.ContractAddress,
-			ReceiveAddress:      cfg.ReceiveAddress,
-			PlatformAmount:      req.Amount,
-			PlatformRate:        cfg.PlatformRate,
-			BaseAmountMicro:     baseAmountMicro,
-			ExpectedAmountMicro: expectedAmountMicro,
-			ExpectedAmount:      expectedAmount,
-			Status:              pojo.UsdtRechargeStatusPending,
-			ExpireTime:          expireTime,
+			TenantId:             tgUser.TenantId,
+			UserId:               userID,
+			SourceChannelID:      tgUser.SourceChannelID,
+			OrderNo:              orderNo,
+			Network:              cfg.Network,
+			Token:                cfg.Token,
+			ContractAddress:      cfg.ContractAddress,
+			ReceiveAddress:       cfg.ReceiveAddress,
+			PlatformAmount:       req.Amount,
+			PlatformRate:         cfg.PlatformRate,
+			AmountDecimals:       cfg.Decimals,
+			BaseAmountAtomic:     baseAmountAtomic.String(),
+			ExpectedAmountAtomic: expectedAmountAtomic.String(),
+			BaseAmountMicro:      baseAmountMicro,
+			ExpectedAmountMicro:  expectedAmountMicro,
+			ExpectedAmount:       expectedAmount,
+			Status:               pojo.UsdtRechargeStatusPending,
+			ExpireTime:           expireTime,
 		}
 		if err := tx.Create(&usdtOrder).Error; err != nil {
 			return err
@@ -280,13 +326,13 @@ func createCryptoRechargeOrder(db *gorm.DB, userID int64, req pojo.CryptoRecharg
 			BonusAmount:     order.BonusAmount,
 			WalletType:      order.WalletType,
 			CryptoPayment: &pojo.CryptoPaymentBack{
-				Network:         pojo.CryptoRechargeNetworkTRC20,
-				Token:           pojo.CryptoRechargeTokenUSDT,
+				Network:         cfg.Network,
+				Token:           cfg.Token,
 				ContractAddress: cfg.ContractAddress,
 				ReceiveAddress:  cfg.ReceiveAddress,
 				ExpectedAmount:  expectedAmount,
 				ExpireTime:      expireTime.Format(time.RFC3339),
-				QRContent:       cfg.ReceiveAddress,
+				QRContent:       qrContent,
 				PlatformRate:    cfg.PlatformRate,
 			},
 		}
@@ -317,6 +363,9 @@ func parsePositiveRat(value string) (*big.Rat, error) {
 	value = strings.TrimSpace(value)
 	if value == "" {
 		return nil, errors.New("empty_decimal")
+	}
+	if len(value) > 32 || !positiveDecimalPattern.MatchString(value) {
+		return nil, errors.New("invalid_decimal")
 	}
 	rat, ok := new(big.Rat).SetString(value)
 	if !ok || rat.Sign() <= 0 {
@@ -498,6 +547,19 @@ func buildCryptoPaymentBack(order pojo.UsdtRechargeOrder) *pojo.CryptoPaymentBac
 	if order.OrderNo == "" {
 		return nil
 	}
+	qrContent := order.ReceiveAddress
+	if order.Network == pojo.CryptoRechargeNetworkBitcoin || order.Network == pojo.CryptoRechargeNetworkEthereum {
+		atomicAmount, err := parseCryptoAtomicAmount(order.ExpectedAmountAtomic)
+		if err != nil {
+			qrContent = ""
+		} else {
+			cfg := cryptoAssetRuntimeConfig{
+				Network:        order.Network,
+				ReceiveAddress: order.ReceiveAddress,
+			}
+			qrContent, _ = buildCryptoQRContent(cfg, atomicAmount, order.ExpectedAmount)
+		}
+	}
 	return &pojo.CryptoPaymentBack{
 		Network:         order.Network,
 		Token:           order.Token,
@@ -505,7 +567,7 @@ func buildCryptoPaymentBack(order pojo.UsdtRechargeOrder) *pojo.CryptoPaymentBac
 		ReceiveAddress:  order.ReceiveAddress,
 		ExpectedAmount:  order.ExpectedAmount,
 		ExpireTime:      order.ExpireTime.Format(time.RFC3339),
-		QRContent:       order.ReceiveAddress,
+		QRContent:       qrContent,
 		PlatformRate:    order.PlatformRate,
 	}
 }
@@ -517,19 +579,7 @@ func ExpireUsdtRechargeOrderByOrderNo(db *gorm.DB, orderNo string) error {
 	}
 	now := time.Now()
 	return db.Transaction(func(tx *gorm.DB) error {
-		var order pojo.UsdtRechargeOrder
-		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
-			Where("order_no = ? AND status = ?", orderNo, pojo.UsdtRechargeStatusPending).
-			First(&order).Error; err != nil {
-			if errors.Is(err, gorm.ErrRecordNotFound) {
-				return nil
-			}
-			return err
-		}
-		if !order.ExpireTime.IsZero() && now.Before(order.ExpireTime) {
-			return nil
-		}
-		return expireLockedUsdtRechargeOrder(tx, order, now)
+		return expireCryptoRechargeOrder(tx, orderNo, now)
 	})
 }
 
@@ -543,7 +593,7 @@ func ExpirePendingUsdtRechargeOrders(db *gorm.DB) error {
 	}
 	for _, order := range orders {
 		if err := db.Transaction(func(tx *gorm.DB) error {
-			return expireLockedUsdtRechargeOrder(tx, order, now)
+			return expireCryptoRechargeOrder(tx, order.OrderNo, now)
 		}); err != nil {
 			return err
 		}
@@ -551,9 +601,33 @@ func ExpirePendingUsdtRechargeOrders(db *gorm.DB) error {
 	return nil
 }
 
-func expireLockedUsdtRechargeOrder(tx *gorm.DB, order pojo.UsdtRechargeOrder, now time.Time) error {
+func expireCryptoRechargeOrder(tx *gorm.DB, orderNo string, now time.Time) error {
+	var rechargeOrder pojo.RechargeOrder
+	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+		Where("order_no = ?", orderNo).
+		First(&rechargeOrder).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil
+		}
+		return err
+	}
+	if rechargeOrder.Status != 0 {
+		return nil
+	}
+	var cryptoOrder pojo.UsdtRechargeOrder
+	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+		Where("order_no = ? AND status = ?", orderNo, pojo.UsdtRechargeStatusPending).
+		First(&cryptoOrder).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil
+		}
+		return err
+	}
+	if !cryptoOrder.ExpireTime.IsZero() && now.Before(cryptoOrder.ExpireTime) {
+		return nil
+	}
 	update := tx.Model(&pojo.UsdtRechargeOrder{}).
-		Where("id = ? AND status = ?", order.ID, pojo.UsdtRechargeStatusPending).
+		Where("id = ? AND status = ?", cryptoOrder.ID, pojo.UsdtRechargeStatusPending).
 		Update("status", pojo.UsdtRechargeStatusExpired)
 	if update.Error != nil {
 		return update.Error
@@ -562,7 +636,7 @@ func expireLockedUsdtRechargeOrder(tx *gorm.DB, order pojo.UsdtRechargeOrder, no
 		return nil
 	}
 	return tx.Model(&pojo.RechargeOrder{}).
-		Where("order_no = ? AND status = ?", order.OrderNo, 0).
+		Where("id = ? AND status = ?", rechargeOrder.ID, 0).
 		Updates(map[string]any{
 			"status":          5,
 			"provider_status": "CLOSED",
@@ -572,9 +646,30 @@ func expireLockedUsdtRechargeOrder(tx *gorm.DB, order pojo.UsdtRechargeOrder, no
 }
 
 func GetUsdtRechargeScanMinTimestamp(db *gorm.DB) (int64, int64, error) {
+	return GetCryptoRechargeScanMinTimestamp(db, pojo.CryptoRechargeNetworkTRC20, pojo.CryptoRechargeTokenUSDT)
+}
+
+func GetCryptoRechargeScanMinTimestamp(db *gorm.DB, network string, token string) (int64, int64, error) {
+	return GetCryptoRechargeScanMinTimestampForTarget(db, network, token, "", "")
+}
+
+func GetCryptoRechargeScanMinTimestampForTarget(
+	db *gorm.DB,
+	network string,
+	token string,
+	receiveAddress string,
+	contractAddress string,
+) (int64, int64, error) {
 	now := time.Now()
 	var first pojo.UsdtRechargeOrder
-	err := db.Where("status = ? AND expire_time > ?", pojo.UsdtRechargeStatusPending, now).
+	query := db.Clauses(dbresolver.Write).Where("network = ? AND token = ? AND status = ? AND expire_time > ?", network, token, pojo.UsdtRechargeStatusPending, now)
+	if receiveAddress = strings.TrimSpace(receiveAddress); receiveAddress != "" {
+		query = query.Where("receive_address = ?", receiveAddress)
+	}
+	if contractAddress = strings.TrimSpace(contractAddress); contractAddress != "" {
+		query = query.Where("contract_address = ?", contractAddress)
+	}
+	err := query.
 		Order("created_at asc, id asc").
 		First(&first).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -584,9 +679,15 @@ func GetUsdtRechargeScanMinTimestamp(db *gorm.DB) (int64, int64, error) {
 		return 0, 0, err
 	}
 	var count int64
-	if err = db.Model(&pojo.UsdtRechargeOrder{}).
-		Where("status = ? AND expire_time > ?", pojo.UsdtRechargeStatusPending, now).
-		Count(&count).Error; err != nil {
+	countQuery := db.Clauses(dbresolver.Write).Model(&pojo.UsdtRechargeOrder{}).
+		Where("network = ? AND token = ? AND status = ? AND expire_time > ?", network, token, pojo.UsdtRechargeStatusPending, now)
+	if receiveAddress != "" {
+		countQuery = countQuery.Where("receive_address = ?", receiveAddress)
+	}
+	if contractAddress != "" {
+		countQuery = countQuery.Where("contract_address = ?", contractAddress)
+	}
+	if err = countQuery.Count(&count).Error; err != nil {
 		return 0, 0, err
 	}
 	minTime := first.CreatedAt.Add(-15 * time.Minute)
@@ -597,73 +698,273 @@ func GetUsdtRechargeScanMinTimestamp(db *gorm.DB) (int64, int64, error) {
 }
 
 func ProcessUsdtRechargeTx(db *gorm.DB, tablePrefix string, txRecord pojo.UsdtRechargeTx) error {
-	txRecord.TxID = strings.TrimSpace(txRecord.TxID)
-	txRecord.ToAddress = strings.TrimSpace(txRecord.ToAddress)
-	txRecord.FromAddress = strings.TrimSpace(txRecord.FromAddress)
-	txRecord.ContractAddress = strings.TrimSpace(txRecord.ContractAddress)
-	if txRecord.TxID == "" || txRecord.ToAddress == "" || txRecord.AmountMicro <= 0 {
-		return nil
-	}
 	if txRecord.Network == "" {
 		txRecord.Network = pojo.CryptoRechargeNetworkTRC20
 	}
 	if txRecord.Token == "" {
 		txRecord.Token = pojo.CryptoRechargeTokenUSDT
 	}
-	if txRecord.Amount == "" {
-		txRecord.Amount = FormatUsdtMicroAmount(txRecord.AmountMicro)
+	return ProcessCryptoRechargeTx(db, tablePrefix, txRecord)
+}
+
+func ProcessCryptoRechargeTx(db *gorm.DB, tablePrefix string, txRecord pojo.UsdtRechargeTx) error {
+	txRecord.TxID = strings.ToLower(strings.TrimSpace(txRecord.TxID))
+	txRecord.ToAddress = strings.TrimSpace(txRecord.ToAddress)
+	txRecord.FromAddress = strings.TrimSpace(txRecord.FromAddress)
+	txRecord.ContractAddress = strings.TrimSpace(txRecord.ContractAddress)
+	txRecord.Network = strings.ToUpper(strings.TrimSpace(txRecord.Network))
+	txRecord.Token = strings.ToUpper(strings.TrimSpace(txRecord.Token))
+	if txRecord.Network == pojo.CryptoRechargeNetworkEthereum {
+		txRecord.ToAddress = strings.ToLower(txRecord.ToAddress)
+		txRecord.FromAddress = strings.ToLower(txRecord.FromAddress)
 	}
-	if err := db.Clauses(clause.OnConflict{DoNothing: true}).Create(&txRecord).Error; err != nil {
+	if txRecord.TxID == "" || txRecord.ToAddress == "" || txRecord.Network == "" || txRecord.Token == "" {
+		return errors.New("crypto_tx_fields_required")
+	}
+	if txRecord.AmountAtomic == "" && txRecord.AmountMicro > 0 {
+		txRecord.AmountAtomic = strconv.FormatInt(txRecord.AmountMicro, 10)
+	}
+	atomicAmount, err := parseCryptoAtomicAmount(txRecord.AmountAtomic)
+	if err != nil {
+		return err
+	}
+	if txRecord.BlockTimestamp <= 0 {
+		return errors.New("crypto_tx_block_timestamp_required")
+	}
+	if txRecord.AmountDecimals <= 0 {
+		switch txRecord.Token {
+		case pojo.CryptoRechargeTokenBTC:
+			txRecord.AmountDecimals = pojo.CryptoRechargeDecimalsBTC
+		case pojo.CryptoRechargeTokenETH:
+			txRecord.AmountDecimals = pojo.CryptoRechargeDecimalsETH
+		default:
+			txRecord.AmountDecimals = pojo.CryptoRechargeDecimalsUSDT
+		}
+	}
+	if txRecord.Amount == "" {
+		txRecord.Amount = formatCryptoAtomicAmount(atomicAmount, txRecord.AmountDecimals)
+	}
+	txRecord.ReviewStatus = pojo.CryptoRechargeTxReviewNew
+	if err := db.Clauses(dbresolver.Write, clause.OnConflict{DoNothing: true}).Create(&txRecord).Error; err != nil {
 		return err
 	}
 
 	var existingTx pojo.UsdtRechargeTx
-	if err := db.Where("tx_id = ?", txRecord.TxID).First(&existingTx).Error; err != nil {
+	if err := db.Clauses(dbresolver.Write).Where("tx_id = ?", txRecord.TxID).First(&existingTx).Error; err != nil {
 		return err
 	}
 	if existingTx.MatchedOrderNo != nil && strings.TrimSpace(*existingTx.MatchedOrderNo) != "" {
 		return nil
 	}
+	if existingTx.ReviewStatus != pojo.CryptoRechargeTxReviewNew {
+		return nil
+	}
 
 	now := time.Now()
+	txTime := time.UnixMilli(txRecord.BlockTimestamp)
 	var order pojo.UsdtRechargeOrder
-	err := db.Where(
-		"receive_address = ? AND expected_amount_micro = ? AND status = ? AND expire_time > ?",
+	query := db.Clauses(dbresolver.Write).Where(
+		"network = ? AND token = ? AND receive_address = ? AND expected_amount_atomic = ? AND status IN ? AND expire_time >= ? AND created_at <= ?",
+		txRecord.Network,
+		txRecord.Token,
 		txRecord.ToAddress,
-		txRecord.AmountMicro,
-		pojo.UsdtRechargeStatusPending,
-		now,
-	).Order("created_at asc, id asc").First(&order).Error
+		atomicAmount.String(),
+		[]int8{pojo.UsdtRechargeStatusPending, pojo.UsdtRechargeStatusExpired},
+		txTime,
+		txTime,
+	)
+	err = query.Order("created_at asc, id asc").First(&order).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) && txRecord.Network == pojo.CryptoRechargeNetworkTRC20 && txRecord.AmountMicro > 0 {
+		err = db.Clauses(dbresolver.Write).Where(
+			"network = ? AND token = ? AND receive_address = ? AND (expected_amount_atomic IS NULL OR expected_amount_atomic = '') AND expected_amount_micro = ? AND status IN ? AND expire_time >= ? AND created_at <= ?",
+			txRecord.Network,
+			txRecord.Token,
+			txRecord.ToAddress,
+			txRecord.AmountMicro,
+			[]int8{pojo.UsdtRechargeStatusPending, pojo.UsdtRechargeStatusExpired},
+			txTime,
+			txTime,
+		).Order("created_at asc, id asc").First(&order).Error
+	}
 	if errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil
+		exceptionCode, classifyErr := classifyCryptoRechargeException(db, txRecord, atomicAmount, txTime)
+		if classifyErr != nil {
+			return classifyErr
+		}
+		return markCryptoRechargeTxForManualReview(db, existingTx.ID, exceptionCode)
 	}
 	if err != nil {
 		return err
 	}
 
-	if err = ProcessRechargeOrderSuccess(db, order.OrderNo, txRecord.TxID, order.PlatformAmount, tablePrefix); err != nil {
-		return err
+	paidAmountAtomic := atomicAmount.String()
+	var lockedCryptoOrder pojo.UsdtRechargeOrder
+	err = processRechargeOrderSuccessWithHooks(
+		db,
+		order.OrderNo,
+		txRecord.TxID,
+		order.PlatformAmount,
+		tablePrefix,
+		func(tx *gorm.DB, rechargeOrder *pojo.RechargeOrder) error {
+			if rechargeOrder.Status == 1 {
+				return errCryptoRechargeOrderMismatch
+			}
+			var lockedTx pojo.UsdtRechargeTx
+			if lockErr := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ?", existingTx.ID).First(&lockedTx).Error; lockErr != nil {
+				return lockErr
+			}
+			if lockedTx.MatchedOrderNo != nil && strings.TrimSpace(*lockedTx.MatchedOrderNo) != "" {
+				return errCryptoRechargeTxAlreadyProcessed
+			}
+			if lockedTx.ReviewStatus != pojo.CryptoRechargeTxReviewNew {
+				return errCryptoRechargeTxManualReview
+			}
+			if lockErr := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ?", order.ID).First(&lockedCryptoOrder).Error; lockErr != nil {
+				return lockErr
+			}
+			if lockedCryptoOrder.Status != pojo.UsdtRechargeStatusPending && lockedCryptoOrder.Status != pojo.UsdtRechargeStatusExpired {
+				return errCryptoRechargeOrderUnavailable
+			}
+			if txTime.After(lockedCryptoOrder.ExpireTime) {
+				return errCryptoRechargeOrderUnavailable
+			}
+			if lockedCryptoOrder.Status == pojo.UsdtRechargeStatusExpired {
+				if rechargeOrder.Status != 5 {
+					return errCryptoRechargeOrderUnavailable
+				}
+				reopened := tx.Model(&pojo.RechargeOrder{}).
+					Where("id = ? AND status = ?", rechargeOrder.ID, 5).
+					Updates(map[string]any{"status": 0, "provider_status": "CHAIN_CONFIRMED"})
+				if reopened.Error != nil {
+					return reopened.Error
+				}
+				if reopened.RowsAffected != 1 {
+					return errCryptoRechargeOrderUnavailable
+				}
+				rechargeOrder.Status = 0
+			} else if rechargeOrder.Status != 0 {
+				return errCryptoRechargeOrderMismatch
+			}
+			amountMatches := lockedCryptoOrder.ExpectedAmountAtomic == atomicAmount.String()
+			if !amountMatches && txRecord.Network == pojo.CryptoRechargeNetworkTRC20 && lockedCryptoOrder.ExpectedAmountAtomic == "" {
+				amountMatches = lockedCryptoOrder.ExpectedAmountMicro == txRecord.AmountMicro
+			}
+			if rechargeOrder.OrderNo != lockedCryptoOrder.OrderNo ||
+				lockedCryptoOrder.Network != txRecord.Network ||
+				lockedCryptoOrder.Token != txRecord.Token ||
+				lockedCryptoOrder.ReceiveAddress != txRecord.ToAddress ||
+				!amountMatches ||
+				txTime.Before(lockedCryptoOrder.CreatedAt) {
+				return errCryptoRechargeOrderMismatch
+			}
+			return nil
+		},
+		func(tx *gorm.DB, _ *pojo.RechargeOrder) error {
+			updates := map[string]any{
+				"status":             pojo.UsdtRechargeStatusPaid,
+				"paid_amount_atomic": paidAmountAtomic,
+				"paid_at":            now,
+				"tx_id":              txRecord.TxID,
+			}
+			if txRecord.Network == pojo.CryptoRechargeNetworkTRC20 && txRecord.AmountMicro > 0 {
+				updates["paid_amount_micro"] = txRecord.AmountMicro
+			}
+			cryptoUpdate := tx.Model(&pojo.UsdtRechargeOrder{}).
+				Where("id = ? AND status IN ?", order.ID, []int8{pojo.UsdtRechargeStatusPending, pojo.UsdtRechargeStatusExpired}).
+				Updates(updates)
+			if cryptoUpdate.Error != nil {
+				return cryptoUpdate.Error
+			}
+			if cryptoUpdate.RowsAffected != 1 {
+				return errCryptoRechargeOrderUnavailable
+			}
+			matchedOrderNo := order.OrderNo
+			txUpdate := tx.Model(&pojo.UsdtRechargeTx{}).
+				Where("id = ? AND matched_order_no IS NULL AND review_status = ?", existingTx.ID, pojo.CryptoRechargeTxReviewNew).
+				Updates(map[string]any{
+					"matched_order_no": matchedOrderNo,
+					"matched_at":       now,
+					"review_status":    pojo.CryptoRechargeTxReviewAutoMatched,
+					"exception_code":   "",
+				})
+			if txUpdate.Error != nil {
+				return txUpdate.Error
+			}
+			if txUpdate.RowsAffected != 1 {
+				return errCryptoRechargeTxAlreadyProcessed
+			}
+			return nil
+		},
+	)
+	if errors.Is(err, errCryptoRechargeTxAlreadyProcessed) || errors.Is(err, errCryptoRechargeTxManualReview) {
+		return nil
+	}
+	if errors.Is(err, errCryptoRechargeOrderUnavailable) || errors.Is(err, errCryptoRechargeOrderMismatch) {
+		exceptionCode := pojo.CryptoRechargeExceptionDuplicate
+		if errors.Is(err, errCryptoRechargeOrderMismatch) {
+			exceptionCode = pojo.CryptoRechargeExceptionOrderState
+		}
+		markErr := markCryptoRechargeTxForManualReview(db, existingTx.ID, exceptionCode)
+		if markErr != nil {
+			return markErr
+		}
+		return nil
+	}
+	return err
+}
+
+func markCryptoRechargeTxForManualReview(db *gorm.DB, txID int64, exceptionCode string) error {
+	if txID <= 0 || strings.TrimSpace(exceptionCode) == "" {
+		return errors.New("crypto_exception_fields_required")
+	}
+	return db.Clauses(dbresolver.Write).Model(&pojo.UsdtRechargeTx{}).
+		Where("id = ? AND matched_order_no IS NULL AND review_status = ?", txID, pojo.CryptoRechargeTxReviewNew).
+		Updates(map[string]any{
+			"review_status":  pojo.CryptoRechargeTxReviewManualRequired,
+			"exception_code": exceptionCode,
+		}).Error
+}
+
+func classifyCryptoRechargeException(
+	db *gorm.DB,
+	txRecord pojo.UsdtRechargeTx,
+	atomicAmount *big.Int,
+	txTime time.Time,
+) (string, error) {
+	var exactOrder pojo.UsdtRechargeOrder
+	err := db.Clauses(dbresolver.Write).
+		Where("network = ? AND token = ? AND receive_address = ? AND expected_amount_atomic = ?",
+			txRecord.Network, txRecord.Token, txRecord.ToAddress, atomicAmount.String()).
+		Order("created_at desc, id desc").
+		First(&exactOrder).Error
+	if err == nil && exactOrder.ID > 0 {
+		if txTime.Before(exactOrder.CreatedAt) {
+			return pojo.CryptoRechargeExceptionPreOrder, nil
+		}
+		if txTime.After(exactOrder.ExpireTime) || exactOrder.Status == pojo.UsdtRechargeStatusCanceled {
+			return pojo.CryptoRechargeExceptionLatePayment, nil
+		}
+		return pojo.CryptoRechargeExceptionDuplicate, nil
+	}
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		return "", err
 	}
 
-	paidAmountMicro := txRecord.AmountMicro
-	return db.Transaction(func(tx *gorm.DB) error {
-		updates := map[string]any{
-			"status":            pojo.UsdtRechargeStatusPaid,
-			"paid_amount_micro": paidAmountMicro,
-			"paid_at":           now,
-			"tx_id":             txRecord.TxID,
-		}
-		if err := tx.Model(&pojo.UsdtRechargeOrder{}).
-			Where("id = ? AND status = ?", order.ID, pojo.UsdtRechargeStatusPending).
-			Updates(updates).Error; err != nil {
-			return err
-		}
-		matchedOrderNo := order.OrderNo
-		return tx.Model(&pojo.UsdtRechargeTx{}).
-			Where("tx_id = ?", txRecord.TxID).
-			Updates(map[string]any{
-				"matched_order_no": matchedOrderNo,
-				"matched_at":       now,
-			}).Error
-	})
+	var activeOrderCount int64
+	if err = db.Clauses(dbresolver.Write).Model(&pojo.UsdtRechargeOrder{}).
+		Where("network = ? AND token = ? AND receive_address = ? AND status IN ? AND expire_time >= ? AND created_at <= ?",
+			txRecord.Network,
+			txRecord.Token,
+			txRecord.ToAddress,
+			[]int8{pojo.UsdtRechargeStatusPending, pojo.UsdtRechargeStatusExpired},
+			txTime,
+			txTime,
+		).
+		Count(&activeOrderCount).Error; err != nil {
+		return "", err
+	}
+	if activeOrderCount > 0 {
+		return pojo.CryptoRechargeExceptionAmountMismatch, nil
+	}
+	return pojo.CryptoRechargeExceptionNoActiveOrder, nil
 }

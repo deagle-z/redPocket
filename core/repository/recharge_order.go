@@ -734,6 +734,20 @@ func calculateRechargeFreeLotteryCount(amount float64) int {
 // ProcessRechargeOrderSuccess 处理代收支付成功回调，入账并更新订单状态
 // providerTradeNo: 三方交易号；payAmount: 三方实际支付金额（元），为空时回退订单 amount。
 func ProcessRechargeOrderSuccess(db *gorm.DB, orderNo string, providerTradeNo string, payAmount float64, tablePrefix string) error {
+	return processRechargeOrderSuccessWithHooks(db, orderNo, providerTradeNo, payAmount, tablePrefix, nil, nil)
+}
+
+type rechargeSuccessTransactionHook func(tx *gorm.DB, order *pojo.RechargeOrder) error
+
+func processRechargeOrderSuccessWithHooks(
+	db *gorm.DB,
+	orderNo string,
+	providerTradeNo string,
+	payAmount float64,
+	tablePrefix string,
+	beforeCredit rechargeSuccessTransactionHook,
+	afterCredit rechargeSuccessTransactionHook,
+) error {
 	var successUserID int64
 	var successOrderNo string
 	notifyRecharge := false
@@ -744,6 +758,14 @@ func ProcessRechargeOrderSuccess(db *gorm.DB, orderNo string, providerTradeNo st
 		}
 		if order.ID == 0 {
 			return errors.New(utils.I18nMessage("order_not_found_with_no", map[string]interface{}{"orderNo": orderNo}))
+		}
+		if beforeCredit == nil && afterCredit == nil && isCryptoRechargeChannel(order.Channel) {
+			return errors.New("crypto_order_requires_chain_match_or_manual_supplement")
+		}
+		if beforeCredit != nil {
+			if err := beforeCredit(tx, &order); err != nil {
+				return err
+			}
 		}
 		// 幂等：已成功则直接返回
 		if order.Status == 1 {
@@ -922,6 +944,11 @@ func ProcessRechargeOrderSuccess(db *gorm.DB, orderNo string, providerTradeNo st
 				return err
 			}
 		}
+		if afterCredit != nil {
+			if err := afterCredit(tx, &order); err != nil {
+				return err
+			}
+		}
 		successUserID = order.UserId
 		successOrderNo = order.OrderNo
 		notifyRecharge = true
@@ -939,14 +966,33 @@ func ProcessRechargeOrderSuccess(db *gorm.DB, orderNo string, providerTradeNo st
 
 // ProcessRechargeOrderClosed 处理支付渠道通知订单关闭/取消
 func ProcessRechargeOrderClosed(db *gorm.DB, orderNo string) error {
-	return db.Model(&pojo.RechargeOrder{}).
-		Where("order_no = ? AND status = 0", orderNo).
-		Updates(map[string]any{
-			"status":          5, // 关闭/超时
-			"provider_status": "CLOSED",
-			"notify_count":    gorm.Expr("notify_count + 1"),
-			"notify_last_at":  time.Now(),
-		}).Error
+	return db.Transaction(func(tx *gorm.DB) error {
+		var order pojo.RechargeOrder
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("order_no = ?", orderNo).First(&order).Error; err != nil {
+			return err
+		}
+		if isCryptoRechargeChannel(order.Channel) {
+			return errors.New("crypto_order_requires_crypto_cancel_flow")
+		}
+		if order.Status != 0 {
+			return nil
+		}
+		update := tx.Model(&pojo.RechargeOrder{}).
+			Where("id = ? AND status = 0", order.ID).
+			Updates(map[string]any{
+				"status":          5, // 关闭/超时
+				"provider_status": "CLOSED",
+				"notify_count":    gorm.Expr("notify_count + 1"),
+				"notify_last_at":  time.Now(),
+			})
+		if update.Error != nil {
+			return update.Error
+		}
+		if update.RowsAffected != 1 {
+			return errors.New("recharge_order_close_conflict")
+		}
+		return nil
+	})
 }
 
 // AdminRechargeOrderCallback 管理员手动触发充值回调（将待支付订单标为成功并入账）
@@ -957,6 +1003,9 @@ func AdminRechargeOrderCallback(db *gorm.DB, id int64, tablePrefix string) (resu
 	}
 	if order.Status != 0 {
 		return result, errors.New("order_status_not_pending_callback")
+	}
+	if isCryptoRechargeChannel(order.Channel) {
+		return result, errors.New("crypto_order_requires_manual_supplement")
 	}
 	log.Printf("[recharge] admin manual callback request orderID=%d orderNo=%s userID=%d tablePrefix=%q amount=%.2f status=%d activityType=%s",
 		order.ID, order.OrderNo, order.UserId, tablePrefix, order.Amount, order.Status, formatRechargeActivityType(order.ActivityType))
@@ -971,6 +1020,15 @@ func AdminRechargeOrderCallback(db *gorm.DB, id int64, tablePrefix string) (resu
 	_ = db.Where("id = ?", id).First(&order).Error
 	_ = copier.Copy(&result, &order)
 	return result, nil
+}
+
+func isCryptoRechargeChannel(channel string) bool {
+	switch strings.ToUpper(strings.TrimSpace(channel)) {
+	case pojo.CryptoRechargeChannelUSDTTRC20, pojo.CryptoRechargeChannelBTC, pojo.CryptoRechargeChannelETH:
+		return true
+	default:
+		return false
+	}
 }
 
 func buildRechargeOrderNo() string {

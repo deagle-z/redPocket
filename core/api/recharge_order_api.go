@@ -379,6 +379,49 @@ func AdminCreateCryptoRechargeOrder(ctx *gin.Context) {
 	utils.SuccessObjBack(ctx, result)
 }
 
+// GetCryptoRechargeExceptions 查询需要人工处理的链上付款
+func GetCryptoRechargeExceptions(ctx *gin.Context) {
+	var search pojo.CryptoRechargeExceptionSearch
+	if err := ctx.ShouldBindJSON(&search); err != nil {
+		utils.ErrorBack(ctx, "参数格式错误")
+		return
+	}
+	search.SetPageDefaults()
+	result, err := repository.GetCryptoRechargeExceptions(ctx.MustGet("db").(*gorm.DB), search)
+	if err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	utils.SuccessObjBack(ctx, result)
+}
+
+// AdminSupplementCryptoRecharge 超级管理员依据链上凭据人工补单
+func AdminSupplementCryptoRecharge(ctx *gin.Context) {
+	var req pojo.CryptoRechargeManualSupplementReq
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		utils.ErrorBack(ctx, "参数格式错误")
+		return
+	}
+	operatorRaw, ok := ctx.Get("userId")
+	operatorID, valid := operatorRaw.(int64)
+	if !ok || !valid || operatorID <= 0 {
+		utils.UnauthorizedBack(ctx, "token is invalid")
+		return
+	}
+	hostInfo := ctx.MustGet("hostInfo").(pojo.HostInfo)
+	result, err := repository.AdminSupplementCryptoRecharge(
+		ctx.MustGet("db").(*gorm.DB),
+		hostInfo.TablePrefix,
+		operatorID,
+		req,
+	)
+	if err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	utils.SuccessObjBack(ctx, result)
+}
+
 // GetAppRechargeOrderHistory godoc
 //
 //	@Summary		app端充值记录

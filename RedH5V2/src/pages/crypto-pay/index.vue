@@ -7,6 +7,7 @@ import {
   getCryptoRechargeOptions,
   getCryptoRechargeOrderStatus,
 } from '@/api/user'
+import { getTtlStorage, removeTtlStorage, setTtlStorage } from '@/utils/storage'
 import QRCode from 'qrcode'
 import { showConfirmDialog, showFailToast, showSuccessToast, showToast } from 'vant'
 import { usePpmxLocale } from '../ppmx-home/composables/usePpmxLocale'
@@ -17,7 +18,7 @@ defineOptions({ name: 'CryptoPayPage' })
 definePage({
   name: 'crypto-pay',
   meta: {
-    title: 'USDT Pay',
+    title: 'Crypto Pay',
     shell: 'none',
     tabbar: false,
     requiresAuth: true,
@@ -29,6 +30,13 @@ const CRYPTO_STATUS_PAID = 1
 const CRYPTO_STATUS_EXPIRED = 2
 const CRYPTO_STATUS_CANCELED = 3
 const STATUS_POLL_INTERVAL_MS = 3000
+const PENDING_ORDER_STORAGE_PREFIX = 'h5_crypto_pending_order_v1'
+
+interface PersistedPendingOrder {
+  cryptoStatus: number
+  order: RechargeOrderAppBack
+  platformAmount: number
+}
 
 const { pickText } = usePpmxLocale()
 const route = useRoute()
@@ -54,11 +62,11 @@ let expireRefreshTriggered = false
 
 const text = {
   eyebrow: { es: 'PP Pay · Cripto', en: 'PP Pay · Crypto', zh: 'PP Pay · 加密货币' },
-  title: { es: 'Pago USDT', en: 'USDT Payment', zh: 'USDT 支付' },
+  title: { es: 'Pago cripto', en: 'Crypto Payment', zh: '虚拟货币支付' },
   sub: {
-    es: 'Transfiere exactamente el monto indicado mediante USDT TRC20.',
-    en: 'Transfer the exact amount below with USDT TRC20.',
-    zh: '请使用 USDT TRC20 按页面金额转账。',
+    es: 'Selecciona un activo y transfiere exactamente el monto indicado.',
+    en: 'Select an asset and transfer the exact amount shown.',
+    zh: '请选择支付币种，并按页面金额精确转账。',
   },
   stepMethod: { es: 'Método', en: 'Method', zh: '方式' },
   stepPay: { es: 'Pagar', en: 'Pay', zh: '支付' },
@@ -78,11 +86,11 @@ const text = {
   scanHint: { es: 'Escanea con tu wallet o copia la dirección.', en: 'Scan with your wallet or copy the address.', zh: '使用钱包扫码，或复制地址转账。' },
   selected: { es: 'Método seleccionado', en: 'Selected method', zh: '当前方式' },
   chooseTitle: { es: 'Selecciona la moneda', en: 'Select token', zh: '选择支付币种' },
-  chooseSub: { es: 'Actualmente solo está disponible USDT en TRC20.', en: 'USDT on TRC20 is currently available.', zh: '当前仅开放 USDT · TRC20。' },
-  createOrder: { es: 'Crear orden USDT', en: 'Create USDT order', zh: '生成 USDT 订单' },
+  chooseSub: { es: 'Las opciones disponibles se cargan desde la configuración del comercio.', en: 'Available options are loaded from the merchant configuration.', zh: '可用币种由商户支付配置提供。' },
+  createOrder: { es: 'Crear orden de pago', en: 'Create payment order', zh: '生成支付订单' },
   creatingOrder: { es: 'Creando...', en: 'Creating...', zh: '创建中...' },
   noticeTitle: { es: 'Antes de transferir', en: 'Before transfer', zh: '转账前确认' },
-  noticeNet: { es: 'Solo envía USDT por Tron (TRC20). Otros activos o redes no se acreditarán.', en: 'Only send USDT on Tron (TRC20). Other assets or networks will not be credited.', zh: '仅支持 USDT Tron (TRC20)，其他币种或网络不会入账。' },
+  noticeNet: { es: 'Envía solo {token} mediante {network}. Otros activos o redes no se acreditarán.', en: 'Only send {token} through {network}. Other assets or networks will not be credited.', zh: '仅可通过 {network} 转入 {token}，其他币种或网络不会入账。' },
   noticeAmount: { es: 'El monto debe coincidir exactamente con {amount}.', en: 'The amount must match exactly {amount}.', zh: '转账金额需与 {amount} 完全一致。' },
   noticeOrder: { es: 'La acreditación se mostrará después de la confirmación de red.', en: 'Credit will appear after network confirmation.', zh: '链上确认后将自动更新入账状态。' },
   refresh: { es: 'Actualizar estado', en: 'Refresh status', zh: '刷新状态' },
@@ -96,9 +104,26 @@ const text = {
   qrError: { es: 'No se pudo generar el QR', en: 'Could not generate QR', zh: '二维码生成失败' },
   loadFailed: { es: 'No se pudo cargar el pago cripto.', en: 'Could not load crypto payment.', zh: '加载虚拟货币支付失败。' },
   invalidAmount: { es: 'Monto inválido.', en: 'Invalid amount.', zh: '充值金额无效。' },
+  amountMismatch: {
+    es: 'El monto solicitado ({requested}) no coincide con la cotización del servidor ({quoted}). Vuelve y selecciona el monto otra vez.',
+    en: 'The requested amount ({requested}) does not match the server quote ({quoted}). Go back and select the amount again.',
+    zh: '请求金额（{requested}）与服务端报价（{quoted}）不一致，请返回充值页重新选择金额。',
+  },
+  quoteMismatch: {
+    es: 'El servidor devolvió montos de recarga inconsistentes. Vuelve a intentarlo más tarde.',
+    en: 'The server returned inconsistent recharge amounts. Try again later.',
+    zh: '服务端返回的充值金额不一致，请稍后重试。',
+  },
   noOption: { es: 'No hay método cripto disponible.', en: 'No crypto method is available.', zh: '暂无可用虚拟货币支付方式。' },
   confirmCycleTitle: { es: 'Continuar recarga', en: 'Continue recharge', zh: '继续充值' },
   confirmCycleMessage: { es: 'Hay un ciclo de actividad pendiente. Confirma para continuar.', en: 'An activity cycle is still unfinished. Confirm to continue.', zh: '当前存在未完成活动周期，确认后继续充值。' },
+  cancelWarningTitle: { es: 'Confirmar cancelación', en: 'Confirm cancellation', zh: '确认取消支付' },
+  cancelWarningMessage: {
+    es: 'Si ya enviaste el pago, no se acreditará automáticamente después de cancelar y necesitarás solicitar un ajuste manual. Cancela solo si aún no has transferido.',
+    en: 'If you already sent payment, it will not be credited automatically after cancellation and you must request a manual adjustment. Cancel only if you have not transferred.',
+    zh: '若已经发送付款，取消后将不会自动入账，必须联系客服人工补单。请仅在尚未转账时取消。',
+  },
+  keepWaiting: { es: 'Seguir esperando', en: 'Keep waiting', zh: '继续等待' },
 } satisfies Record<string, LocalizedText>
 
 const summaryItems = computed(() => [
@@ -113,11 +138,17 @@ const summaryItems = computed(() => [
 
 const cryptoPayment = computed(() => paymentOrder.value?.cryptoPayment ?? null)
 const orderNo = computed(() => paymentOrder.value?.orderNo ?? '')
-const selectedToken = computed(() => cryptoPayment.value?.token || selectedOption.value?.token || 'USDT')
+const selectedToken = computed(() => cryptoPayment.value?.token || selectedOption.value?.token || '')
+const selectedTokenClass = computed(() => selectedToken.value ? `is-${selectedToken.value.toLowerCase()}` : '')
 const networkName = computed(() => {
-  const network = cryptoPayment.value?.network || selectedOption.value?.network || 'TRC20'
+  const network = cryptoPayment.value?.network || selectedOption.value?.network || ''
+  const normalizedNetwork = network.toUpperCase()
 
-  return network.toUpperCase() === 'TRC20' ? 'Tron (TRC20)' : network
+  if (normalizedNetwork === 'TRC20') return 'Tron (TRC20)'
+  if (normalizedNetwork === 'BITCOIN') return 'Bitcoin Mainnet'
+  if (normalizedNetwork === 'ETHEREUM') return 'Ethereum Mainnet'
+
+  return network
 })
 const platformAmountText = computed(() => `${formatAmount(platformAmount.value)} USD`)
 const estimatedAmountText = computed(() => {
@@ -125,13 +156,18 @@ const estimatedAmountText = computed(() => {
 
   return `${estimatedAmount} ${selectedToken.value}`
 })
-const payAmount = computed(() => {
+const payAmountValue = computed(() => {
   const expectedAmount = cryptoPayment.value?.expectedAmount
 
-  return `${expectedAmount || selectedOption.value?.estimatedAmount || '--'} ${selectedToken.value}`
+  return expectedAmount || selectedOption.value?.estimatedAmount || '--'
 })
-const usdtAddress = computed(() => cryptoPayment.value?.receiveAddress || selectedOption.value?.receiveAddress || '')
+const payAmount = computed(() => `${payAmountValue.value} ${selectedToken.value}`.trim())
+const cryptoAddress = computed(() => cryptoPayment.value?.receiveAddress || selectedOption.value?.receiveAddress || '')
 const noticeAmountText = computed(() => pickText(text.noticeAmount).replace('{amount}', payAmount.value))
+const noticeNetworkText = computed(() => pickText(text.noticeNet)
+  .replace('{token}', selectedToken.value)
+  .replace('{network}', networkName.value),
+)
 const statusText = computed(() => {
   switch (pageState.value) {
     case 'loading':
@@ -188,8 +224,109 @@ function normalizeStatus(status: unknown) {
   return Number.isFinite(numeric) ? numeric : CRYPTO_STATUS_PENDING
 }
 
+function platformAmountInCents(value: unknown) {
+  const numeric = Number(value)
+  if (!Number.isFinite(numeric) || numeric <= 0) return null
+
+  const cents = Math.round(numeric * 100)
+  if (Math.abs(numeric - cents / 100) > Number.EPSILON * 100) return null
+
+  return cents
+}
+
+function platformAmountsMatch(left: unknown, right: unknown) {
+  const leftCents = platformAmountInCents(left)
+  const rightCents = platformAmountInCents(right)
+
+  return leftCents !== null && rightCents !== null && leftCents === rightCents
+}
+
+function amountMismatchMessage(requested: number, quoted: number) {
+  return pickText(text.amountMismatch)
+    .replace('{requested}', formatAmount(requested))
+    .replace('{quoted}', formatAmount(quoted))
+}
+
+function pendingOrderStorageKey() {
+  const userId = userStore.userInfo?.id
+  if (userId === undefined || userId === null || String(userId).trim() === '') return ''
+
+  return `${PENDING_ORDER_STORAGE_PREFIX}:${String(userId)}`
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
+}
+
+function isPersistedPendingOrder(value: unknown): value is PersistedPendingOrder {
+  if (!isRecord(value)) return false
+
+  const order = value.order
+  if (!isRecord(order)) return false
+
+  const payment = order.cryptoPayment
+  if (!isRecord(payment)) return false
+
+  return value.cryptoStatus === CRYPTO_STATUS_PENDING
+    && platformAmountsMatch(value.platformAmount, order.amount)
+    && typeof order.orderNo === 'string'
+    && order.orderNo.trim() !== ''
+    && typeof payment.network === 'string'
+    && payment.network.trim() !== ''
+    && typeof payment.token === 'string'
+    && payment.token.trim() !== ''
+    && typeof payment.receiveAddress === 'string'
+    && payment.receiveAddress.trim() !== ''
+    && typeof payment.expectedAmount === 'string'
+    && payment.expectedAmount.trim() !== ''
+    && typeof payment.expireTime === 'string'
+    && payment.expireTime.trim() !== ''
+    && typeof payment.qrContent === 'string'
+}
+
+function persistPendingOrder() {
+  const key = pendingOrderStorageKey()
+  if (!key || !paymentOrder.value || !isPending.value) return
+
+  setTtlStorage<PersistedPendingOrder>(key, {
+    cryptoStatus: CRYPTO_STATUS_PENDING,
+    order: paymentOrder.value,
+    platformAmount: platformAmount.value,
+  })
+}
+
+function clearPersistedPendingOrder() {
+  const key = pendingOrderStorageKey()
+  if (key) removeTtlStorage(key)
+}
+
+function restorePersistedPendingOrder() {
+  const key = pendingOrderStorageKey()
+  if (!key) return false
+
+  const stored = getTtlStorage<unknown>(key)
+  if (stored === null) return false
+  if (!isPersistedPendingOrder(stored)) {
+    removeTtlStorage(key)
+    return false
+  }
+
+  platformAmount.value = stored.platformAmount
+  paymentOrder.value = stored.order
+  orderStatus.value = stored.cryptoStatus
+  selectedOption.value = null
+  pageError.value = ''
+  pageState.value = 'waiting'
+  expireRefreshTriggered = false
+
+  return true
+}
+
 function merchantOrderNo() {
-  const uid = userStore.userInfo?.id ?? 'user'
+  const uid = userStore.userInfo?.id
+  if (uid === undefined || uid === null || String(uid).trim() === '') {
+    throw new Error(pickText(text.loadFailed))
+  }
 
   return `h5_crypto_${Date.now()}_${uid}`
 }
@@ -211,11 +348,21 @@ async function loadOptions() {
     return
   }
 
-  platformAmount.value = amount
-
   try {
     const result = await getCryptoRechargeOptions(amount)
-    options.value = result.options ?? []
+    const quotedCents = platformAmountInCents(result.platformAmount)
+    if (quotedCents === null) throw new Error(pickText(text.invalidAmount))
+
+    platformAmount.value = quotedCents / 100
+    if (!platformAmountsMatch(amount, platformAmount.value)) {
+      throw new Error(amountMismatchMessage(amount, platformAmount.value))
+    }
+    if (!Array.isArray(result.options)) throw new Error(pickText(text.loadFailed))
+    if (result.options.some(option => !platformAmountsMatch(option.platformAmount, platformAmount.value))) {
+      throw new Error(pickText(text.quoteMismatch))
+    }
+
+    options.value = result.options
     selectedOption.value = options.value[0] ?? null
 
     if (!selectedOption.value) {
@@ -268,12 +415,26 @@ async function confirmCreateOrder() {
 
   try {
     const order = await createOrder(false)
-    if (!order.cryptoPayment) throw new Error(pickText(text.loadFailed))
+    const option = selectedOption.value
+    const payment = order.cryptoPayment
+    if (!option
+      || !payment
+      || !platformAmountsMatch(order.amount, platformAmount.value)
+      || order.orderNo.trim() === ''
+      || payment.network.toUpperCase() !== option.network.toUpperCase()
+      || payment.token.toUpperCase() !== option.token.toUpperCase()
+      || payment.receiveAddress.trim() === ''
+      || payment.expectedAmount.trim() === ''
+      || payment.expireTime.trim() === ''
+      || payment.qrContent.trim() === '') {
+      throw new Error(pickText(text.quoteMismatch))
+    }
 
     paymentOrder.value = order
     orderStatus.value = normalizeStatus(order.status)
     pageState.value = 'waiting'
     expireRefreshTriggered = false
+    persistPendingOrder()
     await renderQr()
     startCountdown()
     startStatusPolling()
@@ -286,15 +447,15 @@ async function confirmCreateOrder() {
 
 async function renderQr() {
   qrError.value = false
-  const address = cryptoPayment.value?.receiveAddress || ''
-  if (!address) {
+  const qrContent = cryptoPayment.value?.qrContent?.trim() ?? ''
+  if (!qrContent) {
     qrDataUrl.value = ''
     qrError.value = true
     return
   }
 
   try {
-    qrDataUrl.value = await QRCode.toDataURL(address, {
+    qrDataUrl.value = await QRCode.toDataURL(qrContent, {
       errorCorrectionLevel: 'H',
       margin: 1,
       scale: 8,
@@ -309,6 +470,13 @@ async function renderQr() {
   }
 }
 
+function cryptoOptionIcon(option: CryptoRechargeOption) {
+  if (option.token.toUpperCase() === 'BTC') return 'fa-brands fa-bitcoin'
+  if (option.token.toUpperCase() === 'ETH') return 'fa-brands fa-ethereum'
+
+  return 'fa-solid fa-coins'
+}
+
 async function copyValue(value: string) {
   try {
     await navigator.clipboard.writeText(value)
@@ -319,7 +487,7 @@ async function copyValue(value: string) {
 }
 
 function applyStatus(status: Awaited<ReturnType<typeof getCryptoRechargeOrderStatus>>) {
-  const previousAddress = cryptoPayment.value?.receiveAddress || ''
+  const previousQrContent = cryptoPayment.value?.qrContent || ''
   orderStatus.value = normalizeStatus(status.status)
 
   if (paymentOrder.value) {
@@ -331,12 +499,13 @@ function applyStatus(status: Awaited<ReturnType<typeof getCryptoRechargeOrderSta
     }
   }
 
-  if (status.cryptoPayment && previousAddress !== status.cryptoPayment.receiveAddress) {
+  if (status.cryptoPayment && previousQrContent !== status.cryptoPayment.qrContent) {
     void renderQr()
   }
 
   if (orderStatus.value === CRYPTO_STATUS_PAID) {
     pageState.value = 'paid'
+    clearPersistedPendingOrder()
     stopStatusPolling()
     stopCountdown()
     showSuccessToast(pickText(text.paid))
@@ -346,6 +515,7 @@ function applyStatus(status: Awaited<ReturnType<typeof getCryptoRechargeOrderSta
 
   if (orderStatus.value === CRYPTO_STATUS_EXPIRED) {
     pageState.value = 'expired'
+    clearPersistedPendingOrder()
     stopStatusPolling()
     stopCountdown()
     return
@@ -353,12 +523,14 @@ function applyStatus(status: Awaited<ReturnType<typeof getCryptoRechargeOrderSta
 
   if (orderStatus.value === CRYPTO_STATUS_CANCELED) {
     pageState.value = 'canceled'
+    clearPersistedPendingOrder()
     stopStatusPolling()
     stopCountdown()
     return
   }
 
   pageState.value = 'waiting'
+  persistPendingOrder()
 }
 
 async function refreshStatus(showPendingToast = true) {
@@ -438,8 +610,33 @@ function updateCountdown() {
   }
 }
 
+async function resumePendingPayment() {
+  if (!paymentOrder.value || !isPending.value || isTerminal.value) return
+
+  startCountdown()
+  try {
+    await refreshStatus(false)
+  } catch {
+    // Keep the persisted server response visible while scheduled polling retries the status request.
+  }
+
+  if (isPending.value && !isTerminal.value) startStatusPolling()
+}
+
 async function cancelPayment() {
   if (!orderNo.value || !isPending.value || isCanceling.value) return
+
+  try {
+    await showConfirmDialog({
+      title: pickText(text.cancelWarningTitle),
+      message: pickText(text.cancelWarningMessage),
+      confirmButtonText: pickText(text.cancel),
+      cancelButtonText: pickText(text.keepWaiting),
+    })
+  } catch {
+    return
+  }
+
   isCanceling.value = true
 
   try {
@@ -471,14 +668,37 @@ function handlePageHide() {
   cleanupTimers()
 }
 
+function handlePageShow() {
+  void resumePendingPayment()
+}
+
+async function initializePage() {
+  try {
+    if (!userStore.userInfo) await userStore.loadUserInfo()
+  } catch (error) {
+    pageState.value = 'error'
+    pageError.value = error instanceof Error ? error.message : pickText(text.loadFailed)
+    return
+  }
+
+  if (restorePersistedPendingOrder()) {
+    await renderQr()
+    await resumePendingPayment()
+    return
+  }
+
+  await loadOptions()
+}
+
 onMounted(() => {
   window.addEventListener('pagehide', handlePageHide)
-  void userStore.loadUserInfo().catch(() => {})
-  void loadOptions()
+  window.addEventListener('pageshow', handlePageShow)
+  void initializePage()
 })
 
 onBeforeUnmount(() => {
   window.removeEventListener('pagehide', handlePageHide)
+  window.removeEventListener('pageshow', handlePageShow)
   cleanupTimers()
 })
 </script>
@@ -495,8 +715,10 @@ onBeforeUnmount(() => {
       <section class="ppmx-crypto-pay-card reveal" :aria-label="pickText(text.title)">
         <header class="ppmx-crypto-pay-card__head">
           <div class="ppmx-crypto-pay-brand">
-            <span class="ppmx-crypto-pay-token" aria-hidden="true">
-              <svg viewBox="0 0 32 32" role="img">
+            <span class="ppmx-crypto-pay-token" :class="selectedTokenClass" aria-hidden="true">
+              <i v-if="selectedToken === 'BTC'" class="fa-brands fa-bitcoin" />
+              <i v-else-if="selectedToken === 'ETH'" class="fa-brands fa-ethereum" />
+              <svg v-else viewBox="0 0 32 32" role="img">
                 <circle cx="16" cy="16" r="16" fill="#22a079" />
                 <path fill="#fff" d="M8 8.5h16v3.25h-6.15v2.12c3.45.18 6.05.88 6.05 1.72s-2.6 1.54-6.05 1.72v6.19h-3.7v-6.19c-3.45-.18-6.05-.88-6.05-1.72s2.6-1.54 6.05-1.72v-2.12H8V8.5Zm6.15 6.82c-2.03.13-3.43.38-3.43.67s1.4.54 3.43.67v-1.34Zm3.7 1.34c2.03-.13 3.43-.38 3.43-.67s-1.4-.54-3.43-.67v1.34Z" />
               </svg>
@@ -537,7 +759,7 @@ onBeforeUnmount(() => {
         <section v-else-if="pageState === 'error'" class="ppmx-crypto-pay-state">
           <i class="fa-solid fa-triangle-exclamation" />
           <p>{{ pageError || pickText(text.loadFailed) }}</p>
-          <button class="ppmx-crypto-pay-refresh" type="button" @click="loadOptions">
+          <button class="ppmx-crypto-pay-refresh" type="button" @click="initializePage">
             <i class="fa-solid fa-arrows-rotate" />
             {{ pickText(text.refresh) }}
           </button>
@@ -558,7 +780,7 @@ onBeforeUnmount(() => {
               @click="selectedOption = option"
             >
               <span class="ppmx-crypto-pay-option__icon">
-                <i class="fa-solid fa-coins" />
+                <i :class="cryptoOptionIcon(option)" />
               </span>
               <span>
                 <strong>{{ option.token }} · {{ option.network }}</strong>
@@ -585,7 +807,7 @@ onBeforeUnmount(() => {
               <span>{{ pickText(text.amount) }}</span>
               <div>
                 <input :value="payAmount" readonly>
-                <button type="button" @click="copyValue(payAmount)">
+                <button type="button" @click="copyValue(payAmountValue)">
                   <i class="fa-regular fa-copy" />
                   {{ pickText(text.copy) }}
                 </button>
@@ -594,8 +816,8 @@ onBeforeUnmount(() => {
             <label>
               <span>{{ pickText(text.address) }}</span>
               <div>
-                <input :value="usdtAddress" readonly>
-                <button type="button" @click="copyValue(usdtAddress)">
+                <input :value="cryptoAddress" readonly>
+                <button type="button" @click="copyValue(cryptoAddress)">
                   <i class="fa-regular fa-copy" />
                   {{ pickText(text.copy) }}
                 </button>
@@ -617,7 +839,7 @@ onBeforeUnmount(() => {
             </h2>
             <p>
               <i class="fa-solid fa-triangle-exclamation" />
-              {{ pickText(text.noticeNet) }}
+              {{ noticeNetworkText }}
             </p>
             <p>
               <i class="fa-solid fa-check" />
@@ -764,6 +986,24 @@ onBeforeUnmount(() => {
   display: block;
   width: 32px;
   height: 32px;
+}
+
+.ppmx-crypto-pay-token > i {
+  font-size: 1.85rem;
+}
+
+.ppmx-crypto-pay-token.is-btc {
+  color: #f7931a;
+  background: #fff8ec;
+  border-color: rgba(247, 147, 26, 0.2);
+  box-shadow: 0 14px 30px -22px rgba(247, 147, 26, 0.72);
+}
+
+.ppmx-crypto-pay-token.is-eth {
+  color: #627eea;
+  background: #f4f6ff;
+  border-color: rgba(98, 126, 234, 0.2);
+  box-shadow: 0 14px 30px -22px rgba(98, 126, 234, 0.68);
 }
 
 .ppmx-crypto-pay-brand span {
