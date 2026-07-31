@@ -1,8 +1,15 @@
 <script setup lang="ts">
 import '@/assets/styles/pp-mx-home.css'
 import { showToast } from 'vant'
+import type { AppPopupAnnouncement } from '@/api/banner'
+import { getPopupAnnouncements } from '@/api/banner'
 import type { CheckInRecordItem, CheckInStatusResp } from '@/api/user'
 import { doCheckIn, getCheckInRecords, getCheckInStatus } from '@/api/user'
+import {
+  filterUnseenPopupAnnouncements,
+  getSeenAnnouncementPopupIds,
+  markAnnouncementPopupSeen,
+} from '@/utils/announcementPopup'
 import {
   ppmxBanners,
   ppmxCheckinText,
@@ -20,9 +27,10 @@ import { useFloatingWidgets } from './composables/useFloatingWidgets'
 import { useHeroCarousel } from './composables/useHeroCarousel'
 import { useNoticeCarousel } from './composables/useNoticeCarousel'
 import { usePpmxGameHome } from './composables/usePpmxGameHome'
-import { usePpmxLocale } from './composables/usePpmxLocale'
+import { ppmxLocaleToAppLocale, usePpmxLocale } from './composables/usePpmxLocale'
 import type { PpmxAuthMode, PpmxFloatingWidget, PpmxGame, PpmxHomeCategory, PpmxSocialItem } from './types'
 import PpmxFloatingWidgets from './components/PpmxFloatingWidgets.vue'
+import PpmxAnnouncementPopup from './components/PpmxAnnouncementPopup.vue'
 import PpmxGameNav from './components/PpmxGameNav.vue'
 import PpmxGameTile from './components/PpmxGameTile.vue'
 import PpmxHeroCarousel from './components/PpmxHeroCarousel.vue'
@@ -49,7 +57,7 @@ const hero = useHeroCarousel({ count: visibleBanners.length })
 const notices = useNoticeCarousel({ count: ppmxNotices.length })
 const floating = useFloatingWidgets()
 const gameHome = usePpmxGameHome()
-const { pickText } = usePpmxLocale()
+const { homeLocale, pickText } = usePpmxLocale()
 useCategoryScrollSpy(gameHome.categoryIds, activeCategoryId)
 
 const casinoCategoryCodes = new Set(['slots', 'casino', 'blockchain', 'fishing', 'rummy', 'sports', 'mini', 'lottery'])
@@ -72,6 +80,10 @@ const checkinRecords = ref<CheckInRecordItem[]>([])
 const checkinLoading = ref(false)
 const checkinFailed = ref(false)
 const checkinSubmitting = ref(false)
+const popupQueue = ref<AppPopupAnnouncement[]>([])
+const popupVisible = ref(false)
+const currentPopup = computed(() => popupQueue.value[0])
+let popupRequestVersion = 0
 
 const checkinRewards = computed(() => checkinStatus.value?.rewards ?? [])
 const checkinTotalDays = computed(() => Number(checkinStatus.value?.totalCheckInDays ?? 0))
@@ -460,6 +472,78 @@ function onNoticeTouchEnd(event: TouchEvent) {
   notices.next()
 }
 
+function closeCurrentPopup() {
+  const announcement = currentPopup.value
+  const userId = userStore.userInfo?.id
+
+  if (!announcement || userId === undefined || userId === '') return
+
+  markAnnouncementPopupSeen(userId, announcement.id)
+  popupQueue.value.shift()
+  popupVisible.value = popupQueue.value.length > 0
+}
+
+function openPopupTarget(announcement: AppPopupAnnouncement) {
+  const target = announcement.jumpValue?.trim()
+
+  if (!target) return
+
+  if (announcement.jumpType === 'internal') {
+    if (announcement.openMode === 'new_window') {
+      window.open(router.resolve(target).href, '_blank', 'noopener,noreferrer')
+      return
+    }
+
+    if (announcement.openMode === 'current') {
+      void router.push(target)
+    }
+    return
+  }
+
+  if (announcement.jumpType === 'url' && /^https?:\/\//i.test(target)) {
+    if (announcement.openMode === 'current') {
+      window.location.assign(target)
+      return
+    }
+
+    if (announcement.openMode === 'new_window') {
+      window.open(target, '_blank', 'noopener,noreferrer')
+    }
+  }
+}
+
+function confirmCurrentPopup() {
+  const announcement = currentPopup.value
+
+  if (!announcement) return
+
+  closeCurrentPopup()
+  openPopupTarget(announcement)
+}
+
+async function loadPopupAnnouncements(
+  requestVersion: number,
+  userId: number | string,
+  lang: string,
+) {
+  try {
+    const groups = await getPopupAnnouncements(lang)
+
+    if (requestVersion !== popupRequestVersion) return
+
+    popupQueue.value = filterUnseenPopupAnnouncements(
+      groups.popup ?? [],
+      getSeenAnnouncementPopupIds(userId),
+    )
+    popupVisible.value = popupQueue.value.length > 0
+  } catch {
+    if (requestVersion !== popupRequestVersion) return
+
+    popupQueue.value = []
+    popupVisible.value = false
+  }
+}
+
 onMounted(() => {
   void gameHome.loadGameHome()
   startHeroAuto()
@@ -491,7 +575,28 @@ watch(
   { immediate: true },
 )
 
+watch(
+  [
+    () => userStore.isLogin,
+    () => userStore.userInfo?.id,
+    () => ppmxLocaleToAppLocale(homeLocale.value),
+  ],
+  ([isLogin, userId, lang]) => {
+    const requestVersion = ++popupRequestVersion
+
+    if (!isLogin || userId === undefined || userId === '') {
+      popupQueue.value = []
+      popupVisible.value = false
+      return
+    }
+
+    void loadPopupAnnouncements(requestVersion, userId, lang)
+  },
+  { immediate: true },
+)
+
 onBeforeUnmount(() => {
+  popupRequestVersion += 1
   stopHeroAuto()
   stopNoticeAuto()
   document.removeEventListener('pointermove', floating.dragWidget)
@@ -937,6 +1042,16 @@ onBeforeUnmount(() => {
     </Transition>
 
     </PpmxPageChrome>
+
+    <PpmxAnnouncementPopup
+      v-if="currentPopup"
+      :announcement="currentPopup"
+      :close-text="t('common.close')"
+      :confirm-text="t('common.confirm')"
+      :model-value="popupVisible"
+      @close="closeCurrentPopup"
+      @confirm="confirmCurrentPopup"
+    />
 
     <PpmxUnlockModal v-model="unlockOpen" @activate="onUnlockActivate" />
   </main>

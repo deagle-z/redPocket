@@ -196,11 +196,11 @@ export const ppmxPromoItems: PpmxPromoItem[] = [
   {
     id: 'recarga',
     tag: { es: 'Bono de recarga', en: 'Reload bonus', zh: '充值赠送' },
-    title: { es: 'Recarga y recibe hasta 30% de regalo', en: 'Deposit and get up to 30% bonus', zh: '最高30%赠送' },
+    title: { es: 'Recarga y recibe hasta 100% de regalo', en: 'Deposit and get up to 100% bonus', zh: '最高100%赠送' },
     sub: {
-      es: 'La primera recarga recibe 18% de reembolso, la segunda 20%, la tercera 25% y desde la cuarta 30%. Cuantas más recargas hagas, mayor será el reembolso.',
-      en: 'First deposit gets 18% rebate, second deposit gets 20%, third deposit gets 25%, and the 4th deposit and above gets 30%. The more times you deposit, the higher your rebate.',
-      zh: '首次充值享18%返利，二次充值享20%返利，三次充值享25%，≧充值享30%。充值的次数越多享受的返利越高！',
+      es: 'La primera recarga recibe 18% de reembolso, la segunda 50% y la tercera en adelante 100%. Cuantas más recargas hagas, mayor será el reembolso.',
+      en: 'The first deposit gets an 18% rebate, the second gets 50%, and the third and subsequent deposits get 100%. The more times you deposit, the higher your rebate.',
+      zh: '首次充值享18%返利，二次充值享50%返利，三次充值享100%，≧3次充值享100%。充值的次数越多享受的返利越高！',
     },
     howTo: {
       es: 'Ve a Depositar, elige tu método, ingresa el monto y el reembolso según tu número de recarga se aplica automáticamente.',
