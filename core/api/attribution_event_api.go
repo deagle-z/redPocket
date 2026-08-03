@@ -35,6 +35,7 @@ func CreateAttributionEvent(ctx *gin.Context) {
 		req,
 		userID,
 		tenantID,
+		utils.AttributionRequestDomain(ctx),
 		utils.GetIPAddress(ctx),
 		ctx.GetHeader("User-Agent"),
 	)

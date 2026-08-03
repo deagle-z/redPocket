@@ -3,6 +3,7 @@ import { handleHotUpdate, routes } from 'vue-router/auto-routes'
 import { i18n } from '@/plugins/i18n'
 import { APP_BRAND } from '@/config/brand'
 import { shouldRequireRouteLogin } from '@/utils/authGate'
+import { trackAttributionPageView } from '@/utils/attribution'
 import { trackPageView } from '@/utils/tracker'
 
 export const router = createRouter({
@@ -35,6 +36,7 @@ router.afterEach(to => {
     : String(to.meta.title || APP_BRAND.name)
   document.title = routeTitle === APP_BRAND.name ? APP_BRAND.name : `${routeTitle} | ${APP_BRAND.name}`
   void trackPageView(to.fullPath)
+  void trackAttributionPageView(to.fullPath)
 })
 
 if (import.meta.hot) {

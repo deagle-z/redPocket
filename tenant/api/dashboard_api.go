@@ -2,6 +2,7 @@ package api
 
 import (
 	"BaseGoUni/core/pojo"
+	coreRepo "BaseGoUni/core/repository"
 	"BaseGoUni/core/utils"
 	tenantRepo "BaseGoUni/tenant/repository"
 	"strconv"
@@ -15,6 +16,38 @@ func GetDashboardStats(ctx *gin.Context) {
 		return
 	}
 	result := tenantRepo.GetDashboardStats(getDB(ctx), tenantID)
+	utils.SuccessObjBack(ctx, result)
+}
+
+func GetDomainVisitStats(ctx *gin.Context) {
+	tenantID, ok := getTenantID(ctx)
+	if !ok {
+		return
+	}
+	result, err := coreRepo.GetTenantDomainVisitStats(getDB(ctx), tenantID)
+	if err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	utils.SuccessObjBack(ctx, result)
+}
+
+func GetDomainVisits(ctx *gin.Context) {
+	tenantID, ok := getTenantID(ctx)
+	if !ok {
+		return
+	}
+	var pageInfo pojo.PageInfo
+	pageInfo.SetPageDefaults()
+	if err := ctx.ShouldBindJSON(&pageInfo); err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	result, err := coreRepo.GetTenantDomainVisits(getDB(ctx), tenantID, pageInfo)
+	if err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
 	utils.SuccessObjBack(ctx, result)
 }
 

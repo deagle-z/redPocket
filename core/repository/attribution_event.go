@@ -23,7 +23,7 @@ func ValidateAttributionEventName(eventName string) (string, error) {
 	return eventName, nil
 }
 
-func CreateAttributionEvent(db *gorm.DB, req pojo.AttributionEventCreateReq, userID int64, tenantID int64, ip string, userAgent string) (pojo.AttributionEventBack, error) {
+func CreateAttributionEvent(db *gorm.DB, req pojo.AttributionEventCreateReq, userID int64, tenantID int64, domain string, ip string, userAgent string) (pojo.AttributionEventBack, error) {
 	var result pojo.AttributionEventBack
 	if db == nil {
 		return result, errors.New("invalid_params")
@@ -70,6 +70,7 @@ func CreateAttributionEvent(db *gorm.DB, req pojo.AttributionEventCreateReq, use
 		VisitorID:         trimMax(req.VisitorID, 128),
 		SessionID:         trimMax(req.SessionID, 128),
 		EventName:         eventName,
+		Domain:            domain,
 		ThirdPartyEventID: nullableTrimMax(req.ThirdPartyEventID, 128),
 		PixelID:           nullableTrimMax(req.PixelID, 128),
 		SourceChannelID:   sourceChannelID,

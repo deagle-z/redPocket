@@ -17,6 +17,30 @@ func GetAdminDashboardStats(ctx *gin.Context) {
 	utils.SuccessObjBack(ctx, result)
 }
 
+func GetAdminDomainVisitStats(ctx *gin.Context) {
+	result, err := repository.GetAdminDomainVisitStats(ctx.MustGet("db").(*gorm.DB))
+	if err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	utils.SuccessObjBack(ctx, result)
+}
+
+func GetAdminDomainVisits(ctx *gin.Context) {
+	var search pojo.DomainVisitDetailSearch
+	search.SetPageDefaults()
+	if err := ctx.ShouldBindJSON(&search); err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	result, err := repository.GetAdminDomainVisits(ctx.MustGet("db").(*gorm.DB), search)
+	if err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	utils.SuccessObjBack(ctx, result)
+}
+
 func GetAdminDashboardMonthlyBalances(ctx *gin.Context) {
 	db := ctx.MustGet("db").(*gorm.DB)
 	tenantID, _ := strconv.ParseInt(ctx.Query("tenantId"), 10, 64)

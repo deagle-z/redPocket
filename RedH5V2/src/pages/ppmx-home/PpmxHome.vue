@@ -5,11 +5,7 @@ import type { AppPopupAnnouncement } from '@/api/banner'
 import { getPopupAnnouncements } from '@/api/banner'
 import type { CheckInRecordItem, CheckInStatusResp } from '@/api/user'
 import { doCheckIn, getCheckInRecords, getCheckInStatus } from '@/api/user'
-import {
-  filterUnseenPopupAnnouncements,
-  getSeenAnnouncementPopupIds,
-  markAnnouncementPopupSeen,
-} from '@/utils/announcementPopup'
+import { filterPopupAnnouncements } from '@/utils/announcementPopup'
 import {
   ppmxBanners,
   ppmxCheckinText,
@@ -474,11 +470,9 @@ function onNoticeTouchEnd(event: TouchEvent) {
 
 function closeCurrentPopup() {
   const announcement = currentPopup.value
-  const userId = userStore.userInfo?.id
 
-  if (!announcement || userId === undefined || userId === '') return
+  if (!announcement) return
 
-  markAnnouncementPopupSeen(userId, announcement.id)
   popupQueue.value.shift()
   popupVisible.value = popupQueue.value.length > 0
 }
@@ -523,7 +517,6 @@ function confirmCurrentPopup() {
 
 async function loadPopupAnnouncements(
   requestVersion: number,
-  userId: number | string,
   lang: string,
 ) {
   try {
@@ -531,10 +524,7 @@ async function loadPopupAnnouncements(
 
     if (requestVersion !== popupRequestVersion) return
 
-    popupQueue.value = filterUnseenPopupAnnouncements(
-      groups.popup ?? [],
-      getSeenAnnouncementPopupIds(userId),
-    )
+    popupQueue.value = filterPopupAnnouncements(groups.popup ?? [])
     popupVisible.value = popupQueue.value.length > 0
   } catch {
     if (requestVersion !== popupRequestVersion) return
@@ -590,10 +580,16 @@ watch(
       return
     }
 
-    void loadPopupAnnouncements(requestVersion, userId, lang)
+    void loadPopupAnnouncements(requestVersion, lang)
   },
   { immediate: true },
 )
+
+onDeactivated(() => {
+  popupRequestVersion += 1
+  popupQueue.value = []
+  popupVisible.value = false
+})
 
 onBeforeUnmount(() => {
   popupRequestVersion += 1

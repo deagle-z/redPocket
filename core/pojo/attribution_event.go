@@ -8,13 +8,14 @@ import (
 // AttributionEvent 通用事件归因明细。
 type AttributionEvent struct {
 	ID                int64     `json:"id" gorm:"primaryKey;"`
-	CreatedAt         time.Time `json:"createdAt" gorm:"column:created_at;autoCreateTime;index:idx_attribution_event_name_time,priority:2;index:idx_attribution_channel_event_time,priority:3;index"`
+	CreatedAt         time.Time `json:"createdAt" gorm:"column:created_at;autoCreateTime;index:idx_attribution_event_name_time,priority:2;index:idx_attribution_channel_event_time,priority:3;index:idx_attribution_event_domain_time,priority:3;index"`
 	UpdatedAt         time.Time `json:"updatedAt" gorm:"column:updated_at;autoUpdateTime"`
 	TenantID          int64     `json:"tenantId" gorm:"column:tenant_id;type:bigint;not null;default:0;index"`
 	UserID            *int64    `json:"userId" gorm:"column:user_id;type:bigint;index"`
 	VisitorID         string    `json:"visitorId" gorm:"column:visitor_id;type:varchar(128);index"`
 	SessionID         string    `json:"sessionId" gorm:"column:session_id;type:varchar(128);index"`
-	EventName         string    `json:"eventName" gorm:"column:event_name;type:varchar(64);not null;index:idx_attribution_event_name_time,priority:1;index:idx_attribution_channel_event_time,priority:2"`
+	EventName         string    `json:"eventName" gorm:"column:event_name;type:varchar(64);not null;index:idx_attribution_event_name_time,priority:1;index:idx_attribution_channel_event_time,priority:2;index:idx_attribution_event_domain_time,priority:1"`
+	Domain            string    `json:"domain" gorm:"column:domain;type:varchar(253);not null;default:'';index:idx_attribution_event_domain_time,priority:2"`
 	ThirdPartyEventID *string   `json:"thirdPartyEventId" gorm:"column:third_party_event_id;type:varchar(128);index"`
 	PixelID           *string   `json:"pixelId" gorm:"column:pixel_id;type:varchar(128);index"`
 	SourceChannelID   *int64    `json:"sourceChannelId" gorm:"column:source_channel_id;type:bigint;index:idx_attribution_channel_event_time,priority:1"`
@@ -77,6 +78,7 @@ type AttributionEventBack struct {
 	VisitorID         string    `json:"visitorId"`
 	SessionID         string    `json:"sessionId"`
 	EventName         string    `json:"eventName"`
+	Domain            string    `json:"domain"`
 	ThirdPartyEventID *string   `json:"thirdPartyEventId"`
 	PixelID           *string   `json:"pixelId"`
 	SourceChannelID   *int64    `json:"sourceChannelId"`

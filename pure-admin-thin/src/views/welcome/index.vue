@@ -3,7 +3,9 @@ import dayjs from "dayjs";
 import { computed, onMounted, reactive, ref } from "vue";
 import Refresh from "@iconify-icons/ep/refresh";
 import { useRenderIcon } from "@/components/ReIcon/src/hooks";
+import DomainVisitDialog from "./DomainVisitDialog.vue";
 import {
+  getAdminDomainVisitStats,
   getAdminDashboardAgentRanks,
   getAdminDashboardOnlineUsers,
   getAdminDashboardRegisterUsers,
@@ -12,6 +14,7 @@ import {
   getAdminDashboardWithdrawOrders,
   getAdminDashboardMonthlyBalances,
   getAdminDashboardStats,
+  type DomainVisitStats,
   type AdminDashboardAgentRank,
   type AdminDashboardStats,
   type AdminDashboardUserDetail,
@@ -25,6 +28,8 @@ defineOptions({
 });
 
 const loading = ref(false);
+const domainVisitLoading = ref(false);
+const domainVisitError = ref(false);
 const tenantLoading = ref(false);
 const tenantOptions = ref<SysTenant[]>([]);
 const currentTenantId = ref(0);
@@ -47,6 +52,12 @@ const stats = ref<AdminDashboardStats>({
   totalRegisterUsers: 0,
   onlineUsers: 0
 });
+const domainVisitStats = ref<DomainVisitStats>({
+  date: "",
+  pageViews: 0,
+  uniqueVisitors: 0
+});
+const domainVisitDialogVisible = ref(false);
 
 type DetailType =
   | "online"
@@ -138,6 +149,24 @@ const dashboardScopeText = computed(() => {
 });
 
 const metricCards = computed(() => [
+  {
+    title: "今日访问量 PV",
+    value: domainVisitError.value
+      ? "-"
+      : String(domainVisitStats.value.pageViews),
+    unit: "次",
+    tone: "blue",
+    domainVisit: true
+  },
+  {
+    title: "今日访客数 UV",
+    value: domainVisitError.value
+      ? "-"
+      : String(domainVisitStats.value.uniqueVisitors),
+    unit: "人",
+    tone: "cyan",
+    domainVisit: true
+  },
   {
     title: "当日充值总额",
     value: formatAmount(stats.value.today.rechargeAmount),
@@ -330,6 +359,25 @@ async function loadStats() {
   }
 }
 
+async function loadDomainVisitStats() {
+  domainVisitLoading.value = true;
+  domainVisitError.value = false;
+  domainVisitStats.value = { date: "", pageViews: 0, uniqueVisitors: 0 };
+  try {
+    const res = await getAdminDomainVisitStats();
+    domainVisitStats.value = res.data;
+  } catch {
+    domainVisitError.value = true;
+  } finally {
+    domainVisitLoading.value = false;
+  }
+}
+
+function refreshDashboard() {
+  void loadStats();
+  void loadDomainVisitStats();
+}
+
 async function loadDetail() {
   detailLoading.value = true;
   try {
@@ -465,7 +513,12 @@ function handleCardClick(item: {
   detailType?: DetailType;
   orderType?: OrderType;
   monthlyBalance?: boolean;
+  domainVisit?: boolean;
 }) {
+  if (item.domainVisit) {
+    domainVisitDialogVisible.value = true;
+    return;
+  }
   if (item.monthlyBalance) {
     openMonthlyBalance();
     return;
@@ -587,7 +640,7 @@ function handleAgentRankNextPage() {
 
 onMounted(() => {
   loadTenantOptions();
-  loadStats();
+  refreshDashboard();
 });
 </script>
 
@@ -617,8 +670,8 @@ onMounted(() => {
         </el-select>
         <el-button
           :icon="useRenderIcon(Refresh)"
-          :loading="loading"
-          @click="loadStats"
+          :loading="loading || domainVisitLoading"
+          @click="refreshDashboard"
         >
           刷新
         </el-button>
@@ -628,7 +681,7 @@ onMounted(() => {
       </div>
     </div>
 
-    <el-skeleton :loading="loading" animated :rows="6">
+    <el-skeleton :loading="loading || domainVisitLoading" animated :rows="6">
       <div class="metric-grid">
         <div
           v-for="item in metricCards"
@@ -636,7 +689,10 @@ onMounted(() => {
           class="metric-card"
           :class="[
             `metric-card--${item.tone}`,
-            (item.detailType || item.orderType || item.monthlyBalance) &&
+            (item.detailType ||
+              item.orderType ||
+              item.monthlyBalance ||
+              item.domainVisit) &&
               'metric-card--clickable'
           ]"
           @click="handleCardClick(item)"
@@ -649,6 +705,8 @@ onMounted(() => {
         </div>
       </div>
     </el-skeleton>
+
+    <DomainVisitDialog v-model="domainVisitDialogVisible" />
 
     <el-dialog v-model="agentRankDialogVisible" title="代理排行" width="80%">
       <div class="detail-pager">
@@ -691,7 +749,12 @@ onMounted(() => {
         </div>
       </div>
 
-      <el-table v-loading="agentRankLoading" :data="agentRankList" border stripe>
+      <el-table
+        v-loading="agentRankLoading"
+        :data="agentRankList"
+        border
+        stripe
+      >
         <el-table-column label="排名" width="80">
           <template #default="{ $index }">
             {{

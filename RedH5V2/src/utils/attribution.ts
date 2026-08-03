@@ -76,7 +76,7 @@ export async function trackAttributionEvent(input: AttributionEventInput) {
   const eventId = input.eventId || createThirdPartyEventId(input.eventName)
   const payload = {
     eventName: input.eventName,
-    eventId,
+    thirdPartyEventId: eventId,
     pixelId: getFacebookPixelId(),
     sourceChannelCode: getSourceChannelCode(),
     visitorId: getVisitorId(),
@@ -84,7 +84,6 @@ export async function trackAttributionEvent(input: AttributionEventInput) {
     pageUrl: getPageUrl(),
     referrer: getReferrer(),
     metadata: input.metadata ?? {},
-    timestamp: Date.now(),
   }
 
   void trackEvent({
@@ -109,4 +108,14 @@ export async function trackAttributionEvent(input: AttributionEventInput) {
   }
 
   return payload
+}
+
+export function trackAttributionPageView(path: string) {
+  return trackAttributionEvent({
+    eventName: 'page_view',
+    metadata: {
+      path,
+      title: typeof document === 'undefined' ? '' : document.title,
+    },
+  })
 }

@@ -1,5 +1,61 @@
 import { http } from "@/utils/http";
 
+export type DomainVisitStats = {
+  date: string;
+  pageViews: number;
+  uniqueVisitors: number;
+};
+
+export type DomainVisitRow = {
+  domain: string;
+  pageViews: number;
+  uniqueVisitors: number;
+};
+
+export type DomainVisitHourly = {
+  hour: number;
+  pageViews: number;
+  uniqueVisitors: number;
+};
+
+export type DomainVisitStatsResult = {
+  code: number;
+  message: string;
+  success: boolean;
+  data: DomainVisitStats;
+};
+
+export type DomainVisitDetailResult = {
+  code: number;
+  message: string;
+  success: boolean;
+  data: DomainVisitStats & {
+    list: DomainVisitRow[];
+    total: number;
+    pageSize: number;
+    currentPage: number;
+    hourly: DomainVisitHourly[];
+  };
+};
+
+export const getTenantDomainVisitStats = () => {
+  return http.request<DomainVisitStatsResult>(
+    "get",
+    "/api/v1/tenant/dashboard/domainVisitStats"
+  );
+};
+
+export const getTenantDomainVisits = (data: {
+  currentPage: number;
+  pageSize: number;
+}) => {
+  return http.request<DomainVisitDetailResult>(
+    "post",
+    "/api/v1/tenant/dashboard/domainVisits",
+    { data }
+  );
+};
+
 export type TenantDashboardPeriodStats = {
   rechargeAmount: number;
   betAmount: number;

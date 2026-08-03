@@ -1,11 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import type { AppPopupAnnouncement } from '@/api/banner'
-import {
-  filterUnseenPopupAnnouncements,
-  getAnnouncementPopupSeenKey,
-  getMillisecondsUntilNextDay,
-} from './announcementPopup'
+import { filterPopupAnnouncements } from './announcementPopup'
 
 function createAnnouncement(
   id: number,
@@ -47,22 +43,7 @@ function createAnnouncement(
 }
 
 describe('announcement popup state', () => {
-  it('scopes the seen key to the user and local calendar day', () => {
-    expect(
-      getAnnouncementPopupSeenKey(
-        38,
-        new Date(2026, 6, 30, 14, 20, 0),
-      ),
-    ).toBe('announcement_popup_seen:38:2026-07-30')
-  })
-
-  it('expires at the next local calendar day', () => {
-    expect(
-      getMillisecondsUntilNextDay(new Date(2026, 6, 30, 23, 59, 0)),
-    ).toBe(60_000)
-  })
-
-  it('keeps only active unseen popup items in backend order', () => {
+  it('keeps active popup items in backend order without local seen filtering', () => {
     const announcements = [
       createAnnouncement(4, 20),
       createAnnouncement(3, 10),
@@ -72,9 +53,9 @@ describe('announcement popup state', () => {
     ]
 
     expect(
-      filterUnseenPopupAnnouncements(announcements, [2]).map(
+      filterPopupAnnouncements(announcements).map(
         (announcement) => announcement.id,
       ),
-    ).toEqual([3, 4])
+    ).toEqual([3, 2, 4])
   })
 })

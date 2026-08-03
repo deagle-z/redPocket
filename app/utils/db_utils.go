@@ -148,6 +148,10 @@ func InitTables(prefix string) (firstInit bool, err error) {
 	if err = db.AutoMigrate(&pojo.ExchangeCode{}, &pojo.ExchangeCodeRedeem{}); err != nil {
 		panic(err)
 	}
+	log.Print("init tables: ensure attribution_event domain schema...\n")
+	if err = ensureAttributionEventDomainSchema(db); err != nil {
+		panic(err)
+	}
 	log.Print("init tables: ensure tg_user device schema...\n")
 	if err = ensureTgUserDeviceSchema(db); err != nil {
 		panic(err)
@@ -225,6 +229,21 @@ func InitTables(prefix string) (firstInit bool, err error) {
 func shouldSkipAutoMigrate() bool {
 	value := strings.TrimSpace(os.Getenv("BGU_SKIP_AUTO_MIGRATE"))
 	return value == "1" || strings.EqualFold(value, "true")
+}
+
+func ensureAttributionEventDomainSchema(db *gorm.DB) error {
+	migrator := db.Migrator()
+	if !migrator.HasColumn(&pojo.AttributionEvent{}, "Domain") {
+		if err := migrator.AddColumn(&pojo.AttributionEvent{}, "Domain"); err != nil {
+			return err
+		}
+	}
+	if !migrator.HasIndex(&pojo.AttributionEvent{}, "idx_attribution_event_domain_time") {
+		if err := migrator.CreateIndex(&pojo.AttributionEvent{}, "idx_attribution_event_domain_time"); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func ensureTgUserDeviceSchema(db *gorm.DB) error {
