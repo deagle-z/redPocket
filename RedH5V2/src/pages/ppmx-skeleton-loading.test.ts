@@ -6,7 +6,7 @@ function read(path: string) {
   return readFileSync(new URL(`../../${path}`, import.meta.url), 'utf8') as string
 }
 
-describe('PP.MX loading skeleton coverage', () => {
+describe('PP.PE loading skeleton coverage', () => {
   it('uses skeletons for home lobby and check-in data loading', () => {
     const source = read('src/pages/ppmx-home/PpmxHome.vue')
 

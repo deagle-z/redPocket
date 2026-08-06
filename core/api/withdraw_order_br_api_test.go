@@ -27,11 +27,11 @@ func TestCalculateAppWithdrawFeeFreeFirstThreeWithdrawals(t *testing.T) {
 	}
 }
 
-func TestResolveAppWithdrawV2ChannelUsesVcpayForMexico(t *testing.T) {
-	if got := resolveAppWithdrawV2Channel(" mx "); got != "VCPAYMXN" {
+func TestResolveAppWithdrawV2ChannelUsesExistingVcpayProviderForPeru(t *testing.T) {
+	if got := resolveAppWithdrawV2Channel(" pe "); got != "VCPAYMXN" {
 		t.Fatalf("resolveAppWithdrawV2Channel() = %q, want VCPAYMXN", got)
 	}
-	if got := resolveAppWithdrawV2Provider("MX"); got != "VCPAYMXN" {
+	if got := resolveAppWithdrawV2Provider("PE"); got != "VCPAYMXN" {
 		t.Fatalf("resolveAppWithdrawV2Provider() = %q, want VCPAYMXN", got)
 	}
 }
@@ -45,10 +45,10 @@ func TestResolveAppWithdrawV2ChannelKeepsPixForOtherCountries(t *testing.T) {
 	}
 }
 
-func TestApplyWithdrawReceiverSnapshotDoesNotStoreMexicoIdentityTypeAsDocumentType(t *testing.T) {
+func TestApplyWithdrawReceiverSnapshotDoesNotStoreProviderIdentityTypeAsDocumentType(t *testing.T) {
 	var req pojo.WithdrawOrderBrSet
 
-	applyWithdrawReceiverSnapshot(&req, "MX", nil, map[string]string{
+	applyWithdrawReceiverSnapshot(&req, "PE", nil, map[string]string{
 		"accNameMxnW":      "Ernesto Morales",
 		"accNoMXNW":        "137835103778065956",
 		"bankCodeMXNW":     "MXNBANCOPPEL",

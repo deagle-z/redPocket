@@ -288,6 +288,6 @@ export class WsClient {
   }
 
   private maskToken(url: string) {
-    return url.replace(/(token=)[^&]+/g, '$1***')
+    return url.replace(/(token=)[^&]+/g, 'S/1***')
   }
 }

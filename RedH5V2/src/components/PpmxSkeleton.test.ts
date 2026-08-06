@@ -4,7 +4,7 @@ const { readFileSync } = await import('node:' + 'fs')
 const source = readFileSync(new URL('./PpmxSkeleton.vue', import.meta.url), 'utf8') as string
 
 describe('PpmxSkeleton source contract', () => {
-  it('exposes PP.MX skeleton variants and accessible busy status', () => {
+  it('exposes PP.PE skeleton variants and accessible busy status', () => {
     for (const variant of [
       'page',
       'card-list',

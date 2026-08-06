@@ -18,8 +18,8 @@ const logoSource = readFileSync(
   'utf8',
 ) as string
 
-describe('PP.MX localized visual assets', () => {
-  it('builds public asset URLs from the local PP.MX image root', () => {
+describe('PP.PE localized visual assets', () => {
+  it('builds public asset URLs from the local PP.PE image root', () => {
     expect(PPMX_LOCAL_IMAGE_ROOT).toBe('images/ppmx')
     expect(ppmxAsset('games/11.jpg')).toBe('/images/ppmx/games/11.jpg')
   })
@@ -40,7 +40,7 @@ describe('PP.MX localized visual assets', () => {
     expect(serialized).not.toContain('data:image')
   })
 
-  it('uses the local PP.MX promo images for the hero carousel', () => {
+  it('uses the local PP.PE promo images for the hero carousel', () => {
     expect(ppmxBanners.map((banner) => banner.image)).toEqual([
       '/images/ppmx/promos/registro.jpg',
       '/images/ppmx/promos/checkin.jpg',
@@ -76,14 +76,14 @@ describe('PP.MX localized visual assets', () => {
     expect(symbolsSource).toContain('linearGradient id="lgRed"')
   })
 
-  it('uses the migrated PP.MX emblem in the logo component', () => {
+  it('uses the migrated PP.PE emblem in the logo component', () => {
     expect(logoSource).toContain('href="#ppEmblem"')
     expect(logoSource).toContain('PP')
-    expect(logoSource).toContain('MX')
+    expect(logoSource).toContain('PE')
     expect(logoSource).not.toContain('BET')
   })
 
-  it('publishes the PP.MX emblem and wordmark as local image logo assets', () => {
+  it('publishes the PP.PE emblem and wordmark as local image logo assets', () => {
     const emblemUrl = new URL('../../../public/images/ppmx/emblem.svg', import.meta.url)
     const logoUrl = new URL('../../../public/images/ppmx/logo.svg', import.meta.url)
     const indexSource = readFileSync(new URL('../../../index.html', import.meta.url), 'utf8') as string
@@ -91,8 +91,8 @@ describe('PP.MX localized visual assets', () => {
 
     expect(existsSync(emblemUrl)).toBe(true)
     expect(existsSync(logoUrl)).toBe(true)
-    expect(readFileSync(emblemUrl, 'utf8')).toContain('aria-label="PP.MX emblem"')
-    expect(readFileSync(logoUrl, 'utf8')).toContain('aria-label="PP.MX"')
+    expect(readFileSync(emblemUrl, 'utf8')).toContain('aria-label="PP.PE emblem"')
+    expect(readFileSync(logoUrl, 'utf8')).toContain('aria-label="PP.PE"')
     expect(indexSource).toContain('%BASE_URL%images/ppmx/logo.png')
     expect(viteSource).toContain('images/ppmx/emblem.svg')
     expect(viteSource).toContain('images/ppmx/logo.svg')

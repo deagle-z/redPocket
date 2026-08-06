@@ -11,7 +11,7 @@ vi.mock('@/api/user', () => ({
     username: 'player_1001',
     firstName: 'Player',
     avatar: 'avatar.png',
-    country: 'MX',
+    country: 'PE',
     balance: 1200,
     sportBalance: 300,
     hasWithdrawAccount: true,
@@ -63,11 +63,11 @@ describe('user store auth actions', () => {
     await store.loginByPhone({
       phone: '525512345678',
       password: 'password123',
-      country: 'MX',
+      country: 'PE',
     })
 
     expect(store.token).toBe('access-token-1')
-    expect(store.userInfo?.country).toBe('MX')
+    expect(store.userInfo?.country).toBe('PE')
     expect(store.userInfo?.sportBalance).toBe(300)
     expect(store.userInfo?.hasWithdrawAccount).toBe(true)
     expect(window.localStorage.getItem('h5_token')).toContain('access-token-1')
@@ -79,7 +79,7 @@ describe('user store auth actions', () => {
     await store.loginByPhone({
       phone: '525512345678',
       password: 'password123',
-      country: 'MX',
+      country: 'PE',
     }, { remember: false })
 
     expect(store.token).toBe('access-token-1')
@@ -93,7 +93,7 @@ describe('user store auth actions', () => {
     await store.loginByPhone({
       phone: '525512345678',
       password: 'password123',
-      country: 'MX',
+      country: 'PE',
     }, { remember: false })
     store.logout()
 
@@ -109,7 +109,7 @@ describe('user store auth actions', () => {
     await store.loginByPhone({
       phone: '525512345678',
       password: 'password123',
-      country: 'MX',
+      country: 'PE',
     })
 
     window.dispatchEvent(new Event(AUTH_EXPIRED_EVENT))
@@ -126,7 +126,7 @@ describe('user store auth actions', () => {
     await store.registerByPhone({
       phone: '525512345678',
       password: 'password123',
-      country: 'MX',
+      country: 'PE',
       firstName: 'Player',
     })
 

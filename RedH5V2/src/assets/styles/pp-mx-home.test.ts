@@ -47,7 +47,7 @@ const checkedTypographySources = [
 ]
 
 
-describe('PP.MX home CSS contract', () => {
+describe('PP.PE home CSS contract', () => {
   it('keeps the reference palette and content width in the namespaced home stylesheet', () => {
     expect(css).toContain('#060608')
     expect(css).toContain('#C8102E')
@@ -179,7 +179,7 @@ describe('PP.MX home CSS contract', () => {
     expect(normalized).toContain('html[data-theme="light"] .ppmx-game-nav__item:hover { color: #000; }')
   })
 
-  it('keeps game tile provider labels gray in the PP.MX light theme', () => {
+  it('keeps game tile provider labels gray in the PP.PE light theme', () => {
     const normalized = normalizeCss(css)
 
     expect(normalized).toContain('.ppmx-htile-provider { display: block; max-width: 100%; margin-top: 3px;')
@@ -253,7 +253,7 @@ describe('PP.MX home CSS contract', () => {
     expect(css).toContain('@keyframes ppmxModalIn')
   })
 
-  it('themes Vant dialogs with the PP.MX dark red-gold visual system', () => {
+  it('themes Vant dialogs with the PP.PE dark red-gold visual system', () => {
     expect(themeCss).toContain('.van-dialog')
     expect(themeCss).toContain('.van-dialog__header')
     expect(themeCss).toContain('.van-dialog__message')
@@ -263,7 +263,7 @@ describe('PP.MX home CSS contract', () => {
     expect(themeCss).toContain('border-radius: 28px')
   })
 
-  it('themes Vant toasts as compact PP.MX premium notifications', () => {
+  it('themes Vant toasts as compact PP.PE premium notifications', () => {
     const normalized = normalizeCss(themeCss)
 
     expect(themeCss).toContain('.van-toast')
@@ -282,7 +282,7 @@ describe('PP.MX home CSS contract', () => {
     expect(normalized).toContain('.van-toast__text { min-width: 0; margin: 0;')
   })
 
-  it('adds the PP.MX light theme contract without changing the dark default', () => {
+  it('adds the PP.PE light theme contract without changing the dark default', () => {
     expect(themeCss).toContain('html[data-theme="light"]')
     expect(themeCss).toContain('--app-bg: #ffffff')
     expect(themeCss).toContain('--van-toast-text-color: #1a1a1a')
@@ -298,7 +298,7 @@ describe('PP.MX home CSS contract', () => {
     expect(css).toContain('html[data-theme="light"] .ppmx-play-title span')
   })
 
-  it('keeps auth error text readable in the PP.MX light theme', () => {
+  it('keeps auth error text readable in the PP.PE light theme', () => {
     const normalized = normalizeCss(css)
 
     expect(css).toContain('.ppmx-auth-error')
@@ -386,7 +386,7 @@ describe('PP.MX home CSS contract', () => {
     expect(normalized).toContain('.ppmx-account-guest button { min-width: 114px; min-height: 46px; padding: 0 24px; font-weight: 600; font-size: 0.875rem;')
   })
 
-  it('uses the PP.MX reference Montserrat font stack for visible non-icon text', () => {
+  it('uses the PP.PE reference Montserrat font stack for visible non-icon text', () => {
     for (const source of checkedTypographySources) {
       const normalized = normalizeCss(source)
 
@@ -414,7 +414,7 @@ describe('PP.MX home CSS contract', () => {
     expect(new Set(requiredWeights.map((weight) => weightSources.get(weight))).size).toBe(requiredWeights.length)
   })
 
-  it('keeps SVG wordmarks on the PP.MX Montserrat stack without legacy font fallbacks', () => {
+  it('keeps SVG wordmarks on the PP.PE Montserrat stack without legacy font fallbacks', () => {
     for (const source of [publicLogoSvg, symbolsSource]) {
       expect(source).toContain('font-family="Montserrat, system-ui, -apple-system, Segoe UI, sans-serif"')
       expect(source).not.toContain(legacyFontNames[0])
@@ -440,7 +440,7 @@ describe('PP.MX home CSS contract', () => {
     expect(css).toContain('--ppmx-soft: #76767e')
   })
 
-  it('maps PP.MX light utility colors to the v6 readable grayscale and red accent scale', () => {
+  it('maps PP.PE light utility colors to the v6 readable grayscale and red accent scale', () => {
     const normalized = normalizeCss(css)
 
     expect(normalized).toContain('html[data-theme="light"] .ppmx-shell .text-white { color: #1a1a1a; }')
@@ -542,7 +542,7 @@ describe('PP.MX home CSS contract', () => {
     expect(normalized).toContain('html[data-theme="light"] .ppmx-vip-progress__meta, html[data-theme="light"] .ppmx-vip-progress p, html[data-theme="light"] .ppmx-vip-level-card__body small, html[data-theme="light"] .ppmx-vip-rewards__head p, html[data-theme="light"] .ppmx-vip-reward-card p { color: #76767e; }')
   })
 
-  it('keeps PP.MX light overlays and remaining subpages readable', () => {
+  it('keeps PP.PE light overlays and remaining subpages readable', () => {
     const normalized = normalizeCss(css)
     const normalizedSupport = normalizeCss(supportSource)
     const normalizedDialog = normalizeCss(dialogSource)
@@ -589,7 +589,7 @@ describe('PP.MX home CSS contract', () => {
     expect(normalized).toContain('html[data-theme="light"] .ppmx-casino-search input::placeholder, html[data-theme="light"] .ppmx-casino-search i, html[data-theme="light"] .ppmx-casino-sort > span { color: #76767e; }')
   })
 
-  it('keeps offline and shared overlay text on PP.MX reference colors', () => {
+  it('keeps offline and shared overlay text on PP.PE reference colors', () => {
     expect(offlineHtml).toContain('color: #f5f5f7')
     expect(offlineHtml).toContain('color: rgba(245, 245, 247, 0.72)')
     expect(offlineHtml).toContain('font-family: "Montserrat", system-ui, -apple-system, "Segoe UI", sans-serif')

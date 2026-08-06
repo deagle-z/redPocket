@@ -25,7 +25,7 @@ var smsCountryDialCodeMap = map[string]string{
 	"CN": "86",
 	"ID": "62",
 	"IN": "91",
-	"MX": "52",
+	"PE": "51",
 	"MY": "60",
 	"PH": "63",
 	"TH": "66",
@@ -214,7 +214,7 @@ func NormalizePhoneDigits(phone string) string {
 
 func HasSupportedRegisterPhoneDialCode(phone string) bool {
 	digits := NormalizePhoneDigits(phone)
-	return strings.HasPrefix(digits, "55") || strings.HasPrefix(digits, "62") || strings.HasPrefix(digits, "52")
+	return strings.HasPrefix(digits, "55") || strings.HasPrefix(digits, "62") || strings.HasPrefix(digits, "51")
 }
 
 // InferCountryByPhone 根据手机号中的国际区号推断国家，推断失败时回退 fallbackCountry。

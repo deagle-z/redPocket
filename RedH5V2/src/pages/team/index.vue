@@ -216,7 +216,7 @@ function toMoneyCents(value: number | string | undefined | null) {
 }
 
 function formatAmount(value: number | string | undefined | null) {
-  return formatMoney(toMoneyCents(value), { currency: '$' })
+  return formatMoney(toMoneyCents(value), { currency: APP_CURRENCY_SYMBOL })
 }
 
 function formatMarketMoney(cents: number | { value: number }) {
@@ -249,7 +249,7 @@ function maskAccountValue(value: string) {
 
 function formatWithdrawAccountLabel(account: WithdrawAccountItem) {
   const data = parseWithdrawAccountData(account.accountData)
-  const bankName = data.bank || data.bankName || data.Bank || data.bankCode || 'MX'
+  const bankName = data.bank || data.bankName || data.Bank || data.bankCode || 'PE'
   const accountValue = data.accountNumber
     || data.routingNumber
     || data.accountNo

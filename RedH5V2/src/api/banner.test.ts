@@ -13,15 +13,15 @@ describe('popup announcement API', () => {
   })
 
   it('requests only the H5 popup position for the configured market', async () => {
-    await getPopupAnnouncements('es-MX')
+    await getPopupAnnouncements('es-PE')
 
     expect(post).toHaveBeenCalledWith(
       '/v1/app/banners',
       {
         platform: 'h5',
         position: 'popup',
-        lang: 'es-MX',
-        countryCode: 'MX',
+        lang: 'es-PE',
+        countryCode: 'PE',
       },
       {
         meta: {

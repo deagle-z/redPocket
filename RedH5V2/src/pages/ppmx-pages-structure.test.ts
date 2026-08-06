@@ -6,7 +6,7 @@ const readSource = (path: string) =>
   readFileSync(new URL(`../../${path}`, import.meta.url), 'utf8')
 const existsSource = (path: string) => existsSync(new URL(`../../${path}`, import.meta.url))
 
-describe('PP.MX routed pages structure', () => {
+describe('PP.PE routed pages structure', () => {
   it('keeps routed page SFCs inside dedicated page folders', async () => {
     const entries = await readdir(new URL('../../src/pages/', import.meta.url), {
       withFileTypes: true,
@@ -53,7 +53,7 @@ describe('PP.MX routed pages structure', () => {
     expect(activeShellSource).toContain('/profile')
   })
 
-  it('adds routed wheel, team, promo, and profile pages under the PP.MX shell', () => {
+  it('adds routed wheel, team, promo, and profile pages under the PP.PE shell', () => {
     for (const page of ['wheel', 'team', 'promo', 'profile', 'records', 'security', 'sec-password', 'sec-email', 'sec-phone', 'casino', 'user-profile', 'recharge', 'bank', 'vip', 'responsible', 'guide']) {
       const path = `src/pages/${page}/index.vue`
 
@@ -62,7 +62,7 @@ describe('PP.MX routed pages structure', () => {
     }
   })
 
-  it('uses a shared PP.MX page chrome instead of duplicating header and auth shell logic', () => {
+  it('uses a shared PP.PE page chrome instead of duplicating header and auth shell logic', () => {
     const chromePath = 'src/pages/ppmx-home/components/PpmxPageChrome.vue'
     const chromeSource = readSource(chromePath)
 
@@ -82,7 +82,7 @@ describe('PP.MX routed pages structure', () => {
     expect(readSource('src/components/PpmxSubpageLayout.vue')).toContain('PpmxPageChrome')
   })
 
-  it('extracts common PP.MX primitives for repeated page structure', () => {
+  it('extracts common PP.PE primitives for repeated page structure', () => {
     const buttonSource = readSource('src/components/PpmxButton.vue')
     const baseModalSource = readSource('src/components/PpmxBaseModal.vue')
     const withdrawModalSource = readSource('src/components/PpmxWithdrawModal.vue')
@@ -104,7 +104,7 @@ describe('PP.MX routed pages structure', () => {
     expect(requestSource).toContain('state.startLoading')
   })
 
-  it('wires the PP.MX dark and light theme toggle into shared chrome and account page', () => {
+  it('wires the PP.PE dark and light theme toggle into shared chrome and account page', () => {
     const componentSource = readSource('src/components/PpmxThemeToggle.vue')
     const composableSource = readSource('src/composables/usePpmxTheme.ts')
     const storeSource = readSource('src/stores/app.ts')
@@ -138,7 +138,7 @@ describe('PP.MX routed pages structure', () => {
     expect(profileSource).not.toContain('Tema próximamente')
   })
 
-  it('adds a dedicated mobile bottom navigation to the PP.MX shell', () => {
+  it('adds a dedicated mobile bottom navigation to the PP.PE shell', () => {
     const shellSource = readSource('src/components/PpmxHomeShell.vue')
     const stylesSource = readSource('src/assets/styles/pp-mx-home.css')
 
@@ -162,7 +162,7 @@ describe('PP.MX routed pages structure', () => {
     expect(shellSource).toContain('text-oro-400')
   })
 
-  it('connects the PP.MX daily check-in modal from the floating shortcut', () => {
+  it('connects the PP.PE daily check-in modal from the floating shortcut', () => {
     const source = readSource('src/pages/ppmx-home/PpmxHome.vue')
     const apiSource = readSource('src/api/user.ts')
     const stylesSource = readSource('src/assets/styles/pp-mx-home.css')
@@ -189,7 +189,7 @@ describe('PP.MX routed pages structure', () => {
     expect(stylesSource).toContain('.ppmx-checkin-tile')
   })
 
-  it('connects the PP.MX official social channels modal from the floating shortcut', () => {
+  it('connects the PP.PE official social channels modal from the floating shortcut', () => {
     const source = readSource('src/pages/ppmx-home/PpmxHome.vue')
     const dataSource = readSource('src/pages/ppmx-home/data.ts')
     const stylesSource = readSource('src/assets/styles/pp-mx-home.css')
@@ -210,7 +210,7 @@ describe('PP.MX routed pages structure', () => {
     expect(stylesSource).toContain('.ppmx-social-card')
   })
 
-  it('connects the PP.MX app download page from floating and account entry points', () => {
+  it('connects the PP.PE app download page from floating and account entry points', () => {
     const source = readSource('src/pages/download/index.vue')
     const homeSource = readSource('src/pages/ppmx-home/PpmxHome.vue')
     const chromeSource = readSource('src/pages/ppmx-home/components/PpmxPageChrome.vue')
@@ -251,7 +251,7 @@ describe('PP.MX routed pages structure', () => {
     expect(stylesSource).toContain('.ppmx-download-steps')
   })
 
-  it('connects the PP.MX activity guide page from the account entry point', () => {
+  it('connects the PP.PE activity guide page from the account entry point', () => {
     const source = readSource('src/pages/guide/index.vue')
     const profileSource = readSource('src/pages/profile/index.vue')
     const chromeSource = readSource('src/pages/ppmx-home/components/PpmxPageChrome.vue')
@@ -283,12 +283,12 @@ describe('PP.MX routed pages structure', () => {
     expect(dataSource).toContain("id: 'welcome'")
     expect(dataSource).toContain("id: 'download'")
     expect(dataSource).toContain('活动讲解')
-    expect(dataSource).toContain('每周最高 $??? MXN')
+    expect(dataSource).toContain('每周最高 S/??? PEN')
     expect(dataSource).toContain('参与游戏获得免费旋转')
     expect(dataSource).toContain('每笔充值最高返佣 50%')
     expect(dataSource).toContain('周薪 + 升级奖励')
-    expect(dataSource).toContain('100% 立即获得 $58 比索')
-    expect(dataSource).toContain('登录即送 $8 MXN')
+    expect(dataSource).toContain('100% 立即获得 S/58 比索')
+    expect(dataSource).toContain('登录即送 S/8 PEN')
     expect(stylesSource).toContain('.ppmx-guide-page')
     expect(stylesSource).toContain('.ppmx-guide-card')
     expect(stylesSource).toContain('html[data-theme="light"] .ppmx-guide-card')
@@ -296,7 +296,7 @@ describe('PP.MX routed pages structure', () => {
     expect(typesSource).toContain('export interface PpmxGuideCard')
   })
 
-  it('restores the lucky wheel page primitives from the PP.MX reference', () => {
+  it('restores the lucky wheel page primitives from the PP.PE reference', () => {
     const source = readSource('src/pages/wheel/index.vue')
     const apiSource = readSource('src/api/user.ts')
 
@@ -331,10 +331,10 @@ describe('PP.MX routed pages structure', () => {
     expect(apiSource).toContain('get<PrizePoolOutRecordResp>(`/v1/app/prizePool/outRecords?currentPage=${currentPage}&pageSize=${pageSize}`)')
   })
 
-  it('uses the PP.MX team v2 implementation for the routed team page', () => {
+  it('uses the PP.PE team v2 implementation for the routed team page', () => {
     const source = readSource('src/pages/team/index.vue')
     const apiSource = readSource('src/api/user.ts')
-    const esSource = readSource('src/locales/es-MX.ts')
+    const esSource = readSource('src/locales/es-PE.ts')
     const enSource = readSource('src/locales/en-US.ts')
     const zhSource = readSource('src/locales/zh-CN.ts')
 
@@ -399,7 +399,7 @@ describe('PP.MX routed pages structure', () => {
     expect(apiSource).toContain("post<TgRebateTransferResp>('/v1/app/tg/rebate/transfer'")
   })
 
-  it('adds a standalone PP.MX team v2 page from the page-team reference', () => {
+  it('adds a standalone PP.PE team v2 page from the page-team reference', () => {
     const source = readSource('src/pages/team-v2/index.vue')
     const apiSource = readSource('src/api/user.ts')
     const stylesSource = readSource('src/assets/styles/pp-mx-home.css')
@@ -434,7 +434,7 @@ describe('PP.MX routed pages structure', () => {
     expect(stylesSource).not.toContain('.ppmx-team-v2-rebate')
   })
 
-  it('restores the promo page primitives from the PP.MX reference', () => {
+  it('restores the promo page primitives from the PP.PE reference', () => {
     const source = readSource('src/pages/promo/index.vue')
     const detailSource = readSource('src/pages/promo/[id].vue')
     const detailComponentSource = readSource('src/pages/ppmx-home/components/PpmxPromoDetail.vue')
@@ -478,9 +478,9 @@ describe('PP.MX routed pages structure', () => {
     expect(dataSource).toContain("id: 'recarga'")
     expect(dataSource).toContain("id: 'download'")
     expect(dataSource).toContain("id: 'wheel'")
-    expect(dataSource).toContain("title: { es: 'Regístrate y gana $58 MXN gratis'")
-    expect(dataSource).toContain("title: { es: 'Check-in de nuevos: gana hasta $888 en 7 días'")
-    expect(dataSource).toContain("title: { es: 'Sube de nivel VIP y reclama hasta $188,888'")
+    expect(dataSource).toContain("title: { es: 'Regístrate y gana S/58 PEN gratis'")
+    expect(dataSource).toContain("title: { es: 'Check-in de nuevos: gana hasta S/888 en 7 días'")
+    expect(dataSource).toContain("title: { es: 'Sube de nivel VIP y reclama hasta S/188,888'")
     expect(dataSource).toContain("title: { es: 'Hasta 50% de comisión'")
     expect(dataSource).toContain('Primera recarga: 40% de comisión')
     expect(dataSource).toContain('Tercera recarga o más: 50% de comisión')
@@ -488,8 +488,8 @@ describe('PP.MX routed pages structure', () => {
     expect(dataSource).toContain("title: { es: 'Recarga y recibe hasta 100% de regalo'")
     expect(dataSource).toContain("zh: '最高100%赠送'")
     expect(dataSource).not.toContain("title: { es: 'Recarga hoy y recibe +25% de bono'")
-    expect(dataSource).toContain("title: { es: 'Descarga la app PP.MX y gana $8'")
-    expect(dataSource).toContain("title: { es: 'Gira la ruleta y gana hasta $10,000'")
+    expect(dataSource).toContain("title: { es: 'Descarga la app PP.PE y gana S/8'")
+    expect(dataSource).toContain("title: { es: 'Gira la ruleta y gana hasta S/10,000'")
     expect(dataSource).toContain("backgroundImage: '/images/ppmx/promos/registro.jpg'")
     expect(dataSource).toContain("backgroundImage: '/images/ppmx/promos/checkin.jpg'")
     expect(dataSource).toContain("backgroundImage: '/images/ppmx/promos/vip.jpg'")
@@ -505,7 +505,7 @@ describe('PP.MX routed pages structure', () => {
     expect(chromeSource).toContain("return '/promo'")
   })
 
-  it('restores the account page primitives from the PP.MX reference', () => {
+  it('restores the account page primitives from the PP.PE reference', () => {
     const source = readSource('src/pages/profile/index.vue')
     const apiSource = readSource('src/api/user.ts')
     const stylesSource = readSource('src/assets/styles/pp-mx-home.css')
@@ -571,7 +571,7 @@ describe('PP.MX routed pages structure', () => {
     expect(apiSource).not.toContain("'/api/v1/app/withdraw'")
   })
 
-  it('adds the PP.MX security page from the reference security screen', () => {
+  it('adds the PP.PE security page from the reference security screen', () => {
     const source = readSource('src/pages/security/index.vue')
     const stylesSource = readSource('src/assets/styles/pp-mx-home.css')
 
@@ -593,7 +593,7 @@ describe('PP.MX routed pages structure', () => {
     expect(stylesSource).toContain('.ppmx-security-card')
   })
 
-  it('adds the PP.MX security password page with the phone reset API contract', () => {
+  it('adds the PP.PE security password page with the phone reset API contract', () => {
     const source = readSource('src/pages/sec-password/index.vue')
     const apiSource = readSource('src/api/user.ts')
     const stylesSource = readSource('src/assets/styles/pp-mx-home.css')
@@ -609,7 +609,7 @@ describe('PP.MX routed pages structure', () => {
     expect(source).toContain('forgotPasswordByPhone')
     expect(source).toContain('useSubmitLock')
     expect(source).toContain("router.push('/security')")
-    expect(source).toContain('buildMxPhoneWithDialCode')
+    expect(source).toContain('buildPePhoneWithDialCode')
     expect(apiSource).toContain('export interface ForgotPasswordByPhoneParams')
     expect(apiSource).toContain("post('/v1/app/tg/sendSMSCode'")
     expect(apiSource).toContain("post('/v1/app/tg/forgotPasswordByPhone'")
@@ -617,7 +617,7 @@ describe('PP.MX routed pages structure', () => {
     expect(stylesSource).toContain('.ppmx-sec-password-form')
   })
 
-  it('adds the PP.MX security email page with the RedPocketH5 bind email contract', () => {
+  it('adds the PP.PE security email page with the RedPocketH5 bind email contract', () => {
     const source = readSource('src/pages/sec-email/index.vue')
     const apiSource = readSource('src/api/user.ts')
     const stylesSource = readSource('src/assets/styles/pp-mx-home.css')
@@ -637,7 +637,7 @@ describe('PP.MX routed pages structure', () => {
     expect(stylesSource).toContain('.ppmx-sec-email-form')
   })
 
-  it('adds the PP.MX security phone page with the RedPocketH5 bind phone contract', () => {
+  it('adds the PP.PE security phone page with the RedPocketH5 bind phone contract', () => {
     const source = readSource('src/pages/sec-phone/index.vue')
     const apiSource = readSource('src/api/user.ts')
     const stylesSource = readSource('src/assets/styles/pp-mx-home.css')
@@ -653,7 +653,7 @@ describe('PP.MX routed pages structure', () => {
     expect(source).toContain('getCurrentUserInfo')
     expect(source).toContain('useSubmitLock')
     expect(source).toContain("router.push('/security')")
-    expect(source).toContain('buildMxPhoneWithDialCode')
+    expect(source).toContain('buildPePhoneWithDialCode')
     expect(source).toContain('userStore.loadUserInfo')
     expect(apiSource).toContain('export interface TgBindPhoneReq')
     expect(apiSource).toContain("post<{ phone: string; country: AppCountryCode }>('/v1/app/tg/bindPhone'")
@@ -661,7 +661,7 @@ describe('PP.MX routed pages structure', () => {
     expect(stylesSource).toContain('.ppmx-sec-phone-form')
   })
 
-  it('adds an immersive API-backed PP.MX play page without gamePlay compatibility', () => {
+  it('adds an immersive API-backed PP.PE play page without gamePlay compatibility', () => {
     const source = readSource('src/pages/play/index.vue')
     const apiSource = readSource('src/api/game.ts')
     const homeSource = readSource('src/pages/ppmx-home/PpmxHome.vue')
@@ -690,7 +690,7 @@ describe('PP.MX routed pages structure', () => {
     expect(stylesSource).toContain('.ppmx-play-frame')
   })
 
-  it('adds an API-backed PP.MX casino category page from the reference casino screen', () => {
+  it('adds an API-backed PP.PE casino category page from the reference casino screen', () => {
     const source = readSource('src/pages/casino/index.vue')
     const apiSource = readSource('src/api/game.ts')
     const chromeSource = readSource('src/pages/ppmx-home/components/PpmxPageChrome.vue')
@@ -734,7 +734,7 @@ describe('PP.MX routed pages structure', () => {
     expect(stylesSource).toContain('.ppmx-casino-tab')
   })
 
-  it('adds the API-backed PP.MX records page with separated record types', () => {
+  it('adds the API-backed PP.PE records page with separated record types', () => {
     const source = readSource('src/pages/records/index.vue')
     const apiSource = readSource('src/api/user.ts')
     const stylesSource = readSource('src/assets/styles/pp-mx-home.css')
@@ -776,7 +776,7 @@ describe('PP.MX routed pages structure', () => {
     expect(stylesSource).toContain('.ppmx-records-card')
   })
 
-  it('adds the PP.MX user profile page from the reference profile screen', () => {
+  it('adds the PP.PE user profile page from the reference profile screen', () => {
     const source = readSource('src/pages/user-profile/index.vue')
     const stylesSource = readSource('src/assets/styles/pp-mx-home.css')
     const apiSource = readSource('src/api/user.ts')
@@ -802,7 +802,7 @@ describe('PP.MX routed pages structure', () => {
     expect(stylesSource).toContain('.ppmx-user-profile-card')
   })
 
-  it('adds the PP.MX withdrawal account page from the reference bank screen', () => {
+  it('adds the PP.PE withdrawal account page from the reference bank screen', () => {
     const source = readSource('src/pages/bank/index.vue')
     const stylesSource = readSource('src/assets/styles/pp-mx-home.css')
 
@@ -821,7 +821,7 @@ describe('PP.MX routed pages structure', () => {
     expect(stylesSource).toContain('.ppmx-bank-card')
   })
 
-  it('adds the PP.MX VIP page from the reference VIP screen', () => {
+  it('adds the PP.PE VIP page from the reference VIP screen', () => {
     const source = readSource('src/pages/vip/index.vue')
     const stylesSource = readSource('src/assets/styles/pp-mx-home.css')
     const chromeSource = readSource('src/pages/ppmx-home/components/PpmxPageChrome.vue')
@@ -849,7 +849,7 @@ describe('PP.MX routed pages structure', () => {
     expect(typesSource).toContain("| 'vip'")
   })
 
-  it('adds the PP.MX recharge page with real API integration and no static fallback', () => {
+  it('adds the PP.PE recharge page with real API integration and no static fallback', () => {
     const source = readSource('src/pages/recharge/index.vue')
     const apiSource = readSource('src/api/user.ts')
 
@@ -878,7 +878,7 @@ describe('PP.MX routed pages structure', () => {
     expect(apiSource).not.toContain("'/api/v1/app/rechargeOrder'")
   })
 
-  it('renders recharge payment as PP.MX deposit modal UI instead of redirecting directly', () => {
+  it('renders recharge payment as PP.PE deposit modal UI instead of redirecting directly', () => {
     const source = readSource('src/pages/recharge/index.vue')
     const paymentModalSource = readSource('src/components/PpmxRechargePaymentModal.vue')
     const stylesSource = readSource('src/assets/styles/pp-mx-home.css')
@@ -967,7 +967,7 @@ describe('PP.MX routed pages structure', () => {
     }
   })
 
-  it('adds the PP.MX responsible gaming page from the reference page-responsible', () => {
+  it('adds the PP.PE responsible gaming page from the reference page-responsible', () => {
     const source = readSource('src/pages/responsible/index.vue')
     const stylesSource = readSource('src/assets/styles/pp-mx-home.css')
     const chromeSource = readSource('src/pages/ppmx-home/components/PpmxPageChrome.vue')
@@ -983,7 +983,7 @@ describe('PP.MX routed pages structure', () => {
     expect(source).toContain('sessionTime')
     expect(source).toContain('exclusionOptions')
     expect(source).toContain('applyResponsibleSetting')
-    expect(source).toContain('PP.MX SUPPORT')
+    expect(source).toContain('PP.PE SUPPORT')
     expect(stylesSource).toContain('.ppmx-responsible-page')
     expect(stylesSource).toContain('.ppmx-responsible-card--exclude')
     expect(stylesSource).toContain('.ppmx-responsible-hotline')

@@ -100,7 +100,7 @@ const salaryClaimed = computed(() => Boolean(salary.value?.claimed))
 const salaryClaimable = computed(() => Boolean(salary.value?.claimable))
 const salaryAmount = computed(() => Number(salary.value?.weeklySalary ?? 0))
 const salaryAmountText = computed(() =>
-  `${APP_CURRENCY_SYMBOL}${salaryAmount.value.toLocaleString('es-MX', { maximumFractionDigits: 2 })} ${APP_CURRENCY}`,
+  `${APP_CURRENCY_SYMBOL}${salaryAmount.value.toLocaleString('es-PE', { maximumFractionDigits: 2 })} ${APP_CURRENCY}`,
 )
 const salaryNote = computed(() => {
   if (salaryClaimed.value) return tx.salNext
@@ -208,7 +208,7 @@ function isUnlocked(index: number) { return index <= currentLevelIndex.value }
 
 function fmt(n: number) { return n < 0 ? '♾️' : n.toLocaleString('en-US') }
 function fmtMarketMoney(n: number) {
-  return n < 0 ? '♾️' : n === 0 ? `${APP_CURRENCY_SYMBOL}0 ${APP_CURRENCY}` : `${APP_CURRENCY_SYMBOL}${n.toLocaleString('es-MX')} ${APP_CURRENCY}`
+  return n < 0 ? '♾️' : n === 0 ? `${APP_CURRENCY_SYMBOL}0 ${APP_CURRENCY}` : `${APP_CURRENCY_SYMBOL}${n.toLocaleString('es-PE')} ${APP_CURRENCY}`
 }
 
 // ---- data loading ----

@@ -58,7 +58,7 @@ Route meta fields (declared in `src/types/router-meta.d.ts`):
 ### Shells
 `App.vue` dispatches each route to one of three shells based on `route.meta.shell`:
 - `AppShell` — standard mobile/PC layout with PC topbar and optional mobile tabbar
-- `PpmxHomeShell` — landing-page-style shell for the PP.MX home experience
+- `PpmxHomeShell` — landing-page-style shell for the PP.PE home experience
 - bare `<template>` — no layout wrapper
 
 ### State and Auth
@@ -100,7 +100,7 @@ Two intentionally-separated stylesheets:
 Put color/visual treatment in `theme.css`; put dimensions, layout, and media queries in `main.css`. Default visual direction: dark, premium, red/gold glassmorphism, `8px` radius.
 
 ### i18n
-Three locales under `src/locales/`: `es-MX` (primary), `en-US`, `zh-CN`. Strings go in all three files. Use `useI18n()` (auto-imported) in components. The i18n instance is also available directly via `import { i18n } from '@/plugins/i18n'` for use outside Vue components.
+Three locales under `src/locales/`: `es-PE` (primary), `en-US`, `zh-CN`. Strings go in all three files. Use `useI18n()` (auto-imported) in components. The i18n instance is also available directly via `import { i18n } from '@/plugins/i18n'` for use outside Vue components.
 
 ### Auto Imports
 `unplugin-auto-import` auto-imports Vue APIs, Vue Router APIs, Pinia APIs, VueUse APIs, `useI18n`, all composables under `src/composables/`, and all stores under `src/stores/` and `src/stores/modules/`. Vant components are auto-resolved by `unplugin-vue-components`. Do not import these manually.

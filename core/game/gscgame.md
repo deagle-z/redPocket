@@ -702,7 +702,7 @@ https://testcase.gscplusmd.com
       "image_url": "https://images.gscplusmd.com/statics/staging/images/games/1/POKER/aviator.png",
       "product_id": 1,
       "product_code": 1138,
-      "support_currency": "MXN",
+      "support_currency": "PEN",
       "status": "ACTIVATED",
       "allow_free_round": true,
       "lang_name": {
@@ -724,7 +724,7 @@ https://testcase.gscplusmd.com
       "image_url": "https://images.gscplusmd.com/statics/staging/images/games/1/POKER/dice.png",
       "product_id": 1,
       "product_code": 1138,
-      "support_currency": "MXN",
+      "support_currency": "PEN",
       "status": "ACTIVAT",
       "allow_free_round": true,
       "lang_name": {

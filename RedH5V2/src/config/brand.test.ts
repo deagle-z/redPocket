@@ -11,7 +11,7 @@ const activeAppFiles = [
   new URL('../components/AppShell.vue', import.meta.url),
   new URL('../components/AppTabbar.vue', import.meta.url),
   new URL('../pages/ppmx-home/PpmxHome.vue', import.meta.url),
-  new URL('../locales/es-MX.ts', import.meta.url),
+  new URL('../locales/es-PE.ts', import.meta.url),
   new URL('../locales/en-US.ts', import.meta.url),
   new URL('../locales/zh-CN.ts', import.meta.url),
   new URL('../pages/profile/index.vue', import.meta.url),
@@ -23,10 +23,10 @@ const activeSource = activeAppFiles
   .map((file) => readFileSync(file, 'utf8'))
   .join('\n')
 
-describe('PP.MX brand foundation', () => {
+describe('PP.PE brand foundation', () => {
   it('exposes the project brand contract', () => {
-    expect(APP_BRAND.name).toBe('PP.MX')
-    expect(APP_BRAND.shortName).toBe('PP.MX')
+    expect(APP_BRAND.name).toBe('PP.PE')
+    expect(APP_BRAND.shortName).toBe('PP.PE')
     expect(APP_BRAND.mark).toBe('PP')
     expect(APP_BRAND.themeColor).toBe('#060608')
   })
@@ -60,7 +60,7 @@ describe('PP.MX brand foundation', () => {
     expect(indexSource).toContain('#app-loading::before')
     expect(indexSource).toContain('.app-loading__panel')
     expect(indexSource).toContain('%BASE_URL%images/ppmx/logo.png')
-    expect(indexSource).toContain('app-loading__brand">PP<span>.</span>MX')
+    expect(indexSource).toContain('app-loading__brand">PP<span>.</span>PE')
     expect(indexSource).toContain('app-loading-spin')
     expect(indexSource).not.toContain('backdrop-filter: blur(22px) saturate(150%)')
     expect(mainSource).toContain('removeInitialLoading')

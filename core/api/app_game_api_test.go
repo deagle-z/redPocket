@@ -65,7 +65,7 @@ func TestBuildAppGameSetFromGSCProviderGameUsesConfiguredMapping(t *testing.T) {
 		GameName:        "Fallback Aviator",
 		GameType:        "POKER",
 		ImageURL:        "https://img.example/default.png",
-		SupportCurrency: "MXN",
+		SupportCurrency: "PEN",
 		Status:          "ACTIVATED",
 		LangName: map[string]string{
 			"0": "Aviator",
@@ -108,7 +108,7 @@ func TestBuildAppGameSetFromGSCProviderGameDisablesInactiveStatus(t *testing.T) 
 		GameName:        "Closed Game",
 		GameType:        "UNKNOWN",
 		ImageURL:        "https://img.example/closed.png",
-		SupportCurrency: "MXN",
+		SupportCurrency: "PEN",
 		Status:          "MAINTAINING",
 	}
 

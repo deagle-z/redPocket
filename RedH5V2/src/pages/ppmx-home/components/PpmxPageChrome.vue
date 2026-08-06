@@ -6,6 +6,7 @@ import {
   ppmxNotices,
 } from '../data'
 import { formatMoney, toDisplayCents } from '@/utils/money'
+import { APP_CURRENCY_SYMBOL } from '@/config/market'
 import { isPublicTabbarRoute } from '@/utils/authGate'
 import { usePpmxLocale } from '../composables/usePpmxLocale'
 import type { LocaleCode, PpmxAuthMode, PpmxRouteTarget } from '../types'
@@ -43,12 +44,12 @@ const ppmxLanguageOptions: Array<{
   triggerLabel: string
   country: string
 }> = [
-  { locale: 'es', region: 'MX', label: 'Español', triggerLabel: 'Español', country: 'México' },
-  { locale: 'en', region: 'MX', label: 'English', triggerLabel: 'English', country: 'Mexico' },
+  { locale: 'es', region: 'PE', label: 'Español', triggerLabel: 'Español', country: 'Perú' },
+  { locale: 'en', region: 'PE', label: 'English', triggerLabel: 'English', country: 'Peru' },
   { locale: 'zh', region: 'CN', label: '简体中文', triggerLabel: '中文', country: 'China' },
 ]
 const headerBalance = computed(() => formatMoney(toDisplayCents(userStore.userInfo?.balance), {
-  currency: '$',
+  currency: APP_CURRENCY_SYMBOL,
 }))
 const activeLanguage = computed(() =>
   ppmxLanguageOptions.find((item) => item.locale === homeLocale.value) || ppmxLanguageOptions[0],

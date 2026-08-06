@@ -10,7 +10,7 @@ func TestOrderCurrencySymbol(t *testing.T) {
 	}{
 		{name: "brl", currency: "BRL", want: "R$"},
 		{name: "usd", currency: "USD", want: "$"},
-		{name: "mxn lowercase", currency: "mxn", want: "$"},
+		{name: "pen lowercase", currency: "pen", want: "S/"},
 		{name: "cny", currency: "CNY", want: "¥"},
 		{name: "unknown fallback", currency: "cop", want: "COP"},
 		{name: "blank", currency: " ", want: ""},

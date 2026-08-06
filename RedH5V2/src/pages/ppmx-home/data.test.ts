@@ -12,7 +12,7 @@ import {
   ppmxTrustItems,
 } from './data'
 
-describe('PP.MX home reference data', () => {
+describe('PP.PE home reference data', () => {
   it('contains the reference home shell navigation data', () => {
     expect(ppmxNavItems.map((item) => item.id)).toEqual([
       'home',
@@ -66,8 +66,8 @@ describe('PP.MX home reference data', () => {
     expect(ppmxNotices[2].text.zh).not.toContain('+25%')
     expect(ppmxBanners[4].benefitHtml?.zh).toContain('最高 100%返利')
     expect(ppmxBanners[6].sub.zh).toContain('每达到 10000 流水')
-    expect(ppmxBanners[6].sub.zh).toContain('单次充值金额≧$200')
-    expect(ppmxBanners[6].sub.en).toContain('Each single deposit of ≥$200 grants one free spin')
+    expect(ppmxBanners[6].sub.zh).toContain('单次充值金额≧S/200')
+    expect(ppmxBanners[6].sub.en).toContain('Each single deposit of ≥S/200 grants one free spin')
   })
 
   it('contains the reference lobby categories and brand catalog', () => {

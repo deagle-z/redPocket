@@ -18,7 +18,7 @@ async function mockRechargeApis(page: Page) {
   await page.route(/\/(?:api\/)?v1\/app\/tg\/currentUserInfo$/, route => fulfillJson(route, {
     id: 1001,
     username: 'bonus_e2e_user',
-    country: 'MX',
+    country: 'PE',
     balance: 250000,
     sportBalance: 100000,
     hasWithdrawAccount: true,
@@ -27,21 +27,21 @@ async function mockRechargeApis(page: Page) {
   await page.route(/\/(?:api\/)?v1\/app\/countries$/, route => fulfillJson(route, [
     {
       id: 1,
-      countryCode: 'MX',
-      countryNameEn: 'Mexico',
-      countryNameCn: '墨西哥',
-      currencyCode: 'MXN',
+      countryCode: 'PE',
+      countryNameEn: 'Peru',
+      countryNameCn: '秘鲁',
+      currencyCode: 'PEN',
       currencySymbol: '$',
       sort: 1,
     },
   ]))
 
-  await page.route(/\/(?:api\/)?v1\/app\/country\/MX\/recharge$/, route => fulfillJson(route, {
+  await page.route(/\/(?:api\/)?v1\/app\/country\/PE\/recharge$/, route => fulfillJson(route, {
     rechargeFields: [],
     channels: [
       {
         id: 1,
-        channelCode: 'BANK_MX',
+        channelCode: 'BANK_PE',
         channelName: 'Transferencia bancaria',
         providerType: 'bank',
         icon: null,
@@ -59,7 +59,7 @@ async function mockRechargeApis(page: Page) {
     ],
   }))
 
-  await page.route(/\/(?:api\/)?v1\/app\/country\/MX\/rechargeFields$/, route => fulfillJson(route, []))
+  await page.route(/\/(?:api\/)?v1\/app\/country\/PE\/rechargeFields$/, route => fulfillJson(route, []))
   await page.route(/\/(?:api\/)?v1\/app\/recharge\/isFirst\/v2$/, route => fulfillJson(route, {
     hasFirst: false,
     isFirstRecharge: true,
@@ -105,7 +105,7 @@ test('shows the API gift percentage for balance deposits and hides it for sports
   await expect(walletSelector).toContainText('E-wallet')
   await expect(promotion).toBeVisible()
   await expect(promotion).toContainText('18%')
-  await expect(promotion).toContainText('$9.00')
+  await expect(promotion).toContainText('S/9.00')
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
   const overflowingAmountButtons = await page.evaluate(() => Array.from(document.querySelectorAll('.ppmx-recharge-amount'))
     .filter(button => button.scrollWidth > button.clientWidth)

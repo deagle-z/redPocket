@@ -725,7 +725,7 @@ func submitWithdrawPayout(db *gorm.DB, order *pojo.WithdrawOrderBr) error {
 	if req.AccNo == "" {
 		return errors.New("withdraw_payout_acc_no_required")
 	}
-	if countryCode == "MX" && req.BankCode == "" {
+	if countryCode == "PE" && req.BankCode == "" {
 		return errors.New("withdraw_payout_bank_code_required")
 	}
 	if req.Email == "" {
@@ -849,7 +849,7 @@ func withdrawCountryFieldSuffixes(countryCode string) []string {
 	switch pojo.NormalizeWithdrawCountryCode(countryCode) {
 	case "BR":
 		return []string{"brlw", "brl", "br"}
-	case "MX":
+	case "PE":
 		return []string{"mxnw", "mxn", "mx"}
 	default:
 		return nil

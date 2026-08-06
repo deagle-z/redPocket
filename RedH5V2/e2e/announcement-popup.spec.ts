@@ -18,7 +18,7 @@ async function mockHomeApis(page: Page) {
   await page.route(/\/(?:api\/)?v1\/app\/tg\/currentUserInfo$/, route => fulfillJson(route, {
     id: 1001,
     username: 'popup_e2e_user',
-    country: 'MX',
+    country: 'PE',
     balance: 1000,
   }))
   await page.route(/\/(?:api\/)?v1\/app\/tg\/deviceInfo$/, route => fulfillJson(route, {}))
@@ -43,8 +43,8 @@ async function mockHomeApis(page: Page) {
         status: 1,
         startTime: null,
         endTime: null,
-        languageCode: 'es-MX',
-        countryCode: 'MX',
+        languageCode: 'es-PE',
+        countryCode: 'PE',
         title: 'Refresh announcement',
         subTitle: null,
         description: 'Shown once per platform entry.',

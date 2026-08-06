@@ -143,8 +143,10 @@ func orderCurrencySymbol(currency string) string {
 		return ""
 	case "BRL":
 		return "R$"
-	case "USD", "MXN":
+	case "USD":
 		return "$"
+	case "PEN":
+		return "S/"
 	case "CNY", "RMB":
 		return "¥"
 	case "EUR":

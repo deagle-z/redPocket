@@ -9,7 +9,7 @@ const selectInputSource = existsSync(selectInputUrl)
   : ''
 
 describe('bank withdrawal account API integration', () => {
-  it('uses the backend country withdrawal-field contract for Mexico', () => {
+  it('uses the backend country withdrawal-field contract for Peru', () => {
     expect(bankSource).toContain("import {")
     expect(bankSource).toContain('APP_COUNTRY_CODE')
     expect(bankSource).toContain('getAppCountries()')
@@ -32,7 +32,7 @@ describe('bank withdrawal account API integration', () => {
     expect(bankSource).not.toContain(':message="t(\'bank.errorMessage\')"')
   })
 
-  it('delegates select input behavior to the shared PP.MX select component', () => {
+  it('delegates select input behavior to the shared PP.PE select component', () => {
     expect(selectInputSource).toContain('defineModel<string>')
     expect(bankSource).toContain('PpmxSelectInput')
     expect(bankSource).toContain(':options="fieldOptions(field)"')

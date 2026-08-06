@@ -4,7 +4,7 @@ import AppPageHeader from '@/components/AppPageHeader.vue'
 import referralCommissionBrazilImage from '@/assets/images/long_image_brazil/referral_commission_short_brazil.png'
 import referralCommissionEnglishImage from '@/assets/images/long_image_english/referral_commission_short_english.png'
 import referralCommissionIndonesiaImage from '@/assets/images/long_image_indonesia/referral_commission_short_indonesia.png'
-import referralCommissionMexicoImage from '@/assets/images/long_image_mexico/referral_commission_short_mexico.png'
+import referralCommissionPeruImage from '@/assets/images/long_image_mexico/referral_commission_short_mexico.png'
 import { locale } from '@/utils/i18n'
 import { safeBack } from '@/utils/navigation'
 
@@ -15,7 +15,7 @@ const referralCommissionImageMap: Record<string, string> = {
   'pt-BR': referralCommissionBrazilImage,
   'en-US': referralCommissionEnglishImage,
   'id-ID': referralCommissionIndonesiaImage,
-  'es-MX': referralCommissionMexicoImage,
+  'es-PE': referralCommissionPeruImage,
 }
 
 const referralCommissionImage = computed(() => referralCommissionImageMap[locale.value] || referralCommissionEnglishImage)

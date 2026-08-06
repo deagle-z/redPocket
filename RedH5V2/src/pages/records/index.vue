@@ -12,6 +12,7 @@ import type {
   WithdrawOrderHistoryItem,
 } from '@/api/user'
 import { formatMoney, toCent } from '@/utils/money'
+import { APP_CURRENCY_SYMBOL } from '@/config/market'
 import PpmxMoneyText from '@/components/PpmxMoneyText.vue'
 import PpmxSegmentedOptions from '@/components/PpmxSegmentedOptions.vue'
 import { usePpmxLocale } from '../ppmx-home/composables/usePpmxLocale'
@@ -195,7 +196,7 @@ function toMoneyCent(value: number | string | undefined | null) {
 }
 
 function formatAmount(value: number) {
-  return formatMoney(value, { currency: '$' })
+  return formatMoney(value, { currency: APP_CURRENCY_SYMBOL })
 }
 
 function formatSignedAmount(value: number) {

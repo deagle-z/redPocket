@@ -464,7 +464,7 @@ export function useWithdrawOrderBr(tableRef: Ref) {
     }
     const currencyCountryMap: Record<string, string> = {
       BRL: "BR",
-      MXN: "MX"
+      PEN: "PE"
     };
     return currencyCountryMap[String(row.currency || "").toUpperCase()] || "";
   }

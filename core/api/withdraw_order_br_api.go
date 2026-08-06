@@ -575,7 +575,7 @@ func formatOptionalInt64(value *int64) string {
 }
 
 func resolveAppWithdrawV2Provider(countryCode string) string {
-	if pojo.NormalizeWithdrawCountryCode(countryCode) == "MX" {
+	if pojo.NormalizeWithdrawCountryCode(countryCode) == "PE" {
 		return appWithdrawVcpayMxn
 	}
 	return ""
@@ -693,7 +693,7 @@ func countryFieldSuffixes(countryCode string) []string {
 	switch pojo.NormalizeWithdrawCountryCode(countryCode) {
 	case "BR":
 		return []string{"brlw", "brl", "br"}
-	case "MX":
+	case "PE":
 		return []string{"mxnw", "mxn", "mx"}
 	default:
 		return nil

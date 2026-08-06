@@ -25,7 +25,7 @@ const showLangPopup = ref(false)
 const showCountryPopup = ref(false)
 const registerHeaderImage = imgRegisterHeader
 const registerCountries = [
-  { code: 'MX', nameKey: 'register.countryMexico', dialCode: '+52' },
+  { code: 'PE', nameKey: 'register.countryPeru', dialCode: '+51' },
   { code: 'ID', nameKey: 'register.countryIndonesia', dialCode: '+62' },
   { code: 'BR', nameKey: 'register.countryBrazil', dialCode: '+55' },
 ] as const
@@ -65,8 +65,8 @@ function detectRegisterCountry(): RegisterCountryCode {
   for (const lang of browserLanguages) {
     if (lang.includes('-BR') || lang.startsWith('PT'))
       return 'BR'
-    if (lang.includes('-MX') || lang.startsWith('ES'))
-      return 'MX'
+    if (lang.includes('-PE') || lang.startsWith('ES'))
+      return 'PE'
     if (lang.includes('-ID') || lang.startsWith('ID'))
       return 'ID'
   }

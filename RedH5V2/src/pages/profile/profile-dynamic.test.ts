@@ -8,7 +8,7 @@ const rechargeModalSource = readFileSync(new URL('../../components/PpmxRechargeM
 const rechargePaymentModalSource = readFileSync(new URL('../../components/PpmxRechargePaymentModal.vue', import.meta.url), 'utf8')
 const zhLocaleSource = readFileSync(new URL('../../locales/zh-CN.ts', import.meta.url), 'utf8')
 const enLocaleSource = readFileSync(new URL('../../locales/en-US.ts', import.meta.url), 'utf8')
-const esLocaleSource = readFileSync(new URL('../../locales/es-MX.ts', import.meta.url), 'utf8')
+const esLocaleSource = readFileSync(new URL('../../locales/es-PE.ts', import.meta.url), 'utf8')
 
 describe('profile dynamic user data', () => {
   it('loads profile data for logged-in sessions and renders explicit loading/error/empty states', () => {
@@ -21,10 +21,10 @@ describe('profile dynamic user data', () => {
     expect(profileSource).toContain('@retry="loadProfileData"')
   })
 
-  it('does not fall back to hardcoded PP.MX account data when a logged-in profile is missing', () => {
-    expect(profileSource).not.toContain("|| 'pp.mx'")
-    expect(profileSource).not.toContain(": 'ID PP.MX'")
-    expect(profileSource).not.toContain('class="ppmx-account-avatar">pp.mx</span>')
+  it('does not fall back to hardcoded PP.PE account data when a logged-in profile is missing', () => {
+    expect(profileSource).not.toContain("|| 'pp.pe'")
+    expect(profileSource).not.toContain(": 'ID PP.PE'")
+    expect(profileSource).not.toContain('class="ppmx-account-avatar">pp.pe</span>')
   })
 
   it('keeps deposit, withdraw, and withdrawal account actions on one mobile row', () => {
@@ -154,7 +154,7 @@ describe('profile dynamic user data', () => {
     expect(esLocaleSource).toContain('Si el monto abierto para pagar es distinto del monto a pagar')
   })
 
-  it('matches the PP.MX Apple withdraw modal reference structure', () => {
+  it('matches the PP.PE Apple withdraw modal reference structure', () => {
     expect(profileSource).toContain('id="withdrawModal"')
     expect(profileSource).toContain("withdrawWagerComplete ? 'wd-badge--ok' : 'wd-badge--bad'")
     expect(profileSource).toContain('<div class="wd-rules">')
@@ -175,18 +175,18 @@ describe('profile dynamic user data', () => {
     expect(userApiSource).toContain('meta: { showError: false }')
   })
 
-  it('uses 50 MXN as the minimum for regular withdrawals', () => {
+  it('uses 50 PEN as the minimum for regular withdrawals', () => {
     expect(profileSource).toContain('const withdrawMinCents = 5_000')
     expect(profileSource).toContain('min="50"')
-    expect(profileSource).toContain('Monto mínimo de retiro: $50.00 MXN')
-    expect(profileSource).toContain('Minimum withdrawal: $50.00 MXN')
-    expect(profileSource).toContain('最低提现金额为 $50.00 MXN')
+    expect(profileSource).toContain('Monto mínimo de retiro: S/50.00 PEN')
+    expect(profileSource).toContain('Minimum withdrawal: S/50.00 PEN')
+    expect(profileSource).toContain('最低提现金额为 S/50.00 PEN')
     expect(profileSource).toContain('Monto mínimo de retiro: 50.')
     expect(profileSource).toContain('Minimum withdrawal amount: 50.')
     expect(profileSource).toContain('最低提现金额：50。')
 
-    expect(esLocaleSource).toContain("commissionWithdrawMinToast: 'Monto mínimo de retiro de comisión: $50.00 MXN'")
-    expect(enLocaleSource).toContain("commissionWithdrawMinToast: 'Minimum commission withdrawal: $50.00 MXN'")
-    expect(zhLocaleSource).toContain("commissionWithdrawMinToast: '最低佣金提现金额为 $50.00 MXN'")
+    expect(esLocaleSource).toContain("commissionWithdrawMinToast: 'Monto mínimo de retiro de comisión: S/50.00 PEN'")
+    expect(enLocaleSource).toContain("commissionWithdrawMinToast: 'Minimum commission withdrawal: S/50.00 PEN'")
+    expect(zhLocaleSource).toContain("commissionWithdrawMinToast: '最低佣金提现金额为 S/50.00 PEN'")
   })
 })

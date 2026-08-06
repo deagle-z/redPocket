@@ -178,7 +178,7 @@ test.describe('recharge payment channels', () => {
     await expect(page.getByTestId('pay-channel-google')).toContainText('Google Pay')
     await expect(page.getByTestId('pay-channel-crypto')).toContainText(/Crypto|加密货币/)
     await expect(page.locator('.ppmx-recharge-amount-grid .ppmx-recharge-amount')).toHaveCount(10)
-    await expect(page.locator('.ppmx-recharge-amount-grid .ppmx-recharge-amount').first()).toContainText('$30.00')
+    await expect(page.locator('.ppmx-recharge-amount-grid .ppmx-recharge-amount').first()).toContainText('S/30.00')
     await expect(page.locator('.ppmx-recharge-amount-grid')).not.toContainText(/Custom|自定义|Personalizado/)
 
     const requestPromise = page.waitForRequest(/\/(?:api\/)?v1\/app\/rechargeOrder\/v2$/)

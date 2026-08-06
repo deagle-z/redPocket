@@ -5,7 +5,7 @@ import VipProgressPopup from '@/components/VipProgressPopup.vue'
 import vipBrazilImage from '@/assets/images/long_image_brazil/VIP_short_brazil.png'
 import vipEnglishImage from '@/assets/images/long_image_english/VIP_short_english.png'
 import vipIndonesiaImage from '@/assets/images/long_image_indonesia/VIP_short_indonesia.png'
-import vipMexicoImage from '@/assets/images/long_image_mexico/VIP_short_mexico.png'
+import vipPeruImage from '@/assets/images/long_image_mexico/VIP_short_mexico.png'
 import { locale } from '@/utils/i18n'
 import { safeBack } from '@/utils/navigation'
 
@@ -17,7 +17,7 @@ const vipImageMap: Record<string, string> = {
   'pt-BR': vipBrazilImage,
   'en-US': vipEnglishImage,
   'id-ID': vipIndonesiaImage,
-  'es-MX': vipMexicoImage,
+  'es-PE': vipPeruImage,
 }
 
 const vipImage = computed(() => vipImageMap[locale.value] || vipEnglishImage)

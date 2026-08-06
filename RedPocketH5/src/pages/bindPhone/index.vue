@@ -21,7 +21,7 @@ const boundCountry = ref('')
 
 const bindPhoneCountries = [
   { code: 'BR', nameKey: 'bindPhonePage.countryBrazil', dialCode: '+55' },
-  { code: 'MX', nameKey: 'bindPhonePage.countryMexico', dialCode: '+52' },
+  { code: 'PE', nameKey: 'bindPhonePage.countryPeru', dialCode: '+51' },
   { code: 'ID', nameKey: 'bindPhonePage.countryIndonesia', dialCode: '+62' },
 ] as const
 type BindPhoneCountryCode = typeof bindPhoneCountries[number]['code']

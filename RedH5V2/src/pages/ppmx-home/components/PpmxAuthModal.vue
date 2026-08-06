@@ -14,11 +14,11 @@ import {
   trackCompleteRegistration,
 } from '@/utils/facebookPixel'
 import {
-  buildMxPhoneWithDialCode,
-  isValidMxNationalPhone,
-  normalizeMxNationalPhone,
-  MX_COUNTRY_CODE,
-} from '@/utils/mxPhone'
+  buildPePhoneWithDialCode,
+  isValidPeNationalPhone,
+  normalizePeNationalPhone,
+  PE_COUNTRY_CODE,
+} from '@/utils/pePhone'
 import { APP_DIAL_CODE } from '@/config/market'
 import {
   captureInviteCode,
@@ -127,7 +127,7 @@ function switchAuthMode(mode: PpmxAuthMode) {
 }
 
 async function openForgotPassword() {
-  const nationalPhone = normalizeMxNationalPhone(loginForm.phone)
+  const nationalPhone = normalizePeNationalPhone(loginForm.phone)
 
   closeAuthModal()
   await router.push({
@@ -137,11 +137,11 @@ async function openForgotPassword() {
 }
 
 function normalizeLoginPhone() {
-  loginForm.phone = normalizeMxNationalPhone(loginForm.phone).slice(0, 10)
+  loginForm.phone = normalizePeNationalPhone(loginForm.phone).slice(0, 9)
 }
 
 function normalizeRegisterPhone() {
-  registerForm.phone = normalizeMxNationalPhone(registerForm.phone).slice(0, 10)
+  registerForm.phone = normalizePeNationalPhone(registerForm.phone).slice(0, 9)
 }
 
 function getSubmitErrorMessage(error: unknown) {
@@ -155,14 +155,14 @@ function getRegisterPhoneErrorMessage(error: unknown) {
 }
 
 function validateLoginForm() {
-  const nationalPhone = normalizeMxNationalPhone(loginForm.phone)
+  const nationalPhone = normalizePeNationalPhone(loginForm.phone)
 
   if (!nationalPhone) {
     showFailToast(t('auth.requiredPhone'))
     return false
   }
 
-  if (!isValidMxNationalPhone(nationalPhone)) {
+  if (!isValidPeNationalPhone(nationalPhone)) {
     showFailToast(t('auth.invalidPhone'))
     return false
   }
@@ -176,7 +176,7 @@ function validateLoginForm() {
 }
 
 function validateRegisterStep(step = registerStep.value) {
-  const nationalPhone = normalizeMxNationalPhone(registerForm.phone)
+  const nationalPhone = normalizePeNationalPhone(registerForm.phone)
 
   if (step === 1) {
     if (!nationalPhone) {
@@ -184,7 +184,7 @@ function validateRegisterStep(step = registerStep.value) {
       return false
     }
 
-    if (!isValidMxNationalPhone(nationalPhone)) {
+    if (!isValidPeNationalPhone(nationalPhone)) {
       showFailToast(t('auth.invalidPhone'))
       return false
     }
@@ -233,13 +233,13 @@ async function checkRegisterPhoneAvailable() {
 
   submitting.value = true
   submitError.value = ''
-  const nationalPhone = normalizeMxNationalPhone(registerForm.phone)
-  const phone = buildMxPhoneWithDialCode(nationalPhone)
+  const nationalPhone = normalizePeNationalPhone(registerForm.phone)
+  const phone = buildPePhoneWithDialCode(nationalPhone)
 
   try {
     const result = await checkRegisterPhone({
       phone,
-      country: MX_COUNTRY_CODE,
+      country: PE_COUNTRY_CODE,
     })
 
     if (!result.available) {
@@ -278,21 +278,21 @@ async function submitLogin() {
 
   submitting.value = true
   submitError.value = ''
-  const nationalPhone = normalizeMxNationalPhone(loginForm.phone)
-  const phone = buildMxPhoneWithDialCode(nationalPhone)
+  const nationalPhone = normalizePeNationalPhone(loginForm.phone)
+  const phone = buildPePhoneWithDialCode(nationalPhone)
   const eventId = createThirdPartyEventId('login_submit')
 
   void trackAttributionEvent({
     eventName: 'login_submit',
     eventId,
-    metadata: { country: MX_COUNTRY_CODE },
+    metadata: { country: PE_COUNTRY_CODE },
   })
 
   try {
     await userStore.loginByPhone({
       phone,
       password: loginForm.password,
-      country: MX_COUNTRY_CODE,
+      country: PE_COUNTRY_CODE,
     }, {
       remember: loginForm.remember,
     })
@@ -301,7 +301,7 @@ async function submitLogin() {
     void trackAttributionEvent({
       eventName: 'login_success',
       eventId: createThirdPartyEventId('login_success'),
-      metadata: { country: MX_COUNTRY_CODE },
+      metadata: { country: PE_COUNTRY_CODE },
     })
 
     showToast(t('auth.loginSuccess'))
@@ -321,8 +321,8 @@ async function submitRegister() {
 
   submitting.value = true
   submitError.value = ''
-  const nationalPhone = normalizeMxNationalPhone(registerForm.phone)
-  const phone = buildMxPhoneWithDialCode(nationalPhone)
+  const nationalPhone = normalizePeNationalPhone(registerForm.phone)
+  const phone = buildPePhoneWithDialCode(nationalPhone)
   const sourceChannelCode = getSourceChannelCode()
   const inviteCode = registerForm.inviteCode.trim() || getStoredInviteCode()
   const submitEventId = createThirdPartyEventId('register_submit')
@@ -330,7 +330,7 @@ async function submitRegister() {
   void trackAttributionEvent({
     eventName: 'register_submit',
     eventId: submitEventId,
-    metadata: { country: MX_COUNTRY_CODE, inviteCode, sourceChannelCode },
+    metadata: { country: PE_COUNTRY_CODE, inviteCode, sourceChannelCode },
   })
 
   try {
@@ -338,7 +338,7 @@ async function submitRegister() {
 
     await userStore.registerByPhone({
       phone,
-      country: MX_COUNTRY_CODE,
+      country: PE_COUNTRY_CODE,
       firstName: registerForm.firstName.trim(),
       password: registerForm.password,
       inviteCode,
@@ -352,7 +352,7 @@ async function submitRegister() {
     void trackAttributionEvent({
       eventName: 'register_success',
       eventId: successEventId,
-      metadata: { country: MX_COUNTRY_CODE, inviteCode, sourceChannelCode },
+      metadata: { country: PE_COUNTRY_CODE, inviteCode, sourceChannelCode },
     })
     trackCompleteRegistration(successEventId)
 
@@ -370,7 +370,7 @@ async function submitRegister() {
 </script>
 
 <template>
-  <PpmxModal v-model="modalOpen" aria-label="PP.MX account access" card-class="ppmx-auth-card">
+  <PpmxModal v-model="modalOpen" aria-label="PP.PE account access" card-class="ppmx-auth-card">
     <template v-if="isLogin">
       <PpmxLogo />
       <h2>{{ t('auth.welcomeTitle') }}</h2>

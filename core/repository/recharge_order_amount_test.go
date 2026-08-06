@@ -47,22 +47,22 @@ func TestCalculateRechargeProviderAmount(t *testing.T) {
 	}
 }
 
-func TestApplyRechargeV2DefaultProviderUsesVcpayForMexico(t *testing.T) {
+func TestApplyRechargeV2DefaultProviderUsesExistingVcpayProviderForPeru(t *testing.T) {
 	req := applyRechargeV2DefaultProvider(pojo.RechargeOrderAppReq{
-		CountryCode: " mx ",
+		CountryCode: " pe ",
 	})
 
 	if req.Channel != "VCPAYMXN" {
 		t.Fatalf("Channel = %q, want VCPAYMXN", req.Channel)
 	}
-	if req.Currency != "MXN" {
-		t.Fatalf("Currency = %q, want MXN", req.Currency)
+	if req.Currency != "PEN" {
+		t.Fatalf("Currency = %q, want PEN", req.Currency)
 	}
 }
 
 func TestApplyRechargeV2DefaultProviderKeepsExplicitChannel(t *testing.T) {
 	req := applyRechargeV2DefaultProvider(pojo.RechargeOrderAppReq{
-		CountryCode: "MX",
+		CountryCode: "PE",
 		Channel:     "GCTPKMXN",
 	})
 

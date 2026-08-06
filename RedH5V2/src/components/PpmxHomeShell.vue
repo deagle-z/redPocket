@@ -61,7 +61,7 @@ function goTo(path: string) {
 
     <nav
       class="ppmx-mobile-tabbar tabbar lg:hidden fixed bottom-0 inset-x-0 z-40 glass-strong border-t border-white/8 grid grid-cols-5 text-[11px]"
-      aria-label="Navegación móvil PP.MX"
+      aria-label="Navegación móvil PP.PE"
     >
       <a
         v-for="item in navItems"

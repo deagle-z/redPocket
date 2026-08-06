@@ -50,12 +50,12 @@ func TestWithdrawOrderBrSetUnmarshalCountryCode(t *testing.T) {
 }
 
 func TestWithdrawOrderBrSetNormalizeCountryCodeFromExtra(t *testing.T) {
-	extra := `{"countryCode":"mx"}`
+	extra := `{"countryCode":"pe"}`
 	req := WithdrawOrderBrSet{Extra: &extra}
 
 	req.NormalizeCountryCodeFromExtra()
 
-	if req.CountryCode != "MX" {
-		t.Fatalf("CountryCode = %q, want MX", req.CountryCode)
+	if req.CountryCode != "PE" {
+		t.Fatalf("CountryCode = %q, want PE", req.CountryCode)
 	}
 }

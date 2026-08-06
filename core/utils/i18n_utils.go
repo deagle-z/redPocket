@@ -33,7 +33,7 @@ func InitI18n() {
 		bundle.RegisterUnmarshalFunc("json", json.Unmarshal)
 		// 加载本地化文件
 		bundle.MustLoadMessageFile("core/locales/en.json")
-		bundle.MustLoadMessageFile("core/locales/es-MX.json")
+		bundle.MustLoadMessageFile("core/locales/es-PE.json")
 		bundle.MustLoadMessageFile("core/locales/pt-BR.json")
 		bundle.MustLoadMessageFile("core/locales/id.json")
 		I18nUtil = &I18n{bundle: bundle}
@@ -82,8 +82,8 @@ func resolveI18nLanguage(c *gin.Context) string {
 		switch {
 		case tag == "en" || strings.HasPrefix(tag, "en-"):
 			return "en"
-		case tag == "es" || tag == "es-mx" || tag == "mx" || strings.HasPrefix(tag, "es-"):
-			return "es-MX"
+		case tag == "es" || tag == "es-pe" || tag == "pe" || strings.HasPrefix(tag, "es-"):
+			return "es-PE"
 		case tag == "pt" || tag == "pt-br" || tag == "br" || strings.HasPrefix(tag, "pt-"):
 			return "pt-BR"
 		case tag == "id" || tag == "id-id" || strings.HasPrefix(tag, "id-"):

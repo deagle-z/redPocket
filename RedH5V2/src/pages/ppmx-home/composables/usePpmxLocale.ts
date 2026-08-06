@@ -8,7 +8,7 @@ import type { LocaleCode, LocalizedText } from '../types'
 export function ppmxLocaleToAppLocale(locale: LocaleCode): Locale {
   if (locale === 'zh') return 'zh-CN'
   if (locale === 'en') return 'en-US'
-  return 'es-MX'
+  return 'es-PE'
 }
 
 export function resolvePpmxLocale(locale: string): LocaleCode {

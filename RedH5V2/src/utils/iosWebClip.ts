@@ -1,6 +1,6 @@
 const IOS_PROFILE_FILE_NAME = 'ppmx-ios.mobileconfig'
 const IOS_PROFILE_ICON_PATH = 'pwa-192x192.png'
-const IOS_PROFILE_LABEL = 'PP.MX'
+const IOS_PROFILE_LABEL = 'PP.PE'
 const IOS_PROFILE_IDENTIFIER = 'com.ppmx.webclip'
 const IOS_PROFILE_MIME_TYPE = 'application/x-apple-aspen-config'
 
@@ -93,7 +93,7 @@ export function buildIosWebClipProfile(options: IosWebClipProfileOptions) {
       <key>Label</key>
       <string>${label}</string>
       <key>PayloadDescription</key>
-      <string>Install the PP.MX Web Clip on the Home Screen.</string>
+      <string>Install the PP.PE Web Clip on the Home Screen.</string>
       <key>PayloadDisplayName</key>
       <string>${label}</string>
       <key>PayloadIdentifier</key>
@@ -111,13 +111,13 @@ export function buildIosWebClipProfile(options: IosWebClipProfileOptions) {
     </dict>
   </array>
   <key>PayloadDescription</key>
-  <string>Add PP.MX to the iOS Home Screen.</string>
+  <string>Add PP.PE to the iOS Home Screen.</string>
   <key>PayloadDisplayName</key>
   <string>${label}</string>
   <key>PayloadIdentifier</key>
   <string>${IOS_PROFILE_IDENTIFIER}.profile</string>
   <key>PayloadOrganization</key>
-  <string>PP.MX</string>
+  <string>PP.PE</string>
   <key>PayloadRemovalDisallowed</key>
   <false/>
   <key>PayloadType</key>

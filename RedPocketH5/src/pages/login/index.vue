@@ -21,7 +21,7 @@ const loading = ref(false)
 const showLangPopup = ref(false)
 const showCountryPopup = ref(false)
 const loginCountries = [
-  { code: 'MX', nameKey: 'login.countryMexico', dialCode: '+52' },
+  { code: 'PE', nameKey: 'login.countryPeru', dialCode: '+51' },
   { code: 'ID', nameKey: 'login.countryIndonesia', dialCode: '+62' },
   { code: 'BR', nameKey: 'login.countryBrazil', dialCode: '+55' },
 ] as const
@@ -54,8 +54,8 @@ function detectLoginCountry(): LoginCountryCode {
   for (const lang of browserLanguages) {
     if (lang.includes('-BR') || lang.startsWith('PT'))
       return 'BR'
-    if (lang.includes('-MX') || lang.startsWith('ES'))
-      return 'MX'
+    if (lang.includes('-PE') || lang.startsWith('ES'))
+      return 'PE'
     if (lang.includes('-ID') || lang.startsWith('ID'))
       return 'ID'
   }

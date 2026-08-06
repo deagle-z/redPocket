@@ -60,7 +60,7 @@ const responsibleText = {
     en: 'If gambling feels out of control, pause and contact support.',
     zh: '如果你感觉娱乐失控，请暂停并联系客服。',
   },
-  contact: { es: 'Soporte PP.MX', en: 'PP.MX support', zh: 'PP.MX 客服' },
+  contact: { es: 'Soporte PP.PE', en: 'PP.PE support', zh: 'PP.PE 客服' },
 } satisfies Record<string, LocalizedText>
 
 const exclusionOptions = [

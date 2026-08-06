@@ -378,12 +378,12 @@ func applyRechargeV2DefaultProvider(req pojo.RechargeOrderAppReq) pojo.RechargeO
 	if strings.TrimSpace(req.Channel) != "" {
 		return req
 	}
-	if pojo.NormalizeWithdrawCountryCode(req.CountryCode) != "MX" {
+	if pojo.NormalizeWithdrawCountryCode(req.CountryCode) != "PE" {
 		return req
 	}
 	req.Channel = "VCPAYMXN"
 	if strings.TrimSpace(req.Currency) == "" {
-		req.Currency = "MXN"
+		req.Currency = "PEN"
 	}
 	return req
 }

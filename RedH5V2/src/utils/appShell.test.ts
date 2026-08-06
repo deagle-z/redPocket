@@ -6,7 +6,7 @@ describe('resolveAppShell', () => {
     expect(resolveAppShell({})).toBe('default')
   })
 
-  it('accepts the dedicated PP.MX shell for exact homepage replicas', () => {
+  it('accepts the dedicated PP.PE shell for exact homepage replicas', () => {
     expect(resolveAppShell({ shell: 'ppmx' })).toBe('ppmx')
   })
 

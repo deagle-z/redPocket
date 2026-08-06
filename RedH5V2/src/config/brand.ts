@@ -1,11 +1,11 @@
 export const APP_BRAND = {
-  name: 'PP.MX',
-  shortName: 'PP.MX',
+  name: 'PP.PE',
+  shortName: 'PP.PE',
   mark: 'PP',
-  tagline: 'Casino · Sports · México',
-  description: 'PP.MX premium casino and sports experience',
+  tagline: 'Casino · Sports · Perú',
+  description: 'PP.PE premium casino and sports experience',
   contextEyebrow: 'Casino · Sports',
-  contextBadge: '+18 México',
+  contextBadge: '+18 Perú',
   themeColor: '#060608',
   accentColor: '#C8102E',
 } as const

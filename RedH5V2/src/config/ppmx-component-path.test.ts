@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest'
 
 const { existsSync, readFileSync } = await import('node:' + 'fs')
 
-describe('PP.MX component path', () => {
-  it('keeps PP.MX home under the page-private route module path', () => {
+describe('PP.PE component path', () => {
+  it('keeps PP.PE home under the page-private route module path', () => {
     const root = new URL('../..', import.meta.url)
     const pagePrivateHome = new URL('./src/pages/ppmx-home/PpmxHome.vue', root)
     const oldComponentFolder = new URL('./src/components/ppmx-home', root)

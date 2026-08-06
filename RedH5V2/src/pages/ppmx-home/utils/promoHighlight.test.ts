@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import { highlightPromoText } from './promoHighlight'
 
-describe('PP.MX promo text highlighting', () => {
+describe('PP.PE promo text highlighting', () => {
   it('wraps promo money and numeric terms with the reference highlight spans', () => {
     expect(highlightPromoText('注册立即赠送 58 比索')).toBe(
       '注册立即赠送 <span class="ppmx-promo-highlight">58 比索</span>',
@@ -13,8 +13,8 @@ describe('PP.MX promo text highlighting', () => {
   })
 
   it('escapes text before applying highlight markup', () => {
-    expect(highlightPromoText('<script>$38</script>')).toBe(
-      '&lt;script&gt;<span class="ppmx-promo-highlight">$38</span>&lt;/script&gt;',
+    expect(highlightPromoText('<script>S/38</script>')).toBe(
+      '&lt;script&gt;<span class="ppmx-promo-highlight">S/38</span>&lt;/script&gt;',
     )
   })
 })

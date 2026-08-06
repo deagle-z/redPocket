@@ -112,7 +112,7 @@ The app supports automatic mobile/PC layout switching:
 Styles are intentionally split:
 
 - `src/assets/styles/theme.css`
-  - PP.MX inspired visual theme
+  - PP.PE inspired visual theme
   - dark obsidian background
   - red/gold brand tokens
   - glass surfaces

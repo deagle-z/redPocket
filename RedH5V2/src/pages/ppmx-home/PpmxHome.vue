@@ -6,6 +6,7 @@ import { getPopupAnnouncements } from '@/api/banner'
 import type { CheckInRecordItem, CheckInStatusResp } from '@/api/user'
 import { doCheckIn, getCheckInRecords, getCheckInStatus } from '@/api/user'
 import { filterPopupAnnouncements } from '@/utils/announcementPopup'
+import { APP_CURRENCY, APP_CURRENCY_SYMBOL } from '@/config/market'
 import {
   ppmxBanners,
   ppmxCheckinText,
@@ -322,11 +323,11 @@ function formatCheckinAmount(value?: number, showCurrency = false) {
     maximumFractionDigits: 2,
   })
 
-  return showCurrency ? `+$${formatted} MXN` : `+$${formatted}`
+  return showCurrency ? `+${APP_CURRENCY_SYMBOL}${formatted} ${APP_CURRENCY}` : `+${APP_CURRENCY_SYMBOL}${formatted}`
 }
 
 function formatCheckinMysteryAmount(showCurrency = false) {
-  return showCurrency ? '+$? MXN' : '+$?'
+  return showCurrency ? `+${APP_CURRENCY_SYMBOL}? ${APP_CURRENCY}` : `+${APP_CURRENCY_SYMBOL}?`
 }
 
 function formatCheckinTileAmount(value: number, index: number) {
@@ -824,11 +825,11 @@ onBeforeUnmount(() => {
 
         <div class="ppmx-footer-bottom">
           <div class="ppmx-footer-bottom__inner">
-            <div>© 2026 PP.MX · <span>{{ t('ppmx.home.footerRights') }}</span></div>
+            <div>© 2026 PP.PE · <span>{{ t('ppmx.home.footerRights') }}</span></div>
             <div class="ppmx-footer-badges">
               <span><strong>+18</strong></span>
               <span>Responsible Gaming</span>
-              <span>PP.MX SUPPORT</span>
+              <span>PP.PE SUPPORT</span>
             </div>
           </div>
         </div>

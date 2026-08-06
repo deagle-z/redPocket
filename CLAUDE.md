@@ -139,7 +139,7 @@ Core business logic in `core/services/lucky_money_service.go`. Key mechanics:
 - Expiry handled by Asynq (`lucky:expire` task) + cron sweep fallback
 
 ### i18n
-Translation files live in `core/locales/` (en, pt-BR, es-MX, id). Initialized via `utils.InitI18n()` at startup.
+Translation files live in `core/locales/` (en, pt-BR, es-PE, id). Initialized via `utils.InitI18n()` at startup.
 
 ### Adding a New API Endpoint
 1. Add POJO/model in `core/pojo/` if needed

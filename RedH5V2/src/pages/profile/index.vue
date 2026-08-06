@@ -51,7 +51,7 @@ const FREE_WITHDRAW_COUNT = 1
 const WITHDRAW_FEE_RATE = 0.05
 const profileText = {
   pageTitle: { es: 'Mi cuenta', en: 'My account', zh: '我的账户' },
-  eyebrow: { es: 'Cuenta PP.MX', en: 'PP.MX account', zh: 'PP.MX 账户' },
+  eyebrow: { es: 'Cuenta PP.PE', en: 'PP.PE account', zh: 'PP.PE 账户' },
   guestTitle: { es: 'Necesitas iniciar sesión', en: 'Sign in required', zh: '需要先登录' },
   guestDescription: {
     es: 'Entra para ver tu saldo, depositar, retirar e historial.',
@@ -148,7 +148,7 @@ const profileText = {
     zh: '添加银行账号后即可发起提现。',
   },
   bind: { es: 'Vincular', en: 'Link', zh: '绑定' },
-  moreEyebrow: { es: 'Más en PP.MX', en: 'More in PP.MX', zh: '更多 PP.MX' },
+  moreEyebrow: { es: 'Más en PP.PE', en: 'More in PP.PE', zh: '更多 PP.PE' },
   downloadGuide: { es: 'Descarga y guía', en: 'Download and guide', zh: '下载与指南' },
   accountCenter: { es: 'Centro de cuenta', en: 'Account center', zh: '账户中心' },
   copyId: { es: 'Copiar ID', en: 'Copy ID', zh: '复制 ID' },
@@ -211,7 +211,7 @@ const profileText = {
     en: 'This account cannot request withdrawals right now. Contact support.',
     zh: '当前账户暂不能发起提现，请联系客服。',
   },
-  withdrawMinToast: { es: 'Monto mínimo de retiro: $50.00 MXN', en: 'Minimum withdrawal: $50.00 MXN', zh: '最低提现金额为 $50.00 MXN' },
+  withdrawMinToast: { es: 'Monto mínimo de retiro: S/50.00 PEN', en: 'Minimum withdrawal: S/50.00 PEN', zh: '最低提现金额为 S/50.00 PEN' },
   withdrawBalanceToast: {
     es: 'El monto supera tu saldo disponible.',
     en: 'The amount exceeds your available balance.',
@@ -455,7 +455,7 @@ function maskAccountValue(value: string) {
 
 function formatWithdrawAccountLabel(account: WithdrawAccountItem) {
   const data = parseWithdrawAccountData(account.accountData)
-  const bankName = data.bank || data.bankName || data.Bank || data.bankCode || 'MX'
+  const bankName = data.bank || data.bankName || data.Bank || data.bankCode || 'PE'
   const accountValue = data.accountNumber
     || data.routingNumber
     || data.accountNo
@@ -1213,7 +1213,7 @@ watch(promoModalOpen, (isOpen) => {
                min="0.01"
                :max="fromCent(walletTransferSourceBalanceCents)"
                step="0.01"
-               placeholder="$0.00"
+               placeholder="S/0.00"
              >
              <button type="button" class="ppmx-account-wallet-transfer__all" @click="transferAllSportBalance">
                {{ pickText(profileText.walletTransferAll) }}

@@ -4,13 +4,13 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#060608" />
-<meta name="description" content="PP.MX — Casino y apuestas deportivas premium en México. Diseño de lujo, pagos instantáneos, soporte 24/7." />
-<title>PP.MX · Premium Casino & Sports</title>
+<meta name="description" content="PP.PE — Casino y apuestas deportivas premium en Perú. Diseño de lujo, pagos instantáneos, soporte 24/7." />
+<title>PP.PE · Premium Casino & Sports</title>
 
 <!--
 ==================================================================================
-  PP.MX — Apple级优化版本 v2
-  Premium online betting platform · México
+  PP.PE — Apple级优化版本 v2
+  Premium online betting platform · Perú
 ==================================================================================
   FILOSOFÍA DE DISEÑO (estilo Apple / Jony Ive):
     · Reducción: una idea por sección, jerarquía clara, sin ruido visual
@@ -20,7 +20,7 @@
     · Emoción: micro-detalles (spark dorado, hover lift+glow, press feedback)
 
   NOVEDADES vs v1:
-    · Rebrand completo a PP.MX + logo SVG vectorial inline
+    · Rebrand completo a PP.PE + logo SVG vectorial inline
     · Tipografía: Montserrat 400/500/600/700/800 (jerarquía estricta)
     · i18n real: ES (default) · EN · ZH, conmutador con banderas, persistencia
     · Glassmorphism, micro-gradientes, reveal-on-scroll (IntersectionObserver)
@@ -119,7 +119,7 @@
   .hub-card:hover{ transform:translateY(-3px); background:rgba(255,255,255,.06); border-color:rgba(255,215,0,.28); }
   .hub-card:active{ transform:scale(.98); }
 
-  /* ====== LOGO script "pp.mx" — estilo Coca-Cola (rojo metálico · relieve 3D) ====== */
+  /* ====== LOGO script "pp.pe" — estilo Coca-Cola (rojo metálico · relieve 3D) ====== */
   .logo-link{ display:inline-flex; align-items:center; }
   .logo-link svg{ transition:transform .26s cubic-bezier(.2,.7,.2,1), filter .26s; will-change:transform; }
   .logo-link:hover svg{ transform:translateY(-1px) scale(1.015); filter:drop-shadow(0 4px 7px rgba(200,16,46,.32)); }
@@ -1371,7 +1371,7 @@
   html[data-theme="light"] .acc-bal-card{ color:#fff; }
   html[data-theme="light"] .acc-bal-card .text-white{ color:#fff; }
 
-  /* —— Logo «pp.mx» → rojo de alta gama sobre fondo claro —— */
+  /* —— Logo «pp.pe» → rojo de alta gama sobre fondo claro —— */
   html[data-theme="light"] .logo-word{ fill:#ff1a1a; }
   html[data-theme="light"] .logo-dot{ fill:#e60012; }
   html[data-theme="light"] .logo-sub{ fill:#8a8a92; }
@@ -1602,12 +1602,12 @@
       <!-- Language switcher -->
       <div class="relative">
         <button onclick="toggleLangMenu()" class="flex items-center gap-2 px-2.5 py-1 rounded-full hover:bg-white/5 transition" aria-haspopup="true">
-          <span id="langFlag" class="text-sm">🇲🇽</span>
+          <span id="langFlag" class="text-sm">🇵🇪</span>
           <span id="langLabel" class="font-semibold text-zinc-200">ES</span>
           <i class="fa-solid fa-chevron-down text-[9px] text-zinc-500"></i>
         </button>
         <div id="langMenu" class="lang-menu hidden absolute right-0 mt-2 w-44 glass-strong rounded-2xl p-1.5 shadow-glass">
-          <button onclick="setLang('es')" class="lang-opt w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/6 text-left"><span class="text-base">🇲🇽</span><span class="flex-1"><span class="block font-semibold">Español</span><span class="block text-[10px] text-zinc-500">México</span></span><i class="fa-solid fa-check text-oro-400 text-xs lang-check" data-l="es"></i></button>
+          <button onclick="setLang('es')" class="lang-opt w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/6 text-left"><span class="text-base">🇵🇪</span><span class="flex-1"><span class="block font-semibold">Español</span><span class="block text-[10px] text-zinc-500">Perú</span></span><i class="fa-solid fa-check text-oro-400 text-xs lang-check" data-l="es"></i></button>
           <button onclick="setLang('en')" class="lang-opt w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/6 text-left"><span class="text-base">🇺🇸</span><span class="flex-1"><span class="block font-semibold">English</span><span class="block text-[10px] text-zinc-500">United States</span></span><i class="fa-solid fa-check text-oro-400 text-xs lang-check hidden" data-l="en"></i></button>
           <button onclick="setLang('zh')" class="lang-opt w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/6 text-left"><span class="text-base">🇨🇳</span><span class="flex-1"><span class="block font-semibold">简体中文</span><span class="block text-[10px] text-zinc-500">China</span></span><i class="fa-solid fa-check text-oro-400 text-xs lang-check hidden" data-l="zh"></i></button>
         </div>
@@ -1646,10 +1646,10 @@
     <button id="navMenu" class="text-2xl text-zinc-300 btn shrink-0" aria-label="Menu" onclick="toggleDrawer(true)"><i class="fa-solid fa-bars-staggered"></i></button>
 
     <!-- LOGO (SVG) -->
-    <a href="#" data-page="home" class="logo-link flex items-center select-none shrink-0" aria-label="PP.MX">
+    <a href="#" data-page="home" class="logo-link flex items-center select-none shrink-0" aria-label="PP.PE">
       <svg class="w-[120px] sm:w-[150px] h-auto shrink-0" width="150" height="40" viewBox="0 0 240 64" xmlns="http://www.w3.org/2000/svg" role="img" aria-hidden="true">
         <use href="#ppEmblem"/>
-        <text class="logo-word" x="72" y="38" font-family="Montserrat,sans-serif" font-weight="800" font-size="26" letter-spacing="-0.5" fill="#FFFFFF">PP<tspan class="logo-dot" fill="url(#lgGold)">.</tspan>MX</text>
+        <text class="logo-word" x="72" y="38" font-family="Montserrat,sans-serif" font-weight="800" font-size="26" letter-spacing="-0.5" fill="#FFFFFF">PP<tspan class="logo-dot" fill="url(#lgGold)">.</tspan>PE</text>
         <text class="logo-sub" x="72" y="51" font-family="Montserrat,sans-serif" font-weight="600" font-size="6" letter-spacing="3" fill="#9a9aa3">CASINO · SPORTS · MÉXICO</text>
       </svg>
     </a>
@@ -1673,7 +1673,7 @@
 
     <!-- Logged in -->
     <div id="loggedIn" class="hidden items-center gap-2.5">
-      <button onclick="goPage('account')" class="btn h-10 px-3 sm:px-3.5 rounded-full glass flex items-center gap-2 text-sm" title="Mi billetera" aria-label="Billetera"><i class="fa-solid fa-wallet text-oro-400"></i><span id="balHeader" class="font-semibold">$2,450.00</span><i class="fa-solid fa-chevron-right text-[10px] text-zinc-500 hidden sm:inline"></i></button>
+      <button onclick="goPage('account')" class="btn h-10 px-3 sm:px-3.5 rounded-full glass flex items-center gap-2 text-sm" title="Mi billetera" aria-label="Billetera"><i class="fa-solid fa-wallet text-oro-400"></i><span id="balHeader" class="font-semibold">S/2,450.00</span><i class="fa-solid fa-chevron-right text-[10px] text-zinc-500 hidden sm:inline"></i></button>
       <button onclick="goPage('account')" class="hidden sm:grid h-10 w-10 rounded-full bg-gradient-to-br from-rojo-600 to-rojo-800 place-items-center font-bold text-sm btn" title="Mi cuenta">JM</button>
     </div>
 
@@ -1708,9 +1708,9 @@
   <div class="absolute inset-0 modal-bg" onclick="toggleDrawer(false)"></div>
   <aside class="absolute top-0 left-0 bottom-0 w-[280px] glass-strong border-r border-white/8 p-6 flex flex-col gap-1 modal-card">
     <div class="flex items-center justify-between mb-5">
-      <svg class="w-[120px] h-auto" width="120" height="32" viewBox="0 0 240 64" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="PP.MX">
+      <svg class="w-[120px] h-auto" width="120" height="32" viewBox="0 0 240 64" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="PP.PE">
         <use href="#ppEmblem"/>
-        <text class="logo-word" x="72" y="38" font-family="Montserrat,sans-serif" font-weight="800" font-size="26" letter-spacing="-0.5" fill="#FFFFFF">PP<tspan class="logo-dot" fill="url(#lgGold)">.</tspan>MX</text>
+        <text class="logo-word" x="72" y="38" font-family="Montserrat,sans-serif" font-weight="800" font-size="26" letter-spacing="-0.5" fill="#FFFFFF">PP<tspan class="logo-dot" fill="url(#lgGold)">.</tspan>PE</text>
         <text class="logo-sub" x="72" y="51" font-family="Montserrat,sans-serif" font-weight="600" font-size="6" letter-spacing="3" fill="#9a9aa3">CASINO · SPORTS · MÉXICO</text>
       </svg>
       <button onclick="toggleDrawer(false)" class="text-zinc-400 hover:text-white text-xl btn"><i class="fa-solid fa-xmark"></i></button>
@@ -1730,10 +1730,10 @@
       </button>
       <button onclick="toggleDrawerLang()" class="drawer-link w-full px-4 py-3.5 rounded-2xl hover:bg-white/6 transition flex items-center justify-between">
         <span class="flex items-center"><i class="fa-solid fa-globe w-6 text-oro-400"></i><span data-i18n="nav.language">Idioma</span></span>
-        <span class="flex items-center gap-2.5"><span id="drawerLangFlag" class="text-base leading-none">🇲🇽</span><i id="drawerLangChev" class="fa-solid fa-chevron-down text-[11px] text-zinc-500 transition-transform"></i></span>
+        <span class="flex items-center gap-2.5"><span id="drawerLangFlag" class="text-base leading-none">🇵🇪</span><i id="drawerLangChev" class="fa-solid fa-chevron-down text-[11px] text-zinc-500 transition-transform"></i></span>
       </button>
       <div id="drawerLangPanel" class="drawer-lang-panel">
-        <button onclick="setLang('es');toggleDrawer(false)" class="drawer-lang" data-l="es"><span class="dl-flag">🇲🇽</span>Español</button>
+        <button onclick="setLang('es');toggleDrawer(false)" class="drawer-lang" data-l="es"><span class="dl-flag">🇵🇪</span>Español</button>
         <button onclick="setLang('en');toggleDrawer(false)" class="drawer-lang" data-l="en"><span class="dl-flag">🇺🇸</span>English</button>
         <button onclick="setLang('zh');toggleDrawer(false)" class="drawer-lang" data-l="zh"><span class="dl-flag">🇨🇳</span>中文</button>
       </div>
@@ -1878,15 +1878,15 @@
           <label class="block">
             <span class="text-xs text-zinc-400" data-i18n="slip.stake">Monto a apostar</span>
             <div class="mt-1.5 flex items-center field rounded-xl overflow-hidden">
-              <span class="px-3 text-zinc-400 text-sm">MXN</span>
+              <span class="px-3 text-zinc-400 text-sm">PEN</span>
               <input id="stake" type="number" min="10" value="100" class="flex-1 bg-transparent px-2 py-3 text-base font-semibold outline-none" oninput="updateSummary()" />
-              <button onclick="setStake(100)"  class="px-2 text-xs text-oro-400">$100</button>
-              <button onclick="setStake(500)"  class="px-2 text-xs text-oro-400">$500</button>
+              <button onclick="setStake(100)"  class="px-2 text-xs text-oro-400">S/100</button>
+              <button onclick="setStake(500)"  class="px-2 text-xs text-oro-400">S/500</button>
               <button onclick="setStake(1000)" class="px-2 text-xs text-oro-400">Max</button>
             </div>
           </label>
           <div class="text-sm flex justify-between"><span class="text-zinc-400" data-i18n="slip.totalOdds">Momio total</span><span id="totalOdds" class="font-semibold">—</span></div>
-          <div class="text-sm flex justify-between"><span class="text-zinc-400" data-i18n="slip.win">Ganancia potencial</span><span id="potWin" class="font-bold text-oro-400">$0.00</span></div>
+          <div class="text-sm flex justify-between"><span class="text-zinc-400" data-i18n="slip.win">Ganancia potencial</span><span id="potWin" class="font-bold text-oro-400">S/0.00</span></div>
           <button onclick="confirmBet()" class="w-full btn btn-red rounded-2xl py-4 font-bold" data-i18n="slip.place">Realizar apuesta</button>
         </div>
       </aside>
@@ -2007,10 +2007,10 @@
       <div class="acc-bal-card rounded-3xl p-7 sm:p-8 relative overflow-hidden reveal" style="background:linear-gradient(135deg,#a30b25,#c8102e 55%,#79071b)">
         <div class="absolute -right-12 -top-12 w-48 h-48 bg-oro-400/25 rounded-full blur-3xl"></div>
         <div class="relative">
-          <span id="accAvatar" class="absolute top-0 right-0 inline-flex items-center px-2.5 py-[5px] rounded-full bg-black/25 ring-1 ring-white/25 text-[11px] font-bold tracking-tight display lowercase text-white shadow-sm backdrop-blur-sm">pp.mx</span>
+          <span id="accAvatar" class="absolute top-0 right-0 inline-flex items-center px-2.5 py-[5px] rounded-full bg-black/25 ring-1 ring-white/25 text-[11px] font-bold tracking-tight display lowercase text-white shadow-sm backdrop-blur-sm">pp.pe</span>
           <div class="min-w-0 pr-16">
             <p class="eyebrow text-rojo-100/80" data-i18n="account.balance">Saldo disponible</p>
-            <p class="display text-[2.4rem] leading-none sm:text-6xl mt-2.5"><span id="balMain">$2,450.00</span> <span class="text-base font-medium text-rojo-100">MXN</span></p>
+            <p class="display text-[2.4rem] leading-none sm:text-6xl mt-2.5"><span id="balMain">S/2,450.00</span> <span class="text-base font-medium text-rojo-100">PEN</span></p>
             <p class="text-rojo-100/85 text-sm mt-2.5 flex items-center gap-1.5"><i class="fa-solid fa-at text-[11px]"></i><span id="accHandle">jmhernandez</span></p>
           </div>
         </div>
@@ -2094,7 +2094,7 @@
       <!-- Bottom area: Download APP + Activity Guide -->
       <div class="acc-extra reveal">
         <div class="acc-extra-head">
-          <span class="eyebrow text-rojo-400" data-i18n="account.more.eyebrow">Más en PP.MX</span>
+          <span class="eyebrow text-rojo-400" data-i18n="account.more.eyebrow">Más en PP.PE</span>
           <h2 class="acc-extra-title" data-i18n="account.more.title">Descarga y guía</h2>
         </div>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
@@ -2129,7 +2129,7 @@
 <main id="page-download" class="page">
   <section class="max-w-2xl mx-auto px-5 pt-9 pb-24">
     <div class="reveal">
-      <div class="eyebrow text-rojo-400 mb-3" data-i18n="dl.page.eyebrow">App oficial PP.MX</div>
+      <div class="eyebrow text-rojo-400 mb-3" data-i18n="dl.page.eyebrow">App oficial PP.PE</div>
     </div>
 
     <!-- Hero -->
@@ -2137,7 +2137,7 @@
       <div class="flex flex-col sm:flex-row sm:items-center gap-7 relative" style="z-index:1">
         <div class="flex-1 min-w-0">
           <span class="dlp-badge"><i class="fa-solid fa-mobile-screen-button"></i></span>
-          <h1 class="dlp-title" data-i18n="dl.page.title">Descarga la App PP.MX</h1>
+          <h1 class="dlp-title" data-i18n="dl.page.title">Descarga la App PP.PE</h1>
           <p class="dlp-sub" data-i18n="dl.page.sub">Juega más rápido, recibe bonos exclusivos y notificaciones de pago al instante. Disponible para iOS y Android.</p>
           <div class="dl-btns max-w-sm mt-5">
             <button onclick="toast(t('acc.dl.soon'))" class="dl-btn dlp-btn"><i class="fa-brands fa-apple"></i><span data-i18n="dl.ios">iOS</span></button>
@@ -2192,7 +2192,7 @@
         <div class="min-w-0">
           <div class="gd-ttl" data-i18n="guide.c1.t">Check-in diario</div>
           <p class="gd-desc" data-i18n="guide.c1.d">Inicia sesión cada día y reclama tu recompensa. Mientras más días seguidos, mayor el premio acumulado de 7 días.</p>
-          <span class="gd-tag"><i class="fa-solid fa-gift"></i><span data-i18n="guide.c1.tag">Hasta $??? MXN / semana</span></span>
+          <span class="gd-tag"><i class="fa-solid fa-gift"></i><span data-i18n="guide.c1.tag">Hasta S/??? PEN / semana</span></span>
         </div>
         <i class="fa-solid fa-chevron-right gd-go"></i>
       </div>
@@ -2228,7 +2228,7 @@
         <div class="min-w-0">
           <div class="gd-ttl" data-i18n="guide.c5.t">Bono de bienvenida</div>
           <p class="gd-desc" data-i18n="guide.c5.d">Tu primer depósito se duplica al instante. Cumple el requisito de apuesta y el bono pasa a tu saldo retirable.</p>
-          <span class="gd-tag"><i class="fa-solid fa-fire"></i><span data-i18n="guide.c5.tag">100% hasta $5,000 MXN</span></span>
+          <span class="gd-tag"><i class="fa-solid fa-fire"></i><span data-i18n="guide.c5.tag">100% hasta S/5,000 PEN</span></span>
         </div>
         <i class="fa-solid fa-chevron-right gd-go"></i>
       </div>
@@ -2236,8 +2236,8 @@
         <span class="gd-ic" style="background:linear-gradient(150deg,#38bdf8,#0284c7)"><i class="fa-solid fa-cloud-arrow-down"></i></span>
         <div class="min-w-0">
           <div class="gd-ttl" data-i18n="guide.c6.t">App móvil</div>
-          <p class="gd-desc" data-i18n="guide.c6.d">Juega donde quieras: descarga la app, inicia sesión y recibe $8 MXN, con beneficios exclusivos por notificaciones.</p>
-          <span class="gd-tag"><i class="fa-solid fa-gift"></i><span data-i18n="guide.c6.tag">Inicia sesión y gana $8 MXN</span></span>
+          <p class="gd-desc" data-i18n="guide.c6.d">Juega donde quieras: descarga la app, inicia sesión y recibe S/8 PEN, con beneficios exclusivos por notificaciones.</p>
+          <span class="gd-tag"><i class="fa-solid fa-gift"></i><span data-i18n="guide.c6.tag">Inicia sesión y gana S/8 PEN</span></span>
         </div>
         <i class="fa-solid fa-chevron-right gd-go"></i>
       </div>
@@ -2311,7 +2311,7 @@
         <label class="block"><span class="text-zinc-400" data-i18n="account.profile.name">Nombre</span><input class="field mt-1.5 w-full rounded-xl px-3.5 py-3" value="José Manuel"/></label>
         <label class="block"><span class="text-zinc-400" data-i18n="account.profile.lastname">Apellidos</span><input class="field mt-1.5 w-full rounded-xl px-3.5 py-3" value="Hernández Ruiz"/></label>
         <label class="block"><span class="text-zinc-400">Email</span><input class="field mt-1.5 w-full rounded-xl px-3.5 py-3" value="jm.hernandez@correo.mx"/></label>
-        <label class="block"><span class="text-zinc-400" data-i18n="account.profile.phone">Teléfono</span><input class="field mt-1.5 w-full rounded-xl px-3.5 py-3" value="+52 55 1234 5678"/></label>
+        <label class="block"><span class="text-zinc-400" data-i18n="account.profile.phone">Teléfono</span><input class="field mt-1.5 w-full rounded-xl px-3.5 py-3" value="+51 55 1234 5678"/></label>
       </div>
       <button onclick="saveProfile()" class="btn btn-red rounded-xl px-6 py-3 text-sm font-semibold" data-i18n="account.profile.save">Guardar cambios</button>
     </section>
@@ -2374,7 +2374,7 @@
       <div class="vip-salary-info">
         <p class="vip-salary-eyebrow"><i class="fa-solid fa-calendar-week"></i> <span data-i18n="vip.salary.eyebrow">Cobro semanal</span></p>
         <p class="vip-salary-title" data-i18n="vip.salary.title">Salario semanal VIP</p>
-        <p class="vip-salary-amount" id="vipSalaryAmount">$0</p>
+        <p class="vip-salary-amount" id="vipSalaryAmount">S/0</p>
         <p class="vip-salary-note" id="vipSalaryNote" data-i18n="vip.salary.note">Reclámalo una vez por semana.</p>
       </div>
       <button class="vip-salary-btn" id="vipSalaryBtn" onclick="claimVipSalary()"><span data-i18n="vip.salary.claim">Reclamar</span></button>
@@ -2432,7 +2432,7 @@
       </button>
       <button onclick="goPage('sec-phone')" class="hub-card btn glass rounded-2xl p-5 w-full text-left flex items-center gap-4 reveal">
         <span class="h-11 w-11 rounded-2xl bg-emerald-400/12 text-emerald-400 grid place-items-center text-lg shrink-0"><i class="fa-solid fa-mobile-screen"></i></span>
-        <span class="flex-1 min-w-0"><span class="block font-semibold text-[15px]" data-i18n="security.phone.t">Número de celular</span><span class="block text-xs text-zinc-500 mt-0.5">+52 55 1234 5678</span></span>
+        <span class="flex-1 min-w-0"><span class="block font-semibold text-[15px]" data-i18n="security.phone.t">Número de celular</span><span class="block text-xs text-zinc-500 mt-0.5">+51 55 1234 5678</span></span>
         <i class="fa-solid fa-chevron-right text-zinc-600 text-xs"></i>
       </button>
     </div>
@@ -2523,7 +2523,7 @@
       <h3 class="font-semibold text-lg" data-i18n="bank.add">Agregar cuenta</h3>
       <label class="block text-sm"><span class="text-zinc-400" data-i18n="bank.banco">Selecciona tu banco</span>
         <select id="bankBanco" class="field mt-1.5 w-full rounded-xl px-3.5 py-3">
-          <option>BBVA México</option><option>Banorte</option><option>Santander</option><option>Banamex (Citibanamex)</option><option>HSBC México</option><option>Scotiabank</option><option>Banco Azteca</option><option>Nu México</option><option>Klar</option>
+          <option>BBVA Perú</option><option>Banorte</option><option>Santander</option><option>Banamex (Citibanamex)</option><option>HSBC Perú</option><option>Scotiabank</option><option>Banco Azteca</option><option>Nu Perú</option><option>Klar</option>
         </select></label>
       <label class="block text-sm"><span class="text-zinc-400" data-i18n="bank.email">Correo electrónico</span>
         <input id="bankEmail" type="email" class="field mt-1.5 w-full rounded-xl px-3.5 py-3" placeholder="tu@correo.mx"/></label>
@@ -2679,7 +2679,7 @@
         <div class="flex items-end justify-between gap-4 mt-2 flex-wrap">
           <div class="min-w-0">
             <p class="comm-label text-sm text-oro-100/70" data-i18n="team.comm.available">Comisión disponible</p>
-            <p class="display comm-avail mt-1" style="color:#ffd24a"><span id="commAvail">$3,250.00</span> <span class="text-base font-medium text-oro-100/70">MXN</span></p>
+            <p class="display comm-avail mt-1" style="color:#ffd24a"><span id="commAvail">S/3,250.00</span> <span class="text-base font-medium text-oro-100/70">PEN</span></p>
           </div>
           <div class="flex flex-wrap items-center gap-2.5">
             <button onclick="openTransferModal()" style="color:#fff" class="btn rounded-2xl px-5 py-3 text-sm font-bold flex items-center gap-2 border border-oro-400/45 bg-black/20 hover:bg-black/30"><i class="fa-solid fa-right-left"></i><span data-i18n="team.comm.transfer">Transferir a saldo</span></button>
@@ -2688,15 +2688,15 @@
         </div>
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-6">
           <div class="rounded-2xl bg-black/25 p-3.5 min-w-0">
-            <div class="comm-amt">$12,480.00</div>
+            <div class="comm-amt">S/12,480.00</div>
             <div class="comm-label text-[11px] text-oro-100/60 mt-1" data-i18n="team.comm.accumulated">Acumulada</div>
           </div>
           <div class="rounded-2xl bg-black/25 p-3.5 min-w-0">
-            <div class="comm-amt">$1,920.00</div>
+            <div class="comm-amt">S/1,920.00</div>
             <div class="comm-label text-[11px] text-oro-100/60 mt-1" data-i18n="team.comm.month">Este mes</div>
           </div>
           <div class="rounded-2xl bg-black/25 p-3.5 min-w-0">
-            <div class="comm-amt">$640.00</div>
+            <div class="comm-amt">S/640.00</div>
             <div class="comm-label text-[11px] text-oro-100/60 mt-1" data-i18n="team.comm.pending">Pendiente</div>
           </div>
         </div>
@@ -2710,7 +2710,7 @@
         <div>
           <p class="text-xs text-zinc-400 mb-2 font-semibold uppercase tracking-wider" data-i18n="team.invite.linklabel">Tu enlace de invitación</p>
           <div class="flex gap-2">
-            <input id="inviteLink" readonly value="https://pp.mx/r/JM8X2K" class="field flex-1 rounded-xl px-3.5 py-3 text-sm text-zinc-200 min-w-0"/>
+            <input id="inviteLink" readonly value="https://pp.pe/r/JM8X2K" class="field flex-1 rounded-xl px-3.5 py-3 text-sm text-zinc-200 min-w-0"/>
             <button onclick="copyInvite()" class="btn btn-gold rounded-xl px-4 py-3 text-sm font-bold flex items-center gap-2 shrink-0"><i class="fa-solid fa-copy"></i><span class="hidden sm:inline" data-i18n="team.invite.copy">Copiar</span></button>
           </div>
           <div class="flex gap-2 mt-3">
@@ -2724,9 +2724,9 @@
             <span class="iqr-cn iqr-cn-tl"></span><span class="iqr-cn iqr-cn-tr"></span>
             <span class="iqr-cn iqr-cn-bl"></span><span class="iqr-cn iqr-cn-br"></span>
             <div class="iqr-plate">
-              <img class="iqr-img" src="https://api.qrserver.com/v1/create-qr-code/?size=300x300&ecc=H&margin=0&qzone=1&color=141416&bgcolor=ffffff&data=https://pp.mx/r/JM8X2K" alt="QR PP.MX" width="150" height="150"/>
+              <img class="iqr-img" src="https://api.qrserver.com/v1/create-qr-code/?size=300x300&ecc=H&margin=0&qzone=1&color=141416&bgcolor=ffffff&data=https://pp.pe/r/JM8X2K" alt="QR PP.PE" width="150" height="150"/>
               <span class="iqr-logo">
-                <svg viewBox="2 4 56 56" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="PP.MX"><use href="#ppEmblem"/></svg>
+                <svg viewBox="2 4 56 56" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="PP.PE"><use href="#ppEmblem"/></svg>
               </span>
             </div>
           </div>
@@ -2754,28 +2754,28 @@
         <div class="space-y-2.5">
           <div class="rebate-row rebate-row--top grid grid-cols-[1.5fr_1fr_1fr] gap-2 items-center rounded-xl px-4 py-3">
             <span class="flex items-center gap-2 text-sm font-semibold rebate-rng whitespace-nowrap"><i class="fa-solid fa-crown rebate-ic text-xs"></i>&gt;100 <span class="rebate-ppl font-medium" data-i18n="team.rebate.ppl">personas</span></span>
-            <span class="rebate-amt display text-base text-right whitespace-nowrap">15 <span class="text-xs font-semibold" data-i18n="team.rebate.unit">MXN</span></span>
-            <span class="rebate-amt display text-base text-right whitespace-nowrap">20 <span class="text-xs font-semibold" data-i18n="team.rebate.unit">MXN</span></span>
+            <span class="rebate-amt display text-base text-right whitespace-nowrap">15 <span class="text-xs font-semibold" data-i18n="team.rebate.unit">PEN</span></span>
+            <span class="rebate-amt display text-base text-right whitespace-nowrap">20 <span class="text-xs font-semibold" data-i18n="team.rebate.unit">PEN</span></span>
           </div>
           <div class="rebate-row grid grid-cols-[1.5fr_1fr_1fr] gap-2 items-center rounded-xl px-4 py-3">
             <span class="flex items-center gap-2 text-sm font-semibold rebate-rng whitespace-nowrap"><i class="fa-solid fa-user-group rebate-ic text-xs"></i>31–100 <span class="rebate-ppl font-medium" data-i18n="team.rebate.ppl">personas</span></span>
-            <span class="rebate-amt display text-base text-right whitespace-nowrap">12 <span class="text-xs font-semibold" data-i18n="team.rebate.unit">MXN</span></span>
-            <span class="rebate-amt display text-base text-right whitespace-nowrap">18 <span class="text-xs font-semibold" data-i18n="team.rebate.unit">MXN</span></span>
+            <span class="rebate-amt display text-base text-right whitespace-nowrap">12 <span class="text-xs font-semibold" data-i18n="team.rebate.unit">PEN</span></span>
+            <span class="rebate-amt display text-base text-right whitespace-nowrap">18 <span class="text-xs font-semibold" data-i18n="team.rebate.unit">PEN</span></span>
           </div>
           <div class="rebate-row grid grid-cols-[1.5fr_1fr_1fr] gap-2 items-center rounded-xl px-4 py-3">
             <span class="flex items-center gap-2 text-sm font-semibold rebate-rng whitespace-nowrap"><i class="fa-solid fa-user-group rebate-ic text-xs"></i>16–30 <span class="rebate-ppl font-medium" data-i18n="team.rebate.ppl">personas</span></span>
-            <span class="rebate-amt display text-base text-right whitespace-nowrap">10 <span class="text-xs font-semibold" data-i18n="team.rebate.unit">MXN</span></span>
-            <span class="rebate-amt display text-base text-right whitespace-nowrap">15 <span class="text-xs font-semibold" data-i18n="team.rebate.unit">MXN</span></span>
+            <span class="rebate-amt display text-base text-right whitespace-nowrap">10 <span class="text-xs font-semibold" data-i18n="team.rebate.unit">PEN</span></span>
+            <span class="rebate-amt display text-base text-right whitespace-nowrap">15 <span class="text-xs font-semibold" data-i18n="team.rebate.unit">PEN</span></span>
           </div>
           <div class="rebate-row grid grid-cols-[1.5fr_1fr_1fr] gap-2 items-center rounded-xl px-4 py-3">
             <span class="flex items-center gap-2 text-sm font-semibold rebate-rng whitespace-nowrap"><i class="fa-solid fa-user-group rebate-ic text-xs"></i>6–15 <span class="rebate-ppl font-medium" data-i18n="team.rebate.ppl">personas</span></span>
-            <span class="rebate-amt display text-base text-right whitespace-nowrap">8 <span class="text-xs font-semibold" data-i18n="team.rebate.unit">MXN</span></span>
-            <span class="rebate-amt display text-base text-right whitespace-nowrap">12 <span class="text-xs font-semibold" data-i18n="team.rebate.unit">MXN</span></span>
+            <span class="rebate-amt display text-base text-right whitespace-nowrap">8 <span class="text-xs font-semibold" data-i18n="team.rebate.unit">PEN</span></span>
+            <span class="rebate-amt display text-base text-right whitespace-nowrap">12 <span class="text-xs font-semibold" data-i18n="team.rebate.unit">PEN</span></span>
           </div>
           <div class="rebate-row grid grid-cols-[1.5fr_1fr_1fr] gap-2 items-center rounded-xl px-4 py-3">
             <span class="flex items-center gap-2 text-sm font-semibold rebate-rng whitespace-nowrap"><i class="fa-solid fa-user-group rebate-ic text-xs"></i>1–5 <span class="rebate-ppl font-medium" data-i18n="team.rebate.ppl">personas</span></span>
-            <span class="rebate-amt display text-base text-right whitespace-nowrap">5 <span class="text-xs font-semibold" data-i18n="team.rebate.unit">MXN</span></span>
-            <span class="rebate-amt display text-base text-right whitespace-nowrap">10 <span class="text-xs font-semibold" data-i18n="team.rebate.unit">MXN</span></span>
+            <span class="rebate-amt display text-base text-right whitespace-nowrap">5 <span class="text-xs font-semibold" data-i18n="team.rebate.unit">PEN</span></span>
+            <span class="rebate-amt display text-base text-right whitespace-nowrap">10 <span class="text-xs font-semibold" data-i18n="team.rebate.unit">PEN</span></span>
           </div>
         </div>
       </div>
@@ -2822,7 +2822,7 @@
         <h3 class="font-semibold mt-4" data-i18n="resp.limit.title">Límite de depósito</h3>
         <p class="text-sm text-zinc-500 mt-1.5" data-i18n="resp.limit.desc">Define cuánto puedes depositar al día, semana o mes.</p>
         <div class="mt-4 flex items-center gap-2">
-          <input type="number" placeholder="MXN" class="field rounded-xl px-3 py-2.5 w-28" />
+          <input type="number" placeholder="PEN" class="field rounded-xl px-3 py-2.5 w-28" />
           <button onclick="toast(t('resp.applied'))" class="btn btn-red rounded-xl px-4 py-2.5 text-sm font-semibold" data-i18n="resp.apply">Aplicar</button>
         </div>
       </div>
@@ -2856,12 +2856,12 @@
 <footer class="border-t border-white/5 mt-10">
   <div class="max-w-[1320px] mx-auto px-5 py-16 grid grid-cols-2 md:grid-cols-5 gap-10 text-sm">
     <div class="col-span-2">
-      <svg class="w-[160px] h-auto" width="160" height="43" viewBox="0 0 240 64" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="PP.MX">
+      <svg class="w-[160px] h-auto" width="160" height="43" viewBox="0 0 240 64" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="PP.PE">
         <use href="#ppEmblem"/>
-        <text class="logo-word" x="72" y="38" font-family="Montserrat,sans-serif" font-weight="800" font-size="26" letter-spacing="-0.5" fill="#FFFFFF">PP<tspan class="logo-dot" fill="url(#lgGold)">.</tspan>MX</text>
+        <text class="logo-word" x="72" y="38" font-family="Montserrat,sans-serif" font-weight="800" font-size="26" letter-spacing="-0.5" fill="#FFFFFF">PP<tspan class="logo-dot" fill="url(#lgGold)">.</tspan>PE</text>
         <text class="logo-sub" x="72" y="51" font-family="Montserrat,sans-serif" font-weight="600" font-size="6" letter-spacing="3" fill="#9a9aa3">CASINO · SPORTS · MÉXICO</text>
       </svg>
-      <p class="text-zinc-500 mt-4 max-w-xs leading-relaxed" data-i18n="footer.about">Casino y apuestas deportivas premium en México. Operación bajo permiso SEGOB DGJS/000123/2024.</p>
+      <p class="text-zinc-500 mt-4 max-w-xs leading-relaxed" data-i18n="footer.about">Casino y apuestas deportivas premium en Perú. Operación bajo permiso SEGOB DGJS/000123/2024.</p>
       <div class="mt-5 flex gap-4 text-lg">
         <button type="button" onclick="openModal('socialModal')" aria-label="Facebook" class="btn sm-ico"><i class="fa-brands fa-facebook sm-fb"></i></button>
         <button type="button" onclick="openModal('socialModal')" aria-label="X" class="btn sm-ico"><i class="fa-brands fa-x-twitter sm-x"></i></button>
@@ -2899,12 +2899,12 @@
   </div>
   <div class="border-t border-white/5">
     <div class="max-w-[1320px] mx-auto px-5 py-7">
-      <p class="footer-legal text-xs sm:text-[12.5px] leading-relaxed text-zinc-500 max-w-5xl" data-i18n="footer.legal">pp.mx es operado por TECNOLOGÍA EN ENTRETENIMIENTO CALIPLAY, S.A.P.I. de C.V., empresa registrada en México y autorizada y regulada por la Dirección General de Juegos y Sorteos de la Secretaría de Gobernación de los Estados Unidos Mexicanos. (SEGOB DGG/SP/404/97) pp.mx cuenta con un permiso de juego interactivo para ofrecer servicios de apuestas deportivas. (Impulsora Géminis, S.A. de C.V.)</p>
+      <p class="footer-legal text-xs sm:text-[12.5px] leading-relaxed text-zinc-500 max-w-5xl" data-i18n="footer.legal">pp.pe es operado por TECNOLOGÍA EN ENTRETENIMIENTO CALIPLAY, S.A.P.I. de C.V., empresa registrada en Perú y autorizada y regulada por la Dirección General de Juegos y Sorteos de la Secretaría de Gobernación de los Estados Unidos Mexicanos. (SEGOB DGG/SP/404/97) pp.pe cuenta con un permiso de juego interactivo para ofrecer servicios de apuestas deportivas. (Impulsora Géminis, S.A. de C.V.)</p>
     </div>
   </div>
   <div class="border-t border-white/5 text-xs text-zinc-600">
     <div class="max-w-[1320px] mx-auto px-5 py-6 flex flex-col md:flex-row gap-3 items-center justify-between">
-      <div>© 2026 PP.MX · <span data-i18n="footer.rights">Todos los derechos reservados.</span></div>
+      <div>© 2026 PP.PE · <span data-i18n="footer.rights">Todos los derechos reservados.</span></div>
       <div class="flex items-center gap-3">
         <span class="px-2.5 py-1 rounded-lg border border-white/8 font-bold">+21</span>
         <span class="px-2.5 py-1 rounded-lg border border-white/8">SEGOB</span>
@@ -2931,9 +2931,9 @@
   <div class="absolute inset-0 modal-bg" onclick="closeModal('loginModal')"></div>
   <div class="modal-card relative w-full max-w-md glass-strong rounded-3xl p-7 shadow-glass">
     <button onclick="closeModal('loginModal')" class="btn absolute top-4 right-4 w-9 h-9 grid place-items-center rounded-full hover:bg-white/8 text-zinc-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
-    <svg class="w-[148px] h-auto" width="148" height="40" viewBox="0 0 240 64" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="PP.MX">
+    <svg class="w-[148px] h-auto" width="148" height="40" viewBox="0 0 240 64" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="PP.PE">
       <use href="#ppEmblem"/>
-      <text class="logo-word" x="72" y="38" font-family="Montserrat,sans-serif" font-weight="800" font-size="26" letter-spacing="-0.5" fill="#FFFFFF">PP<tspan class="logo-dot" fill="url(#lgGold)">.</tspan>MX</text>
+      <text class="logo-word" x="72" y="38" font-family="Montserrat,sans-serif" font-weight="800" font-size="26" letter-spacing="-0.5" fill="#FFFFFF">PP<tspan class="logo-dot" fill="url(#lgGold)">.</tspan>PE</text>
       <text class="logo-sub" x="72" y="51" font-family="Montserrat,sans-serif" font-weight="600" font-size="6" letter-spacing="3" fill="#9a9aa3">CASINO · SPORTS · MÉXICO</text>
     </svg>
     <h2 class="text-xl font-bold mt-5" data-i18n="login.title">Bienvenido de vuelta</h2>
@@ -2986,7 +2986,7 @@
       </div>
       <div data-stepc="3" class="space-y-3.5 hidden">
         <label class="block"><span class="text-xs text-zinc-400" data-i18n="reg.phone">Celular</span>
-          <div class="flex gap-2 mt-1.5"><span class="field rounded-xl px-3 py-3 w-16 text-center">+52</span><input name="phone" type="text" inputmode="tel" autocomplete="tel-national" autocapitalize="none" autocorrect="off" enterkeyhint="done" required class="field rounded-xl px-3.5 py-3 flex-1" placeholder="55 1234 5678" /></div>
+          <div class="flex gap-2 mt-1.5"><span class="field rounded-xl px-3 py-3 w-16 text-center">+51</span><input name="phone" type="text" inputmode="tel" autocomplete="tel-national" autocapitalize="none" autocorrect="off" enterkeyhint="done" required class="field rounded-xl px-3.5 py-3 flex-1" placeholder="55 1234 5678" /></div>
         </label>
         <label class="block"><span class="text-xs text-zinc-400" data-i18n="reg.promo">Código de invitación</span><input name="promo" type="text" autocomplete="off" autocapitalize="characters" autocorrect="off" spellcheck="false" enterkeyhint="done" class="field mt-1.5 w-full rounded-xl px-3.5 py-3 uppercase" placeholder="AMIGO8K" /></label>
         <label class="flex items-start gap-2 text-xs text-zinc-400"><input type="checkbox" required class="accent-rojo-600 mt-0.5"/> <span data-i18n="reg.terms">Soy mayor de 21 y acepto los términos y el aviso de privacidad.</span></label>
@@ -3073,7 +3073,7 @@
       </a>
       <a href="https://wa.me/5215512345678" target="_blank" rel="noopener" class="btn glass hub-card rounded-2xl p-4 flex items-center gap-4">
         <span class="h-11 w-11 rounded-2xl bg-[#25D366]/15 text-[#39d97f] grid place-items-center text-xl shrink-0"><i class="fa-brands fa-whatsapp"></i></span>
-        <span class="flex-1 min-w-0 text-left"><span class="block font-semibold" data-i18n="support.whatsapp">WhatsApp</span><span class="block text-xs text-zinc-500">+52 55 1234 5678</span></span>
+        <span class="flex-1 min-w-0 text-left"><span class="block font-semibold" data-i18n="support.whatsapp">WhatsApp</span><span class="block text-xs text-zinc-500">+51 55 1234 5678</span></span>
         <i class="fa-solid fa-arrow-up-right-from-square text-zinc-600 text-xs"></i>
       </a>
     </div>
@@ -3190,26 +3190,26 @@
     <!-- API: GET /api/wallet/payment-methods · POST /api/wallet/deposit → { method, amount, useBonus } → { reference, qr? } -->
     <form class="mt-6 space-y-5" onsubmit="handleDeposit(event)">
       <div>
-        <div class="text-xs text-zinc-400 mb-2" data-i18n="dep.amount">Monto (MXN)</div>
+        <div class="text-xs text-zinc-400 mb-2" data-i18n="dep.amount">Monto (PEN)</div>
         <div class="grid grid-cols-4 gap-2.5">
-          <button type="button" onclick="setDep(50, this)" class="dep-amt btn glass relative py-3 rounded-xl text-sm">$50</button>
-          <button type="button" onclick="setDep(100, this)" class="dep-amt btn glass relative py-3 rounded-xl text-sm"><span class="dep-amt-bonus">+21</span>$100</button>
-          <button type="button" onclick="setDep(200, this)" class="dep-amt btn glass relative py-3 rounded-xl text-sm"><span class="dep-amt-bonus">+36</span>$200</button>
-          <button type="button" onclick="setDep(300, this)" class="dep-amt btn glass relative py-3 rounded-xl text-sm"><span class="dep-amt-bonus">+54</span>$300</button>
-          <button type="button" onclick="setDep(500, this)" class="dep-amt btn glass relative py-3 rounded-xl text-sm"><span class="dep-amt-bonus">+90</span>$500</button>
-          <button type="button" onclick="setDep(1000, this)" class="dep-amt btn glass relative py-3 rounded-xl text-sm"><span class="dep-amt-bonus">+200</span>$1,000</button>
-          <button type="button" onclick="setDep(2000, this)" class="dep-amt btn glass relative py-3 rounded-xl text-sm"><span class="dep-amt-bonus">+400</span>$2,000</button>
-          <button type="button" onclick="setDep(3000, this)" class="dep-amt btn glass relative py-3 rounded-xl text-sm"><span class="dep-amt-bonus">+600</span>$3,000</button>
-          <button type="button" onclick="setDep(5000, this)" class="dep-amt btn glass relative py-3 rounded-xl text-sm"><span class="dep-amt-bonus">+1,250</span>$5,000</button>
-          <button type="button" onclick="setDep(10000, this)" class="dep-amt btn glass relative py-3 rounded-xl text-sm"><span class="dep-amt-bonus">+2,500</span>$10,000</button>
-          <button type="button" onclick="setDep(20000, this)" class="dep-amt btn glass relative py-3 rounded-xl text-sm"><span class="dep-amt-bonus">+5,000</span>$20,000</button>
-          <button type="button" onclick="setDep(50000, this)" class="dep-amt btn glass relative py-3 rounded-xl text-sm"><span class="dep-amt-bonus">+12,500</span>$50,000</button>
+          <button type="button" onclick="setDep(50, this)" class="dep-amt btn glass relative py-3 rounded-xl text-sm">S/50</button>
+          <button type="button" onclick="setDep(100, this)" class="dep-amt btn glass relative py-3 rounded-xl text-sm"><span class="dep-amt-bonus">+21</span>S/100</button>
+          <button type="button" onclick="setDep(200, this)" class="dep-amt btn glass relative py-3 rounded-xl text-sm"><span class="dep-amt-bonus">+36</span>S/200</button>
+          <button type="button" onclick="setDep(300, this)" class="dep-amt btn glass relative py-3 rounded-xl text-sm"><span class="dep-amt-bonus">+54</span>S/300</button>
+          <button type="button" onclick="setDep(500, this)" class="dep-amt btn glass relative py-3 rounded-xl text-sm"><span class="dep-amt-bonus">+90</span>S/500</button>
+          <button type="button" onclick="setDep(1000, this)" class="dep-amt btn glass relative py-3 rounded-xl text-sm"><span class="dep-amt-bonus">+200</span>S/1,000</button>
+          <button type="button" onclick="setDep(2000, this)" class="dep-amt btn glass relative py-3 rounded-xl text-sm"><span class="dep-amt-bonus">+400</span>S/2,000</button>
+          <button type="button" onclick="setDep(3000, this)" class="dep-amt btn glass relative py-3 rounded-xl text-sm"><span class="dep-amt-bonus">+600</span>S/3,000</button>
+          <button type="button" onclick="setDep(5000, this)" class="dep-amt btn glass relative py-3 rounded-xl text-sm"><span class="dep-amt-bonus">+1,250</span>S/5,000</button>
+          <button type="button" onclick="setDep(10000, this)" class="dep-amt btn glass relative py-3 rounded-xl text-sm"><span class="dep-amt-bonus">+2,500</span>S/10,000</button>
+          <button type="button" onclick="setDep(20000, this)" class="dep-amt btn glass relative py-3 rounded-xl text-sm"><span class="dep-amt-bonus">+5,000</span>S/20,000</button>
+          <button type="button" onclick="setDep(50000, this)" class="dep-amt btn glass relative py-3 rounded-xl text-sm"><span class="dep-amt-bonus">+12,500</span>S/50,000</button>
         </div>
         <div class="mt-3.5 flex items-stretch gap-2.5">
           <input id="depAmount" type="number" min="50" value="500" required oninput="updateDepBonus()" class="field flex-1 min-w-0 rounded-xl px-3.5 py-3.5 text-lg font-semibold" />
           <div class="dep-bonus-box shrink-0 rounded-xl px-4 py-2 flex flex-col items-center justify-center text-center">
             <span class="dep-bonus-lbl text-[10px] font-bold leading-none whitespace-nowrap" data-i18n="dep.bonus">Bono</span>
-            <span id="depBonusVal" class="dep-bonus-val display text-base leading-tight mt-1 whitespace-nowrap">+$0</span>
+            <span id="depBonusVal" class="dep-bonus-val display text-base leading-tight mt-1 whitespace-nowrap">+S/0</span>
           </div>
         </div>
       </div>
@@ -3248,8 +3248,8 @@
     <div class="wd-rules mt-4">
       <h3 class="wd-rules-t"><i class="fa-solid fa-circle-info"></i><span data-i18n="dep.rules.title">Reglas de depósito</span></h3>
       <ul class="wd-rules-list">
-        <li data-i18n="dep.rules.r1">Primer depósito de $50 recibe $9 de bono.</li>
-        <li data-i18n="dep.rules.r2">A partir del segundo depósito, cada depósito mayor a $50 recibe hasta 10% de bono.</li>
+        <li data-i18n="dep.rules.r1">Primer depósito de S/50 recibe S/9 de bono.</li>
+        <li data-i18n="dep.rules.r2">A partir del segundo depósito, cada depósito mayor a S/50 recibe hasta 10% de bono.</li>
         <li data-i18n="dep.rules.r3">Cuanto mayor sea el depósito, mayor será el bono.</li>
       </ul>
     </div>
@@ -3268,7 +3268,7 @@
     <h2 class="text-xl font-bold" data-i18n="wd.title">Retirar saldo</h2>
     <!-- API: POST /api/wallet/withdraw → { amount, clabe } → { txId, eta } -->
     <form class="mt-6 space-y-3.5" onsubmit="event.preventDefault();closeModal('withdrawModal');toast(t('wd.sent'))">
-      <div class="glass rounded-xl p-3.5 text-xs flex items-center justify-between"><span class="text-zinc-400" data-i18n="wd.available">Saldo disponible</span><span class="font-bold">$2,450.00 MXN</span></div>
+      <div class="glass rounded-xl p-3.5 text-xs flex items-center justify-between"><span class="text-zinc-400" data-i18n="wd.available">Saldo disponible</span><span class="font-bold">S/2,450.00 PEN</span></div>
 
       <!-- Requisito de apuesta (flujo) -->
       <div class="wd-wager">
@@ -3285,10 +3285,10 @@
 
       <!-- Comisiones y acreditación -->
       <div class="wd-fees">
-        <div class="wd-fee-row"><span class="wd-fee-k" data-i18n="wd.fee.fee">Comisión de retiro</span><span class="wd-fee-v">$20.00</span></div>
-        <div class="wd-fee-row mt-2.5"><span class="wd-fee-k" data-i18n="wd.fee.recv">Recibes</span><span class="wd-fee-v wd-fee-v--ok">$980.00</span></div>
+        <div class="wd-fee-row"><span class="wd-fee-k" data-i18n="wd.fee.fee">Comisión de retiro</span><span class="wd-fee-v">S/20.00</span></div>
+        <div class="wd-fee-row mt-2.5"><span class="wd-fee-k" data-i18n="wd.fee.recv">Recibes</span><span class="wd-fee-v wd-fee-v--ok">S/980.00</span></div>
         <div class="wd-fee-div"></div>
-        <div class="wd-fee-row"><span class="wd-fee-k font-semibold" data-i18n="wd.fee.deduct">Total descontado</span><span class="wd-fee-v--gold">$1,000.00</span></div>
+        <div class="wd-fee-row"><span class="wd-fee-k font-semibold" data-i18n="wd.fee.deduct">Total descontado</span><span class="wd-fee-v--gold">S/1,000.00</span></div>
       </div>
 
       <label class="block"><span class="text-xs text-zinc-400" data-i18n="wd.clabe">CLABE destino</span>
@@ -3325,13 +3325,13 @@
     <!-- Comisión transferible -->
     <div class="rounded-2xl p-4 mt-5" style="background:linear-gradient(135deg,#241803,#3a2807 48%,#0e0e11)">
       <p class="comm-label text-xs text-oro-100/70" data-i18n="team.tf.available">Comisión transferible</p>
-      <p class="display mt-1 text-2xl" style="color:#ffd24a"><span id="tfAvail">$3,250.00</span> <span class="text-sm font-medium text-oro-100/70">MXN</span></p>
+      <p class="display mt-1 text-2xl" style="color:#ffd24a"><span id="tfAvail">S/3,250.00</span> <span class="text-sm font-medium text-oro-100/70">PEN</span></p>
     </div>
 
     <!-- Monto a transferir -->
     <label class="block mt-5"><span class="text-xs text-zinc-400" data-i18n="team.tf.amount">Monto a transferir</span>
       <div class="mt-1.5 flex gap-2.5">
-        <input id="tfAmount" type="number" min="0" step="0.01" inputmode="decimal" class="field flex-1 min-w-0 rounded-xl px-3.5 py-3.5 text-lg font-semibold" placeholder="$0.00" />
+        <input id="tfAmount" type="number" min="0" step="0.01" inputmode="decimal" class="field flex-1 min-w-0 rounded-xl px-3.5 py-3.5 text-lg font-semibold" placeholder="S/0.00" />
         <button type="button" onclick="transferAllCommission()" style="color:#ffd24a" class="btn rounded-xl px-4 font-bold shrink-0 whitespace-nowrap border border-oro-400/45 bg-black/20 hover:bg-black/30" data-i18n="team.tf.all">Transferir todo</button>
       </div>
     </label>
@@ -3394,7 +3394,7 @@
         <span class="mnt-window-label" data-i18n="maint.windowlabel">Mantenimiento diario</span>
         <span class="mnt-window-time"><i class="fa-regular fa-clock"></i> 12:00 – 12:30</span>
       </div>
-      <p class="text-sm text-zinc-400 leading-relaxed mt-5" data-i18n="maint.body">Estimado usuario: la plataforma PP.MX realiza mantenimiento todos los días de 12:00 a 12:30 h. Por favor, vuelve a iniciar sesión y juega después de las 12:30.</p>
+      <p class="text-sm text-zinc-400 leading-relaxed mt-5" data-i18n="maint.body">Estimado usuario: la plataforma PP.PE realiza mantenimiento todos los días de 12:00 a 12:30 h. Por favor, vuelve a iniciar sesión y juega después de las 12:30.</p>
       <button onclick="closeMaint()" class="btn btn-red w-full rounded-2xl px-6 py-3.5 font-bold mt-6" data-i18n="maint.ok">Entendido</button>
     </div>
   </div>
@@ -3402,7 +3402,7 @@
 
 <!--
   ============================================================================
-  API CATALOG · PP.MX  (JWT: Authorization: Bearer <token> · { ok, data, error })
+  API CATALOG · PP.PE  (JWT: Authorization: Bearer <token> · { ok, data, error })
   ============================================================================
   AUTH
    01 POST /api/auth/register          { email,password,firstName,lastName,birth,phone,promo? } → { token, user }
@@ -3457,8 +3457,8 @@ const I18N = {
     'top.support':'Soporte 24/7','top.licensed':'Operación legal · SEGOB','top.responsible':'+21 Juego Responsable',
     'nav.home':'Inicio','nav.sports':'Deportes','nav.wheel':'Ruleta','nav.casino':'Casino','nav.promo':'Promociones','nav.help':'Ayuda','nav.account':'Mi Cuenta','nav.responsible':'Juego Responsable','nav.language':'Idioma',
     'theme.toggle':'Cambiar tema','theme.dark':'Oscuro','theme.light':'Claro',
-    'maint.eyebrow':'Aviso del sistema','maint.title':'Aviso de mantenimiento','maint.windowlabel':'Mantenimiento diario','maint.body':'Estimado usuario: la plataforma PP.MX realiza mantenimiento todos los días de 12:00 a 12:30 h. Por favor, vuelve a iniciar sesión y juega después de las 12:30.','maint.ok':'Entendido',
-    'wheel.eyebrow':'Premio diario','wheel.title':'Ruleta de la suerte','wheel.sub':'Gira y gana premios en efectivo al instante. ¡Un giro gratis cada día!','wheel.spins':'Giros disponibles','wheel.spin':'GIRAR','wheel.spinbtn':'Girar la ruleta','wheel.rules.title':'Reglas de la Ruleta de la Suerte','wheel.again':'Otro giro','wheel.again.toast':'¡Gira otra vez! Conservas tu giro.','wheel.nospins':'No te quedan giros por hoy. Deposita para ganar más.','wheel.win':'¡Felicidades! Ganaste {amt} 🎉','wheel.cta.title':'Gira y gana hasta $1,000 MXN','wheel.cta.sub':'Tu giro gratis de hoy te está esperando.',
+    'maint.eyebrow':'Aviso del sistema','maint.title':'Aviso de mantenimiento','maint.windowlabel':'Mantenimiento diario','maint.body':'Estimado usuario: la plataforma PP.PE realiza mantenimiento todos los días de 12:00 a 12:30 h. Por favor, vuelve a iniciar sesión y juega después de las 12:30.','maint.ok':'Entendido',
+    'wheel.eyebrow':'Premio diario','wheel.title':'Ruleta de la suerte','wheel.sub':'Gira y gana premios en efectivo al instante. ¡Un giro gratis cada día!','wheel.spins':'Giros disponibles','wheel.spin':'GIRAR','wheel.spinbtn':'Girar la ruleta','wheel.rules.title':'Reglas de la Ruleta de la Suerte','wheel.again':'Otro giro','wheel.again.toast':'¡Gira otra vez! Conservas tu giro.','wheel.nospins':'No te quedan giros por hoy. Deposita para ganar más.','wheel.win':'¡Felicidades! Ganaste {amt} 🎉','wheel.cta.title':'Gira y gana hasta S/1,000 PEN','wheel.cta.sub':'Tu giro gratis de hoy te está esperando.',
     'cta.login':'Iniciar sesión','cta.register':'Regístrate','cta.deposit':'Depositar','cta.slip':'Boleto','cta.notices':'Notificaciones','nav.back':'Volver',
     'notices.eyebrow':'Centro de avisos','notices.title':'Notificaciones','notices.sub':'Anuncios oficiales, promociones y avisos de tu cuenta.',
     'notif.pop.title':'Notificaciones','notif.pop.readall':'Marcar leídas','notif.pop.viewall':'Ver todas las notificaciones','notif.readmore':'Ver detalle','notif.empty':'No tienes notificaciones','notif.allread':'Todas marcadas como leídas','notif.cta.promos':'Ver promociones','notif.cta.all':'Todas las notificaciones','common.back':'Volver',
@@ -3468,8 +3468,8 @@ const I18N = {
     'team.kpi.invited':'Usuarios invitados','team.kpi.valid':'Usuarios válidos','team.kpi.today':'Invitados hoy','team.kpi.total':'Invitación acumulada',
     'team.comm.eyebrow':'Comisiones','team.comm.available':'Comisión disponible','team.comm.withdraw':'Retirar comisión','team.comm.transfer':'Transferir a saldo','team.comm.done':'Comisión transferida a tu saldo: {amt}','team.comm.none':'No tienes comisión disponible para transferir.','team.comm.accumulated':'Acumulada','team.comm.month':'Este mes','team.comm.pending':'Pendiente','team.tf.title':'Transferir comisión','team.tf.sub':'Mueve tu comisión disponible a tu saldo.','team.tf.available':'Comisión transferible','team.tf.amount':'Monto a transferir','team.tf.all':'Transferir todo','team.tf.confirm':'Confirmar transferencia','team.tf.warn':'Una vez transferida la comisión a tu monedero de saldo, el retiro requiere cumplir un requisito de apuesta de 10×.','team.tf.ok':'Confirmar','team.tf.cancel':'Cancelar','team.tf.invalid':'Ingresa un monto válido para transferir.','team.tf.exceed':'El monto supera tu comisión transferible.',
     'team.invite.title':'Invita y gana','team.invite.linklabel':'Tu enlace de invitación','team.invite.copy':'Copiar','team.invite.copied':'¡Enlace copiado!','team.invite.qr':'Escanea para registrarte','team.invite.share':'Compartir',
-    'team.rebate.title':'Recompensa por referidos','team.rebate.sub':'Mientras más usuarios válidos invites, más ganas por cada uno.','team.rebate.ppl':'personas','team.rebate.unit':'MXN','team.rebate.col.ppl':'Invitados','team.rebate.col.t1':'Recompensa 1','team.rebate.col.t2':'Recompensa 2','team.rebate.col.t1cond':'Depósito ≥ 50','team.rebate.col.t2cond':'Apuesta ≥ 850',
-    'team.rules.title':'Reglas de invitación','team.rules.body':'<ul class="space-y-2.5 list-none"><li class="flex gap-2.5"><i class="fa-solid fa-check text-oro-400 mt-0.5"></i><span>Gana hasta <b class="text-zinc-200">$35 de comisión</b> por cada usuario válido que invites.</span></li><li class="flex gap-2.5"><i class="fa-solid fa-check text-oro-400 mt-0.5"></i><span>Recibe hasta <b class="text-zinc-200">0.1% de comisión</b> sobre la actividad de tus referidos, de por vida.</span></li><li class="flex gap-2.5"><i class="fa-solid fa-check text-oro-400 mt-0.5"></i><span>Un usuario es <b class="text-zinc-200">válido</b> tras depositar al menos $50 y apostar ≥$1,600.</span></li><li class="flex gap-2.5"><i class="fa-solid fa-check text-oro-400 mt-0.5"></i><span>Las comisiones se liquidan en <b class="text-zinc-200">tiempo real</b> y puedes retirarlas desde $50 MXN.</span></li><li class="flex gap-2.5"><i class="fa-solid fa-check text-oro-400 mt-0.5"></i><span>Prohibido el autoreferido o cuentas falsas: anula las comisiones.</span></li><li class="flex gap-2.5"><i class="fa-solid fa-check text-oro-400 mt-0.5"></i><span>PP.MX se reserva el derecho de interpretación final.</span></li></ul>',
+    'team.rebate.title':'Recompensa por referidos','team.rebate.sub':'Mientras más usuarios válidos invites, más ganas por cada uno.','team.rebate.ppl':'personas','team.rebate.unit':'PEN','team.rebate.col.ppl':'Invitados','team.rebate.col.t1':'Recompensa 1','team.rebate.col.t2':'Recompensa 2','team.rebate.col.t1cond':'Depósito ≥ 50','team.rebate.col.t2cond':'Apuesta ≥ 850',
+    'team.rules.title':'Reglas de invitación','team.rules.body':'<ul class="space-y-2.5 list-none"><li class="flex gap-2.5"><i class="fa-solid fa-check text-oro-400 mt-0.5"></i><span>Gana hasta <b class="text-zinc-200">S/35 de comisión</b> por cada usuario válido que invites.</span></li><li class="flex gap-2.5"><i class="fa-solid fa-check text-oro-400 mt-0.5"></i><span>Recibe hasta <b class="text-zinc-200">0.1% de comisión</b> sobre la actividad de tus referidos, de por vida.</span></li><li class="flex gap-2.5"><i class="fa-solid fa-check text-oro-400 mt-0.5"></i><span>Un usuario es <b class="text-zinc-200">válido</b> tras depositar al menos S/50 y apostar ≥S/1,600.</span></li><li class="flex gap-2.5"><i class="fa-solid fa-check text-oro-400 mt-0.5"></i><span>Las comisiones se liquidan en <b class="text-zinc-200">tiempo real</b> y puedes retirarlas desde S/50 PEN.</span></li><li class="flex gap-2.5"><i class="fa-solid fa-check text-oro-400 mt-0.5"></i><span>Prohibido el autoreferido o cuentas falsas: anula las comisiones.</span></li><li class="flex gap-2.5"><i class="fa-solid fa-check text-oro-400 mt-0.5"></i><span>PP.PE se reserva el derecho de interpretación final.</span></li></ul>',
     'hero.badge':'En vivo ahora · 47 eventos','hero.title1':'La experiencia','hero.title2':'que mereces',
     'hero.desc':'Casino de lujo y apuestas deportivas con los mejores momios. Deposita en segundos, cobra al instante.',
     'hero.cta1':'Reclama tu bono','hero.cta2':'Explora deportes','hero.stat1':'Bono 1er depósito','hero.stat2':'Giros gratis','hero.stat3':'Casino en vivo',
@@ -3493,8 +3493,8 @@ const I18N = {
     'account.title':'Mi cuenta','account.guest.title':'Necesitas iniciar sesión','account.guest.desc':'Entra para ver tu saldo, depositar, retirar e historial.','account.guest.cta':'Crear cuenta',
     'account.tab.overview':'Resumen','account.tab.withdraw':'Retirar','account.tab.bets':'Mis apuestas','account.tab.profile':'Perfil y KYC','account.logout':'Cerrar sesión',
     'account.balance':'Saldo disponible','account.kyc.title':'Verifica tu cuenta para retirar','account.kyc.desc':'Sube tu INE y comprobante de domicilio. Toma menos de 5 min.','account.kyc.cta':'Verificar','account.kyc.soon':'Flujo KYC en construcción · próxima iteración',
-    'account.recent':'Movimientos recientes','account.dep.title':'Depositar saldo','account.dep.desc':'Mínimo $100.','account.dep.cta':'Abrir formulario',
-    'account.wd.title':'Retirar saldo','account.wd.desc':'Mínimo $50 · Vía SPEI a tu CLABE registrada.','account.wd.cta':'Solicitar retiro',
+    'account.recent':'Movimientos recientes','account.dep.title':'Depositar saldo','account.dep.desc':'Mínimo S/100.','account.dep.cta':'Abrir formulario',
+    'account.wd.title':'Retirar saldo','account.wd.desc':'Mínimo S/50 · Vía SPEI a tu CLABE registrada.','account.wd.cta':'Solicitar retiro',
     'account.profile.title':'Datos personales','account.profile.name':'Nombre','account.profile.lastname':'Apellidos','account.profile.phone':'Teléfono','account.profile.save':'Guardar cambios','account.profile.saved':'Datos guardados',
     'account.hub.records.t':'Historial','account.hub.records.d':'Depósitos, retiros y apuestas','account.hub.profile.t':'Perfil','account.hub.profile.d':'Usuario, avatar y datos','account.hub.vip.t':'Nivel VIP','account.hub.vip.d':'recompensas','account.hub.security.t':'Seguridad','account.hub.security.d':'Contraseña, correo y celular','account.hub.support.t':'Atención al cliente','account.hub.support.d':'Telegram y WhatsApp 24/7','account.hub.social.t':'Redes oficiales','account.hub.social.d':'Instagram, Facebook y más','account.hub.promo.t':'Canjear código','account.hub.promo.d':'Ingresa un código de 6 dígitos',
     'account.bank.cta':'Cuenta de retiro','account.bank.prompt.title':'Vincula una cuenta bancaria para retirar','account.bank.prompt.desc':'Agrega tu CLABE interbancaria para poder solicitar retiros vía SPEI.','account.bank.prompt.cta':'Vincular',
@@ -3511,11 +3511,11 @@ const I18N = {
     'social.title':'Redes oficiales','social.sub':'Síguenos para promos y ganadores. Cuidado con cuentas falsas.','social.instagram':'Instagram','social.facebook':'Facebook','social.telegram':'Telegram','social.tiktok':'TikTok',
     'login.title':'Bienvenido de vuelta','login.sub':'Entra para apostar y reclamar tus bonos.','login.id':'Email o teléfono','login.pass':'Contraseña','login.remember':'Recordarme','login.forgot':'¿Olvidaste tu contraseña?','login.submit':'Entrar','login.or':'o continúa con','login.noaccount':'¿Aún sin cuenta?','login.register':'Regístrate gratis','login.welcome':'¡Bienvenido de vuelta, José!',
     'reg.title1':'Crea tu cuenta','reg.sub1':'En menos de 60 segundos ya estás jugando.','reg.title2':'Tus datos','reg.sub2':'Esto lo pedimos por ley para abrir tu cuenta.','reg.title3':'Casi listo','reg.sub3':'Verifica tu celular y reclama el bono.',
-    'reg.createpass':'Crea una contraseña','reg.birth':'Fecha de nacimiento','reg.phone':'Celular','reg.promo':'Código de invitación','reg.terms':'Soy mayor de 21 y acepto los términos y el aviso de privacidad.','reg.back':'Atrás','reg.next':'Continuar','reg.finish':'Crear cuenta','reg.haveaccount':'¿Ya tienes cuenta?','reg.done':'¡Cuenta creada! Bono de $500 acreditado.','reg.birthmax':'La fecha de nacimiento no puede ser posterior al 01/01/2008.',
+    'reg.createpass':'Crea una contraseña','reg.birth':'Fecha de nacimiento','reg.phone':'Celular','reg.promo':'Código de invitación','reg.terms':'Soy mayor de 21 y acepto los términos y el aviso de privacidad.','reg.back':'Atrás','reg.next':'Continuar','reg.finish':'Crear cuenta','reg.haveaccount':'¿Ya tienes cuenta?','reg.done':'¡Cuenta creada! Bono de S/500 acreditado.','reg.birthmax':'La fecha de nacimiento no puede ser posterior al 01/01/2008.',
     'forgot.title':'Recupera tu cuenta','forgot.sub':'Te enviaremos un SMS para restablecer tu contraseña.','forgot.phone':'Número de teléfono','forgot.send':'Enviar SMS','forgot.sent':'Te enviamos un SMS con el código.','forgot.back':'Atrás','forgot.invalidPhone':'Ingresa un número de teléfono válido.','forgot.otp.title':'Verifica tu código','forgot.otp.sub':'Ingresa el código de 6 dígitos enviado a','forgot.otp.verify':'Verificar','forgot.otp.resend':'Reenviar código','forgot.otp.invalid':'Ingresa el código de 6 dígitos completo.','forgot.reset.title':'Nueva contraseña','forgot.reset.sub':'Crea una nueva contraseña para tu cuenta.','forgot.reset.new':'Nueva contraseña','forgot.reset.confirm':'Confirmar contraseña','forgot.reset.submit':'Restablecer contraseña','forgot.reset.short':'La contraseña debe tener al menos 6 caracteres.','forgot.reset.mismatch':'Las contraseñas no coinciden.','forgot.reset.done':'Tu contraseña se restableció con éxito.',
-    'dep.title':'Depositar saldo','dep.sub':'Elige cuánto y por dónde.','dep.amount':'Monto (MXN)','dep.bonus':'Bono','dep.method':'Canal de pago','dep.info.label':'Tus datos','dep.info.phone':'Teléfono (10 dígitos)','dep.info.name':'Nombre completo','dep.info.email':'Correo electrónico','dep.instant':'Instantáneo','dep.card':'Tarjeta','dep.promo.label':'Promoción de recarga','dep.promo.join.t':'Participar en la promoción de primera recarga para nuevos usuarios','dep.promo.join.max':'Hasta +100%','dep.promo.d1':'Día 1','dep.promo.d2':'Día 2','dep.promo.d3':'Día 3','dep.promo.today.t':'Promoción de recarga de hoy','dep.promo.today.max':'Extra +10%','dep.promo.today.d':'Deposita hoy y recibe un 10% extra de bono.','dep.promo.none.t':'No participar en la promoción de recarga','dep.promo.none.d':'Deposita sin bono.','dep.continue':'Continuar al pago','dep.pickmethod':'Elige un método de pago','dep.done':'Depósito acreditado','dep.rules.title':'Reglas de depósito','dep.rules.r1':'Primer depósito de $50 recibe $9 de bono.','dep.rules.r2':'A partir del segundo depósito, cada depósito mayor a $50 recibe hasta 10% de bono.','dep.rules.r3':'Cuanto mayor sea el depósito, mayor será el bono.',
-    'wd.title':'Retirar saldo','wd.sub':'Vía SPEI a tu CLABE registrada · mínimo $50.','wd.available':'Saldo disponible','wd.amount':'Monto a retirar','wd.clabe':'CLABE destino','wd.confirm':'Confirmar retiro','wd.sent':'Retiro solicitado · te avisamos por SMS.','wd.wager.need':'Apuesta requerida de <b class="wd-hl">1,600</b> para retirar','wd.wager.cur':'Apuesta actual <b class="wd-hl-ok">1,680</b>','wd.fee.fee':'Comisión de retiro','wd.fee.recv':'Recibes','wd.fee.deduct':'Total descontado','wd.rules.title':'Reglas de retiro','wd.rules.r1':'Monto mínimo de retiro: 50','wd.rules.r2':'El retiro requiere cumplir el requisito de apuesta antes de solicitarlo (5× el monto del depósito sin promoción de recarga; 10× con cualquier promoción de recarga).','wd.rules.r3':'El primer retiro de cada día es gratis; después se aplica una comisión del 5% del monto (mínimo 20).','wd.rules.r4':'Tiempo de acreditación habitual: 1-3 días hábiles.','wd.rules.r5':'Asegúrate de que los datos de tu cuenta de retiro sean correctos.',
-    'bet.title':'¡Apuesta registrada!','bet.folio':'Folio','bet.picks':'Selecciones','bet.mybets':'Ver mis apuestas','bet.continue':'Seguir apostando','bet.needlogin':'Inicia sesión para apostar','bet.min':'Apuesta mínima $10','bet.nofunds':'Saldo insuficiente','bet.single1':'Sencilla requiere 1 selección','bet.sel':'selección','bet.sels':'selecciones',
+    'dep.title':'Depositar saldo','dep.sub':'Elige cuánto y por dónde.','dep.amount':'Monto (PEN)','dep.bonus':'Bono','dep.method':'Canal de pago','dep.info.label':'Tus datos','dep.info.phone':'Teléfono (10 dígitos)','dep.info.name':'Nombre completo','dep.info.email':'Correo electrónico','dep.instant':'Instantáneo','dep.card':'Tarjeta','dep.promo.label':'Promoción de recarga','dep.promo.join.t':'Participar en la promoción de primera recarga para nuevos usuarios','dep.promo.join.max':'Hasta +100%','dep.promo.d1':'Día 1','dep.promo.d2':'Día 2','dep.promo.d3':'Día 3','dep.promo.today.t':'Promoción de recarga de hoy','dep.promo.today.max':'Extra +10%','dep.promo.today.d':'Deposita hoy y recibe un 10% extra de bono.','dep.promo.none.t':'No participar en la promoción de recarga','dep.promo.none.d':'Deposita sin bono.','dep.continue':'Continuar al pago','dep.pickmethod':'Elige un método de pago','dep.done':'Depósito acreditado','dep.rules.title':'Reglas de depósito','dep.rules.r1':'Primer depósito de S/50 recibe S/9 de bono.','dep.rules.r2':'A partir del segundo depósito, cada depósito mayor a S/50 recibe hasta 10% de bono.','dep.rules.r3':'Cuanto mayor sea el depósito, mayor será el bono.',
+    'wd.title':'Retirar saldo','wd.sub':'Vía SPEI a tu CLABE registrada · mínimo S/50.','wd.available':'Saldo disponible','wd.amount':'Monto a retirar','wd.clabe':'CLABE destino','wd.confirm':'Confirmar retiro','wd.sent':'Retiro solicitado · te avisamos por SMS.','wd.wager.need':'Apuesta requerida de <b class="wd-hl">1,600</b> para retirar','wd.wager.cur':'Apuesta actual <b class="wd-hl-ok">1,680</b>','wd.fee.fee':'Comisión de retiro','wd.fee.recv':'Recibes','wd.fee.deduct':'Total descontado','wd.rules.title':'Reglas de retiro','wd.rules.r1':'Monto mínimo de retiro: 50','wd.rules.r2':'El retiro requiere cumplir el requisito de apuesta antes de solicitarlo (5× el monto del depósito sin promoción de recarga; 10× con cualquier promoción de recarga).','wd.rules.r3':'El primer retiro de cada día es gratis; después se aplica una comisión del 5% del monto (mínimo 20).','wd.rules.r4':'Tiempo de acreditación habitual: 1-3 días hábiles.','wd.rules.r5':'Asegúrate de que los datos de tu cuenta de retiro sean correctos.',
+    'bet.title':'¡Apuesta registrada!','bet.folio':'Folio','bet.picks':'Selecciones','bet.mybets':'Ver mis apuestas','bet.continue':'Seguir apostando','bet.needlogin':'Inicia sesión para apostar','bet.min':'Apuesta mínima S/10','bet.nofunds':'Saldo insuficiente','bet.single1':'Sencilla requiere 1 selección','bet.sel':'selección','bet.sels':'selecciones',
     'help.eyebrow':'Centro de ayuda','help.title':'¿Cómo te ayudamos?','help.sub':'Las dudas más comunes. Si no está la tuya, escríbenos.',
     'help.contact.title':'Manda un ticket','help.contact.sub':'Respondemos en menos de 2 horas hábiles.','help.contact.subject':'Asunto','help.contact.category':'Categoría','help.contact.message':'Mensaje','help.contact.send':'Enviar ticket','help.contact.sent':'Ticket enviado · folio',
     'help.cat.deposits':'Depósitos','help.cat.withdrawals':'Retiros','help.cat.bets':'Apuestas','help.cat.bonus':'Bonos','help.cat.account':'Cuenta',
@@ -3523,14 +3523,14 @@ const I18N = {
     'resp.limit.title':'Límite de depósito','resp.limit.desc':'Define cuánto puedes depositar al día, semana o mes.','resp.apply':'Aplicar','resp.applied':'Configuración aplicada',
     'resp.time.title':'Tiempo de sesión','resp.time.desc':'Te avisamos cuando lleves el tiempo que elijas.','resp.activate':'Activar',
     'resp.exclude.title':'Autoexclusión','resp.exclude.desc':'Cierra tu cuenta temporal o permanentemente. No te dejaremos volver hasta cumplir el plazo.','resp.days':'días','resp.month':'mes','resp.months':'meses','resp.permanent':'Permanente',
-    'footer.about':'Casino y apuestas deportivas premium en México.','footer.play':'Juega','footer.support':'Soporte','footer.company':'Empresa','footer.terms':'Términos','footer.privacy':'Privacidad','footer.about2':'Sobre nosotros','footer.affiliates':'Afiliados','footer.press':'Prensa','footer.rights':'Todos los derechos reservados.','footer.legal':'pp.mx es operado por TECNOLOGÍA EN ENTRETENIMIENTO CALIPLAY, S.A.P.I. de C.V., empresa registrada en México y autorizada y regulada por la Dirección General de Juegos y Sorteos de la Secretaría de Gobernación de los Estados Unidos Mexicanos. (SEGOB DGG/SP/404/97) pp.mx cuenta con un permiso de juego interactivo para ofrecer servicios de apuestas deportivas. (Impulsora Géminis, S.A. de C.V.)',
+    'footer.about':'Casino y apuestas deportivas premium en Perú.','footer.play':'Juega','footer.support':'Soporte','footer.company':'Empresa','footer.terms':'Términos','footer.privacy':'Privacidad','footer.about2':'Sobre nosotros','footer.affiliates':'Afiliados','footer.press':'Prensa','footer.rights':'Todos los derechos reservados.','footer.legal':'pp.pe es operado por TECNOLOGÍA EN ENTRETENIMIENTO CALIPLAY, S.A.P.I. de C.V., empresa registrada en Perú y autorizada y regulada por la Dirección General de Juegos y Sorteos de la Secretaría de Gobernación de los Estados Unidos Mexicanos. (SEGOB DGG/SP/404/97) pp.pe cuenta con un permiso de juego interactivo para ofrecer servicios de apuestas deportivas. (Impulsora Géminis, S.A. de C.V.)',
     'promo.cta':'Reclamar','promo.viewmore':'Ver detalles',
     'float.checkin.t':'Check-in','float.social.t':'Síguenos',
     'dl.title':'Descarga la App','dl.sub':'Bonos exclusivos y retiros más rápidos','dl.ios':'iOS','dl.android':'Android','dl.float':'App',
-    'acc.dl.title':'Descarga la App PP.MX','acc.dl.sub':'Juega más rápido, recibe bonos exclusivos y notificaciones al instante.','acc.dl.f1':'Acceso instantáneo','acc.dl.f2':'Bonos solo en app','acc.dl.f3':'Pagos SPEI seguros','acc.dl.qr':'Escanea para descargar','acc.dl.soon':'Disponible muy pronto','account.hub.dl.t':'Descargar App','account.hub.dl.d':'iOS y Android · bonos exclusivos en la app',
-    'account.more.eyebrow':'Más en PP.MX','account.more.title':'Descarga y guía','account.hub.guide.t':'Guía de actividades','account.hub.guide.d':'Reglas de juego y cómo participar',
-    'dl.page.eyebrow':'App oficial PP.MX','dl.page.title':'Descarga la App PP.MX','dl.page.sub':'Juega más rápido, recibe bonos exclusivos y notificaciones de pago al instante. Disponible para iOS y Android.','dl.page.feats.t':'Ventajas de la app','dl.page.f1d':'Abre tus juegos favoritos con un toque, sin navegador.','dl.page.f2d':'Promociones y giros exclusivos para usuarios de la app.','dl.page.f3d':'Depósitos y retiros cifrados con confirmación inmediata.','dl.page.f4t':'Alertas en tiempo real','dl.page.f4d':'Recibe avisos de bonos, resultados y movimientos al instante.','dl.page.steps.t':'Cómo instalar','dl.page.s1t':'Escanea el código QR','dl.page.s1d':'Apunta la cámara de tu celular al QR de arriba.','dl.page.s2t':'Descarga el instalador','dl.page.s2d':'Elige App Store (iOS) o el archivo APK (Android).','dl.page.s3t':'Permite la instalación','dl.page.s3d':'En Android, activa "orígenes desconocidos" si se solicita.','dl.page.s4t':'Inicia sesión y juega','dl.page.s4d':'Entra con tu cuenta y reclama tu bono de bienvenida en la app.',
-    'guide.eyebrow':'Centro de actividades','guide.title':'Guía de actividades','guide.sub':'Conoce cada promoción, sus reglas y cómo participar para aprovechar al máximo tus recompensas.','guide.c1.t':'Check-in diario','guide.c1.d':'Inicia sesión cada día y reclama tu recompensa. Mientras más días seguidos, mayor el premio acumulado de 7 días.','guide.c1.tag':'Hasta $??? MXN / semana','guide.c2.t':'Ruleta de la suerte','guide.c2.d':'Juega para ganar giros gratis: premios, giros y hasta $888,888 MXN te esperan. (Por cada $10,000 de apuesta acumulada obtienes un giro gratis automático.)','guide.c2.tag':'Giro gratis diario','guide.c3.t':'Comisión por referidos','guide.c3.d':'Comparte tu enlace exclusivo y gana comisión continua cuando tus amigos participan.','guide.c3.tag':'Hasta $35 por usuario válido','guide.c4.t':'Club VIP','guide.c4.d':'Sube de nivel según tu actividad y los requisitos de ascenso; desbloquea salario semanal, bonos de nivel y servicio prioritario.','guide.c4.tag':'Salario semanal + bonos','guide.c5.t':'Bono de bienvenida','guide.c5.d':'Completa tu registro para activar tu recompensa de bienvenida de nuevo usuario.','guide.c5.tag':'100% · $58 MXN al instante','guide.c6.t':'App móvil','guide.c6.d':'Juega donde quieras: descarga la app, inicia sesión y recibe $8 MXN, con beneficios exclusivos por notificaciones.','guide.c6.tag':'Inicia sesión y gana $8 MXN','guide.foot':'Aplican términos y condiciones. Juega de forma responsable · +21.',
+    'acc.dl.title':'Descarga la App PP.PE','acc.dl.sub':'Juega más rápido, recibe bonos exclusivos y notificaciones al instante.','acc.dl.f1':'Acceso instantáneo','acc.dl.f2':'Bonos solo en app','acc.dl.f3':'Pagos SPEI seguros','acc.dl.qr':'Escanea para descargar','acc.dl.soon':'Disponible muy pronto','account.hub.dl.t':'Descargar App','account.hub.dl.d':'iOS y Android · bonos exclusivos en la app',
+    'account.more.eyebrow':'Más en PP.PE','account.more.title':'Descarga y guía','account.hub.guide.t':'Guía de actividades','account.hub.guide.d':'Reglas de juego y cómo participar',
+    'dl.page.eyebrow':'App oficial PP.PE','dl.page.title':'Descarga la App PP.PE','dl.page.sub':'Juega más rápido, recibe bonos exclusivos y notificaciones de pago al instante. Disponible para iOS y Android.','dl.page.feats.t':'Ventajas de la app','dl.page.f1d':'Abre tus juegos favoritos con un toque, sin navegador.','dl.page.f2d':'Promociones y giros exclusivos para usuarios de la app.','dl.page.f3d':'Depósitos y retiros cifrados con confirmación inmediata.','dl.page.f4t':'Alertas en tiempo real','dl.page.f4d':'Recibe avisos de bonos, resultados y movimientos al instante.','dl.page.steps.t':'Cómo instalar','dl.page.s1t':'Escanea el código QR','dl.page.s1d':'Apunta la cámara de tu celular al QR de arriba.','dl.page.s2t':'Descarga el instalador','dl.page.s2d':'Elige App Store (iOS) o el archivo APK (Android).','dl.page.s3t':'Permite la instalación','dl.page.s3d':'En Android, activa "orígenes desconocidos" si se solicita.','dl.page.s4t':'Inicia sesión y juega','dl.page.s4d':'Entra con tu cuenta y reclama tu bono de bienvenida en la app.',
+    'guide.eyebrow':'Centro de actividades','guide.title':'Guía de actividades','guide.sub':'Conoce cada promoción, sus reglas y cómo participar para aprovechar al máximo tus recompensas.','guide.c1.t':'Check-in diario','guide.c1.d':'Inicia sesión cada día y reclama tu recompensa. Mientras más días seguidos, mayor el premio acumulado de 7 días.','guide.c1.tag':'Hasta S/??? PEN / semana','guide.c2.t':'Ruleta de la suerte','guide.c2.d':'Juega para ganar giros gratis: premios, giros y hasta S/888,888 PEN te esperan. (Por cada S/10,000 de apuesta acumulada obtienes un giro gratis automático.)','guide.c2.tag':'Giro gratis diario','guide.c3.t':'Comisión por referidos','guide.c3.d':'Comparte tu enlace exclusivo y gana comisión continua cuando tus amigos participan.','guide.c3.tag':'Hasta S/35 por usuario válido','guide.c4.t':'Club VIP','guide.c4.d':'Sube de nivel según tu actividad y los requisitos de ascenso; desbloquea salario semanal, bonos de nivel y servicio prioritario.','guide.c4.tag':'Salario semanal + bonos','guide.c5.t':'Bono de bienvenida','guide.c5.d':'Completa tu registro para activar tu recompensa de bienvenida de nuevo usuario.','guide.c5.tag':'100% · S/58 PEN al instante','guide.c6.t':'App móvil','guide.c6.d':'Juega donde quieras: descarga la app, inicia sesión y recibe S/8 PEN, con beneficios exclusivos por notificaciones.','guide.c6.tag':'Inicia sesión y gana S/8 PEN','guide.foot':'Aplican términos y condiciones. Juega de forma responsable · +21.',
     'checkin.title':'Check-in diario','checkin.sub':'Conéctate cada día y reclama tu bono. ¡7 días seguidos = premio mayor!','checkin.grand':'Premio mayor','checkin.cta':'Reclamar hoy','checkin.done':'Reclamado hoy ✓','checkin.ok':'¡Bono diario reclamado! Vuelve mañana.',
     'bet.draw':'Empate','claim.need':'Inicia sesión para reclamar','claim.ok':'¡Bono reclamado! Revisa tu correo.','game.needlogin':'Inicia sesión para jugar real',
     'game.unlock.title':'¡Deposita para desbloquear los juegos!','game.unlock.sub':'¡Tu recompensa de juego exclusiva! ¡Actívala al instante después de depositar!','game.unlock.go':'Activar ahora','game.unlock.no':'Rechazar cruelmente',
@@ -3539,8 +3539,8 @@ const I18N = {
     'top.support':'24/7 Support','top.licensed':'Licensed · SEGOB','top.responsible':'+21 Play Responsibly',
     'nav.home':'Home','nav.sports':'Sports','nav.wheel':'Lucky Wheel','nav.casino':'Casino','nav.promo':'Promotions','nav.help':'Help','nav.account':'My Account','nav.responsible':'Responsible Gaming','nav.language':'Language',
     'theme.toggle':'Switch theme','theme.dark':'Dark','theme.light':'Light',
-    'maint.eyebrow':'System notice','maint.title':'Maintenance notice','maint.windowlabel':'Daily maintenance','maint.body':'Dear user: the PP.MX platform undergoes maintenance every day from 12:00 to 12:30. Please log in and play again after 12:30.','maint.ok':'Got it',
-    'wheel.eyebrow':'Daily prize','wheel.title':'Lucky Wheel','wheel.sub':'Spin and win instant cash prizes. One free spin every day!','wheel.spins':'Spins available','wheel.spin':'SPIN','wheel.spinbtn':'Spin the wheel','wheel.rules.title':'Lucky Wheel rules','wheel.again':'Spin again','wheel.again.toast':'Spin again! Your spin is kept.','wheel.nospins':'No spins left today. Deposit to win more.','wheel.win':'Congrats! You won {amt} 🎉','wheel.cta.title':'Spin and win up to $1,000 MXN','wheel.cta.sub':'Your free spin for today is waiting.',
+    'maint.eyebrow':'System notice','maint.title':'Maintenance notice','maint.windowlabel':'Daily maintenance','maint.body':'Dear user: the PP.PE platform undergoes maintenance every day from 12:00 to 12:30. Please log in and play again after 12:30.','maint.ok':'Got it',
+    'wheel.eyebrow':'Daily prize','wheel.title':'Lucky Wheel','wheel.sub':'Spin and win instant cash prizes. One free spin every day!','wheel.spins':'Spins available','wheel.spin':'SPIN','wheel.spinbtn':'Spin the wheel','wheel.rules.title':'Lucky Wheel rules','wheel.again':'Spin again','wheel.again.toast':'Spin again! Your spin is kept.','wheel.nospins':'No spins left today. Deposit to win more.','wheel.win':'Congrats! You won {amt} 🎉','wheel.cta.title':'Spin and win up to S/1,000 PEN','wheel.cta.sub':'Your free spin for today is waiting.',
     'cta.login':'Log in','cta.register':'Sign up','cta.deposit':'Deposit','cta.slip':'Slip','cta.notices':'Notifications','nav.back':'Back',
     'notices.eyebrow':'Notice center','notices.title':'Notifications','notices.sub':'Official announcements, promos and account alerts.',
     'notif.pop.title':'Notifications','notif.pop.readall':'Mark all read','notif.pop.viewall':'View all notifications','notif.readmore':'View detail','notif.empty':'You have no notifications','notif.allread':'All marked as read','notif.cta.promos':'View promotions','notif.cta.all':'All notifications','common.back':'Back',
@@ -3550,8 +3550,9 @@ const I18N = {
     'team.kpi.invited':'Invited users','team.kpi.valid':'Valid users','team.kpi.today':'Invited today','team.kpi.total':'Total invites',
     'team.comm.eyebrow':'Commissions','team.comm.available':'Available commission','team.comm.withdraw':'Withdraw','team.comm.transfer':'Transfer to balance','team.comm.done':'Commission moved to your balance: {amt}','team.comm.none':'No commission available to transfer.','team.comm.accumulated':'Accumulated','team.comm.month':'This month','team.comm.pending':'Pending','team.tf.title':'Transfer commission','team.tf.sub':'Move your available commission to your balance.','team.tf.available':'Transferable commission','team.tf.amount':'Amount to transfer','team.tf.all':'Transfer all','team.tf.confirm':'Confirm transfer','team.tf.warn':'Once commission is moved to your balance wallet, withdrawals require completing a 10× wagering requirement.','team.tf.ok':'Confirm','team.tf.cancel':'Cancel','team.tf.invalid':'Enter a valid amount to transfer.','team.tf.exceed':'Amount exceeds your transferable commission.',
     'team.invite.title':'Invite & earn','team.invite.linklabel':'Your invite link','team.invite.copy':'Copy','team.invite.copied':'Link copied!','team.invite.qr':'Scan to sign up','team.invite.share':'Share',
-    'team.rebate.title':'Referral rebate','team.rebate.sub':'The more valid users you invite, the more you earn per referral.','team.rebate.ppl':'people','team.rebate.unit':'MXN','team.rebate.col.ppl':'Invited','team.rebate.col.t1':'Reward 1','team.rebate.col.t2':'Reward 2','team.rebate.col.t1cond':'Deposit ≥ 50','team.rebate.col.t2cond':'Wager ≥ 850',
-    'team.rules.title':'Invitation rules','team.rules.body':'<ul class="space-y-2.5 list-none"><li class="flex gap-2.5"><i class="fa-solid fa-check text-oro-400 mt-0.5"></i><span>Earn up to <b class="text-zinc-200">$35 commission</b> for every valid user you invite.</span></li><li class="flex gap-2.5"><i class="fa-solid fa-check text-oro-400 mt-0.5"></i><span>Receive up to <b class="text-zinc-200">0.1% commission</b> on your referrals&#39; activity, for life.</span></li><li class="flex gap-2.5"><i class="fa-solid fa-check text-oro-400 mt-0.5"></i><span>A user becomes <b class="text-zinc-200">valid</b> after depositing at least $50 and wagering ≥$1,600.</span></li><li class="flex gap-2.5"><i class="fa-solid fa-check text-oro-400 mt-0.5"></i><span>Commissions are settled in <b class="text-zinc-200">real time</b> and withdrawable from $50 MXN.</span></li><li class="flex gap-2.5"><i class="fa-solid fa-check text-oro-400 mt-0.5"></i><span>Self-referrals or fake accounts are forbidden and void commissions.</span></li><li class="flex gap-2.5"><i class="fa-solid fa-check text-oro-400 mt-0.5"></i><span>PP.MX reserves the right of final interpretation.</span></li></ul>',
+    'team.rebate.title':'Referral rebate','team.rebate.sub':'The more valid users you invite, the more you earn per referral.','team.rebate.ppl':'people','team.rebate.unit':'PEN','team.rebate.col.ppl':'Invited','team.rebate.col.t1':'Reward 1','team.rebate.col.t2':'Reward 2','team.rebate.col.t1cond':'Deposit ≥ 50','team.rebate.col.t2cond':'Wager ≥ 850',
+    'team.rules.title':'Invitation rules','team.rules.body':'<ul class="space-y-2.5 list-none"><li class="flex gap-2.5"><i class="fa-solid fa-check text-oro-400 mt-0.5"></i><span>Earn up to <b class="text-zinc-200">S/35 commission</b> for every valid user you invite.</span></li><li class="flex gap-2.5"><i class="fa-solid fa-check text-oro-…5828 tokens truncated…() => {
+  it('accepts the dedicated PP.PE shell for exact homepage replicas', () => {
     'hero.badge':'Live now · 47 events','hero.title1':'The experience','hero.title2':'you deserve',
     'hero.desc':'Luxury casino and sports betting with the best odds. Deposit in seconds, cash out instantly.',
     'hero.cta1':'Claim your bonus','hero.cta2':'Explore sports','hero.stat1':'First deposit bonus','hero.stat2':'Free spins','hero.stat3':'Live casino',
@@ -3575,8 +3576,8 @@ const I18N = {
     'account.title':'My account','account.guest.title':'You need to log in','account.guest.desc':'Log in to see your balance, deposit, withdraw and history.','account.guest.cta':'Create account',
     'account.tab.overview':'Overview','account.tab.withdraw':'Withdraw','account.tab.bets':'My bets','account.tab.profile':'Profile & KYC','account.logout':'Log out',
     'account.balance':'Available balance','account.kyc.title':'Verify your account to withdraw','account.kyc.desc':'Upload your ID and proof of address. Takes under 5 min.','account.kyc.cta':'Verify','account.kyc.soon':'KYC flow under construction · next iteration',
-    'account.recent':'Recent activity','account.dep.title':'Deposit funds','account.dep.desc':'Minimum $100.','account.dep.cta':'Open form',
-    'account.wd.title':'Withdraw funds','account.wd.desc':'Minimum $50 · Via SPEI to your registered CLABE.','account.wd.cta':'Request withdrawal',
+    'account.recent':'Recent activity','account.dep.title':'Deposit funds','account.dep.desc':'Minimum S/100.','account.dep.cta':'Open form',
+    'account.wd.title':'Withdraw funds','account.wd.desc':'Minimum S/50 · Via SPEI to your registered CLABE.','account.wd.cta':'Request withdrawal',
     'account.profile.title':'Personal details','account.profile.name':'First name','account.profile.lastname':'Last name','account.profile.phone':'Phone','account.profile.save':'Save changes','account.profile.saved':'Details saved',
     'account.hub.records.t':'History','account.hub.records.d':'Deposits, withdrawals & bets','account.hub.profile.t':'Profile','account.hub.profile.d':'Username, avatar & details','account.hub.vip.t':'VIP level','account.hub.vip.d':'rewards','account.hub.security.t':'Security','account.hub.security.d':'Password, email & phone','account.hub.support.t':'Customer support','account.hub.support.d':'Telegram & WhatsApp 24/7','account.hub.social.t':'Official channels','account.hub.social.d':'Instagram, Facebook & more','account.hub.promo.t':'Redeem code','account.hub.promo.d':'Enter a 6-digit code',
     'account.bank.cta':'Withdrawal account','account.bank.prompt.title':'Link a bank account to withdraw','account.bank.prompt.desc':'Add your CLABE to request withdrawals via SPEI.','account.bank.prompt.cta':'Link',
@@ -3593,11 +3594,11 @@ const I18N = {
     'social.title':'Official channels','social.sub':'Follow us for promos and winners. Beware of fake accounts.',
     'login.title':'Welcome back','login.sub':'Log in to bet and claim your bonuses.','login.id':'Email or phone','login.pass':'Password','login.remember':'Remember me','login.forgot':'Forgot password?','login.submit':'Log in','login.or':'or continue with','login.noaccount':"Don't have an account?",'login.register':'Sign up free','login.welcome':'Welcome back, José!',
     'reg.title1':'Create your account','reg.sub1':'You\'ll be playing in under 60 seconds.','reg.title2':'Your details','reg.sub2':'Required by law to open your account.','reg.title3':'Almost done','reg.sub3':'Verify your phone and claim the bonus.',
-    'reg.createpass':'Create a password','reg.birth':'Date of birth','reg.phone':'Mobile','reg.promo':'Invite code','reg.terms':'I am 21+ and accept the terms and privacy policy.','reg.back':'Back','reg.next':'Continue','reg.finish':'Create account','reg.haveaccount':'Already have an account?','reg.done':'Account created! $500 bonus credited.','reg.birthmax':'Date of birth cannot be after 2008-01-01.',
+    'reg.createpass':'Create a password','reg.birth':'Date of birth','reg.phone':'Mobile','reg.promo':'Invite code','reg.terms':'I am 21+ and accept the terms and privacy policy.','reg.back':'Back','reg.next':'Continue','reg.finish':'Create account','reg.haveaccount':'Already have an account?','reg.done':'Account created! S/500 bonus credited.','reg.birthmax':'Date of birth cannot be after 2008-01-01.',
     'forgot.title':'Recover your account','forgot.sub':'We\'ll send you an SMS to reset your password.','forgot.phone':'Phone number','forgot.send':'Send SMS','forgot.sent':'We sent you an SMS with the code.','forgot.back':'Back','forgot.invalidPhone':'Enter a valid phone number.','forgot.otp.title':'Verify your code','forgot.otp.sub':'Enter the 6-digit code sent to','forgot.otp.verify':'Verify','forgot.otp.resend':'Resend code','forgot.otp.invalid':'Enter the full 6-digit code.','forgot.reset.title':'New password','forgot.reset.sub':'Create a new password for your account.','forgot.reset.new':'New password','forgot.reset.confirm':'Confirm password','forgot.reset.submit':'Reset password','forgot.reset.short':'Password must be at least 6 characters.','forgot.reset.mismatch':'Passwords do not match.','forgot.reset.done':'Your password was reset successfully.',
-    'dep.title':'Deposit funds','dep.sub':'Pick how much and how.','dep.amount':'Amount (MXN)','dep.bonus':'Bonus','dep.method':'Payment channel','dep.info.label':'Your details','dep.info.phone':'Phone number','dep.info.name':'Full name','dep.info.email':'Email address','dep.instant':'Instant','dep.card':'Card','dep.promo.label':'Recharge promotion','dep.promo.join.t':'Join the new-user first-deposit promotion','dep.promo.join.max':'Up to +100%','dep.promo.d1':'Day 1','dep.promo.d2':'Day 2','dep.promo.d3':'Day 3','dep.promo.today.t':'Today-only recharge bonus','dep.promo.today.max':'Extra +10%','dep.promo.today.d':'Deposit today and get an extra 10% bonus.','dep.promo.none.t':'Skip the recharge promotion','dep.promo.none.d':'Deposit with no bonus.','dep.continue':'Continue to payment','dep.pickmethod':'Pick a payment method','dep.done':'Deposit credited','dep.rules.title':'Deposit rules','dep.rules.r1':'First deposit of $50 gets a $9 bonus.','dep.rules.r2':'From the second deposit onward, each deposit over $50 gets up to 10% bonus.','dep.rules.r3':'The larger the deposit, the larger the bonus.',
-    'wd.title':'Withdraw funds','wd.sub':'Via SPEI to your registered CLABE · min $50.','wd.available':'Available balance','wd.amount':'Amount to withdraw','wd.clabe':'Destination CLABE','wd.confirm':'Confirm withdrawal','wd.sent':'Withdrawal requested · we\'ll text you.','wd.wager.need':'Reach <b class="wd-hl">1,600</b> wagering to withdraw','wd.wager.cur':'Current wagering <b class="wd-hl-ok">1,680</b>','wd.fee.fee':'Withdrawal fee','wd.fee.recv':'You receive','wd.fee.deduct':'Total deducted','wd.rules.title':'Withdrawal rules','wd.rules.r1':'Minimum withdrawal: 50','wd.rules.r2':'Withdrawals require meeting the wagering requirement before you can apply (5× the deposit amount with no recharge promotion; 10× with any recharge promotion).','wd.rules.r3':'The first withdrawal each day is free; afterwards a 5% fee applies (minimum 20).','wd.rules.r4':'Standard arrival time: 1-3 business days.','wd.rules.r5':'Please make sure your withdrawal account details are correct.',
-    'bet.title':'Bet placed!','bet.folio':'Ref','bet.picks':'Selections','bet.mybets':'View my bets','bet.continue':'Keep betting','bet.needlogin':'Log in to bet','bet.min':'Minimum bet $10','bet.nofunds':'Insufficient balance','bet.single1':'Single needs 1 selection','bet.sel':'selection','bet.sels':'selections',
+    'dep.title':'Deposit funds','dep.sub':'Pick how much and how.','dep.amount':'Amount (PEN)','dep.bonus':'Bonus','dep.method':'Payment channel','dep.info.label':'Your details','dep.info.phone':'Phone number','dep.info.name':'Full name','dep.info.email':'Email address','dep.instant':'Instant','dep.card':'Card','dep.promo.label':'Recharge promotion','dep.promo.join.t':'Join the new-user first-deposit promotion','dep.promo.join.max':'Up to +100%','dep.promo.d1':'Day 1','dep.promo.d2':'Day 2','dep.promo.d3':'Day 3','dep.promo.today.t':'Today-only recharge bonus','dep.promo.today.max':'Extra +10%','dep.promo.today.d':'Deposit today and get an extra 10% bonus.','dep.promo.none.t':'Skip the recharge promotion','dep.promo.none.d':'Deposit with no bonus.','dep.continue':'Continue to payment','dep.pickmethod':'Pick a payment method','dep.done':'Deposit credited','dep.rules.title':'Deposit rules','dep.rules.r1':'First deposit of S/50 gets a S/9 bonus.','dep.rules.r2':'From the second deposit onward, each deposit over S/50 gets up to 10% bonus.','dep.rules.r3':'The larger the deposit, the larger the bonus.',
+    'wd.title':'Withdraw funds','wd.sub':'Via SPEI to your registered CLABE · min S/50.','wd.available':'Available balance','wd.amount':'Amount to withdraw','wd.clabe':'Destination CLABE','wd.confirm':'Confirm withdrawal','wd.sent':'Withdrawal requested · we\'ll text you.','wd.wager.need':'Reach <b class="wd-hl">1,600</b> wagering to withdraw','wd.wager.cur':'Current wagering <b class="wd-hl-ok">1,680</b>','wd.fee.fee':'Withdrawal fee','wd.fee.recv':'You receive','wd.fee.deduct':'Total deducted','wd.rules.title':'Withdrawal rules','wd.rules.r1':'Minimum withdrawal: 50','wd.rules.r2':'Withdrawals require meeting the wagering requirement before you can apply (5× the deposit amount with no recharge promotion; 10× with any recharge promotion).','wd.rules.r3':'The first withdrawal each day is free; afterwards a 5% fee applies (minimum 20).','wd.rules.r4':'Standard arrival time: 1-3 business days.','wd.rules.r5':'Please make sure your withdrawal account details are correct.',
+    'bet.title':'Bet placed!','bet.folio':'Ref','bet.picks':'Selections','bet.mybets':'View my bets','bet.continue':'Keep betting','bet.needlogin':'Log in to bet','bet.min':'Minimum bet S/10','bet.nofunds':'Insufficient balance','bet.single1':'Single needs 1 selection','bet.sel':'selection','bet.sels':'selections',
     'help.eyebrow':'Help center','help.title':'How can we help?','help.sub':'The most common questions. Not here? Write us.',
     'help.contact.title':'Send a ticket','help.contact.sub':'We reply in under 2 business hours.','help.contact.subject':'Subject','help.contact.category':'Category','help.contact.message':'Message','help.contact.send':'Send ticket','help.contact.sent':'Ticket sent · ref',
     'help.cat.deposits':'Deposits','help.cat.withdrawals':'Withdrawals','help.cat.bets':'Bets','help.cat.bonus':'Bonuses','help.cat.account':'Account',
@@ -3605,14 +3606,14 @@ const I18N = {
     'resp.limit.title':'Deposit limit','resp.limit.desc':'Set how much you can deposit per day, week or month.','resp.apply':'Apply','resp.applied':'Settings applied',
     'resp.time.title':'Session time','resp.time.desc':'We\'ll alert you when you hit your chosen time.','resp.activate':'Activate',
     'resp.exclude.title':'Self-exclusion','resp.exclude.desc':'Close your account temporarily or permanently. We won\'t let you back until the term ends.','resp.days':'days','resp.month':'month','resp.months':'months','resp.permanent':'Permanent',
-    'footer.about':'Premium casino and sports betting in Mexico.','footer.play':'Play','footer.support':'Support','footer.company':'Company','footer.terms':'Terms','footer.privacy':'Privacy','footer.about2':'About us','footer.affiliates':'Affiliates','footer.press':'Press','footer.rights':'All rights reserved.','footer.legal':'pp.mx is operated by TECNOLOGÍA EN ENTRETENIMIENTO CALIPLAY, S.A.P.I. de C.V., a company registered in Mexico and authorized and regulated by the Directorate General of Gaming and Raffles of the Ministry of the Interior of the United Mexican States. (SEGOB DGG/SP/404/97) pp.mx holds an interactive gaming permit to offer sports betting services. (Impulsora Géminis, S.A. de C.V.)',
+    'footer.about':'Premium casino and sports betting in Peru.','footer.play':'Play','footer.support':'Support','footer.company':'Company','footer.terms':'Terms','footer.privacy':'Privacy','footer.about2':'About us','footer.affiliates':'Affiliates','footer.press':'Press','footer.rights':'All rights reserved.','footer.legal':'pp.pe is operated by TECNOLOGÍA EN ENTRETENIMIENTO CALIPLAY, S.A.P.I. de C.V., a company registered in Peru and authorized and regulated by the Directorate General of Gaming and Raffles of the Ministry of the Interior of the United Mexican States. (SEGOB DGG/SP/404/97) pp.pe holds an interactive gaming permit to offer sports betting services. (Impulsora Géminis, S.A. de C.V.)',
     'promo.cta':'Claim','promo.viewmore':'View details',
     'float.checkin.t':'Check-in','float.social.t':'Follow us',
     'dl.title':'Get the App','dl.sub':'Exclusive bonuses and faster withdrawals','dl.ios':'iOS','dl.android':'Android','dl.float':'App',
-    'acc.dl.title':'Get the PP.MX App','acc.dl.sub':'Play faster, get exclusive bonuses and instant notifications.','acc.dl.f1':'Instant access','acc.dl.f2':'App-only bonuses','acc.dl.f3':'Secure SPEI payments','acc.dl.qr':'Scan to download','acc.dl.soon':'Coming very soon','account.hub.dl.t':'Download App','account.hub.dl.d':'iOS & Android · app-exclusive bonuses',
-    'account.more.eyebrow':'More on PP.MX','account.more.title':'Download & guide','account.hub.guide.t':'Activity guide','account.hub.guide.d':'Game rules and how to take part',
-    'dl.page.eyebrow':'Official PP.MX app','dl.page.title':'Get the PP.MX App','dl.page.sub':'Play faster, get exclusive bonuses and instant payment alerts. Available for iOS and Android.','dl.page.feats.t':'App benefits','dl.page.f1d':'Open your favorite games with one tap, no browser.','dl.page.f2d':'Promotions and free spins exclusive to app users.','dl.page.f3d':'Encrypted deposits and withdrawals with instant confirmation.','dl.page.f4t':'Real-time alerts','dl.page.f4d':'Get notified about bonuses, results and movements instantly.','dl.page.steps.t':'How to install','dl.page.s1t':'Scan the QR code','dl.page.s1d':'Point your phone camera at the QR code above.','dl.page.s2t':'Download the installer','dl.page.s2d':'Choose the App Store (iOS) or the APK file (Android).','dl.page.s3t':'Allow installation','dl.page.s3d':'On Android, enable "unknown sources" if prompted.','dl.page.s4t':'Sign in and play','dl.page.s4d':'Log in with your account and claim your welcome bonus in the app.',
-    'guide.eyebrow':'Activity center','guide.title':'Activity guide','guide.sub':'Learn about each promotion, its rules and how to take part to make the most of your rewards.','guide.c1.t':'Daily check-in','guide.c1.d':'Sign in every day and claim your reward. The more consecutive days, the bigger the 7-day cumulative prize.','guide.c1.tag':'Up to $??? MXN / week','guide.c2.t':'Lucky wheel','guide.c2.d':'Play to earn free spins: prizes, free spins and up to $888,888 MXN await. (Every $10,000 wagered automatically grants one free wheel spin.)','guide.c2.tag':'Free daily spin','guide.c3.t':'Referral commission','guide.c3.d':'Share your exclusive link and keep earning commission when your friends play.','guide.c3.tag':'Up to $35 per valid user','guide.c4.t':'VIP club','guide.c4.d':'Level up through your activity and upgrade requirements to unlock weekly salary, level-up bonuses and priority service.','guide.c4.tag':'Weekly salary + bonuses','guide.c5.t':'Welcome bonus','guide.c5.d':'Complete your registration to activate your new-user welcome reward.','guide.c5.tag':'100% · $58 MXN instantly','guide.c6.t':'Mobile app','guide.c6.d':'Play anywhere: download the app, log in and get $8 MXN, plus exclusive push perks.','guide.c6.tag':'Log in & get $8 MXN','guide.foot':'Terms and conditions apply. Play responsibly · 21+.',
+    'acc.dl.title':'Get the PP.PE App','acc.dl.sub':'Play faster, get exclusive bonuses and instant notifications.','acc.dl.f1':'Instant access','acc.dl.f2':'App-only bonuses','acc.dl.f3':'Secure SPEI payments','acc.dl.qr':'Scan to download','acc.dl.soon':'Coming very soon','account.hub.dl.t':'Download App','account.hub.dl.d':'iOS & Android · app-exclusive bonuses',
+    'account.more.eyebrow':'More on PP.PE','account.more.title':'Download & guide','account.hub.guide.t':'Activity guide','account.hub.guide.d':'Game rules and how to take part',
+    'dl.page.eyebrow':'Official PP.PE app','dl.page.title':'Get the PP.PE App','dl.page.sub':'Play faster, get exclusive bonuses and instant payment alerts. Available for iOS and Android.','dl.page.feats.t':'App benefits','dl.page.f1d':'Open your favorite games with one tap, no browser.','dl.page.f2d':'Promotions and free spins exclusive to app users.','dl.page.f3d':'Encrypted deposits and withdrawals with instant confirmation.','dl.page.f4t':'Real-time alerts','dl.page.f4d':'Get notified about bonuses, results and movements instantly.','dl.page.steps.t':'How to install','dl.page.s1t':'Scan the QR code','dl.page.s1d':'Point your phone camera at the QR code above.','dl.page.s2t':'Download the installer','dl.page.s2d':'Choose the App Store (iOS) or the APK file (Android).','dl.page.s3t':'Allow installation','dl.page.s3d':'On Android, enable "unknown sources" if prompted.','dl.page.s4t':'Sign in and play','dl.page.s4d':'Log in with your account and claim your welcome bonus in the app.',
+    'guide.eyebrow':'Activity center','guide.title':'Activity guide','guide.sub':'Learn about each promotion, its rules and how to take part to make the most of your rewards.','guide.c1.t':'Daily check-in','guide.c1.d':'Sign in every day and claim your reward. The more consecutive days, the bigger the 7-day cumulative prize.','guide.c1.tag':'Up to S/??? PEN / week','guide.c2.t':'Lucky wheel','guide.c2.d':'Play to earn free spins: prizes, free spins and up to S/888,888 PEN await. (Every S/10,000 wagered automatically grants one free wheel spin.)','guide.c2.tag':'Free daily spin','guide.c3.t':'Referral commission','guide.c3.d':'Share your exclusive link and keep earning commission when your friends play.','guide.c3.tag':'Up to S/35 per valid user','guide.c4.t':'VIP club','guide.c4.d':'Level up through your activity and upgrade requirements to unlock weekly salary, level-up bonuses and priority service.','guide.c4.tag':'Weekly salary + bonuses','guide.c5.t':'Welcome bonus','guide.c5.d':'Complete your registration to activate your new-user welcome reward.','guide.c5.tag':'100% · S/58 PEN instantly','guide.c6.t':'Mobile app','guide.c6.d':'Play anywhere: download the app, log in and get S/8 PEN, plus exclusive push perks.','guide.c6.tag':'Log in & get S/8 PEN','guide.foot':'Terms and conditions apply. Play responsibly · 21+.',
     'checkin.title':'Daily check-in','checkin.sub':'Log in every day and claim your bonus. 7 days in a row = grand prize!','checkin.grand':'Grand prize','checkin.cta':'Claim today','checkin.done':'Claimed today ✓','checkin.ok':'Daily bonus claimed! Come back tomorrow.',
     'bet.draw':'Draw','claim.need':'Log in to claim','claim.ok':'Bonus claimed! Check your email.','game.needlogin':'Log in to play for real',
     'game.unlock.title':'Deposit to unlock the games!','game.unlock.sub':'Your exclusive game reward! Activate it instantly after depositing!','game.unlock.go':'Activate now','game.unlock.no':'Cruelly decline',
@@ -3621,8 +3622,8 @@ const I18N = {
     'top.support':'7×24 客服','top.licensed':'合法运营 · SEGOB','top.responsible':'+21 理性娱乐',
     'nav.home':'首页','nav.sports':'体育','nav.wheel':'幸运转盘','nav.casino':'赌场','nav.promo':'优惠','nav.help':'帮助','nav.account':'我的账户','nav.responsible':'责任博彩','nav.language':'语言',
     'theme.toggle':'切换主题','theme.dark':'深色','theme.light':'浅色',
-    'maint.eyebrow':'系统公告','maint.title':'平台维护通知','maint.windowlabel':'每日维护时间','maint.body':'尊敬的用户：PP.MX 平台每日 12:00 ~ 12:30 期间进行系统维护，请于 12:30 后再尝试登录参与游戏。','maint.ok':'我知道了',
-    'wheel.eyebrow':'每日奖励','wheel.title':'幸运转盘','wheel.sub':'转动转盘，即刻赢取现金大奖。每天一次免费旋转！','wheel.spins':'可用旋转次数','wheel.spin':'旋转','wheel.spinbtn':'转动转盘','wheel.rules.title':'幸运转盘规则','wheel.again':'再转一次','wheel.again.toast':'再转一次！旋转次数已保留。','wheel.nospins':'今日旋转次数已用完，充值可获得更多。','wheel.win':'恭喜！您赢得了 {amt} 🎉','wheel.cta.title':'转动转盘 赢取最高 $1,000 比索','wheel.cta.sub':'您今天的免费旋转正在等您。',
+    'maint.eyebrow':'系统公告','maint.title':'平台维护通知','maint.windowlabel':'每日维护时间','maint.body':'尊敬的用户：PP.PE 平台每日 12:00 ~ 12:30 期间进行系统维护，请于 12:30 后再尝试登录参与游戏。','maint.ok':'我知道了',
+    'wheel.eyebrow':'每日奖励','wheel.title':'幸运转盘','wheel.sub':'转动转盘，即刻赢取现金大奖。每天一次免费旋转！','wheel.spins':'可用旋转次数','wheel.spin':'旋转','wheel.spinbtn':'转动转盘','wheel.rules.title':'幸运转盘规则','wheel.again':'再转一次','wheel.again.toast':'再转一次！旋转次数已保留。','wheel.nospins':'今日旋转次数已用完，充值可获得更多。','wheel.win':'恭喜！您赢得了 {amt} 🎉','wheel.cta.title':'转动转盘 赢取最高 S/1,000 比索','wheel.cta.sub':'您今天的免费旋转正在等您。',
     'cta.login':'登录','cta.register':'注册','cta.deposit':'存款','cta.slip':'注单','cta.notices':'平台通知','nav.back':'返回',
     'notices.eyebrow':'通知中心','notices.title':'平台通知','notices.sub':'官方公告、优惠活动与账户提醒。',
     'notif.pop.title':'平台通知','notif.pop.readall':'全部已读','notif.pop.viewall':'查看全部通知','notif.readmore':'查看详情','notif.empty':'暂无通知','notif.allread':'已全部标记为已读','notif.cta.promos':'查看优惠活动','notif.cta.all':'全部通知','common.back':'返回',
@@ -3633,7 +3634,7 @@ const I18N = {
     'team.comm.eyebrow':'佣金','team.comm.available':'可提佣金','team.comm.withdraw':'提现佣金','team.comm.transfer':'佣金转移','team.comm.done':'佣金已转入余额：{amt}','team.comm.none':'暂无可转移的佣金。','team.comm.accumulated':'累计佣金','team.comm.month':'本月佣金','team.comm.pending':'待结算','team.tf.title':'佣金转移','team.tf.sub':'将可转移佣金转入余额钱包。','team.tf.available':'可转移佣金','team.tf.amount':'转移金额','team.tf.all':'全部转入','team.tf.confirm':'确认转移','team.tf.warn':'佣金转入余额钱包后提现需完成 10 倍流水要求才可提现。','team.tf.ok':'确认','team.tf.cancel':'取消','team.tf.invalid':'请输入有效的转移金额。','team.tf.exceed':'转移金额不能超过可转移佣金。',
     'team.invite.title':'邀请工具','team.invite.linklabel':'我的邀请链接','team.invite.copy':'复制','team.invite.copied':'链接已复制！','team.invite.qr':'扫码注册','team.invite.share':'分享',
     'team.rebate.title':'邀请返佣','team.rebate.sub':'邀请的有效用户越多，每位获得的返佣越高。','team.rebate.ppl':'人','team.rebate.unit':'比索','team.rebate.col.ppl':'邀请人数','team.rebate.col.t1':'第一段奖励','team.rebate.col.t2':'第二段奖励','team.rebate.col.t1cond':'用户充值 ≥ 50','team.rebate.col.t2cond':'用户投注 ≥ 850',
-    'team.rules.title':'邀请规则','team.rules.body':'<ul class="space-y-2.5 list-none"><li class="flex gap-2.5"><i class="fa-solid fa-check text-oro-400 mt-0.5"></i><span>每邀请一位有效用户即可获得最高 <b class="text-zinc-200">$35</b> 的佣金。</span></li><li class="flex gap-2.5"><i class="fa-solid fa-check text-oro-400 mt-0.5"></i><span>终身享受下级活跃投注最高 <b class="text-zinc-200">0.1% 佣金</b>返还。</span></li><li class="flex gap-2.5"><i class="fa-solid fa-check text-oro-400 mt-0.5"></i><span>下级用户存款最低满 <b class="text-zinc-200">$50</b> 并完成<b class="text-zinc-200">投注额≧1600</b>后即计为<b class="text-zinc-200">有效用户</b>。</span></li><li class="flex gap-2.5"><i class="fa-solid fa-check text-oro-400 mt-0.5"></i><span>佣金<b class="text-zinc-200">实时结算</b>，满 <b class="text-zinc-200">$50 MXN</b> 即可提现。</span></li><li class="flex gap-2.5"><i class="fa-solid fa-check text-oro-400 mt-0.5"></i><span>禁止自我邀请或虚假账户，违规将取消全部佣金。</span></li><li class="flex gap-2.5"><i class="fa-solid fa-check text-oro-400 mt-0.5"></i><span>最终解释权归 PP.MX 所有。</span></li></ul>',
+    'team.rules.title':'邀请规则','team.rules.body':'<ul class="space-y-2.5 list-none"><li class="flex gap-2.5"><i class="fa-solid fa-check text-oro-400 mt-0.5"></i><span>每邀请一位有效用户即可获得最高 <b class="text-zinc-200">S/35</b> 的佣金。</span></li><li class="flex gap-2.5"><i class="fa-solid fa-check text-oro-400 mt-0.5"></i><span>终身享受下级活跃投注最高 <b class="text-zinc-200">0.1% 佣金</b>返还。</span></li><li class="flex gap-2.5"><i class="fa-solid fa-check text-oro-400 mt-0.5"></i><span>下级用户存款最低满 <b class="text-zinc-200">S/50</b> 并完成<b class="text-zinc-200">投注额≧1600</b>后即计为<b class="text-zinc-200">有效用户</b>。</span></li><li class="flex gap-2.5"><i class="fa-solid fa-check text-oro-400 mt-0.5"></i><span>佣金<b class="text-zinc-200">实时结算</b>，满 <b class="text-zinc-200">S/50 PEN</b> 即可提现。</span></li><li class="flex gap-2.5"><i class="fa-solid fa-check text-oro-400 mt-0.5"></i><span>禁止自我邀请或虚假账户，违规将取消全部佣金。</span></li><li class="flex gap-2.5"><i class="fa-solid fa-check text-oro-400 mt-0.5"></i><span>最终解释权归 PP.PE 所有。</span></li></ul>',
     'hero.badge':'正在直播 · 47 场赛事','hero.title1':'属于您的','hero.title2':'尊享体验',
     'hero.desc':'奢华赌场与体育投注，赔率业界领先。秒速存款，即时提现。',
     'hero.cta1':'领取专属礼遇','hero.cta2':'探索体育','hero.stat1':'首存红利','hero.stat2':'免费旋转','hero.stat3':'真人在线',
@@ -3657,8 +3658,8 @@ const I18N = {
     'account.title':'我的账户','account.guest.title':'请先登录','account.guest.desc':'登录后查看余额、存款、提现及历史记录。','account.guest.cta':'创建账户',
     'account.tab.overview':'概览','account.tab.withdraw':'提现','account.tab.bets':'我的投注','account.tab.profile':'资料与认证','account.logout':'退出登录',
     'account.balance':'可用余额','account.kyc.title':'完成认证以便提现','account.kyc.desc':'上传身份证与地址证明，不到 5 分钟。','account.kyc.cta':'去认证','account.kyc.soon':'认证流程建设中 · 下一版本',
-    'account.recent':'最近动态','account.dep.title':'存款','account.dep.desc':'最低 $100。','account.dep.cta':'打开表单',
-    'account.wd.title':'提现','account.wd.desc':'最低 $50 · 通过 SPEI 转入已登记的 CLABE。','account.wd.cta':'申请提现',
+    'account.recent':'最近动态','account.dep.title':'存款','account.dep.desc':'最低 S/100。','account.dep.cta':'打开表单',
+    'account.wd.title':'提现','account.wd.desc':'最低 S/50 · 通过 SPEI 转入已登记的 CLABE。','account.wd.cta':'申请提现',
     'account.profile.title':'个人资料','account.profile.name':'名字','account.profile.lastname':'姓氏','account.profile.phone':'电话','account.profile.save':'保存修改','account.profile.saved':'资料已保存',
     'account.hub.records.t':'流水记录','account.hub.records.d':'存款、提现与投注','account.hub.profile.t':'个人资料','account.hub.profile.d':'用户名、头像与资料','account.hub.vip.t':'VIP等级','account.hub.vip.d':'专属奖励','account.hub.security.t':'安全中心','account.hub.security.d':'密码、邮箱与手机','account.hub.support.t':'在线客服','account.hub.support.d':'Telegram 与 WhatsApp 全天候','account.hub.social.t':'官方社交媒体','account.hub.social.d':'Instagram、Facebook 等','account.hub.promo.t':'优惠码兑换','account.hub.promo.d':'输入6位数优惠码',
     'account.bank.cta':'提现账户','account.bank.prompt.title':'绑定银行账户以便提现','account.bank.prompt.desc':'添加你的 CLABE 银行账号，即可通过 SPEI 申请提现。','account.bank.prompt.cta':'去绑定',
@@ -3669,17 +3670,17 @@ const I18N = {
     'sec.pw.title':'修改密码','sec.pw.sub':'更新你的登录密码。','sec.pw.old':'旧密码','sec.pw.old.ph':'请输入旧密码','sec.pw.new':'新密码','sec.pw.new.ph':'请设置新密码','sec.pw.confirm':'再次输入新密码','sec.pw.confirm.ph':'请再次输入新密码','sec.pw.submit':'修改','sec.pw.err.short':'密码至少需 6 位字符。','sec.pw.err.mismatch':'两次输入的密码不一致。','sec.pw.err.same':'新密码不能与旧密码相同。','sec.pw.err.old':'请输入旧密码。','sec.pw.done':'密码修改成功。',
     'sec.em.title':'绑定邮箱','sec.em.sub':'绑定邮箱以保护并找回你的账户。','sec.em.label':'邮箱地址','sec.em.ph':'请输入邮箱','sec.em.submit':'绑定','sec.em.err':'请输入有效的邮箱地址。','sec.em.done':'邮箱绑定成功。',
     'sec.ph.title':'修改手机号','sec.ph.sub':'更新与账户绑定的手机号。','sec.ph.old':'旧手机号','sec.ph.old.ph':'请输入旧手机号','sec.ph.code':'验证码','sec.ph.code.ph':'6 位验证码','sec.ph.getcode':'获取验证码','sec.ph.new':'新手机号','sec.ph.new.ph':'请输入新手机号','sec.ph.submit':'确认修改','sec.ph.err.old':'请输入旧手机号。','sec.ph.sent':'验证码短信已发送。','sec.ph.err.code':'请输入完整的 6 位验证码。','sec.ph.err.new':'请输入新手机号。','sec.ph.done':'手机号修改成功。',
-    'bank.eyebrow':'SPEI 提现','bank.title':'提现账户','bank.sub':'绑定你的墨西哥银行账户以接收提现。','bank.empty':'你还没有绑定任何账户。','bank.add':'添加账户','bank.banco':'选择银行','bank.email':'邮箱','bank.phone':'手机号','bank.clabe':'银行账号','bank.titular':'持卡人姓名','bank.savecta':'绑定账户','bank.active':'已启用','bank.edit':'编辑','bank.remove':'删除','bank.editsoon':'账户编辑 · 下一版本','bank.saved':'账户绑定成功','bank.removed':'账户已删除','bank.erremail':'请输入有效的邮箱','bank.errphone':'请输入有效的手机号','bank.errclabe':'请输入有效的银行账号','bank.errtitular':'请输入持卡人姓名',
+    'bank.eyebrow':'SPEI 提现','bank.title':'提现账户','bank.sub':'绑定你的秘鲁银行账户以接收提现。','bank.empty':'你还没有绑定任何账户。','bank.add':'添加账户','bank.banco':'选择银行','bank.email':'邮箱','bank.phone':'手机号','bank.clabe':'银行账号','bank.titular':'持卡人姓名','bank.savecta':'绑定账户','bank.active':'已启用','bank.edit':'编辑','bank.remove':'删除','bank.editsoon':'账户编辑 · 下一版本','bank.saved':'账户绑定成功','bank.removed':'账户已删除','bank.erremail':'请输入有效的邮箱','bank.errphone':'请输入有效的手机号','bank.errclabe':'请输入有效的银行账号','bank.errtitular':'请输入持卡人姓名',
     'support.title':'在线客服','support.sub':'全天候客服，几分钟内回复。',
     'promo.code.title':'优惠码兑换','promo.code.sub':'输入您的6位数优惠码，立即领取专属奖励。','promo.redeem':'立即兑换','promo.hint':'每个优惠码每个账户仅可激活一次。','promo.ok':'兑换成功！奖励已到账。','promo.err':'请输入有效的6位数优惠码。',
     'social.title':'官方社交媒体','social.sub':'关注我们获取优惠与中奖喜讯，谨防假冒账号。',
     'login.title':'欢迎回来','login.sub':'登录即可投注并领取红利。','login.id':'邮箱或电话','login.pass':'密码','login.remember':'记住我','login.forgot':'忘记密码？','login.submit':'登录','login.or':'或使用以下方式','login.noaccount':'还没有账户？','login.register':'免费注册','login.welcome':'欢迎回来，José！',
     'reg.title1':'创建账户','reg.sub1':'不到 60 秒即可开玩。','reg.title2':'您的资料','reg.sub2':'依法需要这些信息来开户。','reg.title3':'就快好了','reg.sub3':'验证手机即可领取红利。',
-    'reg.createpass':'设置密码','reg.birth':'出生日期','reg.phone':'手机号','reg.promo':'邀请码','reg.terms':'我已年满 21 岁并接受条款与隐私政策。','reg.back':'返回','reg.next':'继续','reg.finish':'创建账户','reg.haveaccount':'已有账户？','reg.done':'账户已创建！$500 红利已到账。','reg.birthmax':'出生日期不能晚于 2008-01-01。',
+    'reg.createpass':'设置密码','reg.birth':'出生日期','reg.phone':'手机号','reg.promo':'邀请码','reg.terms':'我已年满 21 岁并接受条款与隐私政策。','reg.back':'返回','reg.next':'继续','reg.finish':'创建账户','reg.haveaccount':'已有账户？','reg.done':'账户已创建！S/500 红利已到账。','reg.birthmax':'出生日期不能晚于 2008-01-01。',
     'forgot.title':'找回账户','forgot.sub':'我们将发送短信供您重置密码。','forgot.phone':'填写电话号码','forgot.send':'发送短信','forgot.sent':'验证码短信已发送。','forgot.back':'返回','forgot.invalidPhone':'请输入有效的电话号码。','forgot.otp.title':'验证短信验证码','forgot.otp.sub':'请输入发送至以下号码的 6 位验证码','forgot.otp.verify':'验证','forgot.otp.resend':'重新发送验证码','forgot.otp.invalid':'请输入完整的 6 位验证码。','forgot.reset.title':'重置密码','forgot.reset.sub':'为您的账户设置新密码。','forgot.reset.new':'新密码','forgot.reset.confirm':'确认密码','forgot.reset.submit':'重置密码','forgot.reset.short':'密码至少需 6 位字符。','forgot.reset.mismatch':'两次输入的密码不一致。','forgot.reset.done':'密码重置成功。',
-    'dep.title':'存款','dep.sub':'选择金额与方式。','dep.amount':'金额 (MXN)','dep.bonus':'赠送','dep.method':'支付渠道','dep.info.label':'填写信息','dep.info.phone':'电话号码','dep.info.name':'姓名','dep.info.email':'电子邮箱','dep.instant':'即时','dep.card':'银行卡','dep.promo.label':'充值优惠','dep.promo.join.t':'参与新用户首次充值优惠','dep.promo.join.max':'最高 +100%','dep.promo.d1':'第 1 日','dep.promo.d2':'第 2 日','dep.promo.d3':'第 3 日','dep.promo.today.t':'今日充值优惠','dep.promo.today.max':'额外 +10%','dep.promo.today.d':'今日存款即可赠送额外 10% 的奖励。','dep.promo.none.t':'不参与充值优惠','dep.promo.none.d':'直接充值，无赠送。','dep.continue':'前往支付','dep.pickmethod':'请选择支付方式','dep.done':'存款已到账','dep.rules.title':'存款规则','dep.rules.r1':'首充满 $50 赠送 $9。','dep.rules.r2':'从第二次存款开始，每次存款超过 $50，即可获得最高 10% 的奖励。','dep.rules.r3':'存款金额越大，奖励越高。',
-    'wd.title':'提现','wd.sub':'通过 SPEI 转入已登记 CLABE · 最低 $50。','wd.available':'可用余额','wd.amount':'提现金额','wd.clabe':'目标 CLABE','wd.confirm':'确认提现','wd.sent':'提现已提交 · 将以短信通知您。','wd.wager.need':'需达到 <b class="wd-hl">1,600</b> 流水方可提现','wd.wager.cur':'当前流水 <b class="wd-hl-ok">1,680</b>','wd.fee.fee':'提现手续费','wd.fee.recv':'实际到账','wd.fee.deduct':'实际扣除','wd.rules.title':'提现规则','wd.rules.r1':'最低提现金额：50','wd.rules.r2':'提现需达到对应流水要求后方可申请（未参与充值活动提现流水要求为充值金额的 5 倍，参与任何充值活动提现流水要求为充值金额的 10 倍）。','wd.rules.r3':'每日第一次提现免费，之后提现手续费按提现金额的 5% 收取（最低 20）。','wd.rules.r4':'正常到账时间：1-3 个工作日。','wd.rules.r5':'请确保提现账户信息准确无误。',
-    'bet.title':'投注成功！','bet.folio':'单号','bet.picks':'投注项','bet.mybets':'查看我的投注','bet.continue':'继续投注','bet.needlogin':'请登录后投注','bet.min':'最低投注 $10','bet.nofunds':'余额不足','bet.single1':'单关需选择 1 项','bet.sel':'项','bet.sels':'项',
+    'dep.title':'存款','dep.sub':'选择金额与方式。','dep.amount':'金额 (PEN)','dep.bonus':'赠送','dep.method':'支付渠道','dep.info.label':'填写信息','dep.info.phone':'电话号码','dep.info.name':'姓名','dep.info.email':'电子邮箱','dep.instant':'即时','dep.card':'银行卡','dep.promo.label':'充值优惠','dep.promo.join.t':'参与新用户首次充值优惠','dep.promo.join.max':'最高 +100%','dep.promo.d1':'第 1 日','dep.promo.d2':'第 2 日','dep.promo.d3':'第 3 日','dep.promo.today.t':'今日充值优惠','dep.promo.today.max':'额外 +10%','dep.promo.today.d':'今日存款即可赠送额外 10% 的奖励。','dep.promo.none.t':'不参与充值优惠','dep.promo.none.d':'直接充值，无赠送。','dep.continue':'前往支付','dep.pickmethod':'请选择支付方式','dep.done':'存款已到账','dep.rules.title':'存款规则','dep.rules.r1':'首充满 S/50 赠送 S/9。','dep.rules.r2':'从第二次存款开始，每次存款超过 S/50，即可获得最高 10% 的奖励。','dep.rules.r3':'存款金额越大，奖励越高。',
+    'wd.title':'提现','wd.sub':'通过 SPEI 转入已登记 CLABE · 最低 S/50。','wd.available':'可用余额','wd.amount':'提现金额','wd.clabe':'目标 CLABE','wd.confirm':'确认提现','wd.sent':'提现已提交 · 将以短信通知您。','wd.wager.need':'需达到 <b class="wd-hl">1,600</b> 流水方可提现','wd.wager.cur':'当前流水 <b class="wd-hl-ok">1,680</b>','wd.fee.fee':'提现手续费','wd.fee.recv':'实际到账','wd.fee.deduct':'实际扣除','wd.rules.title':'提现规则','wd.rules.r1':'最低提现金额：50','wd.rules.r2':'提现需达到对应流水要求后方可申请（未参与充值活动提现流水要求为充值金额的 5 倍，参与任何充值活动提现流水要求为充值金额的 10 倍）。','wd.rules.r3':'每日第一次提现免费，之后提现手续费按提现金额的 5% 收取（最低 20）。','wd.rules.r4':'正常到账时间：1-3 个工作日。','wd.rules.r5':'请确保提现账户信息准确无误。',
+    'bet.title':'投注成功！','bet.folio':'单号','bet.picks':'投注项','bet.mybets':'查看我的投注','bet.continue':'继续投注','bet.needlogin':'请登录后投注','bet.min':'最低投注 S/10','bet.nofunds':'余额不足','bet.single1':'单关需选择 1 项','bet.sel':'项','bet.sels':'项',
     'help.eyebrow':'帮助中心','help.title':'有什么可以帮您？','help.sub':'最常见的问题。没有您要找的？请联系我们。',
     'help.contact.title':'提交工单','help.contact.sub':'工作时间内 2 小时回复。','help.contact.subject':'主题','help.contact.category':'分类','help.contact.message':'内容','help.contact.send':'发送工单','help.contact.sent':'工单已发送 · 单号',
     'help.cat.deposits':'存款','help.cat.withdrawals':'提现','help.cat.bets':'投注','help.cat.bonus':'红利','help.cat.account':'账户',
@@ -3687,14 +3688,14 @@ const I18N = {
     'resp.limit.title':'存款限额','resp.limit.desc':'设置每日、每周或每月的存款上限。','resp.apply':'应用','resp.applied':'设置已应用',
     'resp.time.title':'游戏时长','resp.time.desc':'达到您设定的时长时我们会提醒您。','resp.activate':'启用',
     'resp.exclude.title':'自我隔离','resp.exclude.desc':'临时或永久关闭账户。期限届满前将无法重新登录。','resp.days':'天','resp.month':'个月','resp.months':'个月','resp.permanent':'永久',
-    'footer.about':'墨西哥高端娱乐场与体育博彩平台。','footer.play':'游戏','footer.support':'支持','footer.company':'公司','footer.terms':'条款','footer.privacy':'隐私','footer.about2':'关于我们','footer.affiliates':'合作伙伴','footer.press':'媒体','footer.rights':'版权所有。','footer.legal':'pp.mx 由 TECNOLOGÍA EN ENTRETENIMIENTO CALIPLAY, SAPI de CV 运营，该公司在墨西哥注册，并获得墨西哥共和国内政部博彩和彩票管理局的授权和监管。(SEGOB DGG/SP/404/97) pp.mx 持有提供体育博彩服务的互动博彩许可证。(Impulsora Géminis, SA de CV)',
+    'footer.about':'秘鲁高端娱乐场与体育博彩平台。','footer.play':'游戏','footer.support':'支持','footer.company':'公司','footer.terms':'条款','footer.privacy':'隐私','footer.about2':'关于我们','footer.affiliates':'合作伙伴','footer.press':'媒体','footer.rights':'版权所有。','footer.legal':'pp.pe 由 TECNOLOGÍA EN ENTRETENIMIENTO CALIPLAY, SAPI de CV 运营，该公司在秘鲁注册，并获得秘鲁共和国内政部博彩和彩票管理局的授权和监管。(SEGOB DGG/SP/404/97) pp.pe 持有提供体育博彩服务的互动博彩许可证。(Impulsora Géminis, SA de CV)',
     'promo.cta':'领取','promo.viewmore':'查看详情',
     'float.checkin.t':'每日签到','float.social.t':'关注我们',
     'dl.title':'下载 App','dl.sub':'专属奖金与更快提现','dl.ios':'iOS','dl.android':'Android','dl.float':'下载',
-    'acc.dl.title':'下载 PP.MX App','acc.dl.sub':'畅玩更流畅，享专属奖金与实时通知。','acc.dl.f1':'即开即玩','acc.dl.f2':'App 专属奖金','acc.dl.f3':'SPEI 安全支付','acc.dl.qr':'扫码下载','acc.dl.soon':'敬请期待','account.hub.dl.t':'下载 App','account.hub.dl.d':'iOS 与 Android · App 专属奖金',
-    'account.more.eyebrow':'探索 PP.MX','account.more.title':'下载与讲解','account.hub.guide.t':'活动讲解','account.hub.guide.d':'玩法规则与参与指南',
-    'dl.page.eyebrow':'PP.MX 官方 App','dl.page.title':'下载 PP.MX App','dl.page.sub':'畅玩更流畅，享专属奖金与实时到账通知。支持 iOS 与 Android。','dl.page.feats.t':'App 优势','dl.page.f1d':'一键打开喜爱的游戏，无需浏览器。','dl.page.f2d':'App 用户专享活动与免费旋转。','dl.page.f3d':'存取款全程加密，即时确认到账。','dl.page.f4t':'实时提醒','dl.page.f4d':'奖金、开奖与账户动态实时推送。','dl.page.steps.t':'安装步骤','dl.page.s1t':'扫描二维码','dl.page.s1d':'用手机相机对准上方二维码。','dl.page.s2t':'下载安装包','dl.page.s2d':'选择 App Store（iOS）或 APK 文件（Android）。','dl.page.s3t':'允许安装','dl.page.s3d':'Android 如有提示，请开启"未知来源"。','dl.page.s4t':'登录畅玩','dl.page.s4d':'登录账户，在 App 内领取新手奖金。',
-    'guide.eyebrow':'活动中心','guide.title':'活动讲解','guide.sub':'了解每项活动的规则与参与方式，把奖励最大化。','guide.c1.t':'每日签到','guide.c1.d':'每天登录领取奖励，连续签到天数越多，7 天累计奖励越丰厚。','guide.c1.tag':'每周最高 $??? MXN','guide.c2.t':'幸运转盘','guide.c2.d':'参与游戏获得免费旋转，获得奖励、免费旋转及最高 888888 比索等你拿。（每达到 10000 流水即可自动获得一次免费幸运转盘旋转次数）','guide.c2.tag':'每日免费旋转','guide.c3.t':'邀请返佣','guide.c3.d':'分享专属链接，好友参与后可持续获得佣金。','guide.c3.tag':'每邀请一位有效用户最高获得 $35 佣金','guide.c4.t':'VIP 俱乐部','guide.c4.d':'通过活跃度及升级要求提升等级，解锁周薪、升级奖励和优先服务。','guide.c4.tag':'周薪 + 升级奖励','guide.c5.t':'欢迎奖金','guide.c5.d':'完成注册即可激活新人欢迎奖励。','guide.c5.tag':'100% 立即获得 $58 比索','guide.c6.t':'下载 APP','guide.c6.d':'随时随地畅玩，下载 APP 并登录即送 8 比索，还有专属推送福利。','guide.c6.tag':'登录即送 $8 MXN','guide.foot':'适用条款与条件，请理性博彩 · 21+。',
+    'acc.dl.title':'下载 PP.PE App','acc.dl.sub':'畅玩更流畅，享专属奖金与实时通知。','acc.dl.f1':'即开即玩','acc.dl.f2':'App 专属奖金','acc.dl.f3':'SPEI 安全支付','acc.dl.qr':'扫码下载','acc.dl.soon':'敬请期待','account.hub.dl.t':'下载 App','account.hub.dl.d':'iOS 与 Android · App 专属奖金',
+    'account.more.eyebrow':'探索 PP.PE','account.more.title':'下载与讲解','account.hub.guide.t':'活动讲解','account.hub.guide.d':'玩法规则与参与指南',
+    'dl.page.eyebrow':'PP.PE 官方 App','dl.page.title':'下载 PP.PE App','dl.page.sub':'畅玩更流畅，享专属奖金与实时到账通知。支持 iOS 与 Android。','dl.page.feats.t':'App 优势','dl.page.f1d':'一键打开喜爱的游戏，无需浏览器。','dl.page.f2d':'App 用户专享活动与免费旋转。','dl.page.f3d':'存取款全程加密，即时确认到账。','dl.page.f4t':'实时提醒','dl.page.f4d':'奖金、开奖与账户动态实时推送。','dl.page.steps.t':'安装步骤','dl.page.s1t':'扫描二维码','dl.page.s1d':'用手机相机对准上方二维码。','dl.page.s2t':'下载安装包','dl.page.s2d':'选择 App Store（iOS）或 APK 文件（Android）。','dl.page.s3t':'允许安装','dl.page.s3d':'Android 如有提示，请开启"未知来源"。','dl.page.s4t':'登录畅玩','dl.page.s4d':'登录账户，在 App 内领取新手奖金。',
+    'guide.eyebrow':'活动中心','guide.title':'活动讲解','guide.sub':'了解每项活动的规则与参与方式，把奖励最大化。','guide.c1.t':'每日签到','guide.c1.d':'每天登录领取奖励，连续签到天数越多，7 天累计奖励越丰厚。','guide.c1.tag':'每周最高 S/??? PEN','guide.c2.t':'幸运转盘','guide.c2.d':'参与游戏获得免费旋转，获得奖励、免费旋转及最高 888888 比索等你拿。（每达到 10000 流水即可自动获得一次免费幸运转盘旋转次数）','guide.c2.tag':'每日免费旋转','guide.c3.t':'邀请返佣','guide.c3.d':'分享专属链接，好友参与后可持续获得佣金。','guide.c3.tag':'每邀请一位有效用户最高获得 S/35 佣金','guide.c4.t':'VIP 俱乐部','guide.c4.d':'通过活跃度及升级要求提升等级，解锁周薪、升级奖励和优先服务。','guide.c4.tag':'周薪 + 升级奖励','guide.c5.t':'欢迎奖金','guide.c5.d':'完成注册即可激活新人欢迎奖励。','guide.c5.tag':'100% 立即获得 S/58 比索','guide.c6.t':'下载 APP','guide.c6.d':'随时随地畅玩，下载 APP 并登录即送 8 比索，还有专属推送福利。','guide.c6.tag':'登录即送 S/8 PEN','guide.foot':'适用条款与条件，请理性博彩 · 21+。',
     'checkin.title':'每日签到','checkin.sub':'每天登录领取红利，连续 7 天可得大奖！','checkin.grand':'终极大奖','checkin.cta':'领取今日','checkin.done':'今日已领取 ✓','checkin.ok':'每日红利已领取！明天再来。',
     'bet.draw':'平局','claim.need':'请登录后领取','claim.ok':'红利已领取！请查收邮件。','game.needlogin':'请登录后进行真钱游戏',
     'game.unlock.title':'充值即可解锁游戏！','game.unlock.sub':'您的专属游戏奖励！充值后即可立即激活！','game.unlock.go':'立即激活','game.unlock.no':'残酷的拒绝',
@@ -3713,7 +3714,7 @@ function applyI18nIn(root){
 function applyI18n(){
   applyI18nIn(document);
   document.documentElement.lang = LANG;
-  const flags={es:'🇲🇽',en:'🇺🇸',zh:'🇨🇳'}, labels={es:'ES',en:'EN',zh:'中文'};
+  const flags={es:'🇵🇪',en:'🇺🇸',zh:'🇨🇳'}, labels={es:'ES',en:'EN',zh:'中文'};
   document.getElementById('langFlag').textContent = flags[LANG];
   document.getElementById('langLabel').textContent = labels[LANG];
   const dlf=document.getElementById('drawerLangFlag'); if(dlf) dlf.textContent = flags[LANG];
@@ -3859,19 +3860,19 @@ const CAT_BRANDS = {
 
 /* 优惠页活动 = 首页轮播图活动（同内容、同顺序）。详情数据来自 BANNERS，findActivity() 优先匹配同名 id。 */
 const PROMOS = [
-  {id:'registro', tag:{es:'Regalo de bienvenida',en:'Welcome gift',zh:'注册礼金'},title:{es:'Regístrate y gana $58 MXN gratis',en:'Sign up and get $58 MXN free',zh:'注册立即赠送 58 比索'},sub:{es:'Crea tu cuenta en 1 minuto y recibe $58 MXN al instante para empezar a jugar.',en:'Create your account in 1 minute and get $58 MXN instantly to start playing.',zh:'1 分钟完成注册，立即获得 58 比索，马上开玩。'},
+  {id:'registro', tag:{es:'Regalo de bienvenida',en:'Welcome gift',zh:'注册礼金'},title:{es:'Regístrate y gana S/58 PEN gratis',en:'Sign up and get S/58 PEN free',zh:'注册立即赠送 58 比索'},sub:{es:'Crea tu cuenta en 1 minuto y recibe S/58 PEN al instante para empezar a jugar.',en:'Create your account in 1 minute and get S/58 PEN instantly to start playing.',zh:'1 分钟完成注册，立即获得 58 比索，马上开玩。'},
     terms:{es:'1 por persona/dispositivo. Rollover 8x. Aplican T&C. +18.',en:'1 per person/device. 8x rollover. T&C apply. 21+.',zh:'每人/每设备限领一次，10 倍流水，适用条款，21 岁以上。'},color:'from-emerald-700 via-rojo-700 to-[#3a0610]'},
-  {id:'checkin', tag:{es:'Check-in de bienvenida',en:'Welcome check-in',zh:'新人签到'},title:{es:'Check-in de nuevos: gana hasta $888 en 7 días',en:'New-user check-in: win up to $888 in 7 days',zh:'新用户签到 7 天最高领 $???'},sub:{es:'Regístrate y entra cada día para reclamar tu recompensa; el día 7 abre el cofre mayor.',en:'Sign up and log in daily to claim your reward; day 7 unlocks the grand chest.',zh:'注册后每日登录即可签到领奖，连续 7 天第 7 天开启终极宝箱。'},
+  {id:'checkin', tag:{es:'Check-in de bienvenida',en:'Welcome check-in',zh:'新人签到'},title:{es:'Check-in de nuevos: gana hasta S/888 en 7 días',en:'New-user check-in: win up to S/888 in 7 days',zh:'新用户签到 7 天最高领 S/???'},sub:{es:'Regístrate y entra cada día para reclamar tu recompensa; el día 7 abre el cofre mayor.',en:'Sign up and log in daily to claim your reward; day 7 unlocks the grand chest.',zh:'注册后每日登录即可签到领奖，连续 7 天第 7 天开启终极宝箱。'},
     terms:{es:'Solo nuevos usuarios. 1 check-in por día. Rollover 5x. +18.',en:'New users only. 1 check-in per day. 5x rollover. 21+.',zh:'仅限新用户，每日限签到一次，10 倍流水，21 岁以上。'},color:'from-[#6b4a12] via-[#c8922b] to-[#0f0a03]'},
-  {id:'vip', tag:{es:'Programa VIP',en:'VIP program',zh:'VIP 俱乐部'},title:{es:'Sube de nivel VIP y reclama hasta $188,888',en:'Level up VIP and claim up to $188,888',zh:'VIP 升级奖励 最高 $188,888'},sub:{es:'Más rango = más recompensas: bonos, salario ampliado y un gestor personal.',en:'Higher rank = more rewards: bonuses, bigger salary and a personal host.',zh:'等级越高奖励越多：升级红利、更高周薪与专属客户经理。'},
+  {id:'vip', tag:{es:'Programa VIP',en:'VIP program',zh:'VIP 俱乐部'},title:{es:'Sube de nivel VIP y reclama hasta S/188,888',en:'Level up VIP and claim up to S/188,888',zh:'VIP 升级奖励 最高 S/188,888'},sub:{es:'Más rango = más recompensas: bonos, salario ampliado y un gestor personal.',en:'Higher rank = more rewards: bonuses, bigger salary and a personal host.',zh:'等级越高奖励越多：升级红利、更高周薪与专属客户经理。'},
     terms:{es:'Bono según nivel alcanzado. Rollover 10x. +18.',en:'Bonus by level reached. 10x rollover. 21+.',zh:'红利依达成等级而定，10 倍流水，21 岁以上。'},color:'from-[#2a1163] via-[#4c1d95] to-[#1a0b3a]'},
   {id:'invita', tag:{es:'Programa de afiliados',en:'Referral program',zh:'邀请返佣'},title:{es:'Invita amigos y gana 35% de comisión',en:'Invite friends and earn 35% commission',zh:'邀请好友 享每位有效用户最高 35 比索佣金'},sub:{es:'Comparte tu enlace y recibe hasta 35% de lo que jueguen tus referidos, para siempre.',en:'Share your link and earn up to 35% of what your referrals play, forever.',zh:'分享专属链接，邀请好友 享每位有效用户最高 35 比索佣金，永久赚取团队成员投注额最高 0.1% 的返佣。（有效用户=最低充值≧50+有效投注额≧1600）'},
     terms:{es:'Comisión sobre actividad neta del referido. +18.',en:'Commission on referral net activity. 21+.',zh:'按团队中有效用户成员进行计算返佣，21 岁以上。'},color:'from-[#0e7490] via-[#b45309] to-[#7a1f5c]'},
-  {id:'recarga', tag:{es:'Bono de recarga',en:'Reload bonus',zh:'充值赠送'},title:{es:'Recarga hoy y recibe +25% de bono',en:'Deposit today and get +25% bonus',zh:'新用户充值最高赠送 +25%'},sub:{es:'Nuevos usuarios reciben hasta $12,500 MXN en su recarga; cada día, hasta 10% de reembolso.',en:'New users get up to $12,500 MXN on their deposit; every day, up to 10% rebate.',zh:'新用户充值最高即享 12,500 比索。用户每日充值最高即享 10% 返利。'},
-    terms:{es:'Primera recarga del día. Rollover 15x. Tope $12,500. +18.',en:'First reload of the day. 15x rollover. Cap $12,500. 21+.',zh:'每日首充，10 倍流水，21 岁以上。'},color:'from-rojo-700 via-[#9a1322] to-[#3a0610]'},
-  {id:'download', tag:{es:'App móvil',en:'Mobile app',zh:'下载 APP'},title:{es:'Descarga la app PP.MX y gana $30',en:'Download the PP.MX app and get $30',zh:'下载 PP.MX APP 立即领 $8'},sub:{es:'Juega donde quieras: descarga la app, inicia sesión y recibe $30 MXN al instante.',en:'Play anywhere: download the app, log in and get $30 MXN instantly.',zh:'随时随地畅玩，下载 APP 并登录即送 8 比索，还有专属推送福利。'},
+  {id:'recarga', tag:{es:'Bono de recarga',en:'Reload bonus',zh:'充值赠送'},title:{es:'Recarga hoy y recibe +25% de bono',en:'Deposit today and get +25% bonus',zh:'新用户充值最高赠送 +25%'},sub:{es:'Nuevos usuarios reciben hasta S/12,500 PEN en su recarga; cada día, hasta 10% de reembolso.',en:'New users get up to S/12,500 PEN on their deposit; every day, up to 10% rebate.',zh:'新用户充值最高即享 12,500 比索。用户每日充值最高即享 10% 返利。'},
+    terms:{es:'Primera recarga del día. Rollover 15x. Tope S/12,500. +18.',en:'First reload of the day. 15x rollover. Cap S/12,500. 21+.',zh:'每日首充，10 倍流水，21 岁以上。'},color:'from-rojo-700 via-[#9a1322] to-[#3a0610]'},
+  {id:'download', tag:{es:'App móvil',en:'Mobile app',zh:'下载 APP'},title:{es:'Descarga la app PP.PE y gana S/30',en:'Download the PP.PE app and get S/30',zh:'下载 PP.PE APP 立即领 S/8'},sub:{es:'Juega donde quieras: descarga la app, inicia sesión y recibe S/30 PEN al instante.',en:'Play anywhere: download the app, log in and get S/30 PEN instantly.',zh:'随时随地畅玩，下载 APP 并登录即送 8 比索，还有专属推送福利。'},
     terms:{es:'1 por cuenta/dispositivo. Rollover 8x. +18.',en:'1 per account/device. 8x rollover. 21+.',zh:'每账户/设备限领一次，10 倍流水，21 岁以上。'},color:'from-[#1d4ed8] via-[#1e3a8a] to-[#0a0e26]'},
-  {id:'wheel', tag:{es:'Ruleta de la suerte',en:'Lucky wheel',zh:'幸运转盘'},title:{es:'Gira la ruleta y gana hasta $10,000',en:'Spin the wheel and win up to $10,000',zh:'幸运转盘每日转 最高赢 $888888'},sub:{es:'Cada día tienes un giro gratis: bonos, giros y hasta $10,000 MXN te esperan. Por cada recarga de ≥$200 recibes un giro gratis (con $400 son dos giros, y así sucesivamente).',en:'Every day you get a free spin: bonuses, spins and up to $10,000 MXN await. Each single deposit of ≥$200 grants one free spin ($400 gives two spins, and so on).',zh:'参与游戏获得免费旋转，获得奖励、免费旋转及最高 888888比索等你拿。（每达到 10000 流水即可自动获得一次免费幸运转盘旋转次数）单次充值金额≧$200元赠送一次免费旋转。（若充值$400则赠送两次免费旋转依次类推）'},
+  {id:'wheel', tag:{es:'Ruleta de la suerte',en:'Lucky wheel',zh:'幸运转盘'},title:{es:'Gira la ruleta y gana hasta S/10,000',en:'Spin the wheel and win up to S/10,000',zh:'幸运转盘每日转 最高赢 S/888888'},sub:{es:'Cada día tienes un giro gratis: bonos, giros y hasta S/10,000 PEN te esperan. Por cada recarga de ≥S/200 recibes un giro gratis (con S/400 son dos giros, y así sucesivamente).',en:'Every day you get a free spin: bonuses, spins and up to S/10,000 PEN await. Each single deposit of ≥S/200 grants one free spin (S/400 gives two spins, and so on).',zh:'参与游戏获得免费旋转，获得奖励、免费旋转及最高 888888比索等你拿。（每达到 10000 流水即可自动获得一次免费幸运转盘旋转次数）单次充值金额≧S/200元赠送一次免费旋转。（若充值S/400则赠送两次免费旋转依次类推）'},
     terms:{es:'1 giro gratis/día. Rollover según premio. +18.',en:'1 free spin/day. Rollover varies by prize. 21+.',zh:'参与游戏免费获得旋转次数，10 倍流水，21 岁以上。'},color:'from-[#f59e0b] via-[#be185d] to-[#1f0a1c]'},
 ];
 const FAQ = [
@@ -3896,19 +3897,19 @@ let checkinClaimed = false; // ¿ya reclamó el día de hoy?
 const ANNOUNCEMENTS = [
   {id:'a1', type:'promo', unread:true, day:0, time:'09:30',
     title:{es:'Bono de recarga del fin de semana',en:'Weekend reload bonus',zh:'周末充值红利'},
-    body:{es:'Deposita este sábado y domingo y recibe +50% hasta $2,000 MXN. Se acredita automáticamente.',en:'Deposit this Saturday and Sunday for +50% up to $2,000 MXN. Credited automatically.',zh:'本周六、周日存款即享 +50% 红利，最高 $2,000 MXN，自动到账。'}},
+    body:{es:'Deposita este sábado y domingo y recibe +50% hasta S/2,000 PEN. Se acredita automáticamente.',en:'Deposit this Saturday and Sunday for +50% up to S/2,000 PEN. Credited automatically.',zh:'本周六、周日存款即享 +50% 红利，最高 S/2,000 PEN，自动到账。'}},
   {id:'a2', type:'account', unread:true, day:0, time:'08:12',
     title:{es:'Inicio de sesión nuevo detectado',en:'New sign-in detected',zh:'检测到新登录'},
-    body:{es:'Se accedió a tu cuenta desde un iPhone en CDMX. Si no fuiste tú, cambia tu contraseña.',en:'Your account was accessed from an iPhone in Mexico City. If this wasn\'t you, change your password.',zh:'您的账户在墨西哥城通过 iPhone 登录。若非本人操作，请修改密码。'}},
+    body:{es:'Se accedió a tu cuenta desde un iPhone en Lima. Si no fuiste tú, cambia tu contraseña.',en:'Your account was accessed from an iPhone in Lima. If this wasn\'t you, change your password.',zh:'您的账户在秘鲁城通过 iPhone 登录。若非本人操作，请修改密码。'}},
   {id:'a3', type:'system', unread:false, day:1, time:'18:00',
     title:{es:'Mantenimiento programado',en:'Scheduled maintenance',zh:'系统维护通知'},
     body:{es:'El martes de 03:00 a 04:00 (hora del centro) el casino en vivo podría no estar disponible.',en:'On Tuesday from 03:00 to 04:00 (Central) live casino may be unavailable.',zh:'周二凌晨 03:00 至 04:00（中部时间），真人娱乐场可能暂停服务。'}},
   {id:'a4', type:'promo', unread:false, day:2, time:'12:45',
     title:{es:'200 giros gratis en Sweet Bonanza',en:'200 free spins on Sweet Bonanza',zh:'Sweet Bonanza 200 次免费旋转'},
-    body:{es:'Tu depósito de $300 desbloqueó 200 giros. Úsalos antes de 7 días.',en:'Your $300 deposit unlocked 200 spins. Use them within 7 days.',zh:'您的 $300 存款已解锁 200 次旋转，请在 7 天内使用。'}},
+    body:{es:'Tu depósito de S/300 desbloqueó 200 giros. Úsalos antes de 7 días.',en:'Your S/300 deposit unlocked 200 spins. Use them within 7 days.',zh:'您的 S/300 存款已解锁 200 次旋转，请在 7 天内使用。'}},
   {id:'a5', type:'account', unread:false, day:3, time:'10:20',
     title:{es:'Retiro SPEI procesado',en:'SPEI withdrawal processed',zh:'SPEI 提现已处理'},
-    body:{es:'Tu retiro de $800.00 fue enviado a tu CLABE terminación 4821.',en:'Your $800.00 withdrawal was sent to your CLABE ending 4821.',zh:'您的 $800.00 提现已发送至尾号 4821 的 CLABE 账户。'}},
+    body:{es:'Tu retiro de S/800.00 fue enviado a tu CLABE terminación 4821.',en:'Your S/800.00 withdrawal was sent to your CLABE ending 4821.',zh:'您的 S/800.00 提现已发送至尾号 4821 的 CLABE 账户。'}},
   {id:'a6', type:'system', unread:false, day:6, time:'15:00',
     title:{es:'Juega responsablemente',en:'Play responsibly',zh:'理性博彩提示'},
     body:{es:'Recuerda fijar límites de depósito desde tu perfil. Apostar es entretenimiento, no una fuente de ingresos.',en:'Remember to set deposit limits from your profile. Betting is entertainment, not income.',zh:'请在个人资料中设置存款限额。博彩是娱乐，并非收入来源。'}},
@@ -4047,15 +4048,15 @@ function renderCheckin(){
   g.innerHTML = CHECKIN.map(c=>{
     const st = c.d<checkinDay ? 'done' : (c.d===checkinDay ? (checkinClaimed?'done':'today') : 'lock');
     const stCls = st==='done'?'ci-done':(st==='today'?'ci-today':'ci-lock');
-    const revealed = st==='done';   // 仅已领取的日子揭晓金额，其余显示 +$?（神秘奖励）
+    const revealed = st==='done';   // 仅已领取的日子揭晓金额，其余显示 +S/?（神秘奖励）
     if(c.grand){
-      const amtHtml = revealed ? `+$${c.amt} MXN` : `<span class="ci-mys">+$?</span>`;
+      const amtHtml = revealed ? `+S/${c.amt} PEN` : `<span class="ci-mys">+S/?</span>`;
       return `<div class="ci-tile ci-grand ${stCls}">
         <div class="ci-ic"><i class="fa-solid ${c.ic}"></i></div>
         <div><div class="ci-d">${ciDayLabel(c.d)} · ${t('checkin.grand')}</div><div class="ci-amt">${amtHtml}</div></div>
       </div>`;
     }
-    const amtHtml = revealed ? `+$${c.amt}` : `<span class="ci-mys">+$?</span>`;
+    const amtHtml = revealed ? `+S/${c.amt}` : `<span class="ci-mys">+S/?</span>`;
     return `<div class="ci-tile ${stCls}">
       <div class="ci-d">${ciDayLabel(c.d)}</div>
       <div class="ci-ic"><i class="fa-solid ${c.ic}"></i></div>
@@ -4114,7 +4115,7 @@ function claimCheckin(){
 function renderWithdrawAccounts(){
   const sel=document.getElementById('wdAccount'); if(!sel) return;
   const demo=[
-    {banco:'BBVA México', clabe:'012180000011114321'},
+    {banco:'BBVA Perú', clabe:'012180000011114321'},
     {banco:'Banorte', clabe:'072580000022225678'},
     {banco:'Santander', clabe:'014320000033339012'}
   ];
@@ -4260,7 +4261,7 @@ function updateSummary(){
   const stake=parseFloat(document.getElementById('stake')?.value||0)||0;
   let odd; if(state.betType==='sencilla') odd=state.slip.length===1?state.slip[0].odd:null; else odd=state.slip.reduce((a,p)=>a*p.odd,1);
   document.getElementById('totalOdds').textContent=odd?odd.toFixed(2):'—';
-  document.getElementById('potWin').textContent=odd?fmt(stake*odd):'$0.00';
+  document.getElementById('potWin').textContent=odd?fmt(stake*odd):'S/0.00';
 }
 function confirmBet(){
   if(!state.loggedIn){ toast(t('bet.needlogin'),'error'); openModal('loginModal'); return; }
@@ -4270,7 +4271,7 @@ function confirmBet(){
   let odd; if(state.betType==='sencilla'){ if(state.slip.length!==1){ toast(t('bet.single1'),'error'); return; } odd=state.slip[0].odd; } else odd=state.slip.reduce((a,p)=>a*p.odd,1);
   document.getElementById('betFolio').textContent='PP-'+Math.floor(Math.random()*900000+100000);
   document.getElementById('bcPicks').textContent=state.slip.length+' '+(state.slip.length===1?t('bet.sel'):t('bet.sels'));
-  document.getElementById('bcStake').textContent=fmt(stake)+' MXN';
+  document.getElementById('bcStake').textContent=fmt(stake)+' PEN';
   document.getElementById('bcOdds').textContent=odd.toFixed(2);
   document.getElementById('bcWin').textContent=fmt(stake*odd);
   state.balance-=stake; updateBalUI(); state.slip=[]; renderSlip(); openModal('betModal');
@@ -4587,13 +4588,13 @@ function vipBadgeSVG(i,cls){
   cr+='<path d="M -20 -7.5 Q -15 -11 -10 -12.5 Q -5 -16 0 -18.5 Q 5 -16 10 -12.5 Q 15 -11 20 -7.5" fill="none" stroke="#fff6d6" stroke-opacity=".5" stroke-width=".7" stroke-linejoin="round" stroke-linecap="round"/>';
   cr+='</g>';
   g+=cr;
-  // ---- center wordmark "PP.MX" + level (embossed gold serif) ----
+  // ---- center wordmark "PP.PE" + level (embossed gold serif) ----
   const ff='font-family=\'Georgia,"Times New Roman",serif\' font-weight="700" text-anchor="middle" dominant-baseline="central"';
   const emb=(txt,x,y,sz,ls)=>{ const a=ff+' font-size="'+sz+'" letter-spacing="'+ls+'"';
     return '<text x="'+(x+0.8)+'" y="'+(y+1)+'" '+a+' fill="#221703" opacity=".75">'+txt+'</text>'
          +'<text x="'+(x-0.5)+'" y="'+(y-0.6)+'" '+a+' fill="#fff7d2" opacity=".5">'+txt+'</text>'
          +'<text x="'+x+'" y="'+y+'" '+a+' paint-order="stroke" stroke="#3a2706" stroke-opacity=".55" stroke-width=".6" fill="url(#vtext'+u+')">'+txt+'</text>'; };
-  g+=emb('PP.MX',60,66,20,'0.5');
+  g+=emb('PP.PE',60,66,20,'0.5');
   // divider with flourish tips
   g+='<line x1="42" y1="79" x2="78" y2="79" stroke="'+gMid+'" stroke-opacity=".7" stroke-width=".8"/>';
   g+='<path d="M 42 79 l -3.4 -2.1 v4.2 z" fill="'+gTop+'" opacity=".85"/><path d="M 78 79 l 3.4 -2.1 v4.2 z" fill="'+gTop+'" opacity=".85"/>';
@@ -4792,7 +4793,7 @@ function gameCard(g){
     <div class="thumb aspect-[3/4] bg-cover bg-center" style="${tileBg(g.img)}"></div>
     ${g.hot?'<span class="absolute top-2 left-2 text-[10px] font-bold px-2 py-0.5 rounded-full bg-rojo-600 text-white">HOT</span>':''}
     ${g.new?'<span class="absolute top-2 right-2 text-[10px] font-bold px-2 py-0.5 rounded-full bg-oro-400 text-black">NEW</span>':''}
-    ${g.jackpot?`<div class="absolute bottom-12 inset-x-0 text-center text-oro-300 text-xs font-bold drop-shadow">$${g.jackpot.toLocaleString('en-US')}</div>`:''}
+    ${g.jackpot?`<div class="absolute bottom-12 inset-x-0 text-center text-oro-300 text-xs font-bold drop-shadow">S/${g.jackpot.toLocaleString('en-US')}</div>`:''}
     <div class="overlay absolute inset-0 bg-gradient-to-t from-black via-black/55 to-transparent grid place-items-center">
       <div class="text-center px-3">
         <button onclick="launchGame('${g.name}')" class="btn btn-gold rounded-full px-6 py-2 text-xs font-bold">${t('casino.play')}</button>
@@ -4842,11 +4843,11 @@ function redeemPromo(){
    ============================================================= */
 const NOTICES = [
   { icon:'fa-gift',          go:'registro',
-    text:{es:'Regístrate y recibe $58 MXN gratis — sin depósito',en:'Sign up and get $58 MXN free — no deposit',zh:'注册立即赠送 58 比索 — 无需充值'} },
+    text:{es:'Regístrate y recibe S/58 PEN gratis — sin depósito',en:'Sign up and get S/58 PEN free — no deposit',zh:'注册立即赠送 58 比索 — 无需充值'} },
   { icon:'fa-bolt',          go:null,
     text:{es:'Retiros SPEI acreditados en menos de 10 minutos',en:'SPEI withdrawals credited in under 10 minutes',zh:'SPEI 提现 10 分钟内到账'} },
   { icon:'fa-coins',         go:'recarga',
-    text:{es:'Recarga hoy y recibe +25% de bono — hasta $12,500',en:'Deposit today and get +25% bonus — up to $12,500',zh:'今日充值赠送 +25% — 最高 $12,500'} },
+    text:{es:'Recarga hoy y recibe +25% de bono — hasta S/12,500',en:'Deposit today and get +25% bonus — up to S/12,500',zh:'今日充值赠送 +25% — 最高 S/12,500'} },
   { icon:'fa-user-group',    go:'invita',
     text:{es:'Invita amigos y gana 35% de comisión de por vida',en:'Invite friends and earn 35% commission for life',zh:'邀请好友 享 35% 终身返佣'} },
   { icon:'fa-shield-halved', go:null,
@@ -4890,19 +4891,19 @@ const BANNER_BG_POS = {
 const bannerBgPos = (id)=> (typeof BANNER_BG_POS!=='undefined' && BANNER_BG_POS[id]) || 'center';
 
 const BANNERS = [
-  /* 1 · Registro +$58 — tricolor mexicano (verde→rojo) con oro */
+  /* 1 · Registro +S/58 — tricolor mexicano (verde→rojo) con oro */
   { id:'registro', seed:'ppmx-registro',
     color:'from-emerald-700 via-rojo-700 to-[#3a0610]',
     bg:'radial-gradient(120% 130% at 12% 18%, #138a52 0%, #0c6b40 22%, #7a0f24 58%, #4a0413 80%, #2a020c 100%)',
     thumbs:[11,13,14],
-    amt:'<span class="cur">$</span>58<span class="suf">MXN</span>',
+    amt:'<span class="cur">$</span>58<span class="suf">PEN</span>',
     tag:{es:'Regalo de bienvenida',en:'Welcome gift',zh:'注册礼金'},
     benefit:{es:'Gratis solo por registrarte <span class="pill">Sin depósito</span>',en:'Free just for signing up <span class="pill">No deposit</span>',zh:'注册即送 · 无需充值 <span class="pill">免存款</span>'},
-    title:{es:'Regístrate y gana $58 MXN gratis',en:'Sign up and get $58 MXN free',zh:'注册立即赠送 58 比索'},
-    sub:{es:'Crea tu cuenta en 1 minuto y recibe $58 MXN al instante para empezar a jugar.',en:'Create your account in 1 minute and get $58 MXN instantly to start playing.',zh:'1 分钟完成注册，立即获得 58 比索，马上开玩。'},
+    title:{es:'Regístrate y gana S/58 PEN gratis',en:'Sign up and get S/58 PEN free',zh:'注册立即赠送 58 比索'},
+    sub:{es:'Crea tu cuenta en 1 minuto y recibe S/58 PEN al instante para empezar a jugar.',en:'Create your account in 1 minute and get S/58 PEN instantly to start playing.',zh:'1 分钟完成注册，立即获得 58 比索，马上开玩。'},
     cta:{es:'Registrarme y cobrar',en:'Sign up & claim',zh:'注册领取'},
     valid:{es:'Promoción para nuevos usuarios',en:'New users only',zh:'仅限新用户'},
-    howto:{es:'Regístrate con tu teléfono, verifica tu cuenta y los $58 MXN se acreditan automáticamente.',en:'Register with your phone, verify your account and the $58 MXN is credited automatically.',zh:'点击下方立即激活优惠后前往我的账户领取 58 比索新用户注册奖励。'},
+    howto:{es:'Regístrate con tu teléfono, verifica tu cuenta y los S/58 PEN se acreditan automáticamente.',en:'Register with your phone, verify your account and the S/58 PEN is credited automatically.',zh:'点击下方立即激活优惠后前往我的账户领取 58 比索新用户注册奖励。'},
     terms:{es:'1 por persona/dispositivo. Rollover 8x. Aplican T&C. +18.',en:'1 per person/device. 8x rollover. T&C apply. 21+.',zh:'每人/每设备限领一次，10 倍流水，适用条款，21 岁以上。'} },
 
   /* 2 · Check-in de nuevos — foto optimizada (calendario 7 días + cofre + moneda PP) como fondo */
@@ -4913,7 +4914,7 @@ const BANNERS = [
     amt:'<span class="cur">$</span>???',
     tag:{es:'Check-in de bienvenida',en:'Welcome check-in',zh:'新人签到'},
     benefit:{es:'Entra cada día y reclama tu regalo <span class="pill">Cofre día 7</span>',en:'Log in daily and claim your gift <span class="pill">Day-7 chest</span>',zh:'连续签到 7 天天天领奖 <span class="pill">第 7 天宝箱</span>'},
-    title:{es:'Check-in de nuevos: gana hasta $888 en 7 días',en:'New-user check-in: win up to $888 in 7 days',zh:'新用户签到 7 天最高领 $???'},
+    title:{es:'Check-in de nuevos: gana hasta S/888 en 7 días',en:'New-user check-in: win up to S/888 in 7 days',zh:'新用户签到 7 天最高领 S/???'},
     sub:{es:'Regístrate y entra cada día para reclamar tu recompensa; el día 7 abre el cofre mayor.',en:'Sign up and log in daily to claim your reward; day 7 unlocks the grand chest.',zh:'注册后每日登录即可签到领奖，连续 7 天第 7 天开启终极宝箱。'},
     cta:{es:'Hacer check-in',en:'Check in now',zh:'立即签到'},
     valid:{es:'Para nuevos usuarios · 7 días',en:'New users · 7 days',zh:'仅限新用户 · 7 天内'},
@@ -4928,7 +4929,7 @@ const BANNERS = [
     amt:'<span class="cur">$</span>188,888',
     tag:{es:'Programa VIP',en:'VIP program',zh:'VIP 俱乐部'},
     benefit:{es:'Premio por cada nivel que subes <span class="pill">+ Salario</span>',en:'Reward for every level you climb <span class="pill">+ Salary</span>',zh:'每升一级即享奖励 <span class="pill">+ 周薪</span>'},
-    title:{es:'Sube de nivel VIP y reclama hasta $188,888',en:'Level up VIP and claim up to $188,888',zh:'VIP 升级奖励 最高 $188,888'},
+    title:{es:'Sube de nivel VIP y reclama hasta S/188,888',en:'Level up VIP and claim up to S/188,888',zh:'VIP 升级奖励 最高 S/188,888'},
     sub:{es:'Más rango = más recompensas: bonos, salario ampliado y un gestor personal.',en:'Higher rank = more rewards: bonuses, bigger salary and a personal host.',zh:'等级越高奖励越多：升级红利、更高周薪与专属客户经理。'},
     cta:{es:'Ver beneficios VIP',en:'See VIP perks',zh:'查看 VIP 权益'},
     valid:{es:'Recompensas permanentes',en:'Permanent rewards',zh:'长期权益'},
@@ -4942,7 +4943,7 @@ const BANNERS = [
     thumbs:[25,20,17],
     amt:'<span class="suf">最高</span><span class="cur">$</span>35',
     tag:{es:'Programa de afiliados',en:'Referral program',zh:'邀请返佣'},
-    benefit:{es:'Gana de por vida por cada amigo <span class="pill">+ $200 / amigo</span>',en:'Earn for life per friend <span class="pill">+ $200 / friend</span>',zh:'每位好友终身返佣 <span class="pill">+ $35/人</span>'},
+    benefit:{es:'Gana de por vida por cada amigo <span class="pill">+ S/200 / amigo</span>',en:'Earn for life per friend <span class="pill">+ S/200 / friend</span>',zh:'每位好友终身返佣 <span class="pill">+ S/35/人</span>'},
     title:{es:'Invita amigos y gana 35% de comisión',en:'Invite friends and earn 35% commission',zh:'邀请好友 享每位有效用户最高 35 比索佣金'},
     sub:{es:'Comparte tu enlace y recibe hasta 35% de lo que jueguen tus referidos, para siempre.',en:'Share your link and earn up to 35% of what your referrals play, forever.',zh:'分享专属链接，邀请好友 享每位有效用户最高 35 比索佣金，永久赚取团队成员投注额最高 0.1% 的返佣。（有效用户=最低充值≧50+有效投注额≧1600）'},
     cta:{es:'Invitar y ganar',en:'Invite & earn',zh:'立即邀请'},
@@ -4957,13 +4958,13 @@ const BANNERS = [
     thumbs:[30,27,29],
     amt:'<span class="suf" style="font-size:.55em">+</span>25<span class="suf">% bono</span>',
     tag:{es:'Bono de recarga',en:'Reload bonus',zh:'充值赠送'},
-    benefit:{es:'Nuevos usuarios en su primera recarga del día <span class="pill">Hasta $12,500</span>',en:'New users on your first deposit of the day <span class="pill">Up to $12,500</span>',zh:'新用户每日首次充值即享 <span class="pill">最高 $12,500</span>'},
+    benefit:{es:'Nuevos usuarios en su primera recarga del día <span class="pill">Hasta S/12,500</span>',en:'New users on your first deposit of the day <span class="pill">Up to S/12,500</span>',zh:'新用户每日首次充值即享 <span class="pill">最高 S/12,500</span>'},
     title:{es:'Recarga hoy y recibe +25% de bono',en:'Deposit today and get +25% bonus',zh:'新用户充值最高赠送 +25%'},
-    sub:{es:'Nuevos usuarios reciben hasta $12,500 MXN en su recarga; cada día, hasta 10% de reembolso.',en:'New users get up to $12,500 MXN on their deposit; every day, up to 10% rebate.',zh:'新用户充值最高即享 12,500 比索。用户每日充值最高即享 10% 返利。'},
+    sub:{es:'Nuevos usuarios reciben hasta S/12,500 PEN en su recarga; cada día, hasta 10% de reembolso.',en:'New users get up to S/12,500 PEN on their deposit; every day, up to 10% rebate.',zh:'新用户充值最高即享 12,500 比索。用户每日充值最高即享 10% 返利。'},
     cta:{es:'Recargar ahora',en:'Deposit now',zh:'立即充值'},
     valid:{es:'Válido todos los días',en:'Valid every day',zh:'每日有效'},
     howto:{es:'Ve a Depositar, elige tu método, ingresa el monto y el +25% se aplica automáticamente.',en:'Go to Deposit, pick your method, enter the amount and the +25% applies automatically.',zh:'点击下方立即激活优惠或前往存款页选择方式并输入金额，红利自动到账。'},
-    terms:{es:'Primera recarga del día. Rollover 15x. Tope $12,500. +18.',en:'First reload of the day. 15x rollover. Cap $12,500. 21+.',zh:'每日首充，10 倍流水，21 岁以上。'} },
+    terms:{es:'Primera recarga del día. Rollover 15x. Tope S/12,500. +18.',en:'First reload of the day. 15x rollover. Cap S/12,500. 21+.',zh:'每日首充，10 倍流水，21 岁以上。'} },
 
   /* 6 · Descarga la app — azul/índigo tecnológico */
   { id:'download', seed:'ppmx-download',
@@ -4973,11 +4974,11 @@ const BANNERS = [
     amt:'<span class="cur">$</span>8',
     tag:{es:'App móvil',en:'Mobile app',zh:'下载 APP'},
     benefit:{es:'Descarga la app y recibe tu bono <span class="pill">+ Giros gratis</span>',en:'Download the app and get your bonus <span class="pill">+ Free spins</span>',zh:'下载 APP 即送红利 <span class="pill">+ 免费旋转</span>'},
-    title:{es:'Descarga la app PP.MX y gana $30',en:'Download the PP.MX app and get $30',zh:'下载 PP.MX APP 立即领 $8'},
-    sub:{es:'Juega donde quieras: descarga la app, inicia sesión y recibe $30 MXN al instante.',en:'Play anywhere: download the app, log in and get $30 MXN instantly.',zh:'随时随地畅玩，下载 APP 并登录即送 8 比索，还有专属推送福利。'},
+    title:{es:'Descarga la app PP.PE y gana S/30',en:'Download the PP.PE app and get S/30',zh:'下载 PP.PE APP 立即领 S/8'},
+    sub:{es:'Juega donde quieras: descarga la app, inicia sesión y recibe S/30 PEN al instante.',en:'Play anywhere: download the app, log in and get S/30 PEN instantly.',zh:'随时随地畅玩，下载 APP 并登录即送 8 比索，还有专属推送福利。'},
     cta:{es:'Descargar app',en:'Download app',zh:'立即下载'},
     valid:{es:'Solo nuevas instalaciones',en:'New installs only',zh:'仅限新下载用户'},
-    howto:{es:'Pulsa Descargar, instala la app PP.MX, inicia sesión y el bono de $30 se acredita solo.',en:'Tap Download, install the PP.MX app, log in and the $30 bonus is credited automatically.',zh:'点击下载并安装 PP.MX APP，登录账户后 8 比索自动到账。'},
+    howto:{es:'Pulsa Descargar, instala la app PP.PE, inicia sesión y el bono de S/30 se acredita solo.',en:'Tap Download, install the PP.PE app, log in and the S/30 bonus is credited automatically.',zh:'点击下载并安装 PP.PE APP，登录账户后 8 比索自动到账。'},
     terms:{es:'1 por cuenta/dispositivo. Rollover 8x. +18.',en:'1 per account/device. 8x rollover. 21+.',zh:'每账户/设备限领一次，10 倍流水，21 岁以上。'} },
 
   /* 7 · Ruleta de la suerte — oro/magenta festivo */
@@ -4988,8 +4989,8 @@ const BANNERS = [
     amt:'<span class="cur">$</span>888,888',
     tag:{es:'Ruleta de la suerte',en:'Lucky wheel',zh:'幸运转盘'},
     benefit:{es:'Gira cada día y gana premios <span class="pill">Giro gratis diario</span>',en:'Spin daily and win prizes <span class="pill">Free daily spin</span>',zh:'参与游戏获得次数抽奖赢大奖 <span class="pill">赢大奖</span>'},
-    title:{es:'Gira la ruleta y gana hasta $10,000',en:'Spin the wheel and win up to $10,000',zh:'幸运转盘每日转 最高赢 $888888'},
-    sub:{es:'Cada día tienes un giro gratis: bonos, giros y hasta $10,000 MXN te esperan. Por cada recarga de ≥$200 recibes un giro gratis (con $400 son dos giros, y así sucesivamente).',en:'Every day you get a free spin: bonuses, spins and up to $10,000 MXN await. Each single deposit of ≥$200 grants one free spin ($400 gives two spins, and so on).',zh:'参与游戏获得免费旋转，获得奖励、免费旋转及最高 888888比索等你拿。（每达到 10000 流水即可自动获得一次免费幸运转盘旋转次数）单次充值金额≧$200元赠送一次免费旋转。（若充值$400则赠送两次免费旋转依次类推）'},
+    title:{es:'Gira la ruleta y gana hasta S/10,000',en:'Spin the wheel and win up to S/10,000',zh:'幸运转盘每日转 最高赢 S/888888'},
+    sub:{es:'Cada día tienes un giro gratis: bonos, giros y hasta S/10,000 PEN te esperan. Por cada recarga de ≥S/200 recibes un giro gratis (con S/400 son dos giros, y así sucesivamente).',en:'Every day you get a free spin: bonuses, spins and up to S/10,000 PEN await. Each single deposit of ≥S/200 grants one free spin (S/400 gives two spins, and so on).',zh:'参与游戏获得免费旋转，获得奖励、免费旋转及最高 888888比索等你拿。（每达到 10000 流水即可自动获得一次免费幸运转盘旋转次数）单次充值金额≧S/200元赠送一次免费旋转。（若充值S/400则赠送两次免费旋转依次类推）'},
     cta:{es:'Girar ahora',en:'Spin now',zh:'立即抽奖'},
     valid:{es:'Un giro gratis al día',en:'One free spin per day',zh:'2026 年'},
     howto:{es:'Entra a la Ruleta de la suerte, usa tu giro gratis diario y reclama el premio que caiga.',en:'Open the Lucky Wheel, use your daily free spin and claim whatever prize lands.',zh:'点击下方激活优惠或进入「幸运转盘」页面，点击旋转，转到的奖励即可领取。'},
@@ -5264,10 +5265,10 @@ function promoHL(s){
   if(!s) return s;
   // 1) porcentajes (+25%, 0.1%, 35%) → rojo coral
   s = s.replace(/([+\-]?\d[\d.,]*\s?%)/g, '<span class="promo-hl-pct">$1</span>');
-  // 2) montos con símbolo ($188,888, $8, $???) → oro
-  s = s.replace(/(\$\s?[\d.,?]+)/g, '<span class="promo-hl">$1</span>');
+  // 2) montos con símbolo (S/188,888, S/8, S/???) → oro
+  s = s.replace(/(S\/\s?[\d.,?]+)/g, '<span class="promo-hl">$1</span>');
   // 3) número + unidad (38 比索, 12,500 比索, 888888比索, 7 天, 7 días/days, 200 giros) → oro
-  s = s.replace(/(\d[\d.,]*\s?(?:比索|pesos?|MXN|días?|days?|day|天|veces|倍|giros?|次))/gi, '<span class="promo-hl">$1</span>');
+  s = s.replace(/(\d[\d.,]*\s?(?:比索|pesos?|PEN|días?|days?|day|天|veces|倍|giros?|次))/gi, '<span class="promo-hl">$1</span>');
   return s;
 }
 function renderPromoDetail(id){
@@ -5460,8 +5461,8 @@ const WHEEL = [
 ];
 const WHEEL_WEIGHTS = [20,22,10,24,14,6,22,3];   // sesgo: premios chicos más probables
 const WHEEL_RULES = [
-  {es:'Por cada recarga de ≥$200 recibes un giro gratis (con $400 son dos giros, y así sucesivamente).',en:'Each single deposit of ≥$200 grants one free spin ($400 gives two spins, and so on).',zh:'单次充值金额 ≧$200 元赠送一次免费旋转。（若充值 $400 则赠送两次免费旋转，依次类推）'},
-  {es:'Obtienes un giro gratis por cada $10,000 apostados.',en:'You get one free spin for every 10,000 wagered.',zh:'每达到10000投注额可享一次免费旋转。'},
+  {es:'Por cada recarga de ≥S/200 recibes un giro gratis (con S/400 son dos giros, y así sucesivamente).',en:'Each single deposit of ≥S/200 grants one free spin (S/400 gives two spins, and so on).',zh:'单次充值金额 ≧S/200 元赠送一次免费旋转。（若充值 S/400 则赠送两次免费旋转，依次类推）'},
+  {es:'Obtienes un giro gratis por cada S/10,000 apostados.',en:'You get one free spin for every 10,000 wagered.',zh:'每达到10000投注额可享一次免费旋转。'},
   {es:'Todos los premios son monedas de oro PP que se acreditan como saldo real.',en:'Every prize is a PP gold coin credited as real balance.',zh:'所有奖励均为 PP 金币，将作为真实余额存入账户。'},
   {es:'El premio se abona automáticamente a tu saldo al detenerse la ruleta.',en:'The prize is credited automatically to your balance when the wheel stops.',zh:'转盘停止后，奖金将自动存入您的余额。'},
   {es:'Los premios obtenidos están sujetos a un rollover de 10x.',en:'Prizes obtained are subject to a 10x rollover.',zh:'所获的奖励需完成10倍流水。'},
@@ -5703,7 +5704,7 @@ function handleDeposit(e){
    TEAM / AFFILIATE
    ============================================================= */
 function copyInvite(){
-  const link=document.getElementById('inviteLink')?.value || 'https://pp.mx/r/JM8X2K';
+  const link=document.getElementById('inviteLink')?.value || 'https://pp.pe/r/JM8X2K';
   const done=()=>toast(t('team.invite.copied'),'success');
   if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(link).then(done).catch(done); }
   else { const i=document.getElementById('inviteLink'); if(i){ i.select(); try{document.execCommand('copy');}catch(e){} } done(); }
@@ -5717,7 +5718,7 @@ function copyUID(el){
   else { try{ const ta=document.createElement('textarea'); ta.value=raw; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); }catch(e){} done(); }
 }
 function shareInvite(via){
-  const link=document.getElementById('inviteLink')?.value || 'https://pp.mx/r/JM8X2K';
+  const link=document.getElementById('inviteLink')?.value || 'https://pp.pe/r/JM8X2K';
   const txt=encodeURIComponent(t('team.sub')+' '+link);
   const urls={ whatsapp:'https://wa.me/?text='+txt, telegram:'https://t.me/share/url?url='+encodeURIComponent(link)+'&text='+encodeURIComponent(t('team.sub')) };
   if(urls[via]) window.open(urls[via],'_blank','noopener');
@@ -5752,7 +5753,7 @@ routeFromHash();
 window.addEventListener('hashchange', routeFromHash);
 revealScan();
 maybeShowMaint();
-console.log('%cPP.MX','color:#FFD700;font-size:26px;font-weight:800;background:#c8102e;padding:4px 12px;border-radius:6px;','Apple-grade v2 · ES/EN/ZH · APIs documented inline.');
+console.log('%cPP.PE','color:#FFD700;font-size:26px;font-weight:800;background:#c8102e;padding:4px 12px;border-radius:6px;','Apple-grade v2 · ES/EN/ZH · APIs documented inline.');
 </script>
 
 </body>

@@ -122,7 +122,7 @@ export function trackFacebookPixelEvent(
 
 export function trackCompleteRegistration(eventId?: string) {
   return trackFacebookPixelEvent('CompleteRegistration', {
-    content_name: 'PP.MX Register',
+    content_name: 'PP.PE Register',
     status: 'completed',
   }, eventId)
 }
@@ -143,7 +143,7 @@ export function trackPurchase(payload: FacebookPurchasePayload) {
   return trackFacebookPixelEvent('Purchase', {
     value: amount,
     currency: payload.currency || APP_CURRENCY,
-    content_name: 'PP.MX Recharge',
+    content_name: 'PP.PE Recharge',
     orderNo,
   }, payload.eventId)
 }

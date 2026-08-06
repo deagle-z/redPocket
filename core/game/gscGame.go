@@ -158,7 +158,7 @@ func GetGSCConfig() GSCConfig {
 		result.Currency = result.SupportCurrency
 	}
 	if result.Currency == "" {
-		result.Currency = "MXN"
+		result.Currency = "PEN"
 	}
 	if result.LaunchPlatform == "" {
 		result.LaunchPlatform = "WEB"
@@ -195,7 +195,7 @@ func NewGSCClientWithConfig(cfg GSCConfig) GSCClient {
 		cfg.Currency = cfg.SupportCurrency
 	}
 	if cfg.Currency == "" {
-		cfg.Currency = "MXN"
+		cfg.Currency = "PEN"
 	}
 	if cfg.LaunchPlatform == "" {
 		cfg.LaunchPlatform = "WEB"

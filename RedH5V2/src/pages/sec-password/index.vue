@@ -6,11 +6,11 @@ import PpmxSubpageLayout from '@/components/PpmxSubpageLayout.vue'
 import { forgotPasswordByPhone, sendTgSmsCode } from '@/api/user'
 import type { LocationQueryValue } from 'vue-router'
 import {
-  buildMxPhoneWithDialCode,
-  isValidMxNationalPhone,
-  normalizeMxNationalPhone,
-  MX_COUNTRY_CODE,
-} from '@/utils/mxPhone'
+  buildPePhoneWithDialCode,
+  isValidPeNationalPhone,
+  normalizePeNationalPhone,
+  PE_COUNTRY_CODE,
+} from '@/utils/pePhone'
 import { usePpmxLocale } from '../ppmx-home/composables/usePpmxLocale'
 import type { LocalizedText } from '../ppmx-home/types'
 
@@ -48,7 +48,7 @@ const secPasswordText = {
   confirmPassword: { es: 'Confirmar nueva contraseña', en: 'Confirm new password', zh: '确认新密码' },
   confirmPasswordPlaceholder: { es: 'Repite la nueva contraseña', en: 'Re-enter the new password', zh: '请再次输入新密码' },
   submit: { es: 'Cambiar', en: 'Change', zh: '修改' },
-  invalidPhone: { es: 'Ingresa un celular válido de México.', en: 'Enter a valid Mexico mobile number.', zh: '请输入有效的墨西哥手机号。' },
+  invalidPhone: { es: 'Ingresa un celular válido de Perú.', en: 'Enter a valid Peru mobile number.', zh: '请输入有效的秘鲁手机号。' },
   requiredCode: { es: 'Ingresa el código de verificación.', en: 'Enter the verification code.', zh: '请输入验证码。' },
   shortPassword: { es: 'La contraseña debe tener al menos 6 caracteres.', en: 'Password must be at least 6 characters.', zh: '密码至少需 6 位字符。' },
   mismatch: { es: 'Las contraseñas no coinciden.', en: 'Passwords do not match.', zh: '两次输入的密码不一致。' },
@@ -69,14 +69,14 @@ function firstQueryValue(value: LocationQueryValue | LocationQueryValue[]) {
 
 function syncUserPhone(phone?: string) {
   if (secPwPhone.value || !phone) return
-  secPwPhone.value = normalizeMxNationalPhone(phone).slice(0, 10)
+  secPwPhone.value = normalizePeNationalPhone(phone).slice(0, 9)
 }
 
 function syncRoutePhone() {
   const phone = firstQueryValue(route.query.phone)
   if (!phone) return
 
-  secPwPhone.value = normalizeMxNationalPhone(phone).slice(0, 10)
+  secPwPhone.value = normalizePeNationalPhone(phone).slice(0, 9)
 }
 
 watch(
@@ -96,19 +96,19 @@ onUnmounted(() => {
 })
 
 function normalizePhoneInput() {
-  secPwPhone.value = normalizeMxNationalPhone(secPwPhone.value).slice(0, 10)
+  secPwPhone.value = normalizePeNationalPhone(secPwPhone.value).slice(0, 9)
 }
 
 function resolvePhoneWithCountryCode() {
-  const nationalPhone = normalizeMxNationalPhone(secPwPhone.value)
-  secPwPhone.value = nationalPhone.slice(0, 10)
+  const nationalPhone = normalizePeNationalPhone(secPwPhone.value)
+  secPwPhone.value = nationalPhone.slice(0, 9)
 
-  if (!isValidMxNationalPhone(nationalPhone)) {
+  if (!isValidPeNationalPhone(nationalPhone)) {
     showFailToast(pickText(secPasswordText.invalidPhone))
     return ''
   }
 
-  return buildMxPhoneWithDialCode(nationalPhone)
+  return buildPePhoneWithDialCode(nationalPhone)
 }
 
 function startCountdown() {
@@ -129,7 +129,7 @@ async function sendCode() {
   const phone = resolvePhoneWithCountryCode()
   if (!phone) return
 
-  await sendTgSmsCode(phone, MX_COUNTRY_CODE)
+  await sendTgSmsCode(phone, PE_COUNTRY_CODE)
   startCountdown()
   showSuccessToast(pickText(secPasswordText.sent))
 }
@@ -167,7 +167,7 @@ async function submitPasswordReset() {
 
   await forgotPasswordByPhone({
     phone,
-    country: MX_COUNTRY_CODE,
+    country: PE_COUNTRY_CODE,
     code,
     newPassword: secPwNew.value,
   })

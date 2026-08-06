@@ -1,13 +1,13 @@
-export type AuthCountryCode = 'MX' | 'ID' | 'BR'
+export type AuthCountryCode = 'PE' | 'ID' | 'BR'
 
 const phoneRules: Record<AuthCountryCode, RegExp> = {
-  MX: /^[2-9]\d{9}$/,
+  PE: /^9\d{8}$/,
   ID: /^0?8\d{8,11}$/,
   BR: /^(?:[1-9]{2}\d{8}|[1-9]{2}9\d{8})$/,
 }
 
 const dialCodeMap: Record<AuthCountryCode, string> = {
-  MX: '52',
+  PE: '51',
   ID: '62',
   BR: '55',
 }

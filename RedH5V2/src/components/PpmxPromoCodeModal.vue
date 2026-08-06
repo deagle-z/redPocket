@@ -2,6 +2,7 @@
 import { showToast } from 'vant'
 import { redeemExchangeCode } from '@/api/user'
 import { formatMoney, toDisplayCents } from '@/utils/money'
+import { APP_CURRENCY_SYMBOL } from '@/config/market'
 import { usePpmxLocale } from '@/pages/ppmx-home/composables/usePpmxLocale'
 import type { LocalizedText } from '@/pages/ppmx-home/types'
 import PpmxDialog from '@/components/PpmxDialog.vue'
@@ -84,7 +85,7 @@ async function submitPromoCodeRequest() {
     emit('update:modelValue', false)
     promoCode.value = ''
     await userStore.loadUserInfo()
-    const amount = formatMoney(toDisplayCents(result.amount), { currency: '$' })
+    const amount = formatMoney(toDisplayCents(result.amount), { currency: APP_CURRENCY_SYMBOL })
     showToast(pickText(tx.success).replace('{amount}', amount))
     emit('redeemed')
   } catch (error) {

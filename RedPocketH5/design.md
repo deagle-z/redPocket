@@ -12,7 +12,7 @@ Relevant implementation is concentrated in:
 - `src/config/routes.ts`: root tab route names used by navbar/tabbar visibility
 - `src/stores/modules/user.ts`: authenticated user state, token lifecycle, current TG user loading
 - `src/utils/request.ts`: Axios instance, token injection, generic HTTP/business error handling
-- `src/locales/*.json`: user-facing copy for `zh-CN`, `en-US`, `pt-BR`, `es-MX`, and `id-ID`
+- `src/locales/*.json`: user-facing copy for `zh-CN`, `en-US`, `pt-BR`, `es-PE`, and `id-ID`
 - `src/styles/themes/app-theme.css`: shared theme tokens used by page/component styles
 
 The design goal is to document how a new feature page, or a minimal modification to an existing page, should be added without changing the existing architecture.
@@ -75,7 +75,7 @@ State:
 i18n:
 
 - Locale files are JSON files in `src/locales/`.
-- Current locale files are `zh-CN.json`, `en-US.json`, `pt-BR.json`, `es-MX.json`, and `id-ID.json`.
+- Current locale files are `zh-CN.json`, `en-US.json`, `pt-BR.json`, `es-PE.json`, and `id-ID.json`.
 - Pages commonly call `const { t } = useI18n()` and read page-scoped keys such as `walletPage.*`, `historyPage.*`, `profilePage.*`, `sendPacketPage.*`, and shared keys under `common.*`.
 
 Styling:
@@ -159,7 +159,7 @@ Modification of existing pages:
 | `src/locales/zh-CN.json` | Modify | Add Simplified Chinese page copy and toast/empty/loading labels. |
 | `src/locales/en-US.json` | Modify | Add English page copy and keep key parity with `zh-CN`. |
 | `src/locales/pt-BR.json` | Modify | Add Portuguese copy for all new keys. |
-| `src/locales/es-MX.json` | Modify | Add Spanish copy for all new keys. |
+| `src/locales/es-PE.json` | Modify | Add Spanish copy for all new keys. |
 | `src/locales/id-ID.json` | Modify | Add Indonesian copy for all new keys. |
 | `src/config/routes.ts` | Optional modify | Add route name only if the feature is a root tab page. |
 | `src/components/TabBar.vue` | Optional modify | Add a tab item only if the feature appears in bottom navigation. |
@@ -219,7 +219,7 @@ Manual validation:
 - Verify anonymous/protected access behavior.
 - Verify loading, success, error, empty, and pagination states.
 - Verify submit buttons cannot double-submit while loading.
-- Verify all new i18n keys render in `zh-CN`, `en-US`, `pt-BR`, `es-MX`, and `id-ID`.
+- Verify all new i18n keys render in `zh-CN`, `en-US`, `pt-BR`, `es-PE`, and `id-ID`.
 - Verify Telegram Mini-App specific flows if the feature depends on Telegram user data or invite/source channel parameters.
 
 ## Risks

@@ -1,10 +1,10 @@
 import { getTtlStorage, setTtlStorage } from './storage'
 
 export const LOCALE_STORAGE_KEY = 'locale'
-export const SUPPORTED_LOCALES = ['es-MX', 'en-US', 'zh-CN'] as const
+export const SUPPORTED_LOCALES = ['es-PE', 'en-US', 'zh-CN'] as const
 export type Locale = (typeof SUPPORTED_LOCALES)[number]
 
-const DEFAULT_LOCALE: Locale = 'es-MX'
+const DEFAULT_LOCALE: Locale = 'es-PE'
 
 export function isSupportedLocale(value: unknown): value is Locale {
   return typeof value === 'string' && SUPPORTED_LOCALES.includes(value as Locale)
@@ -18,7 +18,7 @@ export function normalizeLocale(value: string | null | undefined): Locale | null
 
   if (normalized === 'zh' || normalized.startsWith('zh-')) return 'zh-CN'
   if (normalized === 'en' || normalized.startsWith('en-')) return 'en-US'
-  if (normalized === 'es' || normalized.startsWith('es-')) return 'es-MX'
+  if (normalized === 'es' || normalized.startsWith('es-')) return 'es-PE'
 
   return null
 }

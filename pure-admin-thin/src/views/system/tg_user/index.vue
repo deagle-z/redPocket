@@ -410,7 +410,7 @@ function selectDefaultRechargeCountry(row: TgUser) {
     ? rechargeCountries.value.find(item => item.countryCode === preferred)
     : undefined;
   const mxCountry = rechargeCountries.value.find(
-    item => item.countryCode === "MX"
+    item => item.countryCode === "PE"
   );
   return (
     preferredCountry?.countryCode ||

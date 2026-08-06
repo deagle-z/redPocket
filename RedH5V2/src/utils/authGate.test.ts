@@ -6,7 +6,7 @@ import {
   shouldRequireRouteLogin,
 } from './authGate'
 
-describe('PP.MX auth gate', () => {
+describe('PP.PE auth gate', () => {
   it('keeps tabbar routes public', () => {
     for (const path of ['/', '/wheel', '/team', '/promo', '/profile']) {
       expect(isPublicTabbarRoute(path)).toBe(true)

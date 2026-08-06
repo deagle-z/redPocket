@@ -74,8 +74,8 @@ func TestGSCClientGameListSignsQueryAndPaginates(t *testing.T) {
 			_ = json.NewEncoder(w).Encode(GSCGameListResponse{
 				Code: 0,
 				ProviderGames: []GSCProviderGame{
-					{GameCode: "aviator", GameName: "Aviator", GameType: "POKER", ProductCode: productCode, SupportCurrency: "MXN", Status: "ACTIVATED"},
-					{GameCode: "dice", GameName: "Dice", GameType: "POKER", ProductCode: productCode, SupportCurrency: "MXN", Status: "ACTIVATED"},
+					{GameCode: "aviator", GameName: "Aviator", GameType: "POKER", ProductCode: productCode, SupportCurrency: "PEN", Status: "ACTIVATED"},
+					{GameCode: "dice", GameName: "Dice", GameType: "POKER", ProductCode: productCode, SupportCurrency: "PEN", Status: "ACTIVATED"},
 				},
 				Pagination: GSCPagination{Size: 2, Offset: 0, Total: 3},
 			})
@@ -83,7 +83,7 @@ func TestGSCClientGameListSignsQueryAndPaginates(t *testing.T) {
 			_ = json.NewEncoder(w).Encode(GSCGameListResponse{
 				Code: 0,
 				ProviderGames: []GSCProviderGame{
-					{GameCode: "crash", GameName: "Crash", GameType: "POKER", ProductCode: productCode, SupportCurrency: "MXN", Status: "ACTIVATED"},
+					{GameCode: "crash", GameName: "Crash", GameType: "POKER", ProductCode: productCode, SupportCurrency: "PEN", Status: "ACTIVATED"},
 				},
 				Pagination: GSCPagination{Size: 2, Offset: 2, Total: 3},
 			})
@@ -150,8 +150,8 @@ func TestGSCClientLaunchGameSignsJSONBodyAndParsesResponse(t *testing.T) {
 		if payload.Nickname != "Player One" {
 			t.Fatalf("nickname = %q, want Player One", payload.Nickname)
 		}
-		if payload.Currency != "MXN" {
-			t.Fatalf("currency = %q, want MXN", payload.Currency)
+		if payload.Currency != "PEN" {
+			t.Fatalf("currency = %q, want PEN", payload.Currency)
 		}
 		if payload.GameCode != nil {
 			t.Fatalf("game_code = %#v, want nil", payload.GameCode)
@@ -195,7 +195,7 @@ func TestGSCClientLaunchGameSignsJSONBodyAndParsesResponse(t *testing.T) {
 		ProductCode:      productCode,
 		OperatorCode:     operator,
 		SecretKey:        secret,
-		Currency:         "MXN",
+		Currency:         "PEN",
 		Password:         "Qwer1234",
 		LaunchPlatform:   "WEB",
 		LaunchLanguage:   "0",

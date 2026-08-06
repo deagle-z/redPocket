@@ -1,6 +1,6 @@
-# PP.MX 首页精确复刻分步文档
+# PP.PE 首页精确复刻分步文档
 
-目标：让当前 Vue3/Vant H5 项目的首页 `/` 与 `pp-mx-apple-v2 (2).html` 的首页做到视觉、结构、响应式和交互尽可能一致。这里的“一模一样”不是只套主题色，而是要复刻参考页的全局顶部栏、PP.MX Logo、通知条、Hero 轮播、游戏分类导航、分类卡片、信任区、浮动入口、移动抽屉和响应式断点。
+目标：让当前 Vue3/Vant H5 项目的首页 `/` 与 `pp-mx-apple-v2 (2).html` 的首页做到视觉、结构、响应式和交互尽可能一致。这里的“一模一样”不是只套主题色，而是要复刻参考页的全局顶部栏、PP.PE Logo、通知条、Hero 轮播、游戏分类导航、分类卡片、信任区、浮动入口、移动抽屉和响应式断点。
 
 ## 0. 当前差距
 
@@ -12,7 +12,7 @@
 - `src/components/AppShell.vue` 已支持手机/PC 自动切换。
 - `src/pages/index.vue` 当前仍是红包大厅业务首页，结构和参考页差距很大。
 
-要做到完全一致，不能只改现有 `index.vue` 的几张卡片。参考页首页包含自己的 Header、Drawer、通知弹层、Hero Carousel、Sticky Game Nav、Lobby 分类渲染和浮动按钮。当前 `AppShell` 的 PC 顶部栏、上下文栏和移动端 `AppTabbar` 会干扰复刻结果，因此首页需要进入专用 PP.MX Shell 或直接绕开默认 Shell。
+要做到完全一致，不能只改现有 `index.vue` 的几张卡片。参考页首页包含自己的 Header、Drawer、通知弹层、Hero Carousel、Sticky Game Nav、Lobby 分类渲染和浮动按钮。当前 `AppShell` 的 PC 顶部栏、上下文栏和移动端 `AppTabbar` 会干扰复刻结果，因此首页需要进入专用 PP.PE Shell 或直接绕开默认 Shell。
 
 ## 1. 锁定参考版本
 
@@ -40,7 +40,7 @@ Copy-Item "pp-mx-apple-v2 (2).html" "docs/reference/ppmx-home/pp-mx-apple-v2.ref
 本次只复刻参考 HTML 中 `page-home` 可见首页和它依赖的全局结构：
 
 - 顶部细栏：客服、合规、责任博彩、语言切换。
-- 主 Header：菜单、PP.MX Logo、桌面导航、登录/注册、余额态、通知入口。
+- 主 Header：菜单、PP.PE Logo、桌面导航、登录/注册、余额态、通知入口。
 - 通知弹层：铃铛点击后的通知列表。
 - 移动抽屉：菜单、主题切换、语言切换。
 - 首页通知条：`notifBar` 自动轮播、可点击、可滑动。
@@ -54,7 +54,7 @@ Copy-Item "pp-mx-apple-v2 (2).html" "docs/reference/ppmx-home/pp-mx-apple-v2.ref
 
 ## 3. 调整 Shell 策略
 
-推荐新增首页专用 Shell，而不是把 `AppShell.vue` 改成 PP.MX 首页样式。
+推荐新增首页专用 Shell，而不是把 `AppShell.vue` 改成 PP.PE 首页样式。
 
 新增路由元信息：
 
@@ -62,7 +62,7 @@ Copy-Item "pp-mx-apple-v2 (2).html" "docs/reference/ppmx-home/pp-mx-apple-v2.ref
 definePage({
   name: 'home',
   meta: {
-    title: 'PP.MX',
+    title: 'PP.PE',
     keepAlive: true,
     tabbar: false,
     shell: 'ppmx',
@@ -127,7 +127,7 @@ import PpmxHome from '@/components/ppmx-home/PpmxHome.vue'
 definePage({
   name: 'home',
   meta: {
-    title: 'PP.MX',
+    title: 'PP.PE',
     keepAlive: true,
     tabbar: false,
     shell: 'ppmx',
@@ -255,7 +255,7 @@ const asset = (path: string) => `${import.meta.env.BASE_URL}images/ppmx/${path}`
 
 1. `PpmxLogo.vue`
    - 迁移参考页 `ppEmblem` SVG symbol。
-   - 保持 PP.MX 字标尺寸：桌面约 `150x40`，移动约 `120x32`。
+   - 保持 PP.PE 字标尺寸：桌面约 `150x40`，移动约 `120x32`。
 
 2. `PpmxTopStrip.vue`
    - 复刻顶部 40px 细栏。
@@ -462,14 +462,14 @@ pnpm test:unit
 - 当前默认 `AppShell` 与参考首页不兼容，必须新增专用 shell 或 route-level bypass。
 - 图片资源如果来自第三方，需要确认授权；商业化 To C 项目不能长期依赖无授权图。
 - 参考页使用 Tailwind CDN 原型写法，项目内是 Tailwind v4 + Vite，最终应沉淀为本地 CSS 和 Vue 组件。
-- “一模一样”会牺牲部分现有红包首页信息架构。如果仍要保留红包业务入口，应把它融入 PP.MX 首页的分类/活动卡片，而不是继续保留当前红包大厅布局。
+- “一模一样”会牺牲部分现有红包首页信息架构。如果仍要保留红包业务入口，应把它融入 PP.PE 首页的分类/活动卡片，而不是继续保留当前红包大厅布局。
 
 ## 16. 最终验收口径
 
 满足以下条件后，才能认为首页已按参考页完成：
 
 - `/` 首屏在移动端和 PC 端都与 `pp-mx-apple-v2 (2).html` 首页布局一致。
-- `AppShell` 默认顶部栏和移动底部 Tabbar 不再出现在 PP.MX 首页。
+- `AppShell` 默认顶部栏和移动底部 Tabbar 不再出现在 PP.PE 首页。
 - Header、Drawer、通知条、Hero、分类导航、Lobby、Trust、浮动入口都已组件化。
 - 自动轮播、触摸滑动、抽屉、通知弹层、分类滚动、浮动入口关闭/拖拽均可用。
 - 本地字体和 Font Awesome 正常加载，无外部字体/CDN 依赖。

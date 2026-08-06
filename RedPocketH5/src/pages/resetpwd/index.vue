@@ -18,7 +18,7 @@ const loading = ref(false)
 const sendLoading = ref(false)
 const countdown = ref(0)
 const resetCountries = [
-  { code: 'MX', nameKey: 'forgotPassword.countryMexico' },
+  { code: 'PE', nameKey: 'forgotPassword.countryPeru' },
   { code: 'ID', nameKey: 'forgotPassword.countryIndonesia' },
   { code: 'BR', nameKey: 'forgotPassword.countryBrazil' },
 ] as const

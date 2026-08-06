@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
 import AppPageHeader from '@/components/AppPageHeader.vue'
-import threeSpinBonusMexicoImage from '@/assets/images/long_image_mexico/3_spin_bonus_short_mexico.png'
+import threeSpinBonusPeruImage from '@/assets/images/long_image_mexico/3_spin_bonus_short_mexico.png'
 import { safeBack } from '@/utils/navigation'
 
 const router = useRouter()
@@ -23,7 +23,7 @@ function goBindTg() {
     <button type="button" class="activity-image-entry" @click="goBindTg">
       <img
         class="activity-image"
-        :src="threeSpinBonusMexicoImage"
+        :src="threeSpinBonusPeruImage"
         :alt="pageTitle"
       >
     </button>

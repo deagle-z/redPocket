@@ -70,7 +70,7 @@ describe('facebook pixel utilities', () => {
     expect(trackPurchase({
       orderNo: 'RC1001',
       amount: 200,
-      currency: 'MXN',
+      currency: 'PEN',
       eventId: 'purchase-event-1',
     })).toBe(true)
 
@@ -80,8 +80,8 @@ describe('facebook pixel utilities', () => {
       'Purchase',
       {
         value: 200,
-        currency: 'MXN',
-        content_name: 'PP.MX Recharge',
+        currency: 'PEN',
+        content_name: 'PP.PE Recharge',
         orderNo: 'RC1001',
       },
       { eventID: 'purchase-event-1' },

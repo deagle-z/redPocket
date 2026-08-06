@@ -28,13 +28,13 @@ export const ppmxWheelPrizes: PpmxWheelPrize[] = [
 
 export const ppmxWheelRules = [
   {
-    es: 'Un depósito único de ≥$200 otorga 1 giro gratis. (Con $400 son dos giros, y así sucesivamente.)',
-    en: 'A single deposit of ≥$200 earns 1 free spin. ($400 gives 2 spins, and so on.)',
-    zh: '单次充值金额 ≧$200 元赠送一次免费旋转。（若充值 $400 则赠送两次免费旋转，依次类推）',
+    es: 'Un depósito único de ≥S/200 otorga 1 giro gratis. (Con S/400 son dos giros, y así sucesivamente.)',
+    en: 'A single deposit of ≥S/200 earns 1 free spin. (S/400 gives 2 spins, and so on.)',
+    zh: '单次充值金额 ≧S/200 元赠送一次免费旋转。（若充值 S/400 则赠送两次免费旋转，依次类推）',
   },
   {
-    es: 'Por cada $10,000 en apuestas válidas obtienes 1 giro gratis.',
-    en: 'Every $10,000 in valid wagers earns 1 free spin.',
+    es: 'Por cada S/10,000 en apuestas válidas obtienes 1 giro gratis.',
+    en: 'Every S/10,000 in valid wagers earns 1 free spin.',
     zh: '每达到 10000 投注额可享一次免费旋转。',
   },
   {
@@ -91,24 +91,24 @@ export const ppmxTeamKpis: PpmxTeamKpi[] = [
 ]
 
 export const ppmxCommissionSummary = [
-  { id: 'accumulated', value: '$12,480.00', label: { es: 'Acumulada', en: 'Accumulated', zh: '累计佣金' } },
-  { id: 'month', value: '$1,920.00', label: { es: 'Este mes', en: 'This month', zh: '本月佣金' } },
-  { id: 'pending', value: '$640.00', label: { es: 'Pendiente', en: 'Pending', zh: '待结算' } },
+  { id: 'accumulated', value: 'S/12,480.00', label: { es: 'Acumulada', en: 'Accumulated', zh: '累计佣金' } },
+  { id: 'month', value: 'S/1,920.00', label: { es: 'Este mes', en: 'This month', zh: '本月佣金' } },
+  { id: 'pending', value: 'S/640.00', label: { es: 'Pendiente', en: 'Pending', zh: '待结算' } },
 ]
 
 export const ppmxPromoItems: PpmxPromoItem[] = [
   {
     id: 'registro',
     tag: { es: 'Regalo de bienvenida', en: 'Welcome gift', zh: '注册礼金' },
-    title: { es: 'Regístrate y gana $58 MXN gratis', en: 'Sign up and get $58 MXN free', zh: '注册立即赠送 58 比索' },
+    title: { es: 'Regístrate y gana S/58 PEN gratis', en: 'Sign up and get S/58 PEN free', zh: '注册立即赠送 58 比索' },
     sub: {
-      es: 'Crea tu cuenta en 1 minuto y recibe $58 MXN al instante para empezar a jugar.',
-      en: 'Create your account in 1 minute and get $58 MXN instantly to start playing.',
+      es: 'Crea tu cuenta en 1 minuto y recibe S/58 PEN al instante para empezar a jugar.',
+      en: 'Create your account in 1 minute and get S/58 PEN instantly to start playing.',
       zh: '1 分钟完成注册，立即获得 58 比索，马上开玩。',
     },
     howTo: {
-      es: 'Regístrate con tu teléfono, verifica tu cuenta y los $58 MXN se acreditan automáticamente.',
-      en: 'Register with your phone, verify your account and the $58 MXN is credited automatically.',
+      es: 'Regístrate con tu teléfono, verifica tu cuenta y los S/58 PEN se acreditan automáticamente.',
+      en: 'Register with your phone, verify your account and the S/58 PEN is credited automatically.',
       zh: '点击下方立即激活优惠后前往我的账户领取 58 比索新用户注册奖励。',
     },
     valid: { es: 'Promoción para nuevos usuarios', en: 'New users only', zh: '仅限新用户' },
@@ -124,7 +124,7 @@ export const ppmxPromoItems: PpmxPromoItem[] = [
   {
     id: 'checkin',
     tag: { es: 'Check-in de bienvenida', en: 'Welcome check-in', zh: '新人签到' },
-    title: { es: 'Check-in de nuevos: gana hasta $888 en 7 días', en: 'New-user check-in: win up to $888 in 7 days', zh: '新用户签到 7 天最高领 $???' },
+    title: { es: 'Check-in de nuevos: gana hasta S/888 en 7 días', en: 'New-user check-in: win up to S/888 in 7 days', zh: '新用户签到 7 天最高领 S/???' },
     sub: {
       es: 'Regístrate y entra cada día para reclamar tu recompensa; el día 7 abre el cofre mayor.',
       en: 'Sign up and log in daily to claim your reward; day 7 unlocks the grand chest.',
@@ -148,7 +148,7 @@ export const ppmxPromoItems: PpmxPromoItem[] = [
   {
     id: 'vip',
     tag: { es: 'Programa VIP', en: 'VIP program', zh: 'VIP 俱乐部' },
-    title: { es: 'Sube de nivel VIP y reclama hasta $188,888', en: 'Level up VIP and claim up to $188,888', zh: 'VIP 升级奖励 最高 $188,888' },
+    title: { es: 'Sube de nivel VIP y reclama hasta S/188,888', en: 'Level up VIP and claim up to S/188,888', zh: 'VIP 升级奖励 最高 S/188,888' },
     sub: {
       es: 'Más rango = más recompensas: bonos, salario ampliado y un gestor personal.',
       en: 'Higher rank = more rewards: bonuses, bigger salary and a personal host.',
@@ -220,16 +220,16 @@ export const ppmxPromoItems: PpmxPromoItem[] = [
   {
     id: 'download',
     tag: { es: 'App móvil', en: 'Mobile app', zh: '下载 APP' },
-    title: { es: 'Descarga la app PP.MX y gana $8', en: 'Download the PP.MX app and get $30', zh: '下载 PP.MX APP 立即领 $8' },
+    title: { es: 'Descarga la app PP.PE y gana S/8', en: 'Download the PP.PE app and get S/30', zh: '下载 PP.PE APP 立即领 S/8' },
     sub: {
-      es: 'Juega donde quieras: descarga la app, inicia sesión y recibe $30 MXN al instante.',
-      en: 'Play anywhere: download the app, log in and get $30 MXN instantly.',
-      zh: '随时随地畅玩，下载 APP 并登录即送 8 MXN，还有专属推送福利。',
+      es: 'Juega donde quieras: descarga la app, inicia sesión y recibe S/30 PEN al instante.',
+      en: 'Play anywhere: download the app, log in and get S/30 PEN instantly.',
+      zh: '随时随地畅玩，下载 APP 并登录即送 8 PEN，还有专属推送福利。',
     },
     howTo: {
-      es: 'Pulsa Descargar, instala la app PP.MX, inicia sesión y el bono de $30 se acredita solo.',
-      en: 'Tap Download, install the PP.MX app, log in and the $30 bonus is credited automatically.',
-      zh: '点击下载并安装 PP.MX APP，登录账户后 8 MXN自动到账。',
+      es: 'Pulsa Descargar, instala la app PP.PE, inicia sesión y el bono de S/30 se acredita solo.',
+      en: 'Tap Download, install the PP.PE app, log in and the S/30 bonus is credited automatically.',
+      zh: '点击下载并安装 PP.PE APP，登录账户后 8 PEN自动到账。',
     },
     valid: { es: 'Solo nuevas instalaciones', en: 'New installs only', zh: '仅限新下载用户' },
     terms: {
@@ -244,11 +244,11 @@ export const ppmxPromoItems: PpmxPromoItem[] = [
   {
     id: 'wheel',
     tag: { es: 'Ruleta de la suerte', en: 'Lucky wheel', zh: '幸运转盘' },
-    title: { es: 'Gira la ruleta y gana hasta $10,000', en: 'Spin the wheel and win up to $10,000', zh: '幸运转盘每日转 最高赢 $888888' },
+    title: { es: 'Gira la ruleta y gana hasta S/10,000', en: 'Spin the wheel and win up to S/10,000', zh: '幸运转盘每日转 最高赢 S/888888' },
     sub: {
-      es: 'Cada día tienes un giro gratis: bonos, giros y hasta $10,000 MXN te esperan. Por cada recarga de ≥$200 recibes un giro gratis (con $400 son dos giros, y así sucesivamente).',
-      en: 'Every day you get a free spin: bonuses, spins and up to $10,000 MXN await. Each single deposit of ≥$200 grants one free spin ($400 gives two spins, and so on).',
-      zh: '参与游戏获得免费旋转，获得奖励、免费旋转及最高 888888 MXN等你拿。（每达到 10000 流水即可自动获得一次免费幸运转盘旋转次数）单次充值金额≧$200元赠送一次免费旋转。（若充值$400则赠送两次免费旋转依次类推）',
+      es: 'Cada día tienes un giro gratis: bonos, giros y hasta S/10,000 PEN te esperan. Por cada recarga de ≥S/200 recibes un giro gratis (con S/400 son dos giros, y así sucesivamente).',
+      en: 'Every day you get a free spin: bonuses, spins and up to S/10,000 PEN await. Each single deposit of ≥S/200 grants one free spin (S/400 gives two spins, and so on).',
+      zh: '参与游戏获得免费旋转，获得奖励、免费旋转及最高 888888 PEN等你拿。（每达到 10000 流水即可自动获得一次免费幸运转盘旋转次数）单次充值金额≧S/200元赠送一次免费旋转。（若充值S/400则赠送两次免费旋转依次类推）',
     },
     howTo: {
       es: 'Entra a la Ruleta de la suerte, usa tu giro gratis diario y reclama el premio que caiga.',
@@ -374,8 +374,8 @@ export const ppmxAccountExtraItems: PpmxAccountHubItem[] = [
 ]
 
 export const ppmxDownloadText = {
-  eyebrow: { es: 'App oficial PP.MX', en: 'Official PP.MX app', zh: 'PP.MX 官方 App' },
-  title: { es: 'Descarga la App PP.MX', en: 'Download the PP.MX App', zh: '下载 PP.MX App' },
+  eyebrow: { es: 'App oficial PP.PE', en: 'Official PP.PE app', zh: 'PP.PE 官方 App' },
+  title: { es: 'Descarga la App PP.PE', en: 'Download the PP.PE App', zh: '下载 PP.PE App' },
   sub: {
     es: 'Juega más rápido, recibe bonos exclusivos y notificaciones de pago al instante. Disponible para iOS y Android.',
     en: 'Play faster, get exclusive bonuses and instant payment notifications. Available for iOS and Android.',
@@ -498,7 +498,7 @@ export const ppmxGuideCards: PpmxGuideCard[] = [
       en: 'Sign in every day and claim your reward. The more consecutive days, the bigger the 7-day cumulative prize.',
       zh: '每天登录领取奖励，连续签到天数越多，7 天累计奖励越丰厚。',
     },
-    tag: { es: 'Hasta $??? MXN / semana', en: 'Up to $??? MXN / week', zh: '每周最高 $??? MXN' },
+    tag: { es: 'Hasta S/??? PEN / semana', en: 'Up to S/??? PEN / week', zh: '每周最高 S/??? PEN' },
   },
   {
     id: 'wheel',
@@ -507,9 +507,9 @@ export const ppmxGuideCards: PpmxGuideCard[] = [
     tone: 'gold',
     title: { es: 'Ruleta de la suerte', en: 'Lucky wheel', zh: '幸运转盘' },
     description: {
-      es: 'Juega para ganar giros gratis: premios, giros y hasta $888,888 MXN te esperan. (Por cada $10,000 de apuesta acumulada obtienes un giro gratis automático.)',
-      en: 'Play to earn free spins: prizes, free spins and up to $888,888 MXN await. (Every $10,000 wagered automatically grants one free wheel spin.)',
-      zh: '参与游戏获得免费旋转，获得奖励、免费旋转及最高 888888 MXN等你拿。（每达到 10000 流水即可自动获得一次免费幸运转盘旋转次数）',
+      es: 'Juega para ganar giros gratis: premios, giros y hasta S/888,888 PEN te esperan. (Por cada S/10,000 de apuesta acumulada obtienes un giro gratis automático.)',
+      en: 'Play to earn free spins: prizes, free spins and up to S/888,888 PEN await. (Every S/10,000 wagered automatically grants one free wheel spin.)',
+      zh: '参与游戏获得免费旋转，获得奖励、免费旋转及最高 888888 PEN等你拿。（每达到 10000 流水即可自动获得一次免费幸运转盘旋转次数）',
     },
     tag: { es: 'Giro gratis diario', en: 'Daily free spin', zh: '每日免费旋转' },
   },
@@ -550,7 +550,7 @@ export const ppmxGuideCards: PpmxGuideCard[] = [
       en: 'Complete your registration to activate your new-user welcome reward.',
       zh: '完成注册即可激活新人欢迎奖励。',
     },
-    tag: { es: '100% · $58 MXN al instante', en: '100% · $58 MXN instantly', zh: '100% 立即获得 $58 比索' },
+    tag: { es: '100% · S/58 PEN al instante', en: '100% · S/58 PEN instantly', zh: '100% 立即获得 S/58 比索' },
   },
   {
     id: 'download',
@@ -559,11 +559,11 @@ export const ppmxGuideCards: PpmxGuideCard[] = [
     tone: 'blue',
     title: { es: 'App móvil', en: 'Mobile app', zh: '下载 APP' },
     description: {
-      es: 'Juega donde quieras: descarga la app, inicia sesión y recibe $8 MXN, con beneficios exclusivos por notificaciones.',
-      en: 'Play anywhere: download the app, log in and get $8 MXN, plus exclusive push perks.',
-      zh: '随时随地畅玩，下载 APP 并登录即送 8 MXN，还有专属推送福利。',
+      es: 'Juega donde quieras: descarga la app, inicia sesión y recibe S/8 PEN, con beneficios exclusivos por notificaciones.',
+      en: 'Play anywhere: download the app, log in and get S/8 PEN, plus exclusive push perks.',
+      zh: '随时随地畅玩，下载 APP 并登录即送 8 PEN，还有专属推送福利。',
     },
-    tag: { es: 'Inicia sesión y gana $8 MXN', en: 'Log in & get $8 MXN', zh: '登录即送 $8 MXN' },
+    tag: { es: 'Inicia sesión y gana S/8 PEN', en: 'Log in & get S/8 PEN', zh: '登录即送 S/8 PEN' },
   },
 ]
 

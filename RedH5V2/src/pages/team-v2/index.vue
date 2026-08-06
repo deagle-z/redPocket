@@ -12,7 +12,7 @@ import {
   rewardTaskActivity,
   transferRebateToBalance,
 } from '@/api/user'
-import { APP_CURRENCY } from '@/config/market'
+import { APP_CURRENCY, APP_CURRENCY_SYMBOL } from '@/config/market'
 import { HttpError } from '@/utils/http'
 import { formatMoney, toCent } from '@/utils/money'
 import PpmxButton from '@/components/PpmxButton.vue'
@@ -154,7 +154,7 @@ function toMoneyCents(value: number | string | undefined | null) {
 }
 
 function formatAmount(value: number | string | undefined | null) {
-  return formatMoney(toMoneyCents(value), { currency: '$' })
+  return formatMoney(toMoneyCents(value), { currency: APP_CURRENCY_SYMBOL })
 }
 
 function normalizeTaskActivities(value: TaskActivityItem[] | undefined | null) {

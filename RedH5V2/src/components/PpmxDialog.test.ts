@@ -5,7 +5,7 @@ const dialogSource = readFileSync(new URL('./PpmxDialog.vue', import.meta.url), 
 const profileSource = readFileSync(new URL('../pages/profile/index.vue', import.meta.url), 'utf8') as string
 
 describe('PpmxDialog', () => {
-  it('provides a reusable PP.MX dialog contract', () => {
+  it('provides a reusable PP.PE dialog contract', () => {
     expect(dialogSource).toContain("defineOptions({ name: 'PpmxDialog' })")
     expect(dialogSource).toContain('<Teleport to="body">')
     expect(dialogSource).toContain('role="dialog"')
@@ -20,7 +20,7 @@ describe('PpmxDialog', () => {
     expect(dialogSource).toContain('slot name="icon"')
   })
 
-  it('uses PP.MX visual classes and motion instead of Vant dialog markup', () => {
+  it('uses PP.PE visual classes and motion instead of Vant dialog markup', () => {
     expect(dialogSource).toContain('.ppmx-dialog__card')
     expect(dialogSource).toContain('.ppmx-dialog__button--confirm')
     expect(dialogSource).toContain('linear-gradient(180deg, #e43b45, #b9152a)')

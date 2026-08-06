@@ -4,7 +4,7 @@ import AppPageHeader from '@/components/AppPageHeader.vue'
 import firstDepositBrazilImage from '@/assets/images/first_deposit_bonus_short_brazil.png'
 import firstDepositEnglishImage from '@/assets/images/first_deposit_bonus_short_english.png'
 import firstDepositIndonesiaImage from '@/assets/images/first_deposit_bonus_short_indonesia.png'
-import firstDepositMexicoImage from '@/assets/images/first_deposit_bonus_short_mexico.png'
+import firstDepositPeruImage from '@/assets/images/first_deposit_bonus_short_mexico.png'
 import { locale } from '@/utils/i18n'
 import { safeBack } from '@/utils/navigation'
 
@@ -15,7 +15,7 @@ const firstDepositImageMap: Record<string, string> = {
   'pt-BR': firstDepositBrazilImage,
   'en-US': firstDepositEnglishImage,
   'id-ID': firstDepositIndonesiaImage,
-  'es-MX': firstDepositMexicoImage,
+  'es-PE': firstDepositPeruImage,
 }
 
 const firstDepositImage = computed(() => firstDepositImageMap[locale.value] || firstDepositEnglishImage)

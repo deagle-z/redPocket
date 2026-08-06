@@ -7,7 +7,7 @@ import zhCN from 'vant/es/locale/lang/zh-CN'
 import { Locale } from 'vant'
 import type { PickerColumn } from 'vant'
 import enUSMessages from '@/locales/en-US.json'
-import esMXMessages from '@/locales/es-MX.json'
+import esPEMessages from '@/locales/es-PE.json'
 import idIDMessages from '@/locales/id-ID.json'
 import ptBRMessages from '@/locales/pt-BR.json'
 import zhCNMessages from '@/locales/zh-CN.json'
@@ -18,7 +18,7 @@ const vantLocales = {
   'zh-CN': zhCN,
   'en-US': enUS,
   'pt-BR': ptBR,
-  'es-MX': esES,
+  'es-PE': esES,
   'id-ID': idID,
 }
 
@@ -26,7 +26,7 @@ const messages = {
   'zh-CN': zhCNMessages,
   'en-US': enUSMessages,
   'pt-BR': ptBRMessages,
-  'es-MX': esMXMessages,
+  'es-PE': esPEMessages,
   'id-ID': idIDMessages,
 }
 type SupportedLocale = keyof typeof messages
@@ -48,8 +48,8 @@ export const languageOptions = [
     englishTextKey: 'login.language.ptEn',
   },
   {
-    code: 'MX',
-    value: 'es-MX',
+    code: 'PE',
+    value: 'es-PE',
     nativeTextKey: 'login.language.esNative',
     englishTextKey: 'login.language.esEn',
   },

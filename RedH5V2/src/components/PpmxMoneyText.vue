@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { formatMoney } from '@/utils/money'
+import { APP_CURRENCY_SYMBOL } from '@/config/market'
 
 const props = withDefaults(defineProps<{
   cents: number
@@ -7,7 +8,7 @@ const props = withDefaults(defineProps<{
   signed?: boolean
   suffix?: string
 }>(), {
-  currency: '$',
+  currency: APP_CURRENCY_SYMBOL,
   signed: false,
   suffix: '',
 })
