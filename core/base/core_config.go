@@ -60,6 +60,7 @@ type PayConfig struct {
 	Gctpkmxn  GctpkPayConfig     `yaml:"gctpkmxn"`
 	Gctpkbrl  GctpkPayConfig     `yaml:"gctpkbrl"`
 	Vcpaymxn  VcpayMxnPayConfig  `yaml:"vcpaymxn"`
+	Vcpaypen  VcpayPenPayConfig  `yaml:"vcpaypen"`
 	UsdtTrc20 UsdtTrc20PayConfig `yaml:"usdtTrc20"`
 }
 
@@ -80,6 +81,16 @@ type VcpayMxnPayConfig struct {
 	BaseURL         string `yaml:"baseUrl"`         // API 根地址
 	NotifyURL       string `yaml:"notifyUrl"`       // 代收异步回调地址
 	PageURL         string `yaml:"pageUrl"`         // 支付完成跳转地址
+	PayoutNotifyURL string `yaml:"payoutNotifyUrl"` // 代付异步回调地址
+}
+
+// VcpayPenPayConfig VcPay 秘鲁渠道配置，字段与墨西哥一致但为独立商户号
+type VcpayPenPayConfig struct {
+	AppID           string `yaml:"appId"`           // APP ID
+	AppKey          string `yaml:"appKey"`          // MD5 签名 key
+	BaseURL         string `yaml:"baseUrl"`         // API 根地址，需联系 VcPay 客服获取
+	NotifyURL       string `yaml:"notifyUrl"`       // 代收异步回调地址
+	PageURL         string `yaml:"pageUrl"`         // 支付完成跳转地址；秘鲁代收 back_url 必填，订单未传 ReturnURL 时用它兜底
 	PayoutNotifyURL string `yaml:"payoutNotifyUrl"` // 代付异步回调地址
 }
 

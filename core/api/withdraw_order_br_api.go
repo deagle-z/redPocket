@@ -22,7 +22,7 @@ const (
 	appWithdrawSourceBalance  = "balance"
 	appWithdrawSourceRebate   = "rebate"
 	appWithdrawDefaultChannel = "pix"
-	appWithdrawVcpayMxn       = "VCPAYMXN"
+	appWithdrawVcpayPen       = "VCPAYPEN"
 )
 
 // GetWithdrawOrderBrs godoc
@@ -576,7 +576,7 @@ func formatOptionalInt64(value *int64) string {
 
 func resolveAppWithdrawV2Provider(countryCode string) string {
 	if pojo.NormalizeWithdrawCountryCode(countryCode) == "PE" {
-		return appWithdrawVcpayMxn
+		return appWithdrawVcpayPen
 	}
 	return ""
 }

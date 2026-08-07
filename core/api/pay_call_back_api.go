@@ -3,6 +3,7 @@ package api
 import (
 	"BaseGoUni/core/base"
 	"BaseGoUni/core/pay/vcpaymxn"
+	"BaseGoUni/core/pay/vcpaypen"
 	"BaseGoUni/core/pojo"
 	"BaseGoUni/core/repository"
 	"BaseGoUni/core/utils"
@@ -67,14 +68,37 @@ func GctpkBrlPayoutCallback(ctx *gin.Context) {
 // VcpayMxnPayinCallback VCPAYMXN 代收异步回调（公开接口，无需 token）
 // POST /api/v1/pay/vcpaymxn/notify
 func VcpayMxnPayinCallback(ctx *gin.Context) {
-	var req vcpayMxnNotifyReq
+	handleVcpayPayinCallback(ctx, "VCPAYMXN", validateVcpayMxnNotifyConfig)
+}
+
+// VcpayMxnPayoutCallback VCPAYMXN 代付/提现异步回调（公开接口，无需 token）
+// POST /api/v1/pay/vcpaymxn/payoutNotify
+func VcpayMxnPayoutCallback(ctx *gin.Context) {
+	handleVcpayPayoutCallback(ctx, "VCPAYMXN", validateVcpayMxnNotifyConfig)
+}
+
+// VcpayPenPayinCallback VCPAYPEN 代收异步回调（公开接口，无需 token）
+// POST /api/v1/pay/vcpaypen/notify
+func VcpayPenPayinCallback(ctx *gin.Context) {
+	handleVcpayPayinCallback(ctx, "VCPAYPEN", validateVcpayPenNotifyConfig)
+}
+
+// VcpayPenPayoutCallback VCPAYPEN 代付/提现异步回调（公开接口，无需 token）
+// POST /api/v1/pay/vcpaypen/payoutNotify
+func VcpayPenPayoutCallback(ctx *gin.Context) {
+	handleVcpayPayoutCallback(ctx, "VCPAYPEN", validateVcpayPenNotifyConfig)
+}
+
+// handleVcpayPayinCallback VcPay 各国代收回调处理逻辑一致，仅日志前缀与商户配置不同
+func handleVcpayPayinCallback(ctx *gin.Context, label string, validate vcpayNotifyValidator) {
+	var req vcpayNotifyReq
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		ctx.String(400, "FAIL")
 		return
 	}
-	cfg, err := validateVcpayMxnNotifyConfig(req)
+	appID, err := validate(req)
 	if err != nil {
-		log.Printf("[VCPAYMXN Notify] 验签失败 providerOrderNo=%s merchantOrderNo=%s err=%v", req.TradeNo, req.OutTradeNo, err)
+		log.Printf("[%s Notify] 验签失败 providerOrderNo=%s merchantOrderNo=%s err=%v", label, req.TradeNo, req.OutTradeNo, err)
 		ctx.String(400, "FAIL")
 		return
 	}
@@ -84,7 +108,7 @@ func VcpayMxnPayinCallback(ctx *gin.Context) {
 	localOrderNo := strings.TrimSpace(req.OutTradeNo)
 	providerOrderNo := strings.TrimSpace(req.TradeNo)
 	if localOrderNo == "" {
-		log.Printf("[VCPAYMXN Notify] 商户订单号为空 providerOrderNo=%s", providerOrderNo)
+		log.Printf("[%s Notify] 商户订单号为空 providerOrderNo=%s", label, providerOrderNo)
 		ctx.String(400, "FAIL")
 		return
 	}
@@ -93,7 +117,7 @@ func VcpayMxnPayinCallback(ctx *gin.Context) {
 		if err := repository.ProcessRechargeOrderSuccess(
 			db, localOrderNo, providerOrderNo, centsToPayAmount(req.OrderAmount.Int64()), hostInfo.TablePrefix,
 		); err != nil {
-			log.Printf("[VCPAYMXN Notify] 入账失败 localOrderNo=%s providerOrderNo=%s appID=%s err=%v", localOrderNo, providerOrderNo, cfg.AppID, err)
+			log.Printf("[%s Notify] 入账失败 localOrderNo=%s providerOrderNo=%s appID=%s err=%v", label, localOrderNo, providerOrderNo, appID, err)
 			ctx.String(500, "FAIL")
 			return
 		}
@@ -102,16 +126,15 @@ func VcpayMxnPayinCallback(ctx *gin.Context) {
 	ctx.String(200, "SUCCESS")
 }
 
-// VcpayMxnPayoutCallback VCPAYMXN 代付/提现异步回调（公开接口，无需 token）
-// POST /api/v1/pay/vcpaymxn/payoutNotify
-func VcpayMxnPayoutCallback(ctx *gin.Context) {
-	var req vcpayMxnNotifyReq
+// handleVcpayPayoutCallback VcPay 各国代付回调处理逻辑一致，仅日志前缀与商户配置不同
+func handleVcpayPayoutCallback(ctx *gin.Context, label string, validate vcpayNotifyValidator) {
+	var req vcpayNotifyReq
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		ctx.String(400, "FAIL")
 		return
 	}
-	if _, err := validateVcpayMxnNotifyConfig(req); err != nil {
-		log.Printf("[VCPAYMXN Payout Notify] 验签失败 providerOrderNo=%s merchantOrderNo=%s err=%v", req.TradeNo, req.OutTradeNo, err)
+	if _, err := validate(req); err != nil {
+		log.Printf("[%s Payout Notify] 验签失败 providerOrderNo=%s merchantOrderNo=%s err=%v", label, req.TradeNo, req.OutTradeNo, err)
 		ctx.String(400, "FAIL")
 		return
 	}
@@ -120,7 +143,7 @@ func VcpayMxnPayoutCallback(ctx *gin.Context) {
 	localOrderNo := strings.TrimSpace(req.OutTradeNo)
 	providerOrderNo := strings.TrimSpace(req.TradeNo)
 	if localOrderNo == "" {
-		log.Printf("[VCPAYMXN Payout Notify] 商户订单号为空 providerOrderNo=%s", providerOrderNo)
+		log.Printf("[%s Payout Notify] 商户订单号为空 providerOrderNo=%s", label, providerOrderNo)
 		ctx.String(400, "FAIL")
 		return
 	}
@@ -138,7 +161,7 @@ func VcpayMxnPayoutCallback(ctx *gin.Context) {
 			Success:          success,
 			Failed:           failed,
 		}); err != nil {
-			log.Printf("[VCPAYMXN Payout Notify] 处理提现回调失败 localOrderNo=%s providerOrderNo=%s status=%d err=%v", localOrderNo, providerOrderNo, req.TradeState, err)
+			log.Printf("[%s Payout Notify] 处理提现回调失败 localOrderNo=%s providerOrderNo=%s status=%d err=%v", label, localOrderNo, providerOrderNo, req.TradeState, err)
 			ctx.String(500, "FAIL")
 			return
 		}
@@ -328,24 +351,39 @@ func parsePayFloat(s string) float64 {
 	return v
 }
 
-func validateVcpayMxnNotifyConfig(req vcpayMxnNotifyReq) (base.VcpayMxnPayConfig, error) {
+// vcpayNotifyValidator 校验 VcPay 回调的 app_id 与签名，返回商户 appId 供日志使用
+type vcpayNotifyValidator func(req vcpayNotifyReq) (string, error)
+
+// vcpayCallbackVerifier 各国 VcPay 包各自导出的回调验签函数（实现相同，包不同）
+type vcpayCallbackVerifier func(params map[string]any, appKey string) bool
+
+func validateVcpayMxnNotifyConfig(req vcpayNotifyReq) (string, error) {
 	cfg := utils.GlobalConfig.Pay.Vcpaymxn
-	if strings.TrimSpace(cfg.AppID) == "" || strings.TrimSpace(cfg.AppKey) == "" {
-		return cfg, fmt.Errorf("VCPAYMXN callback config missing appId/appKey")
-	}
-	if strings.TrimSpace(req.AppID) != strings.TrimSpace(cfg.AppID) {
-		return cfg, fmt.Errorf("app_id mismatch")
-	}
-	if strings.TrimSpace(req.Sign) == "" {
-		return cfg, fmt.Errorf("sign is empty")
-	}
-	if !vcpaymxn.VerifyCallbackSignAny(buildVcpayMxnNotifyParams(req), cfg.AppKey) {
-		return cfg, fmt.Errorf("sign invalid")
-	}
-	return cfg, nil
+	return validateVcpayNotifyConfig(req, "VCPAYMXN", cfg.AppID, cfg.AppKey, vcpaymxn.VerifyCallbackSignAny)
 }
 
-func buildVcpayMxnNotifyParams(req vcpayMxnNotifyReq) map[string]any {
+func validateVcpayPenNotifyConfig(req vcpayNotifyReq) (string, error) {
+	cfg := utils.GlobalConfig.Pay.Vcpaypen
+	return validateVcpayNotifyConfig(req, "VCPAYPEN", cfg.AppID, cfg.AppKey, vcpaypen.VerifyCallbackSignAny)
+}
+
+func validateVcpayNotifyConfig(req vcpayNotifyReq, label, appID, appKey string, verify vcpayCallbackVerifier) (string, error) {
+	if strings.TrimSpace(appID) == "" || strings.TrimSpace(appKey) == "" {
+		return appID, fmt.Errorf("%s callback config missing appId/appKey", label)
+	}
+	if strings.TrimSpace(req.AppID) != strings.TrimSpace(appID) {
+		return appID, fmt.Errorf("app_id mismatch")
+	}
+	if strings.TrimSpace(req.Sign) == "" {
+		return appID, fmt.Errorf("sign is empty")
+	}
+	if !verify(buildVcpayNotifyParams(req), appKey) {
+		return appID, fmt.Errorf("sign invalid")
+	}
+	return appID, nil
+}
+
+func buildVcpayNotifyParams(req vcpayNotifyReq) map[string]any {
 	return map[string]any{
 		"code":         req.Code.String(),
 		"msg":          req.Msg,
@@ -366,7 +404,8 @@ func centsToPayAmount(cents int64) float64 {
 	return utils.Truncate2(float64(cents) / 100)
 }
 
-type vcpayMxnNotifyReq struct {
+// vcpayNotifyReq VcPay 代收/代付回调请求体，各国字段一致
+type vcpayNotifyReq struct {
 	Code        vcpayFlexString `json:"code"`
 	Msg         string          `json:"msg"`
 	AppID       string          `json:"app_id"`

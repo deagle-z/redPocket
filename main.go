@@ -8,6 +8,7 @@ import (
 	_ "BaseGoUni/core/pay/gctpkBRL"
 	_ "BaseGoUni/core/pay/gctpkmxn"
 	_ "BaseGoUni/core/pay/vcpaymxn"
+	_ "BaseGoUni/core/pay/vcpaypen"
 	"BaseGoUni/core/pojo"
 	"BaseGoUni/core/services"
 	"BaseGoUni/core/utils"

@@ -2,20 +2,26 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-> **This file covers the Go backend only.** Frontend sub-projects each have their own CLAUDE.md:
-> - [pure-admin-thin/CLAUDE.md](pure-admin-thin/CLAUDE.md) — Superadmin dashboard (Element Plus)
-> - [RedTenantAdmin/CLAUDE.md](RedTenantAdmin/CLAUDE.md) — Tenant management panel (Element Plus)
-> - [RedPocketH5/CLAUDE.md](RedPocketH5/CLAUDE.md) — Mobile H5 app (Vant)
+> **This file covers the Go backend only.** Frontend sub-projects each have their own CLAUDE.md — read that file instead when working inside one of these directories:
+> - [pure-admin-thin/CLAUDE.md](pure-admin-thin/CLAUDE.md) — Superadmin dashboard (Vue 3 + Element Plus)
+> - [RedTenantAdmin/CLAUDE.md](RedTenantAdmin/CLAUDE.md) — Tenant management panel (Vue 3 + Element Plus)
+> - [RedH5V2/CLAUDE.md](RedH5V2/CLAUDE.md) — Current mobile H5 app (Vue 3 + Vant + pnpm)
+> - [RedPocketH5/](RedPocketH5/) — Older H5 app; has only an `AGENTS.md`, no CLAUDE.md
+>
+> [AGENTS.md](AGENTS.md) is the Codex-facing sibling of this file. When you change backend architecture facts here, mirror them there.
 
 ## Commands
+
+Go 1.24. Dependencies are resolved from the module cache — there is no checked-in `vendor/` directory (`go mod vendor` in the README is optional, for offline/Linux builds).
 
 ```bash
 # Set up Go proxy (for Linux/China servers)
 export GOPROXY=https://goproxy.cn,direct
 export GONOSUMDB=*
 
-# Initialize vendor dependencies
-go mod vendor
+# Build / vet
+go build ./...
+go vet ./...
 
 # Install and generate Swagger docs
 go install github.com/swaggo/swag/cmd/swag@latest
@@ -25,18 +31,21 @@ swag init
 go run main.go
 go run main.go -cc core.yaml -cs cs.yaml -sc sc.yaml
 
-# Run tests
-go test -v ./core/services -run TestGenerateThunderIndexes
+# Skip GORM AutoMigrate on startup (useful when schema is already up-to-date)
+BGU_SKIP_AUTO_MIGRATE=1 go run main.go
+
+# Tests — whole package, or a single test by name
 go test -v ./core/utils/...
+go test -v ./core/services -run TestGenerateThunderIndexes
+go test -v ./core/pay/vcpaypen -run TestSign
 
 # Build and run with Docker
 docker rm -f bgu-1 && docker rmi bgu-1 && docker build --build-arg BUILDKIT_INLINE_CACHE=1 --memory 1GB -t bgu-1 . && docker run -e TZ=Asia/Shanghai -p 9001:8080 --name bgu-1 --restart always -d bgu-1 && docker logs -t -f bgu-1
-
-# Skip GORM AutoMigrate on startup (useful when schema is already up-to-date)
-BGU_SKIP_AUTO_MIGRATE=1 go run main.go
 ```
 
 The app runs on port `8080` by default (mapped to host port `9001` in Docker). Swagger UI is available at `/swagger/index.html`. The `dist/` directory is served as static files at `/`.
+
+**Verification convention:** after modifying Go backend code, do not run the Go test suite unless the user explicitly asks. Prefer `go build ./...` to confirm the change compiles.
 
 ## Architecture
 
@@ -105,7 +114,16 @@ Global config is accessed via `utils.GlobalConfig` (type `base.CoreConfig`) and 
 Enqueue helpers follow the pattern `EnqueueXxxTask(tablePrefix, id, processAt)`. The server runs with concurrency 5 on a single `default` queue.
 
 ### Payment Provider Plugin System
-`core/pay/provider.go` defines `Provider` (payin) and `PayoutProvider` (payout) interfaces. Each channel registers itself via `pay.Register(p)` in its package `init()`. Import the channel package with a blank import in `main.go` to activate it (e.g., `_ "BaseGoUni/core/pay/gctpk"`). Payment callbacks arrive at `/api/v1/pay/<channel>/notify` and `/api/v1/pay/<channel>/payoutNotify`.
+`core/pay/provider.go` defines `Provider` (payin) and `PayoutProvider` (payout) interfaces, plus the shared `PayRequest`/`PayResponse`/`PayoutRequest`/`PayoutResponse` DTOs. `Provider.Name()` must return the channel code **in uppercase**, matching `sys_pay_channel.channel_code` in the DB — that string is how a configured channel row resolves to code.
+
+Existing channels: `gctpk`, `gctpkBRL`, `gctpkmxn`, `vcpaymxn`, `vcpaypen` (each its own subpackage), plus `YoyopayProvider` in `core/pay/yoyopay_provider.go` — a stub test channel that returns `AutoSuccess: true` so orders settle immediately without a real gateway call.
+
+Wiring a new channel touches **three** places, and missing any one fails silently rather than at compile time:
+1. `pay.Register(&Provider{})` inside the subpackage's `init()`
+2. A blank import in `main.go` (e.g. `_ "BaseGoUni/core/pay/gctpk"`) — without this the `init()` never runs and the channel is simply absent from the registry
+3. Callback routes in `core/common/web_routes.go` under the `/api/v1/pay` group: `POST /<channel>/notify` (payin) and `POST /<channel>/payoutNotify` (payout), handled by `Xxx PayinCallback` / `XxxPayoutCallback` in `core/api/`
+
+Amount handling: providers receive both `Amount` and `ProviderAmount`; use the `pay.ResolveOrderAmount` / `pay.ResolvePayoutAmount` helpers rather than reading the fields directly. Most gateways want minor units (cents) as an integer.
 
 ### Third-Party Game Wallet API
 `core/game/hgGame.go` implements the wallet-mode game integration. Two public (no JWT) endpoints in `web_routes.go` handle balance queries and transfer calls initiated by the game platform:
@@ -143,7 +161,35 @@ Translation files live in `core/locales/` (en, pt-BR, es-PE, id). Initialized vi
 
 ### Adding a New API Endpoint
 1. Add POJO/model in `core/pojo/` if needed
-2. Add repository function in `core/repository/`
-3. Add handler in `core/api/`
+2. Add repository function in `core/repository/` — takes `db *gorm.DB` as its first arg, never touches `utils.Db` directly
+3. Add handler in `core/api/` (or `tenant/api/` for tenant-scoped endpoints)
 4. Register route in `core/common/web_routes.go` under the appropriate permission group
 5. Run `swag init` to regenerate Swagger docs
+
+Handlers follow a consistent shape — match it rather than inventing a new one:
+
+```go
+// GetPayChannels godoc
+//
+//	@Summary	获取支付通道列表
+//	@Tags		支付通道
+//	@Param		data body	pojo.PayChannelSearch	true	"查询条件"
+//	@Success	200	{object}	pojo.PayChannelResp
+//	@Router		/api/v1/admin/payChannel/list [post]
+func GetPayChannels(ctx *gin.Context) {
+	var search pojo.PayChannelSearch
+	search.SetPageDefaults()
+	if err := ctx.ShouldBindJSON(&search); err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	db := ctx.MustGet("db").(*gorm.DB)          // tenant-prefixed DB from hostInfoMiddleware
+	utils.SuccessObjBack(ctx, repository.GetPayChannels(db, search))
+}
+```
+
+**Gin context keys** set by middleware: `db` (`*gorm.DB`, prefixed — used by essentially every handler), `userId`, `hostInfo`, `tenantId`, `token`.
+
+**Response helpers** (`core/utils/common_utils.go`) — always return through these, never `ctx.JSON` directly: `SuccessObjBack(ctx, data)`, `SuccessBack(ctx, msg)`, `ErrorBack(ctx, msg)`, `ErrorObjBack(ctx, data, msg)`, `ErrorMsgBack(ctx, msg)`.
+
+Swagger godoc comment blocks above each handler are the source for `swag init`; keep the `@Router` path in sync with the actual registration in `web_routes.go`.

@@ -50,6 +50,7 @@ type PayoutRequest struct {
 	AccName        string            // 收款人姓名
 	AccNo          string            // 收款账号/卡号
 	BankCode       string            // 银行编码
+	AccountType    string            // 账户类型（秘鲁 bank_account_type：SA 储蓄 / CA 活期）
 	IdentityType   string            // 出款类型/账号类型
 	IdentityNo     string            // 身份证号/身份ID
 	BusiCode       string            // 支付业务编码

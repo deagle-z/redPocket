@@ -28,11 +28,11 @@ func TestCalculateAppWithdrawFeeFreeFirstThreeWithdrawals(t *testing.T) {
 }
 
 func TestResolveAppWithdrawV2ChannelUsesExistingVcpayProviderForPeru(t *testing.T) {
-	if got := resolveAppWithdrawV2Channel(" pe "); got != "VCPAYMXN" {
-		t.Fatalf("resolveAppWithdrawV2Channel() = %q, want VCPAYMXN", got)
+	if got := resolveAppWithdrawV2Channel(" pe "); got != "VCPAYPEN" {
+		t.Fatalf("resolveAppWithdrawV2Channel() = %q, want VCPAYPEN", got)
 	}
-	if got := resolveAppWithdrawV2Provider("PE"); got != "VCPAYMXN" {
-		t.Fatalf("resolveAppWithdrawV2Provider() = %q, want VCPAYMXN", got)
+	if got := resolveAppWithdrawV2Provider("PE"); got != "VCPAYPEN" {
+		t.Fatalf("resolveAppWithdrawV2Provider() = %q, want VCPAYPEN", got)
 	}
 }
 

@@ -52,8 +52,8 @@ func TestApplyRechargeV2DefaultProviderUsesExistingVcpayProviderForPeru(t *testi
 		CountryCode: " pe ",
 	})
 
-	if req.Channel != "VCPAYMXN" {
-		t.Fatalf("Channel = %q, want VCPAYMXN", req.Channel)
+	if req.Channel != "VCPAYPEN" {
+		t.Fatalf("Channel = %q, want VCPAYPEN", req.Channel)
 	}
 	if req.Currency != "PEN" {
 		t.Fatalf("Currency = %q, want PEN", req.Currency)
