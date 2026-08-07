@@ -534,6 +534,7 @@ func RegisterTgByEmail(db *gorm.DB, email string, firstName string, password str
 				Password:          string(passwordHash),
 				PasswordPlain:     nullableString(password),
 				Email:             email,
+				Country:           nullableString(utils.AppCountryCode),
 				Ip:                nullableString(ip),
 				Region:            nullableString(strings.ToUpper(strings.TrimSpace(region))),
 				TrialBalance:      pojo.TrialUserDefaultBalance,
@@ -576,12 +577,12 @@ func RegisterTgByEmail(db *gorm.DB, email string, firstName string, password str
 // RegisterTgByPhone 手机号注册。
 func RegisterTgByPhone(db *gorm.DB, phone string, country string, firstName string, password string, sourceChannelCode string, tenantID int64, inviteCode string, ip string, region string, deviceReq pojo.TgDeviceInfoReq, userAgent string, tablePrefix string) (pojo.TgUser, error) {
 	firstName = strings.TrimSpace(firstName)
-	normalizedPhone, normalizedCountry, err := CheckTgRegisterPhoneAvailable(db, phone, country)
+	// 国家固定为平台运营国家（utils.AppCountryCode），这里推断出的国家码仅用于手机号规范化。
+	normalizedPhone, _, err := CheckTgRegisterPhoneAvailable(db, phone, country)
 	if err != nil {
 		return pojo.TgUser{}, err
 	}
 	phone = normalizedPhone
-	country = normalizedCountry
 	if len([]rune(firstName)) > 128 {
 		return pojo.TgUser{}, errors.New("first_name_too_long")
 	}
@@ -657,7 +658,7 @@ func RegisterTgByPhone(db *gorm.DB, phone string, country string, firstName stri
 				Password:          string(passwordHash),
 				PasswordPlain:     nullableString(password),
 				Phone:             &phone,
-				Country:           nullableString(country),
+				Country:           nullableString(utils.AppCountryCode),
 				Ip:                nullableString(ip),
 				Region:            nullableString(strings.ToUpper(strings.TrimSpace(region))),
 				DeviceFingerprint: &deviceFingerprintHash,
@@ -934,7 +935,7 @@ func BindCurrentTgPhone(db *gorm.DB, userID int64, phone string, country string,
 		Where("id = ? AND status = ?", userID, 1).
 		Updates(map[string]any{
 			"phone":   phone,
-			"country": nullableString(country),
+			"country": nullableString(utils.AppCountryCode),
 		})
 	if result.Error != nil {
 		return errors.New("service_busy_retry")

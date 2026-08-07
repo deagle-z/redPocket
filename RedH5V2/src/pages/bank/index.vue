@@ -10,7 +10,6 @@ import {
   addWithdrawAccount,
   deleteWithdrawAccount,
   getAppCountries,
-  getCountryWithdrawFields,
   getWithdrawAccounts,
   setDefaultWithdrawAccount,
   updateWithdrawAccount,
@@ -21,6 +20,7 @@ import {
   APP_COUNTRY_NAME_LOCAL,
   APP_CURRENCY,
 } from '@/config/market'
+import { buildWithdrawFields } from '@/config/payFields'
 import type { PageStateStatus } from '@/types/business'
 import { showConfirmDialog, showToast } from 'vant'
 import PpmxSkeleton from '@/components/PpmxSkeleton.vue'
@@ -44,11 +44,16 @@ const pageError = ref('')
 const accountsLoading = ref(false)
 const countries = ref<AppCountryItem[]>([])
 const selectedCountry = ref<AppCountryItem | null>(null)
-const withdrawFields = ref<RechargeField[]>([])
 const allAccounts = ref<WithdrawAccountItem[]>([])
 const showForm = ref(false)
 const editingId = ref<number | null>(null)
 const fieldValues = ref<Record<string, string>>({})
+
+// 秘鲁 VCPAYPEN 通道代付字段前端写死，见 @/config/payFields。
+// accNo 的长度/校验规则依赖已选 bankCode（电子钱包填手机号，银行填 20 位 CCI）。
+const withdrawFields = computed<RechargeField[]>(
+  () => buildWithdrawFields(t, fieldValues.value.bankCode),
+)
 
 const activeCountryCode = computed(() => selectedCountry.value?.countryCode || APP_COUNTRY_CODE)
 const activeCountryName = computed(() => selectedCountry.value?.countryNameEn || APP_COUNTRY_NAME)
@@ -153,12 +158,7 @@ async function loadBankPage() {
       return
     }
 
-    const [fields] = await Promise.all([
-      getCountryWithdrawFields(APP_COUNTRY_CODE),
-      loadAccounts(),
-    ])
-
-    withdrawFields.value = fields ?? []
+    await loadAccounts()
     initFieldValues()
     pageStatus.value = 'ready'
   } catch (error) {

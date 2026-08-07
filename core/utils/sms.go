@@ -20,6 +20,10 @@ const (
 	itNioSMSLimitPrefix    = "bgu_sms_limit_"
 )
 
+// AppCountryCode 平台运营国家，与前端 RedH5V2 src/config/market.ts 的 APP_COUNTRY_CODE 保持一致。
+// 注册/绑定手机号时 tg_user.country 固定写入该值，不再按手机号区号推断。
+const AppCountryCode = "PE"
+
 var smsCountryDialCodeMap = map[string]string{
 	"BR": "55",
 	"CN": "86",

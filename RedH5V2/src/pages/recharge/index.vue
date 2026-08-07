@@ -14,7 +14,6 @@ import {
   createRechargeOrderV2,
   getRechargeIsFirstV2,
   getAppCountries,
-  getCountryRechargeFields,
   getCountryRechargeInfo,
   getPendingRechargeNotifications,
 } from '@/api/user'
@@ -24,6 +23,7 @@ import {
   APP_CURRENCY,
   APP_CURRENCY_SYMBOL,
 } from '@/config/market'
+import { buildRechargeFields } from '@/config/payFields'
 import type { PageStateStatus } from '@/types/business'
 import { formatMoney, toDisplayCents } from '@/utils/money'
 import { rechargeBonusAmountByNumber, rechargeBonusRateByNumber } from '@/utils/rechargeBonus'
@@ -64,7 +64,8 @@ const selectedCountry = ref<AppCountryItem | null>(null)
 const channels = ref<AppRechargeChannelItem[]>([])
 const selectedChannelCode = ref('')
 const selectedPayMethodCode = ref('')
-const rechargeFields = ref<RechargeField[]>([])
+// 秘鲁 VCPAYPEN 通道代收字段前端写死，见 @/config/payFields
+const rechargeFields = computed<RechargeField[]>(() => buildRechargeFields(t))
 const fieldValues = ref<Record<string, string>>({})
 const selectedAmount = ref<number>(rechargeAmounts[0])
 const selectedWalletType = ref<RechargeWalletType>(DEFAULT_RECHARGE_WALLET_TYPE)
@@ -314,17 +315,17 @@ async function loadRechargePage() {
       return
     }
 
-    const [info, fields] = await Promise.all([
+    const [info] = await Promise.all([
       getCountryRechargeInfo(APP_COUNTRY_CODE),
-      getCountryRechargeFields(APP_COUNTRY_CODE),
       refreshRechargeFirstStatus(),
     ])
 
     channels.value = info?.channels ?? []
-    rechargeFields.value = fields ?? []
     hydrateRechargeFieldValues(rechargeFields.value)
+    // 页面没有支付方式选择器，支付方式只能自动取通道下的第一项。
+    // 这里必须显式赋值：重新加载时通道码可能没变，selectedChannelCode 的 watch 不会触发。
     selectedChannelCode.value = channels.value[0]?.channelCode ?? ''
-    selectedPayMethodCode.value = ''
+    selectedPayMethodCode.value = channels.value[0]?.methods?.[0]?.methodCode ?? ''
 
     pageStatus.value = channels.value.length ? 'ready' : 'empty'
     pageError.value = channels.value.length ? '' : t('recharge.noChannel')
@@ -482,8 +483,13 @@ async function runSubmit() {
   }
 }
 
-watch(selectedChannelCode, () => {
-  selectedPayMethodCode.value = selectedChannel.value?.methods?.[0]?.methodCode ?? ''
+// 监听通道对象而非通道码：通道列表刷新后对象会变化，通道码可能不变。
+// 只有当前支付方式在新通道下不存在时才重置，避免覆盖用户已选值。
+watch(selectedChannel, channel => {
+  const methods = channel?.methods ?? []
+  if (methods.some(method => method.methodCode === selectedPayMethodCode.value)) return
+
+  selectedPayMethodCode.value = methods[0]?.methodCode ?? ''
 })
 
 watch(fieldValues, persistRechargeFieldValues, { deep: true })

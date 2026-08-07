@@ -9,11 +9,11 @@ const selectInputSource = existsSync(selectInputUrl)
   : ''
 
 describe('bank withdrawal account API integration', () => {
-  it('uses the backend country withdrawal-field contract for Peru', () => {
+  it('uses the hardcoded VCPAYPEN payout field contract for Peru', () => {
     expect(bankSource).toContain("import {")
     expect(bankSource).toContain('APP_COUNTRY_CODE')
     expect(bankSource).toContain('getAppCountries()')
-    expect(bankSource).toContain('getCountryWithdrawFields(APP_COUNTRY_CODE)')
+    expect(bankSource).toContain('buildWithdrawFields(t, fieldValues.value.bankCode)')
     expect(bankSource).toContain('getWithdrawAccounts()')
     expect(bankSource).toContain('addWithdrawAccount({')
     expect(bankSource).toContain('updateWithdrawAccount(editingId.value')
