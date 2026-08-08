@@ -5,6 +5,7 @@
 /text.log
 /logs
 node_modules
+/.pnpm-store/
 /img_cache
 .DS_Store
 core.yaml
@@ -20,7 +21,6 @@ dist
 /pure-admin-thin/dist
 /pure-admin-thin/build
 /pure-admin-thin/node_modules
-
 
 
 
