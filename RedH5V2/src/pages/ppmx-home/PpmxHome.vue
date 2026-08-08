@@ -418,7 +418,10 @@ async function openGame(game: PpmxGame) {
 }
 
 function onUnlockActivate() {
-  void router.push('/recharge')
+  void router.push({
+    path: '/profile',
+    query: { recharge: 'open' },
+  })
 }
 
 function stopHeroAuto() {

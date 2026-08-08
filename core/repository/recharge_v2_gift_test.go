@@ -6,29 +6,31 @@ import (
 )
 
 func TestParseRechargeV2GiftRates(t *testing.T) {
-	if got, ok := parseRechargeV2GiftRates("18,10,10,10"); !ok || got != [4]float64{18, 10, 10, 10} {
+	if got, ok := parseRechargeV2GiftRates("8,9,10,11,12,13,14,15,16,17,18"); !ok || got != [rechargeV2GiftRateTierCount]float64{8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18} {
 		t.Fatalf("parseRechargeV2GiftRates valid = %v,%t", got, ok)
 	}
-	if _, ok := parseRechargeV2GiftRates("18,10,10"); ok {
-		t.Fatalf("parseRechargeV2GiftRates with <4 parts should fail")
+	if _, ok := parseRechargeV2GiftRates("8,9,10,11"); ok {
+		t.Fatalf("parseRechargeV2GiftRates with fewer than 11 parts should fail")
 	}
-	if _, ok := parseRechargeV2GiftRates("18,x,10,10"); ok {
+	if _, ok := parseRechargeV2GiftRates("8,9,10,x,12,13,14,15,16,17,18"); ok {
 		t.Fatalf("parseRechargeV2GiftRates with non-number should fail")
 	}
 }
 
 func TestRechargeV2GiftRateByNumber(t *testing.T) {
-	// nil db -> 默认 [18,10,10,10]
+	// nil db -> 默认 [8,9,10,11,12,13,14,15,16,17,18]
 	tests := []struct {
 		number int
 		want   float64
 	}{
-		{number: 1, want: 18}, // 首充
-		{number: 2, want: 10}, // 二充
-		{number: 3, want: 10}, // 三充
-		{number: 4, want: 10}, // 第4次及以后
-		{number: 9, want: 10}, // 仍用后续
-		{number: 0, want: 18}, // 兜底首充
+		{number: 1, want: 8},
+		{number: 2, want: 9},
+		{number: 3, want: 10},
+		{number: 4, want: 11},
+		{number: 9, want: 16},
+		{number: 11, want: 18},
+		{number: 12, want: 18},
+		{number: 0, want: 8},
 	}
 	for _, tt := range tests {
 		if got := rechargeV2GiftRateByNumber(nil, tt.number); got != tt.want {
@@ -38,7 +40,7 @@ func TestRechargeV2GiftRateByNumber(t *testing.T) {
 }
 
 func TestCalculateRechargeV2GiftAmountByNumber(t *testing.T) {
-	// nil db -> 默认 [18,10,10,10]，门槛 50
+	// nil db -> 默认 [8,9,10,11,12,13,14,15,16,17,18]，门槛 50
 	tests := []struct {
 		name   string
 		amount float64
@@ -46,11 +48,11 @@ func TestCalculateRechargeV2GiftAmountByNumber(t *testing.T) {
 		want   float64
 	}{
 		{name: "below threshold no gift", amount: 49.99, number: 1, want: 0},
-		{name: "at threshold 50 first recharge 18%", amount: 50, number: 1, want: 9},
-		{name: "first recharge 18%", amount: 1000, number: 1, want: 180},
-		{name: "second recharge 10%", amount: 1000, number: 2, want: 100},
+		{name: "at threshold 50 first recharge 8%", amount: 50, number: 1, want: 4},
+		{name: "first recharge 8%", amount: 1000, number: 1, want: 80},
+		{name: "second recharge 9%", amount: 1000, number: 2, want: 90},
 		{name: "third recharge 10%", amount: 1000, number: 3, want: 100},
-		{name: "fourth+ recharge 10%", amount: 1234.56, number: 5, want: 123.45},
+		{name: "eleventh+ recharge 18%", amount: 1234.56, number: 12, want: 222.22},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

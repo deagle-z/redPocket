@@ -19,7 +19,6 @@ describe('PP.PE loading skeleton coverage', () => {
 
   it('uses page-specific skeleton variants for AppState-backed page loading', () => {
     const bank = read('src/pages/bank/index.vue')
-    const recharge = read('src/pages/recharge/index.vue')
     const profile = read('src/pages/profile/index.vue')
     const team = read('src/pages/team/index.vue')
     const casino = read('src/pages/casino/index.vue')
@@ -28,7 +27,6 @@ describe('PP.PE loading skeleton coverage', () => {
     const userProfile = read('src/pages/user-profile/index.vue')
 
     expect(bank).toContain('skeleton-variant="bank-page"')
-    expect(recharge).toContain('skeleton-variant="recharge-page"')
     expect(profile).toContain('skeleton-variant="profile-page"')
     expect(team).toContain('skeleton-variant="team-page"')
     expect(casino).toContain('skeleton-variant="casino-page"')

@@ -17,7 +17,6 @@ describe('PpmxSkeleton source contract', () => {
       'home-games',
       'profile-page',
       'bank-page',
-      'recharge-page',
       'team-page',
       'casino-page',
       'records-page',
@@ -77,12 +76,11 @@ describe('PpmxSkeleton source contract', () => {
     expect(source).toContain('--skeleton-gold: rgba(255, 215, 0, 0.12);')
   })
 
-  it('has dedicated light palettes for account and payment page skeletons', () => {
+  it('has dedicated light palettes for account page skeletons', () => {
     expect(source).toContain(':global(html[data-theme="light"]) .ppmx-skeleton--home-games,')
     expect(source).toContain(':global(html[data-theme="light"]) .ppmx-skeleton--user-profile-page')
     expect(source).toContain(':global(html[data-theme="light"]) .ppmx-skeleton--bank-page,')
     expect(source).toContain(':global(html[data-theme="light"]) .ppmx-skeleton--bank-account-list,')
-    expect(source).toContain(':global(html[data-theme="light"]) .ppmx-skeleton--recharge-page')
     expect(source).toContain(':global(html[data-theme="light"]) .ppmx-skeleton--team-page,')
     expect(source).toContain(':global(html[data-theme="light"]) .ppmx-skeleton--records-page')
     expect(source).toContain('--skeleton-border: rgba(226, 31, 51, 0.105);')

@@ -65,7 +65,7 @@ describe('PP.PE localized visual assets', () => {
     })
     expect(ppmxBanners[0]?.tag.zh).toBe('注册礼金')
     expect(ppmxBanners[0]?.title.zh).toContain('注册立即赠送')
-    expect(ppmxBanners[0]?.amountHtml?.zh).toContain('58')
+    expect(ppmxBanners[0]?.amountHtml?.zh).toContain('3')
     expect(ppmxBanners[0]?.amountHtml?.zh).toContain('比索')
   })
 

@@ -64,7 +64,7 @@ async function mockRechargeApis(page: Page) {
     hasFirst: false,
     isFirstRecharge: true,
     rechargeNumber: 1,
-    giftRates: [18, 20, 25, 30],
+    giftRates: [18, 20, 25, 30, 30, 30, 30, 30, 30, 30, 30],
     giftMinAmount: 50,
   }))
   await page.route(/\/(?:api\/)?v1\/app\/rechargeOrder\/pendingNotifications$/, route => fulfillJson(route, []))
@@ -97,7 +97,8 @@ test('shows the API gift percentage for balance deposits and hides it for sports
     window.localStorage.setItem('h5_token', tokenPayload)
   }, authPayload)
 
-  await page.goto('/#/recharge')
+  await page.goto('/#/profile?recharge=open')
+  await expect(page.locator('#rechargeModal')).toBeVisible()
 
   const walletSelector = page.locator('.ppmx-recharge-section--wallet .ppmx-select-input__button')
   const promotion = page.locator('.ppmx-recharge-promo')

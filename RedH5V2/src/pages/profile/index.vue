@@ -536,9 +536,10 @@ function showUpcoming(message: LocalizedText = profileText.comingSoon) {
 }
 
 function openRecharge() {
-  if (!requireRegisterAuth()) return
+  if (!requireRegisterAuth()) return false
 
   rechargeModalOpen.value = true
+  return true
 }
 
 function openWalletTransfer(walletId: string) {
@@ -897,6 +898,22 @@ watch(
     if (auth === 'register') openAuth('register')
   },
   { immediate: true },
+)
+
+watch(
+  () => route.query.recharge,
+  (recharge) => {
+    if (recharge !== 'open') return
+
+    void nextTick(() => {
+      if (!openRecharge()) return
+
+      const query = { ...route.query }
+      delete query.recharge
+      void router.replace({ query })
+    })
+  },
+  { immediate: true, flush: 'post' },
 )
 
 watch(withdrawModalOpen, (isOpen) => {

@@ -229,9 +229,9 @@ export interface CryptoRechargeOrderStatusResp {
 export interface RechargeFirstStatusResp {
   hasFirst: boolean
   isFirstRecharge: boolean
-  /** 下一次充值次序：1=首充 2=二充 3=三充 ≥4=后续 */
+  /** 下一次充值次序：1至11次分别对应档位，≥12沿用第11档 */
   rechargeNumber?: number
-  /** 各档位赠送比例(%)：[首充,二充,三充,第4次及以后] */
+  /** 各档位赠送比例(%)：[第1次至第11次及以后] */
   giftRates?: number[]
   /** 赠送门槛(满此金额即送) */
   giftMinAmount?: number
@@ -241,6 +241,8 @@ export interface RechargeCountResp {
   rechargeCount: number
   /** 是否曾把佣金转入余额（佣金转账可解锁游戏；赠送余额不算） */
   rebateTransferred?: boolean
+  /** 是否启用充值/佣金转入解锁游戏限制。 */
+  rechargeGameUnlockEnabled: boolean
 }
 
 export interface RechargePromotionDayRate {

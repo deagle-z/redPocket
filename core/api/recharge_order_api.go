@@ -426,7 +426,9 @@ func GetCurrentUserRechargeCount(ctx *gin.Context) {
 		return
 	}
 	db := ctx.MustGet("db").(*gorm.DB)
-	utils.SuccessObjBack(ctx, repository.GetUserRechargeCount(db, userID))
+	result := repository.GetUserRechargeCount(db, userID)
+	result.RechargeGameUnlockEnabled = repository.GetRechargeGameUnlockEnabled(db)
+	utils.SuccessObjBack(ctx, result)
 }
 
 func GetCurrentUserPendingRechargeNotifications(ctx *gin.Context) {
@@ -529,8 +531,8 @@ func CheckIsFirstRechargeV2(ctx *gin.Context) {
 	utils.SuccessObjBack(ctx, gin.H{
 		"isFirstRecharge": isFirstRecharge,
 		"hasFirst":        isFirstRecharge,
-		"rechargeNumber":  rechargeNumber, // 1=首充 2=二充 3=三充 ≥4=后续
-		"giftRates":       rates[:],       // [首充,二充,三充,第4次及以后] 单位%
+		"rechargeNumber":  rechargeNumber, // 1至11次分别对应档位，≥12沿用第11档
+		"giftRates":       rates[:],       // [第1次至第11次及以后] 单位%
 		"giftMinAmount":   repository.RechargeV2GiftMinAmount(),
 	})
 }

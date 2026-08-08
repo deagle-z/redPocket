@@ -4,8 +4,8 @@ import { highlightPromoText } from './promoHighlight'
 
 describe('PP.PE promo text highlighting', () => {
   it('wraps promo money and numeric terms with the reference highlight spans', () => {
-    expect(highlightPromoText('注册立即赠送 58 比索')).toBe(
-      '注册立即赠送 <span class="ppmx-promo-highlight">58 比索</span>',
+    expect(highlightPromoText('注册立即赠送 3 比索')).toBe(
+      '注册立即赠送 <span class="ppmx-promo-highlight">3 比索</span>',
     )
     expect(highlightPromoText('Recarga y recibe hasta 30% de regalo')).toBe(
       'Recarga y recibe hasta <span class="ppmx-promo-highlight ppmx-promo-highlight--percent">30%</span> de regalo',

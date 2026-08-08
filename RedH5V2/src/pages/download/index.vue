@@ -21,7 +21,7 @@ definePage({
 })
 
 const { pickText } = usePpmxLocale()
-const PPMX_ANDROID_APK_URL = 'https://pub-93b0b439f98b49c4ba1db81844583907.r2.dev/PPMX.apk'
+const PPMX_ANDROID_APK_URL = 'https://pub-93b0b439f98b49c4ba1db81844583907.r2.dev/pepp.apk'
 const downloadQrDataUrl = ref('')
 const downloadQrError = ref(false)
 

@@ -13,7 +13,6 @@ export type SkeletonVariant =
   | 'home-games'
   | 'profile-page'
   | 'bank-page'
-  | 'recharge-page'
   | 'team-page'
   | 'casino-page'
   | 'records-page'
@@ -52,7 +51,6 @@ const semanticPageVariants = new Set<SkeletonVariant>([
   'home-games',
   'profile-page',
   'bank-page',
-  'recharge-page',
   'team-page',
   'casino-page',
   'records-page',
@@ -161,28 +159,6 @@ const isSemanticModalVariant = computed(() => semanticModalVariants.has(props.va
             <span class="ppmx-skeleton-shimmer is-control" />
             <span class="ppmx-skeleton-shimmer is-label" />
             <span class="ppmx-skeleton-shimmer is-control" />
-          </div>
-        </template>
-
-        <template v-else-if="variant === 'recharge-page'">
-          <div class="ppmx-skeleton__split">
-            <div class="ppmx-skeleton__balance-panel">
-              <span class="ppmx-skeleton-shimmer is-icon" />
-              <span class="ppmx-skeleton-shimmer is-title" />
-              <span class="ppmx-skeleton-shimmer is-text" />
-            </div>
-            <div class="ppmx-skeleton__form-panel">
-              <span class="ppmx-skeleton-shimmer is-label" />
-              <span class="ppmx-skeleton-shimmer is-control" />
-              <div class="ppmx-skeleton__amount-grid">
-                <span
-                  v-for="item in 6"
-                  :key="`amount-${item}`"
-                  class="ppmx-skeleton-shimmer is-amount"
-                />
-              </div>
-              <span class="ppmx-skeleton-shimmer is-button" />
-            </div>
           </div>
         </template>
 
@@ -1111,7 +1087,6 @@ const isSemanticModalVariant = computed(() => semanticModalVariants.has(props.va
 :global(html[data-theme="light"]) .ppmx-skeleton--user-profile-page,
 :global(html[data-theme="light"]) .ppmx-skeleton--bank-page,
 :global(html[data-theme="light"]) .ppmx-skeleton--bank-account-list,
-:global(html[data-theme="light"]) .ppmx-skeleton--recharge-page,
 :global(html[data-theme="light"]) .ppmx-skeleton--team-page,
 :global(html[data-theme="light"]) .ppmx-skeleton--records-page {
   --skeleton-base: rgba(34, 34, 40, 0.052);

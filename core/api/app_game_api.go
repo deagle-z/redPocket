@@ -189,11 +189,12 @@ func LaunchAppGame(ctx *gin.Context) {
 		utils.ErrorBack(ctx, "player disabled")
 		return
 	}
+	rechargeGameUnlockEnabled := repository.GetRechargeGameUnlockEnabled(db)
 	rebateTransferred := false
-	if tgUser.RechargeAmount < appGameLaunchMinimumRechargeAmount {
+	if rechargeGameUnlockEnabled && tgUser.RechargeAmount < appGameLaunchMinimumRechargeAmount {
 		rebateTransferred = repository.GetUserRechargeCount(db, userID).RebateTransferred
 	}
-	if !canLaunchAppGame(tgUser.RechargeAmount, rebateTransferred) {
+	if !canLaunchAppGame(rechargeGameUnlockEnabled, tgUser.RechargeAmount, rebateTransferred) {
 		utils.ErrorBack(ctx, "game_recharge_required")
 		return
 	}
@@ -242,11 +243,12 @@ func LaunchGSCSportGame(ctx *gin.Context) {
 		utils.ErrorBack(ctx, "player disabled")
 		return
 	}
+	rechargeGameUnlockEnabled := repository.GetRechargeGameUnlockEnabled(db)
 	rebateTransferred := false
-	if tgUser.RechargeAmount < appGameLaunchMinimumRechargeAmount {
+	if rechargeGameUnlockEnabled && tgUser.RechargeAmount < appGameLaunchMinimumRechargeAmount {
 		rebateTransferred = repository.GetUserRechargeCount(db, userID).RebateTransferred
 	}
-	if !canLaunchAppGame(tgUser.RechargeAmount, rebateTransferred) {
+	if !canLaunchAppGame(rechargeGameUnlockEnabled, tgUser.RechargeAmount, rebateTransferred) {
 		utils.ErrorBack(ctx, "game_recharge_required")
 		return
 	}
@@ -339,8 +341,8 @@ func shouldLaunchWithGSCClient(platformCode string) bool {
 	return strings.EqualFold(strings.TrimSpace(platformCode), "gsc")
 }
 
-func canLaunchAppGame(rechargeAmount float64, rebateTransferred bool) bool {
-	return rechargeAmountAtLeastMinimum(rechargeAmount) || rebateTransferred
+func canLaunchAppGame(rechargeGameUnlockEnabled bool, rechargeAmount float64, rebateTransferred bool) bool {
+	return !rechargeGameUnlockEnabled || rechargeAmountAtLeastMinimum(rechargeAmount) || rebateTransferred
 }
 
 func rechargeAmountAtLeastMinimum(rechargeAmount float64) bool {

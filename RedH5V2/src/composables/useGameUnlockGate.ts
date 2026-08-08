@@ -5,11 +5,12 @@ import { getLocalRechargeCount, setLocalRechargeCount } from '@/utils/rechargeCo
  * Deposit gate for launching real-money games.
  *
  * Unlock conditions:
- * 1. A recharge count is already cached locally.
- * 2. Backend recharge count > 0 (has deposited).
- * 3. The user has transferred commission (rebate) into their balance —
+ * 1. Backend has disabled the recharge unlock restriction.
+ * 2. A recharge count is already cached locally.
+ * 3. Backend recharge count > 0 (has deposited).
+ * 4. The user has transferred commission (rebate) into their balance —
  *    commission transfer unlocks games; gift/bonus balance alone does NOT.
- * 4. Otherwise the unlock (deposit) modal is shown.
+ * 5. Otherwise the unlock (deposit) modal is shown.
  */
 export function useGameUnlockGate() {
   const unlockOpen = ref(false)
@@ -22,6 +23,8 @@ export function useGameUnlockGate() {
     try {
       checking.value = true
       const data = await getRechargeCount()
+      if (data.rechargeGameUnlockEnabled === false) return true
+
       const count = Number(data?.rechargeCount || 0)
       if (count > 0) {
         setLocalRechargeCount(count)

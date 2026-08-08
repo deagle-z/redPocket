@@ -17,7 +17,7 @@ async function mockRechargeApis(page: Page) {
     id: 1001,
     username: 'e2e_user',
     phone: '+12025550123',
-    country: 'US',
+    country: 'PE',
     balance: 250000,
     sportBalance: 100000,
     hasWithdrawAccount: true,
@@ -26,27 +26,54 @@ async function mockRechargeApis(page: Page) {
   await page.route(/\/(?:api\/)?v1\/app\/countries$/, route => fulfillJson(route, [
     {
       id: 1,
-      countryCode: 'US',
-      countryName: 'United States',
-      countryNameEn: 'United States',
-      countryNameCn: '美国',
-      currencyCode: 'USD',
-      currencySymbol: '$',
+      countryCode: 'PE',
+      countryName: 'Peru',
+      countryNameEn: 'Peru',
+      countryNameCn: '秘鲁',
+      currencyCode: 'PEN',
+      currencySymbol: 'S/',
       sort: 1,
     },
   ]))
 
-  await page.route(/\/(?:api\/)?v1\/app\/country\/US\/recharge$/, route => fulfillJson(route, {
+  await page.route(/\/(?:api\/)?v1\/app\/country\/PE\/recharge$/, route => fulfillJson(route, {
     rechargeFields: [],
-    channels: [],
+    channels: [
+      {
+        id: 1,
+        channelCode: 'HOPOPAY',
+        channelName: 'Cash',
+        providerType: 'cash',
+        icon: null,
+        sort: 1,
+        methods: [
+          {
+            id: 1,
+            methodCode: 'cashapp',
+            methodName: 'Cash App',
+            icon: null,
+            sort: 1,
+          },
+        ],
+      },
+      {
+        id: 2,
+        channelCode: 'USDT_TRC20',
+        channelName: 'Crypto',
+        providerType: 'native',
+        icon: null,
+        sort: 2,
+        methods: [],
+      },
+    ],
   }))
 
-  await page.route(/\/(?:api\/)?v1\/app\/country\/US\/rechargeFields$/, route => fulfillJson(route, []))
+  await page.route(/\/(?:api\/)?v1\/app\/country\/PE\/rechargeFields$/, route => fulfillJson(route, []))
 
   await page.route(/\/(?:api\/)?v1\/app\/recharge\/isFirst\/v2$/, route => fulfillJson(route, {
     isFirstRecharge: true,
     rechargeNumber: 1,
-    giftRates: [0.25, 0.15, 0.1],
+    giftRates: [25, 15, 10, 10, 10, 10, 10, 10, 10, 10, 10],
     giftMinAmount: 50,
   }))
 
@@ -58,7 +85,7 @@ async function mockRechargeApis(page: Page) {
     await fulfillJson(route, {
       orderNo: 'E2E-RECHARGE-001',
       amount: body.amount,
-      currency: 'USD',
+      currency: 'PEN',
       channel: body.channel,
       payMethod: body.payMethod || body.channel,
       payUrl: 'https://pay.example.test/order/E2E-RECHARGE-001',
@@ -162,23 +189,20 @@ async function openRecharge(page: Page) {
     window.localStorage.setItem('h5_token', tokenPayload)
   }, authPayload)
 
-  await page.goto('/#/recharge')
+  await page.goto('/#/profile?recharge=open')
+  await expect(page.locator('#rechargeModal')).toBeVisible()
 }
 
 test.describe('recharge payment channels', () => {
-  test('renders fixed payment channels and opens v2 payment popup', async ({ page }) => {
+  test('renders API payment channels and opens v2 payment popup', async ({ page }) => {
     await openRecharge(page)
 
-    await expect(page.getByTestId('pay-channel-cash')).toBeVisible()
-    await expect(page.getByTestId('pay-channel-apple')).toBeVisible()
-    await expect(page.getByTestId('pay-channel-google')).toBeVisible()
+    await expect(page.getByTestId('pay-channel-HOPOPAY')).toBeVisible()
     await expect(page.getByTestId('pay-channel-crypto')).toBeVisible()
-    await expect(page.getByTestId('pay-channel-cash')).toContainText('Cash')
-    await expect(page.getByTestId('pay-channel-apple')).toContainText('Apple Pay')
-    await expect(page.getByTestId('pay-channel-google')).toContainText('Google Pay')
+    await expect(page.getByTestId('pay-channel-HOPOPAY')).toContainText('Cash')
     await expect(page.getByTestId('pay-channel-crypto')).toContainText(/Crypto|加密货币/)
-    await expect(page.locator('.ppmx-recharge-amount-grid .ppmx-recharge-amount')).toHaveCount(10)
-    await expect(page.locator('.ppmx-recharge-amount-grid .ppmx-recharge-amount').first()).toContainText('S/30.00')
+    await expect(page.locator('.ppmx-recharge-amount-grid .ppmx-recharge-amount')).toHaveCount(7)
+    await expect(page.locator('.ppmx-recharge-amount-grid .ppmx-recharge-amount').first()).toContainText('S/50.00')
     await expect(page.locator('.ppmx-recharge-amount-grid')).not.toContainText(/Custom|自定义|Personalizado/)
 
     const requestPromise = page.waitForRequest(/\/(?:api\/)?v1\/app\/rechargeOrder\/v2$/)
@@ -188,7 +212,7 @@ test.describe('recharge payment channels', () => {
 
     expect(payload.channel).toBe('HOPOPAY')
     expect(payload.payMethod).toBe('cashapp')
-    expect(payload.amount).toBe(29.99)
+    expect(payload.amount).toBe(50)
     await expect(page.locator('#paymentModal')).toBeVisible()
     await expect(page.locator('#paymentModal')).toContainText('E2E-RECHARGE-001')
   })
@@ -200,7 +224,7 @@ test.describe('recharge payment channels', () => {
     await page.getByTestId('recharge-submit').click()
 
     await expect(page).toHaveURL(/#\/crypto-pay/)
-    expect(page.url()).toContain('amount=29.99')
+    expect(page.url()).toContain('amount=50.00')
     expect(page.url()).toContain('channelCode=USDT_TRC20')
   })
 })

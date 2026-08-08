@@ -283,7 +283,7 @@ export default {
     phonePlaceholder: '9 digits, starts with 9',
     phoneError: 'Enter a 9-digit phone number starting with 9',
     email: 'Email',
-    emailPlaceholder: 'you@example.com',
+    emailPlaceholder: "you{'@'}example.com",
     emailError: 'Enter a valid email address',
   },
   ppmx: {

@@ -100,16 +100,16 @@ export const ppmxPromoItems: PpmxPromoItem[] = [
   {
     id: 'registro',
     tag: { es: 'Regalo de bienvenida', en: 'Welcome gift', zh: '注册礼金' },
-    title: { es: 'Regístrate y gana S/58 PEN gratis', en: 'Sign up and get S/58 PEN free', zh: '注册立即赠送 58 比索' },
+    title: { es: 'Regístrate y gana S/3 PEN gratis', en: 'Sign up and get S/3 PEN free', zh: '注册立即赠送 3 比索' },
     sub: {
-      es: 'Crea tu cuenta en 1 minuto y recibe S/58 PEN al instante para empezar a jugar.',
-      en: 'Create your account in 1 minute and get S/58 PEN instantly to start playing.',
-      zh: '1 分钟完成注册，立即获得 58 比索，马上开玩。',
+      es: 'Crea tu cuenta en 1 minuto y recibe S/3 PEN al instante para empezar a jugar.',
+      en: 'Create your account in 1 minute and get S/3 PEN instantly to start playing.',
+      zh: '1 分钟完成注册，立即获得 3 比索，马上开玩。',
     },
     howTo: {
-      es: 'Regístrate con tu teléfono, verifica tu cuenta y los S/58 PEN se acreditan automáticamente.',
-      en: 'Register with your phone, verify your account and the S/58 PEN is credited automatically.',
-      zh: '点击下方立即激活优惠后前往我的账户领取 58 比索新用户注册奖励。',
+      es: 'Regístrate con tu teléfono, verifica tu cuenta y los S/3 PEN se acreditan automáticamente.',
+      en: 'Register with your phone, verify your account and the S/3 PEN is credited automatically.',
+      zh: '点击下方立即激活优惠后前往我的账户领取 3 比索新用户注册奖励。',
     },
     valid: { es: 'Promoción para nuevos usuarios', en: 'New users only', zh: '仅限新用户' },
     terms: {
@@ -124,7 +124,7 @@ export const ppmxPromoItems: PpmxPromoItem[] = [
   {
     id: 'checkin',
     tag: { es: 'Check-in de bienvenida', en: 'Welcome check-in', zh: '新人签到' },
-    title: { es: 'Check-in de nuevos: gana hasta S/888 en 7 días', en: 'New-user check-in: win up to S/888 in 7 days', zh: '新用户签到 7 天最高领 S/???' },
+    title: { es: 'Check-in de nuevos: recibe S/1 cada día', en: 'New-user check-in: get S/1 every day', zh: '新用户签到每天送 1 比索' },
     sub: {
       es: 'Regístrate y entra cada día para reclamar tu recompensa; el día 7 abre el cofre mayor.',
       en: 'Sign up and log in daily to claim your reward; day 7 unlocks the grand chest.',
@@ -498,7 +498,7 @@ export const ppmxGuideCards: PpmxGuideCard[] = [
       en: 'Sign in every day and claim your reward. The more consecutive days, the bigger the 7-day cumulative prize.',
       zh: '每天登录领取奖励，连续签到天数越多，7 天累计奖励越丰厚。',
     },
-    tag: { es: 'Hasta S/??? PEN / semana', en: 'Up to S/??? PEN / week', zh: '每周最高 S/??? PEN' },
+    tag: { es: 'S/1 por día', en: 'S/1 per day', zh: '每天签到送 S/1' },
   },
   {
     id: 'wheel',
@@ -550,7 +550,7 @@ export const ppmxGuideCards: PpmxGuideCard[] = [
       en: 'Complete your registration to activate your new-user welcome reward.',
       zh: '完成注册即可激活新人欢迎奖励。',
     },
-    tag: { es: '100% · S/58 PEN al instante', en: '100% · S/58 PEN instantly', zh: '100% 立即获得 S/58 比索' },
+    tag: { es: '100% · S/3 PEN al instante', en: '100% · S/3 PEN instantly', zh: '100% 立即获得 S/3 比索' },
   },
   {
     id: 'download',

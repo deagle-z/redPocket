@@ -1540,15 +1540,17 @@ func rechargeGiftBaseAmount(order pojo.RechargeOrder) float64 {
 	return utils.Truncate2(order.Amount)
 }
 
-// RechargeV2GiftRatesConfigKey v2充值赠送比例配置键（sys_config，逗号分隔：首充,二充,三充,第4次及以后）。
+// RechargeV2GiftRatesConfigKey v2充值赠送比例配置键（sys_config，逗号分隔：第1次至第11次，第11次及以后）。
 const RechargeV2GiftRatesConfigKey = "recharge_v2_gift_rates"
 
-// defaultRechargeV2GiftRates 默认 v2 充值赠送比例(%)：首充18 / 二充10 / 三充10 / 第4次及以后10。
-var defaultRechargeV2GiftRates = [4]float64{18, 10, 10, 10}
+const rechargeV2GiftRateTierCount = 11
 
-// GetRechargeV2GiftRates 读取 v2 充值赠送比例 [首充, 二充, 三充, 第4次及以后]；
+// defaultRechargeV2GiftRates 默认 v2 充值赠送比例(%)：第1次至第11次为 8% 至 18%，第11次及以后沿用18%。
+var defaultRechargeV2GiftRates = [rechargeV2GiftRateTierCount]float64{8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18}
+
+// GetRechargeV2GiftRates 读取 v2 充值赠送比例 [第1次, ..., 第11次及以后]；
 // 配置缺失自动初始化默认值，解析失败回退默认。
-func GetRechargeV2GiftRates(db *gorm.DB) [4]float64 {
+func GetRechargeV2GiftRates(db *gorm.DB) [rechargeV2GiftRateTierCount]float64 {
 	rates := defaultRechargeV2GiftRates
 	if db == nil {
 		return rates
@@ -1558,8 +1560,8 @@ func GetRechargeV2GiftRates(db *gorm.DB) [4]float64 {
 	if cfg.ID == 0 {
 		_ = db.Create(&pojo.SysConfig{
 			ConfigKey:   RechargeV2GiftRatesConfigKey,
-			ConfigValue: fmt.Sprintf("%g,%g,%g,%g", rates[0], rates[1], rates[2], rates[3]),
-			ConfigDesc:  "v2充值赠送比例(%)，逗号分隔：首充,二充,三充,第4次及以后",
+			ConfigValue: fmt.Sprintf("%g,%g,%g,%g,%g,%g,%g,%g,%g,%g,%g", rates[0], rates[1], rates[2], rates[3], rates[4], rates[5], rates[6], rates[7], rates[8], rates[9], rates[10]),
+			ConfigDesc:  "v2充值赠送比例(%)，逗号分隔：第1次至第11次，第11次及以后",
 		}).Error
 		return rates
 	}
@@ -1569,31 +1571,31 @@ func GetRechargeV2GiftRates(db *gorm.DB) [4]float64 {
 	return rates
 }
 
-func parseRechargeV2GiftRates(raw string) ([4]float64, bool) {
+func parseRechargeV2GiftRates(raw string) ([rechargeV2GiftRateTierCount]float64, bool) {
 	parts := strings.Split(strings.TrimSpace(raw), ",")
-	if len(parts) < 4 {
-		return [4]float64{}, false
+	if len(parts) != rechargeV2GiftRateTierCount {
+		return [rechargeV2GiftRateTierCount]float64{}, false
 	}
-	var rates [4]float64
-	for i := 0; i < 4; i++ {
+	var rates [rechargeV2GiftRateTierCount]float64
+	for i := 0; i < rechargeV2GiftRateTierCount; i++ {
 		v, err := strconv.ParseFloat(strings.TrimSpace(parts[i]), 64)
 		if err != nil || v < 0 {
-			return [4]float64{}, false
+			return [rechargeV2GiftRateTierCount]float64{}, false
 		}
 		rates[i] = v
 	}
 	return rates, true
 }
 
-// rechargeV2GiftRateByNumber 按"该用户第几次充值"返回赠送比例(%)：1=首充 2=二充 3=三充 ≥4=后续。
+// rechargeV2GiftRateByNumber 按"该用户第几次充值"返回赠送比例(%)：1至11次分别取对应档位，≥12沿用第11档。
 func rechargeV2GiftRateByNumber(db *gorm.DB, rechargeNumber int) float64 {
 	rates := GetRechargeV2GiftRates(db)
 	idx := rechargeNumber - 1
 	if idx < 0 {
 		idx = 0
 	}
-	if idx > 3 {
-		idx = 3
+	if idx >= rechargeV2GiftRateTierCount {
+		idx = rechargeV2GiftRateTierCount - 1
 	}
 	return rates[idx]
 }

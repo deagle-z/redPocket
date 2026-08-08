@@ -283,7 +283,7 @@ export default {
     phonePlaceholder: '9 开头的 9 位手机号',
     phoneError: '请输入 9 开头的 9 位手机号',
     email: '邮箱',
-    emailPlaceholder: 'you@example.com',
+    emailPlaceholder: "you{'@'}example.com",
     emailError: '请输入有效邮箱地址',
   },
   ppmx: {

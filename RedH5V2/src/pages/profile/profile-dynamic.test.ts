@@ -107,6 +107,9 @@ describe('profile dynamic user data', () => {
     expect(profileSource).toContain('rechargeModalOpen.value = true')
     expect(profileSource).toContain('function closeRechargeModal()')
     expect(profileSource).toContain('v-model="rechargeModalOpen"')
+    expect(profileSource).toContain('route.query.recharge')
+    expect(profileSource).toContain("recharge !== 'open'")
+    expect(profileSource).toContain('delete query.recharge')
     expect(profileSource).not.toContain("router.push('/recharge')")
   })
 

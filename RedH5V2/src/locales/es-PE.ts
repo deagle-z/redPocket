@@ -283,7 +283,7 @@ export default {
     phonePlaceholder: '9 dígitos, empieza con 9',
     phoneError: 'Ingresa un celular de 9 dígitos que empiece con 9',
     email: 'Correo electrónico',
-    emailPlaceholder: 'tu@correo.com',
+    emailPlaceholder: "tu{'@'}correo.com",
     emailError: 'Ingresa un correo electrónico válido',
   },
   ppmx: {

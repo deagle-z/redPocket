@@ -108,13 +108,6 @@ declare module 'vue-router/auto-routes' {
       { id: ParamValue<false> },
       | never
     >,
-    'recharge': RouteRecordInfo<
-      'recharge',
-      '/recharge',
-      Record<never, never>,
-      Record<never, never>,
-      | never
-    >,
     'records': RouteRecordInfo<
       'records',
       '/records',
@@ -292,14 +285,6 @@ declare module 'vue-router/auto-routes' {
         | never
       pathParamNames:
         | 'id'
-    }
-    'src/pages/recharge/index.vue': {
-      routes:
-        | 'recharge'
-      views:
-        | never
-      pathParamNames:
-        | never
     }
     'src/pages/records/index.vue': {
       routes:

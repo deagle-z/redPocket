@@ -9,7 +9,48 @@ import (
 
 	"github.com/jinzhu/copier"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
+
+const (
+	RechargeGameUnlockEnabledConfigKey = "recharge_game_unlock_enabled"
+	rechargeGameUnlockEnabledDefault   = true
+)
+
+// GetRechargeGameUnlockEnabled controls whether users must unlock games by recharging or transferring commission.
+func GetRechargeGameUnlockEnabled(db *gorm.DB) bool {
+	if db == nil {
+		return rechargeGameUnlockEnabledDefault
+	}
+
+	var config pojo.SysConfig
+	db.Where("config_key = ?", RechargeGameUnlockEnabledConfigKey).First(&config)
+	if config.ID == 0 {
+		_ = db.Clauses(clause.OnConflict{DoNothing: true}).Create(&pojo.SysConfig{
+			ConfigKey:   RechargeGameUnlockEnabledConfigKey,
+			ConfigValue: "1",
+			ConfigDesc:  "充值解锁游戏开关：1=需充值满50或佣金转入，0=关闭充值限制",
+		}).Error
+		return rechargeGameUnlockEnabledDefault
+	}
+
+	enabled, ok := parseRechargeGameUnlockEnabled(config.ConfigValue)
+	if !ok {
+		return rechargeGameUnlockEnabledDefault
+	}
+	return enabled
+}
+
+func parseRechargeGameUnlockEnabled(raw string) (bool, bool) {
+	switch strings.TrimSpace(raw) {
+	case "1":
+		return true, true
+	case "0":
+		return false, true
+	default:
+		return false, false
+	}
+}
 
 func GetAppGames(db *gorm.DB, search pojo.AppGameSearch) (result pojo.AppGameResp) {
 	var list []pojo.AppGame

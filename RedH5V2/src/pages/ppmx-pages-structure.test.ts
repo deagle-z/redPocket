@@ -31,7 +31,6 @@ describe('PP.PE routed pages structure', () => {
     expect(existsSource('src/pages/casino/index.vue')).toBe(true)
     expect(existsSource('src/pages/play/index.vue')).toBe(true)
     expect(existsSource('src/pages/user-profile/index.vue')).toBe(true)
-    expect(existsSource('src/pages/recharge/index.vue')).toBe(true)
     expect(existsSource('src/pages/bank/index.vue')).toBe(true)
     expect(existsSource('src/pages/vip/index.vue')).toBe(true)
     expect(existsSource('src/pages/responsible/index.vue')).toBe(true)
@@ -48,13 +47,14 @@ describe('PP.PE routed pages structure', () => {
 
     expect(existsSource('src/pages/login/index.vue')).toBe(false)
     expect(existsSource('src/pages/mine/index.vue')).toBe(false)
+    expect(existsSource('src/pages/recharge/index.vue')).toBe(false)
     expect(activeShellSource).not.toContain('/login')
     expect(activeShellSource).not.toContain('/mine')
     expect(activeShellSource).toContain('/profile')
   })
 
   it('adds routed wheel, team, promo, and profile pages under the PP.PE shell', () => {
-    for (const page of ['wheel', 'team', 'promo', 'profile', 'records', 'security', 'sec-password', 'sec-email', 'sec-phone', 'casino', 'user-profile', 'recharge', 'bank', 'vip', 'responsible', 'guide']) {
+    for (const page of ['wheel', 'team', 'promo', 'profile', 'records', 'security', 'sec-password', 'sec-email', 'sec-phone', 'casino', 'user-profile', 'bank', 'vip', 'responsible', 'guide']) {
       const path = `src/pages/${page}/index.vue`
 
       expect(existsSource(path)).toBe(true)
@@ -71,7 +71,7 @@ describe('PP.PE routed pages structure', () => {
     expect(chromeSource).toContain('requireRegisterAuth')
     expect(chromeSource).toContain("openAuth('register')")
 
-    for (const page of ['wheel', 'team', 'promo', 'profile', 'records', 'casino', 'user-profile', 'recharge', 'bank', 'vip', 'responsible']) {
+    for (const page of ['wheel', 'team', 'promo', 'profile', 'records', 'casino', 'user-profile', 'bank', 'vip', 'responsible']) {
       expect(readSource(`src/pages/${page}/index.vue`)).toContain('PpmxPageChrome')
     }
     expect(readSource('src/pages/security/index.vue')).toContain('PpmxSubpageLayout')
@@ -283,11 +283,11 @@ describe('PP.PE routed pages structure', () => {
     expect(dataSource).toContain("id: 'welcome'")
     expect(dataSource).toContain("id: 'download'")
     expect(dataSource).toContain('活动讲解')
-    expect(dataSource).toContain('每周最高 S/??? PEN')
+    expect(dataSource).toContain('每天签到送 S/1')
     expect(dataSource).toContain('参与游戏获得免费旋转')
     expect(dataSource).toContain('每笔充值最高返佣 50%')
     expect(dataSource).toContain('周薪 + 升级奖励')
-    expect(dataSource).toContain('100% 立即获得 S/58 比索')
+    expect(dataSource).toContain('100% 立即获得 S/3 比索')
     expect(dataSource).toContain('登录即送 S/8 PEN')
     expect(stylesSource).toContain('.ppmx-guide-page')
     expect(stylesSource).toContain('.ppmx-guide-card')
@@ -478,8 +478,8 @@ describe('PP.PE routed pages structure', () => {
     expect(dataSource).toContain("id: 'recarga'")
     expect(dataSource).toContain("id: 'download'")
     expect(dataSource).toContain("id: 'wheel'")
-    expect(dataSource).toContain("title: { es: 'Regístrate y gana S/58 PEN gratis'")
-    expect(dataSource).toContain("title: { es: 'Check-in de nuevos: gana hasta S/888 en 7 días'")
+    expect(dataSource).toContain("title: { es: 'Regístrate y gana S/3 PEN gratis'")
+    expect(dataSource).toContain("title: { es: 'Check-in de nuevos: recibe S/1 cada día'")
     expect(dataSource).toContain("title: { es: 'Sube de nivel VIP y reclama hasta S/188,888'")
     expect(dataSource).toContain("title: { es: 'Hasta 50% de comisión'")
     expect(dataSource).toContain('Primera recarga: 40% de comisión')
@@ -849,21 +849,28 @@ describe('PP.PE routed pages structure', () => {
     expect(typesSource).toContain("| 'vip'")
   })
 
-  it('adds the PP.PE recharge page with real API integration and no static fallback', () => {
-    const source = readSource('src/pages/recharge/index.vue')
+  it('uses the profile recharge modal with real API integration and no static fallback', () => {
+    const source = readSource('src/components/PpmxRechargeModal.vue')
+    const profileSource = readSource('src/pages/profile/index.vue')
+    const homeSource = readSource('src/pages/ppmx-home/PpmxHome.vue')
+    const casinoSource = readSource('src/pages/casino/index.vue')
     const apiSource = readSource('src/api/user.ts')
 
-    expect(source).toContain("name: 'recharge'")
-    expect(source).toContain('requiresAuth: true')
-    expect(source).toContain('PpmxPageChrome')
+    expect(profileSource).toContain('PpmxRechargeModal')
+    expect(profileSource).toContain('route.query.recharge')
+    expect(profileSource).toContain("recharge !== 'open'")
+    expect(homeSource).toContain("path: '/profile'")
+    expect(homeSource).toContain("query: { recharge: 'open' }")
+    expect(casinoSource).toContain("path: '/profile'")
+    expect(casinoSource).toContain("query: { recharge: 'open' }")
     expect(source).toContain('AppState')
     expect(source).toContain('getAppCountries')
     expect(source).toContain('getCountryRechargeInfo')
-    expect(source).toContain('buildRechargeFields')
+    expect(source).toContain('getCountryRechargeFields')
     expect(source).toContain('getRechargeIsFirstV2')
     expect(source).toContain('createRechargeOrderV2')
-    expect(source).toContain('calculateRechargeBonusRate')
-    expect(source).toContain('calculateRechargeBonusAmount')
+    expect(source).toContain('rechargeBonusRateByNumber')
+    expect(source).toContain('rechargeBonusAmountByNumber')
     expect(source).toContain('useSubmitLock')
     expect(source).toContain('countryCode: APP_COUNTRY_CODE')
     expect(source).toContain('currency: selectedCountry.value?.currencyCode || APP_CURRENCY')
@@ -879,7 +886,7 @@ describe('PP.PE routed pages structure', () => {
   })
 
   it('renders recharge payment as PP.PE deposit modal UI instead of redirecting directly', () => {
-    const source = readSource('src/pages/recharge/index.vue')
+    const source = readSource('src/components/PpmxRechargeModal.vue')
     const paymentModalSource = readSource('src/components/PpmxRechargePaymentModal.vue')
     const stylesSource = readSource('src/assets/styles/pp-mx-home.css')
 
@@ -888,13 +895,13 @@ describe('PP.PE routed pages structure', () => {
     expect(source).toContain('const paymentOrder = ref<RechargeOrderAppBack | null>(null)')
     expect(source).toContain('showPaymentModal.value = true')
     expect(source).toContain('id="depositModal"')
-    expect(source).toContain('class="ppmx-recharge-modal"')
+    expect(source).toContain('class="ppmx-recharge-modal ppmx-recharge-modal--profile"')
     expect(source).toContain('async function goToCryptoPay()')
     expect(source).toContain("path: '/crypto-pay'")
-    expect(source).toContain("channelName: 'Cash'")
-    expect(source).toContain("channelName: 'Apple Pay'")
-    expect(source).toContain("channelName: 'Google Pay'")
-    expect(source).toContain('channelCode: CRYPTO_CHANNEL_CODE')
+    expect(source).not.toContain("channelName: 'Cash'")
+    expect(source).not.toContain("channelName: 'Apple Pay'")
+    expect(source).not.toContain("channelName: 'Google Pay'")
+    expect(source).toContain('channel.channelCode === CRYPTO_CHANNEL_CODE')
     expect(source).not.toContain('v-for="method in payMethods"')
     expect(paymentModalSource).toContain('id="paymentModal"')
     expect(paymentModalSource).toContain('class="ppmx-recharge-modal ppmx-recharge-payment-modal"')
@@ -912,7 +919,7 @@ describe('PP.PE routed pages structure', () => {
   })
 
   it('uses the shared select input for dynamic recharge select fields', () => {
-    const source = readSource('src/pages/recharge/index.vue')
+    const source = readSource('src/components/PpmxRechargeModal.vue')
 
     expect(source).toContain('PpmxSelectInput')
     expect(source).toContain(':options="fieldOptions(field)"')
@@ -924,47 +931,38 @@ describe('PP.PE routed pages structure', () => {
   })
 
   it('hides recharge gift amounts when depositing into the sports wallet', () => {
-    const rechargePageSource = readSource('src/pages/recharge/index.vue')
-    const rechargeModalSource = readSource('src/components/PpmxRechargeModal.vue')
+    const source = readSource('src/components/PpmxRechargeModal.vue')
 
-    for (const source of [rechargePageSource, rechargeModalSource]) {
-      expect(source).toContain("selectedWalletType.value === 'sport'")
-      expect(source).toContain('effectiveBonusRate')
-      expect(source).toContain('effectiveBonusAmount')
-      expect(source).toContain("const showPromo = computed(() => Boolean(rechargeFirstStatus.value) && !isSportsWalletRecharge.value)")
-      expect(source).toContain('effectiveBonusAmount.value')
-      expect(source).not.toContain('bonusRate: bonusRate.value')
-      expect(source).not.toContain('bonusAmount: bonusAmount.value')
-    }
+    expect(source).toContain("selectedWalletType.value === 'sport'")
+    expect(source).toContain('effectiveBonusRate')
+    expect(source).toContain('effectiveBonusAmount')
+    expect(source).toContain("const showPromo = computed(() => Boolean(rechargeFirstStatus.value) && !isSportsWalletRecharge.value)")
+    expect(source).toContain('effectiveBonusAmount.value')
+    expect(source).not.toContain('bonusRate: bonusRate.value')
+    expect(source).not.toContain('bonusAmount: bonusAmount.value')
   })
 
   it('offers balance and sports recharge wallets and switches the available balance', () => {
-    const rechargePageSource = readSource('src/pages/recharge/index.vue')
-    const rechargeModalSource = readSource('src/components/PpmxRechargeModal.vue')
+    const source = readSource('src/components/PpmxRechargeModal.vue')
 
-    for (const source of [rechargePageSource, rechargeModalSource]) {
-      expect(source).toContain('selectedRechargeWalletBalance')
-      expect(source).toContain('userStore.userInfo?.sportBalance')
-      expect(source).toContain('userStore.userInfo?.balance')
-      expect(source).toContain('formatMoney(toDisplayCents(selectedRechargeWalletBalance.value)')
-      expect(source).toContain("value: 'balance'")
-      expect(source).toContain("value: 'sport'")
-      expect(source).toContain("t('recharge.walletBalance')")
-      expect(source).toContain("t('recharge.walletSport')")
-      expect(source).not.toContain('formatMoney(toDisplayCents(userStore.userInfo?.balance)')
-    }
+    expect(source).toContain('selectedRechargeWalletBalance')
+    expect(source).toContain('userStore.userInfo?.sportBalance')
+    expect(source).toContain('userStore.userInfo?.balance')
+    expect(source).toContain('formatMoney(toDisplayCents(selectedRechargeWalletBalance.value)')
+    expect(source).toContain("value: 'balance'")
+    expect(source).toContain("value: 'sport'")
+    expect(source).toContain("t('recharge.walletBalance')")
+    expect(source).toContain("t('recharge.walletSport')")
+    expect(source).not.toContain('formatMoney(toDisplayCents(userStore.userInfo?.balance)')
   })
 
   it('sets the minimum recharge amount to 50', () => {
-    const rechargePageSource = readSource('src/pages/recharge/index.vue')
-    const rechargeModalSource = readSource('src/components/PpmxRechargeModal.vue')
+    const source = readSource('src/components/PpmxRechargeModal.vue')
 
-    for (const source of [rechargePageSource, rechargeModalSource]) {
-      expect(source).toContain('const rechargeAmounts = [50, 100, 200, 500, 1000, 5000, 10000] as const')
-      expect(source).toContain('const MIN_RECHARGE_AMOUNT = rechargeAmounts[0]')
-      expect(source).toContain('const selectedAmount = ref<number>(rechargeAmounts[0])')
-      expect(source).not.toContain('const rechargeAmounts = [20, 30, 50')
-    }
+    expect(source).toContain('const rechargeAmounts = [50, 100, 200, 500, 1000, 5000, 10000] as const')
+    expect(source).toContain('const MIN_RECHARGE_AMOUNT = rechargeAmounts[0]')
+    expect(source).toContain('const selectedAmount = ref<number>(rechargeAmounts[0])')
+    expect(source).not.toContain('const rechargeAmounts = [20, 30, 50')
   })
 
   it('adds the PP.PE responsible gaming page from the reference page-responsible', () => {
