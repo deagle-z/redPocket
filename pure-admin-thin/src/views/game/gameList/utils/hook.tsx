@@ -122,6 +122,11 @@ export function useAppGame(tableRef: Ref) {
       formatter: ({ categoryCode }) => categoryCode || "-"
     },
     {
+      label: "模拟在线",
+      prop: "fakeOnlineCount",
+      minWidth: 105
+    },
+    {
       label: "热门",
       prop: "hot",
       minWidth: 95,

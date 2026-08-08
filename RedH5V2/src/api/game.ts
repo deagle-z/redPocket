@@ -10,6 +10,7 @@ export interface AppHomeGameItem {
   horizontalImage?: string
   sort?: number
   showIndex?: number
+  fakeOnlineCount: number
 }
 
 export type AppHomeGameData = Record<string, AppHomeGameItem[] | undefined>

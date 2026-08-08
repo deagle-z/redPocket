@@ -76,6 +76,7 @@ export interface PpmxGame {
   subtitle?: string
   gameId?: number
   categoryCode?: string
+  fakeOnlineCount?: number
   hot?: boolean
   isNew?: boolean
 }

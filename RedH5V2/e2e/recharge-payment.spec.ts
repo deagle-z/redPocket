@@ -197,7 +197,13 @@ async function openRecharge(page: Page) {
 }
 
 test.describe('recharge payment channels', () => {
-  test('renders the recharge identity fields in the selected language', async ({ page }) => {
+  test('renders the recharge identity fields in the selected language', async ({ page }, testInfo) => {
+    const runtimeErrors: string[] = []
+    page.on('console', (message) => {
+      if (message.type() === 'error') runtimeErrors.push(message.text())
+    })
+    page.on('pageerror', error => runtimeErrors.push(error.message))
+
     let rechargeFieldRequestCount = 0
     page.on('request', (request) => {
       if (new URL(request.url()).pathname.endsWith('/rechargeFields')) {
@@ -209,17 +215,80 @@ test.describe('recharge payment channels', () => {
     }, JSON.stringify({ value: 'zh-CN', expiresAt: null }))
 
     await openRecharge(page)
+    await expect(page).toHaveURL(/#\/profile\?recharge=open/)
+    expect((await page.title()).trim()).not.toBe('')
+    await expect(page.locator('vite-error-overlay')).toHaveCount(0)
 
     const fields = page.locator('.ppmx-recharge-section--fields')
     await expect(fields).toBeVisible()
     await expect(fields.locator('label').nth(0)).toContainText('证件类型')
     await expect(fields.locator('label').nth(1)).toContainText('证件号码')
     await expect(fields.locator('label').nth(2)).toContainText('证件姓名')
+
+    const fieldBoxes = await fields.locator('.ppmx-recharge-field').evaluateAll(elements => elements.map((element) => {
+      const rect = element.getBoundingClientRect()
+      return { x: rect.x, y: rect.y, width: rect.width }
+    }))
+    expect(fieldBoxes).toHaveLength(3)
+    for (let index = 1; index < fieldBoxes.length; index += 1) {
+      expect(Math.abs(fieldBoxes[index]!.x - fieldBoxes[0]!.x)).toBeLessThan(1)
+      expect(Math.abs(fieldBoxes[index]!.width - fieldBoxes[0]!.width)).toBeLessThan(1)
+      expect(fieldBoxes[index]!.y).toBeGreaterThan(fieldBoxes[index - 1]!.y)
+    }
+
+    const documentTypeField = page.getByTestId('recharge-field-identityType')
+    const documentTypeButton = documentTypeField.locator('.ppmx-select-input__button')
+    await documentTypeButton.click()
+    const optionSurface = testInfo.project.name === 'mobile'
+      ? page.locator('.ppmx-select-input__popup')
+      : documentTypeField.locator('.ppmx-select-input__menu')
+    await expect(optionSurface).toBeVisible()
+    await expect(optionSurface.getByRole('button')).toHaveCount(4)
+    if (testInfo.project.name === 'mobile') {
+      expect(await optionSurface.evaluate(element => getComputedStyle(element).backgroundColor)).toBe('rgb(9, 9, 13)')
+      const pickerStack = await page.evaluate(() => {
+        const picker = document.querySelector<HTMLElement>('.ppmx-select-input__popup')
+        const rechargeModal = document.querySelector<HTMLElement>('.ppmx-withdraw-modal')
+        if (!picker || !rechargeModal) return { isTeleported: false, pickerZIndex: 0, modalZIndex: 0 }
+
+        return {
+          isTeleported: picker.parentElement === document.body,
+          pickerZIndex: Number.parseInt(getComputedStyle(picker).zIndex, 10),
+          modalZIndex: Number.parseInt(getComputedStyle(rechargeModal).zIndex, 10),
+        }
+      })
+      expect(pickerStack.isTeleported).toBe(true)
+      expect(pickerStack.pickerZIndex).toBeGreaterThan(pickerStack.modalZIndex)
+    }
+    else {
+      const menuCoversPromo = await page.evaluate(() => {
+        const menu = document.querySelector<HTMLElement>('.ppmx-select-input__menu')
+        const promo = document.querySelector<HTMLElement>('.ppmx-recharge-promo')
+        if (!menu || !promo) return false
+
+        const menuRect = menu.getBoundingClientRect()
+        const promoRect = promo.getBoundingClientRect()
+        const intersectionTop = Math.max(menuRect.top, promoRect.top)
+        const intersectionBottom = Math.min(menuRect.bottom, promoRect.bottom)
+        if (intersectionTop >= intersectionBottom) return false
+
+        const topElement = document.elementFromPoint(
+          menuRect.left + menuRect.width / 2,
+          intersectionTop + (intersectionBottom - intersectionTop) / 2,
+        )
+        return Boolean(topElement && menu.contains(topElement))
+      })
+      expect(menuCoversPromo).toBe(true)
+    }
+    await optionSurface.getByRole('button', { name: 'CE' }).click()
+    await expect(documentTypeButton).toContainText('CE')
+
     await fields.locator('input').nth(0).fill('71234567')
     await fields.locator('input').nth(1).fill('JUAN PEREZ')
     await expect(fields).not.toContainText('Tipo de documento')
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
     expect(rechargeFieldRequestCount).toBe(0)
+    expect(runtimeErrors).toEqual([])
   })
 
   test('renders API payment channels and opens v2 payment popup', async ({ page }) => {

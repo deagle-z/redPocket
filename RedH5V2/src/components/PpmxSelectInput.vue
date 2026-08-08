@@ -119,6 +119,7 @@ watch(isPc, () => {
       class="ppmx-select-input__popup"
       position="bottom"
       round
+      teleport="body"
     >
       <section class="ppmx-select-input__popup-body">
         <h3>{{ popupTitle }}</h3>

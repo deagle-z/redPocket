@@ -2,6 +2,7 @@ package utils
 
 import (
 	"BaseGoUni/core/pojo"
+	"BaseGoUni/core/repository"
 	"BaseGoUni/core/utils"
 	"fmt"
 	"gorm.io/driver/mysql"
@@ -72,10 +73,45 @@ func InitDb() (firstInit bool, err error) {
 		log.Print("init mysql: skip host_info automigrate by BGU_SKIP_AUTO_MIGRATE\n")
 	} else {
 		log.Print("init mysql: automigrate host_info...\n")
-		_ = utils.Db.AutoMigrate(&pojo.HostInfo{})
+		if err = utils.Db.AutoMigrate(&pojo.HostInfo{}); err != nil {
+			return firstInit, err
+		}
+		log.Print("init mysql: ensure app_game fake online schema for all tenants...\n")
+		if err = ensureAllTenantAppGameFakeOnlineSchemas(); err != nil {
+			return firstInit, err
+		}
 	}
 	log.Print("init mysql: done\n")
 	return firstInit, nil
+}
+
+func ensureAllTenantAppGameFakeOnlineSchemas() error {
+	prefixes := map[string]struct{}{}
+	defaultPrefix := strings.TrimSpace(utils.CsConfig.DefaultHost.TablePrefix)
+	if defaultPrefix != "" {
+		prefixes[defaultPrefix] = struct{}{}
+	}
+
+	var hostInfos []pojo.HostInfo
+	if err := utils.Db.Find(&hostInfos).Error; err != nil {
+		return err
+	}
+	for _, hostInfo := range hostInfos {
+		if prefix := strings.TrimSpace(hostInfo.TablePrefix); prefix != "" {
+			prefixes[prefix] = struct{}{}
+		}
+	}
+
+	for prefix := range prefixes {
+		db := utils.NewPrefixDb(prefix)
+		if db == nil {
+			return fmt.Errorf("open tenant database %s failed", prefix)
+		}
+		if err := repository.EnsureAppGameFakeOnlineSchema(db); err != nil {
+			return fmt.Errorf("ensure app_game fake online schema for %s: %w", prefix, err)
+		}
+	}
+	return nil
 }
 
 func InitTables(prefix string) (firstInit bool, err error) {

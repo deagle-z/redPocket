@@ -756,6 +756,15 @@ onBeforeUnmount(() => {
               <span class="ppmx-htile-thumb" :style="getGameTileStyle(game, gameIndex)">
                 <span v-if="game.hot" class="ppmx-htile-badge ppmx-htile-badge--hot">HOT</span>
                 <span v-if="game.isNew" class="ppmx-htile-badge ppmx-htile-badge--new">NEW</span>
+                <span
+                  v-if="typeof game.fakeOnlineCount === 'number'"
+                  class="ppmx-htile-online"
+                  :aria-label="t('ppmx.casino.onlineCount', { count: game.fakeOnlineCount })"
+                  :title="t('ppmx.casino.onlineCount', { count: game.fakeOnlineCount })"
+                >
+                  <i class="fa-solid fa-user-group" aria-hidden="true" />
+                  <span aria-hidden="true">{{ game.fakeOnlineCount }}</span>
+                </span>
               </span>
               <span class="ppmx-htile-name">{{ pickText(game.name) }}</span>
               <span v-if="game.subtitle" class="ppmx-htile-provider">{{ game.subtitle }}</span>

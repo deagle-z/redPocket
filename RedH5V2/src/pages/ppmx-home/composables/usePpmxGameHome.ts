@@ -121,6 +121,7 @@ export function mapAppHomeGame(game: AppHomeGameItem, index = 0): PpmxGame {
     id: `game-${game.gameId || `${categoryCode}-${index}`}`,
     gameId: game.gameId,
     categoryCode,
+    fakeOnlineCount: game.fakeOnlineCount,
     cover: game.gameIcon || game.horizontalImage,
     imageId: 11 + (Math.abs(Number(game.gameId || index)) % 90),
     name: text(name),

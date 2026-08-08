@@ -508,6 +508,7 @@ export default {
       more: 'Cargar más',
       noMore: 'Todo cargado',
       playUnavailable: 'Este juego no está disponible',
+      onlineCount: '{count} jugadores en línea',
     },
     home: {
       noticeCta: 'Ver',

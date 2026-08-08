@@ -2117,6 +2117,29 @@ html[data-theme="light"] .ppmx-hcat-title i {
   background: linear-gradient(180deg, #ffe488, #f0bc3d);
 }
 
+.ppmx-htile-online {
+  position: absolute;
+  bottom: 6px;
+  left: 6px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 6px;
+  color: #fff;
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 1;
+  background: rgba(12, 12, 15, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  gap: 4px;
+}
+
+.ppmx-htile-online i {
+  font-size: 8px;
+}
+
 .ppmx-htile-name {
   display: block;
   max-width: 100%;
@@ -7967,6 +7990,15 @@ html[data-theme="light"] .ppmx-responsible-exclusion__item {
 .ppmx-recharge-modal .ppmx-recharge-choice-grid,
 .ppmx-recharge-modal .ppmx-recharge-methods {
   grid-template-columns: 1fr;
+}
+
+.ppmx-recharge-modal .ppmx-recharge-fields {
+  grid-template-columns: 1fr;
+}
+
+.ppmx-recharge-modal .ppmx-recharge-section--fields {
+  position: relative;
+  z-index: 2;
 }
 
 .ppmx-recharge-modal .ppmx-recharge-amount-grid {

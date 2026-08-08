@@ -16,11 +16,13 @@ describe('usePpmxGameHome data mapping', () => {
         gameIcon: 'https://cdn.example.com/jaguar.png',
         sort: 1,
         showIndex: 1,
+        fakeOnlineCount: 137,
       }),
     ).toMatchObject({
       id: 'game-1001',
       gameId: 1001,
       categoryCode: 'slots',
+      fakeOnlineCount: 137,
       cover: 'https://cdn.example.com/jaguar.png',
       brand: 'PGSOFT',
       subtitle: 'PGSOFT',
@@ -42,6 +44,7 @@ describe('usePpmxGameHome data mapping', () => {
           categoryCode: 'sports',
           manufacturer: 'sportsbook',
           gameIcon: '',
+          fakeOnlineCount: 96,
         },
       ],
       hot: [
@@ -51,6 +54,7 @@ describe('usePpmxGameHome data mapping', () => {
           categoryCode: 'hot',
           manufacturer: 'pp',
           gameIcon: '',
+          fakeOnlineCount: 184,
         },
       ],
     })

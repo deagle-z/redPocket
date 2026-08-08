@@ -508,6 +508,7 @@ export default {
       more: '加载更多',
       noMore: '已加载全部',
       playUnavailable: '该游戏暂不可进入',
+      onlineCount: '{count} 人在线',
     },
     home: {
       noticeCta: '查看',

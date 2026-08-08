@@ -52,6 +52,9 @@ func InitScheduler() {
 	addScheduledTask("0 */10 * * * *", "withdraw_payout_query_default", 10*time.Minute, func() {
 		services.SweepTimedOutProcessingWithdrawPayoutOrdersDefaultTable()
 	}, "查询超时处理中代付订单")
+	addScheduledTask("0 */5 * * * *", "app_game_fake_online_refresh", 4*time.Minute, func() {
+		services.RefreshAppGameFakeOnlineCountsAllTenants()
+	}, "刷新游戏模拟在线人数")
 	services.StartBotLotteryTask()
 	services.StartUsdtRechargeScanTask()
 	c.Start()

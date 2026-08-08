@@ -4,6 +4,7 @@ import (
 	"BaseGoUni/core/pojo"
 	"errors"
 	"fmt"
+	"math/rand/v2"
 	"strings"
 	"time"
 
@@ -15,6 +16,8 @@ import (
 const (
 	RechargeGameUnlockEnabledConfigKey = "recharge_game_unlock_enabled"
 	rechargeGameUnlockEnabledDefault   = true
+	AppGameFakeOnlineMin               = 80
+	AppGameFakeOnlineMax               = 200
 )
 
 // GetRechargeGameUnlockEnabled controls whether users must unlock games by recharging or transferring commission.
@@ -241,7 +244,57 @@ func buildAppGameHomeItem(item pojo.AppGame) pojo.AppGameHomeItem {
 		HorizontalImage: valueString(item.HorizontalImage),
 		Sort:            valueInt(item.Sort),
 		ShowIndex:       valueInt(item.ShowIndex),
+		FakeOnlineCount: item.FakeOnlineCount,
 	}
+}
+
+func NewAppGameFakeOnlineCount() int {
+	return AppGameFakeOnlineMin + rand.IntN(AppGameFakeOnlineMax-AppGameFakeOnlineMin+1)
+}
+
+func EnsureAppGameFakeOnlineSchema(db *gorm.DB) error {
+	if db == nil {
+		return errors.New("app_game_database_required")
+	}
+
+	migrator := db.Migrator()
+	if !migrator.HasTable(&pojo.AppGame{}) {
+		return errors.New("app_game_table_not_found")
+	}
+
+	columnAdded := false
+	if !migrator.HasColumn(&pojo.AppGame{}, "FakeOnlineCount") {
+		if err := migrator.AddColumn(&pojo.AppGame{}, "FakeOnlineCount"); err != nil {
+			return err
+		}
+		columnAdded = true
+	}
+
+	query := db.Model(&pojo.AppGame{}).
+		Where("COALESCE(deleted_flag, 0) = 0")
+	if !columnAdded {
+		query = query.Where("fake_online_count < ? OR fake_online_count > ?", AppGameFakeOnlineMin, AppGameFakeOnlineMax)
+	}
+
+	return updateAppGameFakeOnlineCounts(query).Error
+}
+
+func RefreshAppGameFakeOnlineCounts(db *gorm.DB) (int64, error) {
+	if db == nil {
+		return 0, errors.New("app_game_database_required")
+	}
+
+	result := updateAppGameFakeOnlineCounts(
+		db.Model(&pojo.AppGame{}).Where("COALESCE(deleted_flag, 0) = 0"),
+	)
+	return result.RowsAffected, result.Error
+}
+
+func updateAppGameFakeOnlineCounts(query *gorm.DB) *gorm.DB {
+	return query.UpdateColumn(
+		"fake_online_count",
+		gorm.Expr("FLOOR(? + RAND() * ?)", AppGameFakeOnlineMin, AppGameFakeOnlineMax-AppGameFakeOnlineMin+1),
+	)
 }
 
 func SetAppGame(db *gorm.DB, req pojo.AppGameSet) (pojo.AppGame, error) {
@@ -257,6 +310,7 @@ func SetAppGame(db *gorm.DB, req pojo.AppGameSet) (pojo.AppGame, error) {
 	}
 
 	_ = copier.Copy(&entity, &req)
+	entity.FakeOnlineCount = NewAppGameFakeOnlineCount()
 	entity.CreateTime = &now
 	entity.UpdateTime = &now
 	return entity, db.Create(&entity).Error
@@ -321,6 +375,7 @@ func UpsertAppGameByThirdID(db *gorm.DB, req pojo.AppGameSet) (created bool, err
 		entity.DisabledFlag = &disabledFlag
 	}
 	entity.DeletedFlag = &deletedFlag
+	entity.FakeOnlineCount = NewAppGameFakeOnlineCount()
 	entity.CreateTime = &now
 	entity.UpdateTime = &now
 	return true, db.Create(&entity).Error

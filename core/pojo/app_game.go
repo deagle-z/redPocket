@@ -9,6 +9,7 @@ type AppGame struct {
 	ShowIndex         *int       `json:"showIndex" gorm:"column:show_index;type:int"`
 	Hot               *int       `json:"hot" gorm:"column:hot;type:int"`
 	HomeShow          *int       `json:"homeShow" gorm:"column:home_show;type:int;default:0;comment:是否首页展示 0否 1是"`
+	FakeOnlineCount   int        `json:"fakeOnlineCount" gorm:"column:fake_online_count;type:int;not null;default:80;comment:模拟在线人数"`
 	Type              *int       `json:"type" gorm:"column:type;type:int"`
 	ParentID          *int64     `json:"parentId" gorm:"column:parent_id;type:bigint"`
 	PlatformCode      *string    `json:"platformCode" gorm:"column:platform_code;type:varchar(255);index"`
@@ -92,6 +93,7 @@ type AppGameHomeItem struct {
 	HorizontalImage string `json:"horizontalImage"`
 	Sort            int    `json:"sort"`
 	ShowIndex       int    `json:"showIndex"`
+	FakeOnlineCount int    `json:"fakeOnlineCount"`
 }
 
 type AppGameHomeResp map[string][]AppGameHomeItem

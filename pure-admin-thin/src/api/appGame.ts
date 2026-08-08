@@ -7,6 +7,7 @@ export type AppGame = {
   showIndex?: number | null;
   hot?: number | null;
   homeShow?: number | null;
+  fakeOnlineCount: number;
   type?: number | null;
   parentId?: number | null;
   platformCode?: string | null;
