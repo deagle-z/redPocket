@@ -142,7 +142,6 @@
 
 | 类型 | 路径 | 说明 |
 | --- | --- | --- |
-| 定时任务 | `core/common/common_scheduler.go` | 每 1 分钟扫描过期红包 |
 | Asynq 任务 | `core/services/lucky_expire_task.go` | 红包过期退回、机器人抢包、首充分段赠送 worker 注册 |
 | 延迟任务 | `core/services/recharge_first_gift_task.go` | 首充活动第 2、3 天赠送 |
 | 机器人任务 | `core/services/lucky_bot_grab_task.go` | 随机秒数自动抢包，配置 `random_grab_second` |
@@ -398,12 +397,10 @@
 - `lucky:expire`
 - `lucky:bot_grab`
 - `recharge:first_gift_installment`
-- Cron `扫描过期红包`
 
 | 用例编号 | 模块 | 子模块 | 用例标题 | 前置条件 | 测试步骤 | 预期结果 | 优先级 | 类型 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | ASY-001 | 异步任务 | Worker 启动 | Asynq worker 未启动时主链路行为 | 停止 worker | 完成首充回调、发送红包 | 首日发放/发包主流程不阻塞；延迟任务或机器人任务仅记录日志失败 | P1 | 异常 |
-| ASY-002 | 异步任务 | 过期扫描 | Cron 每分钟扫描过期红包 | 开启调度器 | 等待红包过期 | 过期红包被扫描并退款，且不会重复退款 | P1 | 异步 |
 | ASY-003 | 异步任务 | 机器人链式抢包 | 一个红包可连续触发多次机器人任务 | 机器人池可用 | 发包并观察 remainingCount 变化 | 随剩余数量继续入队，直到红包抢完或结束 | P2 | 异步 |
 | ASY-004 | 异步任务 | 重试机制 | 任务失败后可重试且最终幂等 | 人为制造 DB 临时失败 | 重放异步任务 | 最终仅一笔有效账变，无重复奖励/退款 | P1 | 并发 |
 

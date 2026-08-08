@@ -138,8 +138,7 @@ These use HMAC signature validation via `X-Sign`, `X-Request-Id`, and `X-Appid` 
 ### Scheduled Tasks
 `core/common/common_scheduler.go` uses `robfig/cron` with distributed Redis locks to prevent duplicate execution across instances:
 - Every 10 s — flush cached `HostInfo`
-- Every 60 s — sweep expired lucky packets across all hosts
-- Every 60 s (offset 30 s) — ensure minimum active trial bot packets
+- Every 10 min — query timed-out processing payout orders
 
 Scheduler only starts when `CsConfig.RunScheduler = true`.
 

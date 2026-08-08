@@ -49,13 +49,6 @@ func InitScheduler() {
 	addScheduledTask("*/10 * * * * *", "host_info_get", 1*time.Minute, func() {
 		utils.FlushTempHostInfo()
 	}, "")
-	addScheduledTask("0 * * * * *", "lucky_expire_sweep", 2*time.Minute, func() {
-		services.SweepExpiredLuckyPacketsAllHosts()
-		services.SweepExpiredTrialLuckyPacketsAllHosts()
-	}, "扫描过期红包")
-	addScheduledTask("30 * * * * *", "trial_lucky_ensure", 2*time.Minute, func() {
-		services.EnsureMinActiveTrialLuckyPacketsAllHosts()
-	}, "补齐试玩机器人红包")
 	addScheduledTask("0 */10 * * * *", "withdraw_payout_query_default", 10*time.Minute, func() {
 		services.SweepTimedOutProcessingWithdrawPayoutOrdersDefaultTable()
 	}, "查询超时处理中代付订单")
