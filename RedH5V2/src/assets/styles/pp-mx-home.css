@@ -8304,7 +8304,7 @@ html[data-theme="light"] .ppmx-responsible-exclusion__item {
 .ppmx-recharge-amount__bonus {
   position: absolute;
   top: -7px;
-  right: -5px;
+  right: 0;
   z-index: 2;
   padding: 3px 6px;
   border-radius: 999px;

@@ -26,6 +26,14 @@ describe('PpmxAuthModal business integration', () => {
     expect(authSource).toContain('phoneRegistered')
   })
 
+  it('keeps registration validation errors visible inside the modal', () => {
+    expect(authSource).toContain('function showRegisterValidationError(message: string)')
+    expect(authSource).toContain('submitError.value = message')
+    expect(authSource).toContain("return showRegisterValidationError(t('auth.requiredPhone'))")
+    expect(authSource).toContain("return showRegisterValidationError(t('auth.invalidPhone'))")
+    expect(authSource).toContain('<div v-if="submitError" class="ppmx-auth-error" role="alert">')
+  })
+
   it('binds remember me to token persistence without storing passwords locally', () => {
     expect(authSource).toContain('LOGIN_REMEMBER_PHONE_KEY')
     expect(authSource).toContain('phone: getRememberedPhone()')

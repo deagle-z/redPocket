@@ -12,7 +12,6 @@ import {
   ackRechargeNotification,
   createRechargeOrderV2,
   getAppCountries,
-  getCountryRechargeFields,
   getCountryRechargeInfo,
   getPendingRechargeNotifications,
   getRechargeIsFirstV2,
@@ -23,6 +22,7 @@ import {
   APP_CURRENCY,
   APP_CURRENCY_SYMBOL,
 } from '@/config/market'
+import { buildRechargeFields } from '@/config/payFields'
 import { rechargeBonusAmountByNumber, rechargeBonusRateByNumber } from '@/utils/rechargeBonus'
 import { formatMoney, toDisplayCents } from '@/utils/money'
 import { getRechargeFieldInitialValues, setCachedRechargeFieldValues } from '@/utils/rechargeFieldCache'
@@ -66,7 +66,7 @@ const selectedCountry = ref<AppCountryItem | null>(null)
 const channels = ref<AppRechargeChannelItem[]>([])
 const selectedChannelCode = ref('')
 const selectedPayMethodCode = ref('')
-const rechargeFields = ref<RechargeField[]>([])
+const rechargeFields = computed<RechargeField[]>(() => buildRechargeFields(t))
 const fieldValues = ref<Record<string, string>>({})
 const selectedAmount = ref<number>(rechargeAmounts[0])
 const selectedWalletType = ref<RechargeWalletType>(DEFAULT_RECHARGE_WALLET_TYPE)
@@ -315,24 +315,21 @@ async function goToCryptoPay() {
 interface RechargeConfig {
   countries: AppCountryItem[]
   channels: AppRechargeChannelItem[]
-  fields: RechargeField[]
 }
 
-// Static recharge config (countries / channels / fields) rarely changes, so we keep it
+// Static recharge config (countries / channels) rarely changes, so we keep it
 // for the session and render it instantly on reopen while dynamic data refreshes in the background.
 let cachedRechargeConfig: RechargeConfig | null = null
 
 async function fetchRechargeConfig(): Promise<RechargeConfig> {
-  const [appCountries, info, fields] = await Promise.all([
+  const [appCountries, info] = await Promise.all([
     getAppCountries(),
     getCountryRechargeInfo(APP_COUNTRY_CODE),
-    getCountryRechargeFields(APP_COUNTRY_CODE),
   ])
 
   return {
     countries: appCountries,
     channels: info?.channels ?? [],
-    fields: fields ?? [],
   }
 }
 
@@ -340,7 +337,6 @@ function applyRechargeConfig(config: RechargeConfig) {
   countries.value = config.countries
   selectedCountry.value = config.countries.find(country => country.countryCode === APP_COUNTRY_CODE) ?? null
   channels.value = config.channels
-  rechargeFields.value = config.fields
   hydrateRechargeFieldValues(rechargeFields.value)
   selectedChannelCode.value = config.channels[0]?.channelCode ?? ''
   selectedPayMethodCode.value = ''
@@ -678,6 +674,7 @@ watch(
                 v-for="field in visibleRechargeFields"
                 :key="field.fieldKey"
                 class="ppmx-recharge-field"
+                :data-testid="`recharge-field-${field.fieldKey}`"
               >
                 <span>
                   {{ field.fieldLabel }}

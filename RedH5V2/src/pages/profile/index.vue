@@ -526,7 +526,10 @@ function openAuth(mode: PpmxAuthMode) {
 }
 
 function requireRegisterAuth() {
-  return pageChromeRef.value?.requireRegisterAuth() ?? false
+  if (userStore.isLogin) return true
+
+  pageChromeRef.value?.openAuth('register')
+  return false
 }
 
 function showUpcoming(message: LocalizedText = profileText.comingSoon) {
@@ -601,6 +604,12 @@ async function confirmWalletTransfer() {
 
 function closeRechargeModal() {
   rechargeModalOpen.value = false
+
+  if (route.query.recharge === 'open') {
+    const query = { ...route.query }
+    delete query.recharge
+    void router.replace({ query })
+  }
 }
 
 function openWithdrawModal() {
@@ -907,10 +916,6 @@ watch(
 
     void nextTick(() => {
       if (!openRecharge()) return
-
-      const query = { ...route.query }
-      delete query.recharge
-      void router.replace({ query })
     })
   },
   { immediate: true, flush: 'post' },

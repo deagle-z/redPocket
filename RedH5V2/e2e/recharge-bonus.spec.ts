@@ -24,6 +24,9 @@ async function mockRechargeApis(page: Page) {
     hasWithdrawAccount: true,
   }))
 
+  await page.route(/\/(?:api\/)?v1\/app\/tg\/deviceInfo$/, route => fulfillJson(route, null))
+  await page.route(/\/(?:api\/)?v1\/app\/attribution\/event$/, route => fulfillJson(route, null))
+
   await page.route(/\/(?:api\/)?v1\/app\/countries$/, route => fulfillJson(route, [
     {
       id: 1,

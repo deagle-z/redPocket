@@ -154,6 +154,12 @@ function getRegisterPhoneErrorMessage(error: unknown) {
   return message === 'phone_registered' ? t('auth.phoneRegistered') : message
 }
 
+function showRegisterValidationError(message: string) {
+  submitError.value = message
+  showFailToast(message)
+  return false
+}
+
 function validateLoginForm() {
   const nationalPhone = normalizePeNationalPhone(loginForm.phone)
 
@@ -180,18 +186,15 @@ function validateRegisterStep(step = registerStep.value) {
 
   if (step === 1) {
     if (!nationalPhone) {
-      showFailToast(t('auth.requiredPhone'))
-      return false
+      return showRegisterValidationError(t('auth.requiredPhone'))
     }
 
     if (!isValidPeNationalPhone(nationalPhone)) {
-      showFailToast(t('auth.invalidPhone'))
-      return false
+      return showRegisterValidationError(t('auth.invalidPhone'))
     }
 
     if (!registerForm.firstName.trim()) {
-      showFailToast(t('auth.requiredNickname'))
-      return false
+      return showRegisterValidationError(t('auth.requiredNickname'))
     }
 
     return true
@@ -199,26 +202,22 @@ function validateRegisterStep(step = registerStep.value) {
 
   if (step === 2) {
     if (registerForm.password.length < 8) {
-      showFailToast(t('auth.passwordTooShort'))
-      return false
+      return showRegisterValidationError(t('auth.passwordTooShort'))
     }
 
     if (!registerForm.confirmPassword) {
-      showFailToast(t('auth.requiredConfirmPassword'))
-      return false
+      return showRegisterValidationError(t('auth.requiredConfirmPassword'))
     }
 
     if (registerForm.password !== registerForm.confirmPassword) {
-      showFailToast(t('auth.passwordMismatch'))
-      return false
+      return showRegisterValidationError(t('auth.passwordMismatch'))
     }
 
     return true
   }
 
   if (!registerForm.accepted) {
-    showFailToast(t('auth.requiredTerms'))
-    return false
+    return showRegisterValidationError(t('auth.requiredTerms'))
   }
 
   return true

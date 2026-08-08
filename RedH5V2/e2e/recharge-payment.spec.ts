@@ -23,6 +23,9 @@ async function mockRechargeApis(page: Page) {
     hasWithdrawAccount: true,
   }))
 
+  await page.route(/\/(?:api\/)?v1\/app\/tg\/deviceInfo$/, route => fulfillJson(route, null))
+  await page.route(/\/(?:api\/)?v1\/app\/attribution\/event$/, route => fulfillJson(route, null))
+
   await page.route(/\/(?:api\/)?v1\/app\/countries$/, route => fulfillJson(route, [
     {
       id: 1,
@@ -194,6 +197,31 @@ async function openRecharge(page: Page) {
 }
 
 test.describe('recharge payment channels', () => {
+  test('renders the recharge identity fields in the selected language', async ({ page }) => {
+    let rechargeFieldRequestCount = 0
+    page.on('request', (request) => {
+      if (new URL(request.url()).pathname.endsWith('/rechargeFields')) {
+        rechargeFieldRequestCount += 1
+      }
+    })
+    await page.addInitScript((localePayload) => {
+      window.localStorage.setItem('locale', localePayload)
+    }, JSON.stringify({ value: 'zh-CN', expiresAt: null }))
+
+    await openRecharge(page)
+
+    const fields = page.locator('.ppmx-recharge-section--fields')
+    await expect(fields).toBeVisible()
+    await expect(fields.locator('label').nth(0)).toContainText('证件类型')
+    await expect(fields.locator('label').nth(1)).toContainText('证件号码')
+    await expect(fields.locator('label').nth(2)).toContainText('证件姓名')
+    await fields.locator('input').nth(0).fill('71234567')
+    await fields.locator('input').nth(1).fill('JUAN PEREZ')
+    await expect(fields).not.toContainText('Tipo de documento')
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
+    expect(rechargeFieldRequestCount).toBe(0)
+  })
+
   test('renders API payment channels and opens v2 payment popup', async ({ page }) => {
     await openRecharge(page)
 
@@ -204,9 +232,13 @@ test.describe('recharge payment channels', () => {
     await expect(page.locator('.ppmx-recharge-amount-grid .ppmx-recharge-amount')).toHaveCount(7)
     await expect(page.locator('.ppmx-recharge-amount-grid .ppmx-recharge-amount').first()).toContainText('S/50.00')
     await expect(page.locator('.ppmx-recharge-amount-grid')).not.toContainText(/Custom|自定义|Personalizado/)
+    await page.getByTestId('recharge-field-identity').locator('input').fill('71234567')
+    await page.getByTestId('recharge-field-identityName').locator('input').fill('JUAN PEREZ')
 
     const requestPromise = page.waitForRequest(/\/(?:api\/)?v1\/app\/rechargeOrder\/v2$/)
     await page.getByTestId('recharge-submit').click()
+    await expect(page.locator('.van-dialog')).toBeVisible()
+    await page.locator('.van-dialog__confirm').click()
     const request = await requestPromise
     const payload = request.postDataJSON() as Record<string, unknown>
 
