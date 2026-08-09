@@ -3,6 +3,9 @@ package repository
 import (
 	"BaseGoUni/core/pojo"
 	"BaseGoUni/core/utils"
+	"math"
+	"strconv"
+	"strings"
 	"time"
 
 	"gorm.io/gorm"
@@ -13,11 +16,54 @@ type dashboardMonthlyAmountRow struct {
 	Amount float64 `gorm:"column:amount"`
 }
 
+// AdminDashboardRechargeChannelFeeConfigKey 首页充值通道手续费配置键。
+// 配置值格式为“固定费,百分比”，例如 4.25,1.5 表示固定扣 4.25，再扣充值金额的 1.5%。
+const AdminDashboardRechargeChannelFeeConfigKey = "recharge_channel_fee_rate"
+
 func DashboardRechargePaidAmountExpr(prefix string) string {
 	return "COALESCE(NULLIF(" + prefix + "credit_amount + COALESCE(" + prefix + "fee, 0), 0), " + prefix + "amount)"
 }
 
+func adminDashboardRechargeNetAmountExpr(prefix string, fixedFee float64, percentRate float64) string {
+	baseAmountExpr := DashboardRechargePaidAmountExpr(prefix)
+	feeExpr := "(" + baseAmountExpr + " * " + strconv.FormatFloat(percentRate/100, 'f', 12, 64) + " + " + strconv.FormatFloat(fixedFee, 'f', 12, 64) + ")"
+	return "GREATEST(" + baseAmountExpr + " - " + feeExpr + ", 0)"
+}
+
+func getAdminDashboardRechargeChannelFee(db *gorm.DB) (fixedFee float64, percentRate float64) {
+	if db == nil {
+		return 0, 0
+	}
+
+	var config pojo.SysConfig
+	if err := db.Where("config_key = ?", AdminDashboardRechargeChannelFeeConfigKey).First(&config).Error; err != nil {
+		return 0, 0
+	}
+
+	value := strings.ReplaceAll(strings.TrimSpace(config.ConfigValue), "%", "")
+	if value == "" {
+		return 0, 0
+	}
+	parts := strings.Split(value, ",")
+	if len(parts) == 1 {
+		parts = strings.Split(value, "+")
+	}
+	if len(parts) != 2 {
+		return 0, 0
+	}
+
+	fixedFee, fixedErr := strconv.ParseFloat(strings.TrimSpace(parts[0]), 64)
+	percentRate, percentErr := strconv.ParseFloat(strings.TrimSpace(parts[1]), 64)
+	if fixedErr != nil || percentErr != nil || fixedFee < 0 || percentRate < 0 ||
+		math.IsNaN(fixedFee) || math.IsInf(fixedFee, 0) ||
+		math.IsNaN(percentRate) || math.IsInf(percentRate, 0) {
+		return 0, 0
+	}
+	return fixedFee, percentRate
+}
+
 func GetAdminDashboardStats(db *gorm.DB, tenantID int64) pojo.TenantDashboardStatsBack {
+	fixedFee, percentRate := getAdminDashboardRechargeChannelFee(db)
 	now := time.Now()
 	todayStart := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
 	yesterdayStart := todayStart.AddDate(0, 0, -1)
@@ -30,9 +76,9 @@ func GetAdminDashboardStats(db *gorm.DB, tenantID int64) pojo.TenantDashboardSta
 	}
 
 	return pojo.TenantDashboardStatsBack{
-		Today:                   getAdminDashboardPeriodStats(db, tenantID, todayStart, tomorrowStart),
+		Today:                   getAdminDashboardPeriodStats(db, tenantID, todayStart, tomorrowStart, fixedFee, percentRate),
 		Yesterday:               pojo.TenantDashboardPeriodStats{RegisterUsers: countAdminDashboardRegisterUsers(db, tenantID, &yesterdayStart, &todayStart)},
-		Month:                   getAdminDashboardPeriodStats(db, tenantID, monthStart, nextMonthStart),
+		Month:                   getAdminDashboardPeriodStats(db, tenantID, monthStart, nextMonthStart, fixedFee, percentRate),
 		TotalPlatformPumpAmount: getAdminDashboardPlatformPumpAmount(db, tenantID, nil, nil),
 		TotalRegisterUsers:      countAdminDashboardRegisterUsers(db, tenantID, nil, nil),
 		OnlineUsers:             utils.CountOnlineUsers(onlineKey),
@@ -40,12 +86,13 @@ func GetAdminDashboardStats(db *gorm.DB, tenantID int64) pojo.TenantDashboardSta
 }
 
 func GetAdminDashboardMonthlyBalances(db *gorm.DB, tenantID int64, year int) pojo.TenantDashboardMonthlyBalanceResp {
+	fixedFee, percentRate := getAdminDashboardRechargeChannelFee(db)
 	if year <= 0 {
 		year = time.Now().Year()
 	}
 	start := time.Date(year, 1, 1, 0, 0, 0, 0, time.Local)
 	end := start.AddDate(1, 0, 0)
-	rechargeAmounts := getAdminDashboardMonthlyRechargeAmounts(db, tenantID, start, end)
+	rechargeAmounts := getAdminDashboardMonthlyRechargeAmounts(db, tenantID, start, end, fixedFee, percentRate)
 	withdrawAmounts := getAdminDashboardMonthlyWithdrawAmounts(db, tenantID, start, end)
 
 	result := pojo.TenantDashboardMonthlyBalanceResp{
@@ -125,6 +172,7 @@ func GetAdminDashboardOnlineUsers(db *gorm.DB, search pojo.TenantDashboardDetail
 }
 
 func GetAdminDashboardRechargeUsers(db *gorm.DB, search pojo.TenantDashboardDetailSearch) pojo.TenantDashboardUserDetailResp {
+	fixedFee, percentRate := getAdminDashboardRechargeChannelFee(db)
 	start, end := adminDashboardPeriodRange(search.Period)
 	var result pojo.TenantDashboardUserDetailResp
 
@@ -155,7 +203,7 @@ func GetAdminDashboardRechargeUsers(db *gorm.DB, search pojo.TenantDashboardDeta
 	rowQuery := db.Table(pojo.RechargeOrderTableName+" ro").
 		Select(`ro.user_id,
 			ro.tenant_id,
-			COALESCE(SUM(`+DashboardRechargePaidAmountExpr("ro.")+`), 0) AS recharge_amount,
+			COALESCE(SUM(`+adminDashboardRechargeNetAmountExpr("ro.", fixedFee, percentRate)+`), 0) AS recharge_amount,
 			COUNT(*) AS recharge_count,
 			MAX(ro.pay_time) AS last_recharge_at,
 			tu.id, tu.uid, tu.tg_id, tu.username, tu.first_name, tu.phone, tu.parent_id, parent.uid AS parent_uid, tu.balance, tu.status`).
@@ -195,7 +243,9 @@ func GetAdminDashboardRechargeUsers(db *gorm.DB, search pojo.TenantDashboardDeta
 }
 
 func GetAdminDashboardAgentRanks(db *gorm.DB, search pojo.TenantDashboardDetailSearch) pojo.TenantDashboardAgentRankResp {
+	fixedFee, percentRate := getAdminDashboardRechargeChannelFee(db)
 	var result pojo.TenantDashboardAgentRankResp
+	netAmountExpr := adminDashboardRechargeNetAmountExpr("ro.", fixedFee, percentRate)
 
 	groupQuery := db.Table(pojo.RechargeOrderTableName+" ro").
 		Select("child.parent_id AS parent_id").
@@ -237,7 +287,7 @@ func GetAdminDashboardAgentRanks(db *gorm.DB, search pojo.TenantDashboardDetailS
 			parent.phone,
 			parent.balance,
 			parent.status,
-			COALESCE(SUM(`+DashboardRechargePaidAmountExpr("ro.")+`), 0) AS sub_recharge_amount,
+			COALESCE(SUM(`+netAmountExpr+`), 0) AS sub_recharge_amount,
 			COUNT(DISTINCT ro.user_id) AS sub_recharge_users,
 			COUNT(*) AS sub_recharge_count,
 			MAX(ro.pay_time) AS last_recharge_at`).
@@ -325,6 +375,7 @@ func GetAdminDashboardRegisterUsers(db *gorm.DB, search pojo.TenantDashboardDeta
 
 // GetAdminDashboardRechargeOrders 充值总额明细：成功充值订单（不含手动回调），按支付时间倒序。
 func GetAdminDashboardRechargeOrders(db *gorm.DB, search pojo.TenantDashboardDetailSearch) pojo.TenantDashboardOrderDetailResp {
+	fixedFee, percentRate := getAdminDashboardRechargeChannelFee(db)
 	start, end := adminDashboardPeriodRange(search.Period)
 	var result pojo.TenantDashboardOrderDetailResp
 
@@ -336,7 +387,7 @@ func GetAdminDashboardRechargeOrders(db *gorm.DB, search pojo.TenantDashboardDet
 	amountQuery := db.Model(&pojo.RechargeOrder{}).
 		Where("status = ? AND coalesce(is_dev, 0) = 0 AND pay_time >= ? AND pay_time < ?", 1, start, end)
 	amountQuery = filterAdminDashboardTenant(amountQuery, "tenant_id", search.TenantId)
-	result.TotalAmount = sumAdminDashboardAmount(amountQuery, DashboardRechargePaidAmountExpr(""))
+	result.TotalAmount = sumAdminDashboardAmount(amountQuery, adminDashboardRechargeNetAmountExpr("", fixedFee, percentRate))
 
 	type orderRow struct {
 		ID        int64      `gorm:"column:id"`
@@ -355,7 +406,7 @@ func GetAdminDashboardRechargeOrders(db *gorm.DB, search pojo.TenantDashboardDet
 	}
 	var rows []orderRow
 	rowQuery := db.Table(pojo.RechargeOrderTableName+" ro").
-		Select(`ro.id, ro.order_no, ro.tenant_id, ro.user_id, `+DashboardRechargePaidAmountExpr("ro.")+` AS amount, ro.fee, ro.channel, ro.status, ro.pay_time,
+		Select(`ro.id, ro.order_no, ro.tenant_id, ro.user_id, `+adminDashboardRechargeNetAmountExpr("ro.", fixedFee, percentRate)+` AS amount, ro.fee, ro.channel, ro.status, ro.pay_time,
 			tu.uid, tu.username, tu.first_name, tu.phone`).
 		Joins("LEFT JOIN "+pojo.TgUserTableName+" tu ON tu.id = ro.user_id").
 		Where("ro.status = ? AND coalesce(ro.is_dev, 0) = 0 AND ro.pay_time >= ? AND ro.pay_time < ?", 1, start, end)
@@ -477,14 +528,14 @@ func adminDashboardDetailPeriodRange(period string) (time.Time, time.Time, bool)
 	return start, end, true
 }
 
-func getAdminDashboardPeriodStats(db *gorm.DB, tenantID int64, start time.Time, end time.Time) pojo.TenantDashboardPeriodStats {
+func getAdminDashboardPeriodStats(db *gorm.DB, tenantID int64, start time.Time, end time.Time, fixedFee float64, percentRate float64) pojo.TenantDashboardPeriodStats {
 	var result pojo.TenantDashboardPeriodStats
 
 	rechargeAmountQuery := db.Model(&pojo.RechargeOrder{}).
 		Where("status = ? AND coalesce(is_dev, 0) = 0 AND pay_time >= ? AND pay_time < ?", 1, start, end)
 	rechargeAmountQuery = filterAdminDashboardTenant(rechargeAmountQuery, "tenant_id", tenantID)
 	result.RechargeAmount = sumAdminDashboardAmount(rechargeAmountQuery,
-		DashboardRechargePaidAmountExpr(""))
+		adminDashboardRechargeNetAmountExpr("", fixedFee, percentRate))
 
 	rechargeUsersQuery := db.Model(&pojo.RechargeOrder{}).
 		Where("status = ? AND coalesce(is_dev, 0) = 0 AND pay_time >= ? AND pay_time < ?", 1, start, end)
@@ -541,10 +592,10 @@ func sumAdminDashboardAmount(query *gorm.DB, expr string) float64 {
 	return utils.Truncate2(row.Value)
 }
 
-func getAdminDashboardMonthlyRechargeAmounts(db *gorm.DB, tenantID int64, start time.Time, end time.Time) map[string]float64 {
+func getAdminDashboardMonthlyRechargeAmounts(db *gorm.DB, tenantID int64, start time.Time, end time.Time, fixedFee float64, percentRate float64) map[string]float64 {
 	var rows []dashboardMonthlyAmountRow
 	query := db.Model(&pojo.RechargeOrder{}).
-		Select("DATE_FORMAT(pay_time, '%Y-%m') AS month, COALESCE(SUM("+DashboardRechargePaidAmountExpr("")+"), 0) AS amount").
+		Select("DATE_FORMAT(pay_time, '%Y-%m') AS month, COALESCE(SUM("+adminDashboardRechargeNetAmountExpr("", fixedFee, percentRate)+"), 0) AS amount").
 		Where("status = ? AND coalesce(is_dev, 0) = 0 AND pay_time >= ? AND pay_time < ?", 1, start, end)
 	query = filterAdminDashboardTenant(query, "tenant_id", tenantID)
 	_ = query.Group("DATE_FORMAT(pay_time, '%Y-%m')").Scan(&rows).Error

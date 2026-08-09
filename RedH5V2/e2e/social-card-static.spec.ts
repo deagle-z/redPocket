@@ -1,7 +1,9 @@
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { expect, test, type Page, type Route } from '@playwright/test'
 
 const authPayload = JSON.stringify({
-  value: 'game-online-e2e-token',
+  value: 'social-card-e2e-token',
   expiresAt: Date.now() + 60 * 60 * 1000,
 })
 
@@ -15,33 +17,26 @@ async function fulfillJson(route: Route, data: unknown) {
 async function mockHomeApis(page: Page) {
   await page.route(/\/(?:api\/)?v1\/app\/tg\/currentUserInfo$/, route => fulfillJson(route, {
     id: 1001,
-    username: 'game_online_e2e_user',
+    username: 'social_card_e2e_user',
     country: 'PE',
     balance: 1000,
   }))
   await page.route(/\/(?:api\/)?v1\/app\/tg\/deviceInfo$/, route => fulfillJson(route, {}))
   await page.route(/\/(?:api\/)?v1\/app\/rechargeOrder\/pendingNotifications$/, route => fulfillJson(route, []))
+  await page.route(/\/(?:api\/)?v1\/app\/appGame\/home$/, route => fulfillJson(route, {}))
   await page.route(/\/(?:api\/)?v1\/app\/attribution\/event$/, route => fulfillJson(route, {}))
   await page.route(/\/(?:api\/)?v1\/app\/banners$/, route => fulfillJson(route, {}))
-  await page.route(/\/(?:api\/)?v1\/app\/appGame\/home$/, route => fulfillJson(route, {
-    slots: [{
-      gameId: 1001,
-      gameName: 'Lucky Jaguar',
-      categoryCode: 'slots',
-      manufacturer: 'PGSOFT',
-      gameIcon: '',
-      horizontalImage: '',
-      sort: 1,
-      showIndex: 0,
-      fakeOnlineCount: 137,
-    }],
-  }))
 }
 
-test('renders the API fake online count on a game tile', async ({ page }) => {
+test('keeps social cards visible without navigation behavior', async ({ page }, testInfo) => {
   const consoleErrors: string[] = []
+  let openedPage = false
+
   page.on('console', (message) => {
     if (message.type() === 'error') consoleErrors.push(message.text())
+  })
+  page.context().on('page', () => {
+    openedPage = true
   })
 
   await mockHomeApis(page)
@@ -66,28 +61,25 @@ test('renders the API fake online count on a game tile', async ({ page }) => {
 
   await page.goto('/#/')
   await expect(page).toHaveTitle(/PP\.PE/)
-  await expect(page.getByText('Lucky Jaguar', { exact: true })).toBeVisible()
+  await page.locator('.ppmx-float-widget--social .ppmx-float-inner').click()
 
-  const onlineCount = page.locator('.ppmx-htile-online')
-  await expect(onlineCount).toHaveText('137')
-  await expect(onlineCount).toHaveAttribute('aria-label', /137/)
-  await onlineCount.hover()
+  const modal = page.locator('#socialModal')
+  const cards = modal.locator('.ppmx-social-card')
+  await expect(modal).toBeVisible()
+  await expect(cards).toHaveCount(4)
+  await expect(cards.first()).toHaveJSProperty('tagName', 'ARTICLE')
+  await expect(cards.first()).toHaveCSS('cursor', 'default')
 
-  const [countBox, thumbBox] = await Promise.all([
-    onlineCount.boundingBox(),
-    onlineCount.locator('xpath=..').boundingBox(),
-  ])
-  expect(countBox).not.toBeNull()
-  expect(thumbBox).not.toBeNull()
-  if (!countBox || !thumbBox) throw new Error('Game online count layout is unavailable')
-  expect(countBox.x).toBeGreaterThanOrEqual(thumbBox.x)
-  expect(countBox.y).toBeGreaterThanOrEqual(thumbBox.y)
-  expect(countBox.x + countBox.width).toBeLessThanOrEqual(thumbBox.x + thumbBox.width)
-  expect(countBox.y + countBox.height).toBeLessThanOrEqual(thumbBox.y + thumbBox.height)
-  expect(thumbBox.x + thumbBox.width - countBox.x - countBox.width).toBeLessThanOrEqual(5)
-  expect(countBox.y - thumbBox.y).toBeLessThanOrEqual(5)
-  expect(countBox.height).toBeLessThanOrEqual(18)
-
+  const urlBeforeClick = page.url()
+  await cards.first().click()
+  await expect(modal).toBeVisible()
+  expect(page.url()).toBe(urlBeforeClick)
+  expect(openedPage).toBe(false)
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
   expect(consoleErrors).toEqual([])
+
+  await page.screenshot({
+    path: join(tmpdir(), `ppmx-social-card-${testInfo.project.name}.png`),
+    fullPage: false,
+  })
 })

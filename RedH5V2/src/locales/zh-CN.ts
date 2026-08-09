@@ -454,7 +454,7 @@ export default {
       rechargeRebateTitle: '充值返佣',
       rechargeRebateDescription: '下级每次成功充值，按其充值次数比例返佣给你，充值即返。',
       rechargeRebateFirst: '首次充值',
-      rechargeRebateExample: '例：充值 S/100 = 返佣 ${rate}',
+      rechargeRebateExample: '例：充值 S/100 = 返佣 {currency}{rate}',
       rulesTitle: '邀请规则',
       ruleItem4: '佣金实时结算，满 S/50 PEN 即可提现。',
       ruleItem5: '禁止自我邀请或虚假账户，违规将取消全部佣金。',

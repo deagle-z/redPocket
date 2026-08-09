@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ppmxSocialItems, ppmxSocialText } from '@/pages/ppmx-home/data'
 import { usePpmxLocale } from '@/pages/ppmx-home/composables/usePpmxLocale'
-import type { PpmxSocialItem } from '@/pages/ppmx-home/types'
 
 defineOptions({ name: 'PpmxSocialModal' })
 
@@ -20,9 +19,6 @@ function closeSocialModal() {
   emit('update:modelValue', false)
 }
 
-function openSocialChannel(social: PpmxSocialItem) {
-  window.open(social.url, '_blank', 'noopener,noreferrer')
-}
 </script>
 
 <template>
@@ -60,21 +56,18 @@ function openSocialChannel(social: PpmxSocialItem) {
           <p>{{ pickText(socialText.sub) }}</p>
 
           <div class="ppmx-social-grid">
-            <button
+            <article
               v-for="social in ppmxSocialItems"
               :key="social.id"
               class="ppmx-social-card"
               :class="`is-${social.tone}`"
-              type="button"
-              :aria-label="`${pickText(socialText.open)} ${social.label}`"
-              @click="openSocialChannel(social)"
             >
-              <span class="ppmx-social-mark" aria-hidden="true">
+              <!-- <span class="ppmx-social-mark" aria-hidden="true">
                 <i class="fa-brands" :class="social.icon" />
               </span>
               <strong>{{ social.label }}</strong>
-              <small>{{ social.handle }}</small>
-            </button>
+              <small>{{ social.handle }}</small> -->
+            </article>
           </div>
         </section>
       </div>

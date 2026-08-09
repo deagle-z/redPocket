@@ -454,7 +454,7 @@ export default {
       rechargeRebateTitle: 'Reembolso por recarga',
       rechargeRebateDescription: 'Por cada recarga exitosa de tus referidos, recibes un reembolso según su número de recarga. Se acredita al instante.',
       rechargeRebateFirst: 'Primera recarga',
-      rechargeRebateExample: 'Ej.: recarga S/100 = reembolso ${rate}',
+      rechargeRebateExample: 'Ej.: recarga S/100 = reembolso {currency}{rate}',
       rulesTitle: 'Reglas de invitación',
       ruleItem4: 'Las comisiones se liquidan en tiempo real y se pueden retirar desde S/50 PEN.',
       ruleItem5: 'Se prohíbe la auto-invitación y las cuentas falsas; las infracciones cancelarán todas las comisiones.',

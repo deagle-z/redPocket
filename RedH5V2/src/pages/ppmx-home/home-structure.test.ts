@@ -6,6 +6,10 @@ const chromeSource = readFileSync(
   new URL('./components/PpmxPageChrome.vue', import.meta.url),
   'utf8',
 ) as string
+const socialModalSource = readFileSync(
+  new URL('../../components/PpmxSocialModal.vue', import.meta.url),
+  'utf8',
+) as string
 
 describe('PP.PE home replica structure', () => {
   it('assembles the reference home sections through dedicated components', () => {
@@ -48,6 +52,16 @@ describe('PP.PE home replica structure', () => {
     expect(homeSource).toContain('<li v-for="link in column.links"')
     expect(homeSource).toContain('Responsible Gaming')
     expect(homeSource).toContain('PP.PE SUPPORT')
+  })
+
+  it('renders social cards without navigation interactions', () => {
+    for (const source of [homeSource, socialModalSource]) {
+      const socialCards = source.match(/<article\b[^>]*class="ppmx-social-card"[^>]*>/g) ?? []
+
+      expect(socialCards).toHaveLength(1)
+      expect(socialCards[0]).not.toContain('@click')
+      expect(socialCards[0]).not.toContain('aria-label')
+    }
   })
 
   it('opens PP.PE auth modals instead of routing home login actions away', () => {

@@ -114,8 +114,6 @@ export interface PpmxSocialItem {
   icon: string
   label: string
   target: string
-  url: string
-  handle: string
   tone: 'instagram' | 'facebook' | 'x' | 'youtube' | 'telegram' | 'tiktok' | 'default'
 }
 

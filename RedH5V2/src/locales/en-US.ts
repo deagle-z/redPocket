@@ -454,7 +454,7 @@ export default {
       rechargeRebateTitle: 'Deposit rebate',
       rechargeRebateDescription: 'For every successful deposit from your downline, you receive a rebate based on their deposit count. Paid instantly.',
       rechargeRebateFirst: 'First deposit',
-      rechargeRebateExample: 'Ex: deposit S/100 = rebate ${rate}',
+      rechargeRebateExample: 'Ex: deposit S/100 = rebate {currency}{rate}',
       rulesTitle: 'Invitation rules',
       ruleItem4: 'Commissions are settled in real time and can be withdrawn from S/50 PEN.',
       ruleItem5: 'Self-referrals and fake accounts are prohibited; violations will cancel all commissions.',

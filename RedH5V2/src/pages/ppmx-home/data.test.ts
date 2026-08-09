@@ -46,7 +46,7 @@ describe('PP.PE home reference data', () => {
     expect(ppmxBanners.every((banner) => banner.image?.startsWith('/images/ppmx/promos/'))).toBe(true)
     expect(ppmxBanners.every((banner) => banner.background.includes('url("/images/ppmx/promos/'))).toBe(true)
     expect(ppmxNotices[0].text.zh).toContain('3 比索')
-    expect(ppmxNotices[2].text.zh).toContain('最高 100%返利')
+    expect(ppmxNotices[2].text.zh).toContain('最高 18%返利')
     expect(ppmxBanners[0].amountHtml?.es).toContain('3')
     expect(ppmxBanners[2].amountHtml?.es).toContain('188,888')
     expect(ppmxBanners[3].id).toBe('invita')
@@ -55,16 +55,16 @@ describe('PP.PE home reference data', () => {
     expect(ppmxBanners[4].id).toBe('recarga')
     expect(ppmxBanners[4].title.zh).toContain('最高100%')
     expect(ppmxBanners[4].title.zh).not.toContain('+25%')
-    expect(ppmxBanners[4].sub.zh).toBe('首次充值享18%返利，二次充值享50%返利，三次充值享100%，≧3次充值享100%。充值的次数越多享受的返利越高！')
+    expect(ppmxBanners[4].sub.zh).toBe('首次充值享18%返利')
     expect(ppmxBanners[4].title.es).toContain('hasta 100%')
     expect(ppmxBanners[4].title.en).toContain('up to 100%')
-    expect(ppmxBanners[4].sub.es).toContain('la segunda 50% y la tercera en adelante 100%')
-    expect(ppmxBanners[4].sub.en).toContain('the second gets 50%, and the third and subsequent deposits get 100%')
+    expect(ppmxBanners[4].sub.es).toBe('La primera recarga recibe un 18% de reembolso.')
+    expect(ppmxBanners[4].sub.en).toBe('The first deposit gets an 18% rebate.')
     expect(ppmxBanners[4].amountHtml?.zh).toContain('最高')
     expect(ppmxBanners[4].amountHtml?.zh).not.toContain('+')
-    expect(ppmxNotices[2].text.zh).toContain('最高 100%返利')
+    expect(ppmxNotices[2].text.zh).toContain('最高 18%返利')
     expect(ppmxNotices[2].text.zh).not.toContain('+25%')
-    expect(ppmxBanners[4].benefitHtml?.zh).toContain('最高 100%返利')
+    expect(ppmxBanners[4].benefitHtml?.zh).toContain('最高 18%返利')
     expect(ppmxBanners[6].sub.zh).toContain('每达到 10000 流水')
     expect(ppmxBanners[6].sub.zh).toContain('单次充值金额≧S/200')
     expect(ppmxBanners[6].sub.en).toContain('Each single deposit of ≥S/200 grants one free spin')
@@ -126,11 +126,11 @@ describe('PP.PE home reference data', () => {
       'fa-telegram',
       'fa-tiktok',
     ])
-    expect(ppmxSocialItems.map((item) => item.url)).toEqual([
-      'https://www.facebook.com/profile.php?id=61591107827237',
-      'https://www.instagram.com/ppus/',
-      'https://t.me/ppus',
-      'https://www.tiktok.com/@pp.us',
+    expect(ppmxSocialItems.map((item) => item.target)).toEqual([
+      'facebook',
+      'instagram',
+      'telegram',
+      'tiktok',
     ])
   })
 })

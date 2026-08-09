@@ -952,7 +952,7 @@ onBeforeUnmount(() => {
                       {{ row.rate }}<em>%</em>
                     </strong>
                     <em class="ppmx-team-rebate__example">
-                      {{ t('ppmx.team.rechargeRebateExample', { rate: row.rate }) }}
+                      {{ t('ppmx.team.rechargeRebateExample', { currency: APP_CURRENCY_SYMBOL, rate: row.rate }) }}
                     </em>
                   </span>
                 </article>

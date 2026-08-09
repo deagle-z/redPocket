@@ -80,9 +80,9 @@ export const ppmxNotices: PpmxNotice[] = [
     icon: 'fa-coins',
     target: 'recarga',
     text: {
-      es: 'Recarga y recibe hasta 100% de reembolso',
-      en: 'Deposit and get up to 100% rebate',
-      zh: '用户充值即享 最高 100%返利',
+      es: 'Recarga y recibe hasta 10% de reembolso',
+      en: 'Deposit and get up to 18% rebate',
+      zh: '用户充值即享 最高 18%返利',
     },
   },
   {
@@ -235,15 +235,15 @@ export const ppmxBanners: PpmxBanner[] = [
     },
     tag: { es: 'Bono de recarga', en: 'Reload bonus', zh: '充值赠送' },
     benefitHtml: {
-      es: 'Los usuarios que recarguen reciben <span class="pill">hasta 100% de reembolso</span>',
-      en: 'Users who deposit get <span class="pill">up to 100% rebate</span>',
-      zh: '用户充值即享 <span class="pill">最高 100%返利</span>',
+      es: 'Los usuarios que recarguen reciben <span class="pill">hasta 18% de reembolso</span>',
+      en: 'Users who deposit get <span class="pill">up to 18% rebate</span>',
+      zh: '用户充值即享 <span class="pill">最高 18%返利</span>',
     },
     title: { es: 'Recarga y recibe hasta 100% de regalo', en: 'Deposit and get up to 100% bonus', zh: '最高100%赠送' },
     sub: {
-      es: 'La primera recarga recibe 18% de reembolso, la segunda 50% y la tercera en adelante 100%. Cuantas más recargas hagas, mayor será el reembolso.',
-      en: 'The first deposit gets an 18% rebate, the second gets 50%, and the third and subsequent deposits get 100%. The more times you deposit, the higher your rebate.',
-      zh: '首次充值享18%返利，二次充值享50%返利，三次充值享100%，≧3次充值享100%。充值的次数越多享受的返利越高！',
+      es: 'La primera recarga recibe un 18% de reembolso.',
+      en: 'The first deposit gets an 18% rebate.',
+      zh: '首次充值享18%返利',
     },
     cta: { es: 'Recargar ahora', en: 'Deposit now', zh: '立即充值' },
     valid: { es: 'Válido todos los días', en: 'Valid every day', zh: '每日有效' },
@@ -496,8 +496,6 @@ export const ppmxSocialItems: PpmxSocialItem[] = [
     icon: 'fa-facebook',
     label: 'Facebook',
     target: 'facebook',
-    url: 'https://www.facebook.com/profile.php?id=61591107827237',
-    handle: '/ppmx',
     tone: 'facebook',
   },
   {
@@ -505,8 +503,6 @@ export const ppmxSocialItems: PpmxSocialItem[] = [
     icon: 'fa-instagram',
     label: 'Instagram',
     target: 'instagram',
-    url: 'https://www.instagram.com/ppus/',
-    handle: '@ppus',
     tone: 'instagram',
   },
   {
@@ -514,8 +510,6 @@ export const ppmxSocialItems: PpmxSocialItem[] = [
     icon: 'fa-telegram',
     label: 'Telegram',
     target: 'telegram',
-    url: 'https://t.me/ppus',
-    handle: '@ppus',
     tone: 'telegram',
   },
   {
@@ -523,8 +517,6 @@ export const ppmxSocialItems: PpmxSocialItem[] = [
     icon: 'fa-tiktok',
     label: 'TikTok',
     target: 'tiktok',
-    url: 'https://www.tiktok.com/@pp.us',
-    handle: '@ppus',
     tone: 'tiktok',
   },
 ]

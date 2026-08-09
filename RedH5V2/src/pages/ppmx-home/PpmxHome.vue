@@ -25,7 +25,7 @@ import { useHeroCarousel } from './composables/useHeroCarousel'
 import { useNoticeCarousel } from './composables/useNoticeCarousel'
 import { usePpmxGameHome } from './composables/usePpmxGameHome'
 import { ppmxLocaleToAppLocale, usePpmxLocale } from './composables/usePpmxLocale'
-import type { PpmxAuthMode, PpmxFloatingWidget, PpmxGame, PpmxHomeCategory, PpmxSocialItem } from './types'
+import type { PpmxAuthMode, PpmxFloatingWidget, PpmxGame, PpmxHomeCategory } from './types'
 import PpmxFloatingWidgets from './components/PpmxFloatingWidgets.vue'
 import PpmxAnnouncementPopup from './components/PpmxAnnouncementPopup.vue'
 import PpmxGameNav from './components/PpmxGameNav.vue'
@@ -290,10 +290,6 @@ function openSocialModal() {
 
 function closeSocialModal() {
   socialModalOpen.value = false
-}
-
-function openSocialChannel(social: PpmxSocialItem) {
-  window.open(social.url, '_blank', 'noopener,noreferrer')
 }
 
 function checkinDayLabel(day: number) {
@@ -800,15 +796,15 @@ onBeforeUnmount(() => {
             <PpmxLogo />
             <p>{{ t('ppmx.home.footerDescription') }}</p>
             <div class="ppmx-footer-socials" :aria-label="t('ppmx.home.footerSocialAria')">
-              <button
+              <span
                 v-for="social in ppmxSocialItems"
                 :key="social.id"
-                type="button"
+                class="ppmx-footer-social"
+                role="img"
                 :aria-label="social.label"
-                @click="openSocialChannel(social)"
               >
-                <i class="fa-brands" :class="social.icon" />
-              </button>
+                <i class="fa-brands" :class="social.icon" aria-hidden="true" />
+              </span>
             </div>
           </div>
 
@@ -904,21 +900,17 @@ onBeforeUnmount(() => {
           <p>{{ pickText(socialText.sub) }}</p>
 
           <div class="ppmx-social-grid">
-            <button
+            <article
               v-for="social in ppmxSocialItems"
               :key="social.id"
               class="ppmx-social-card"
               :class="`is-${social.tone}`"
-              type="button"
-              :aria-label="`${pickText(socialText.open)} ${social.label}`"
-              @click="openSocialChannel(social)"
             >
               <span class="ppmx-social-mark" aria-hidden="true">
                 <i class="fa-brands" :class="social.icon" />
               </span>
               <strong>{{ social.label }}</strong>
-              <small>{{ social.handle }}</small>
-            </button>
+            </article>
           </div>
         </section>
       </div>
