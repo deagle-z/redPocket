@@ -4,7 +4,14 @@ import (
 	"BaseGoUni/core/pay"
 	"BaseGoUni/core/pojo"
 	"testing"
+	"time"
 )
+
+func TestWithdrawPayoutQueryTimeoutIsFiveHours(t *testing.T) {
+	if WithdrawPayoutQueryTimeout != 5*time.Hour {
+		t.Fatalf("WithdrawPayoutQueryTimeout = %s, want 5h", WithdrawPayoutQueryTimeout)
+	}
+}
 
 func TestWithdrawPayoutQueryDecisionMapsProviderStatuses(t *testing.T) {
 	tests := []struct {

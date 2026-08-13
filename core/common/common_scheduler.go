@@ -56,9 +56,9 @@ func InitScheduler() {
 	addScheduledTask("30 * * * * *", "trial_lucky_ensure", 2*time.Minute, func() {
 		services.EnsureMinActiveTrialLuckyPacketsAllHosts()
 	}, "补齐试玩机器人红包")
-	addScheduledTask("0 */10 * * * *", "withdraw_payout_query_default", 10*time.Minute, func() {
-		services.SweepTimedOutProcessingWithdrawPayoutOrdersDefaultTable()
-	}, "查询超时处理中代付订单")
+	addScheduledTask("0 * * * * *", "withdraw_payout_query_all_hosts", 2*time.Minute, func() {
+		services.SweepTimedOutProcessingWithdrawPayoutOrdersAllHosts()
+	}, "处理超过5小时的代付订单")
 	services.StartBotLotteryTask()
 	services.StartUsdtRechargeScanTask()
 	c.Start()

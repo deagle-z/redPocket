@@ -7,6 +7,8 @@
 node_modules
 /img_cache
 .DS_Store
+.codex-cache/
+.pnpm-store/
 core.yaml
 cs.yaml
 sc.yaml
@@ -20,8 +22,6 @@ dist
 /pure-admin-thin/dist
 /pure-admin-thin/build
 /pure-admin-thin/node_modules
-
-
 
 
 
