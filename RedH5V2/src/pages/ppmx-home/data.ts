@@ -80,7 +80,7 @@ export const ppmxNotices: PpmxNotice[] = [
     icon: 'fa-coins',
     target: 'recarga',
     text: {
-      es: 'Recarga y recibe hasta 10% de reembolso',
+      es: 'Recarga y recibe hasta 18% de reembolso',
       en: 'Deposit and get up to 18% rebate',
       zh: '用户充值即享 最高 18%返利',
     },
@@ -229,9 +229,9 @@ export const ppmxBanners: PpmxBanner[] = [
     background: heroBannerBackground('recarga', 'radial-gradient(120% 130% at 14% 16%, #f0a93d 0%, #d11f33 30%, #9a1322 62%, #4a0413 88%, #2a020c 100%)'),
     thumbs: [30, 27, 29],
     amountHtml: {
-      es: '<span class="suf" style="font-size:.55em">Hasta</span>100<span class="suf">% regalo</span>',
-      en: '<span class="suf" style="font-size:.55em">Up to</span>100<span class="suf">% bonus</span>',
-      zh: '<span class="suf" style="font-size:.55em">最高</span>100<span class="suf">%赠送</span>',
+      es: '<span class="suf" style="font-size:.55em">Hasta</span>18<span class="suf">% regalo</span>',
+      en: '<span class="suf" style="font-size:.55em">Up to</span>18<span class="suf">% bonus</span>',
+      zh: '<span class="suf" style="font-size:.55em">最高</span>18<span class="suf">%赠送</span>',
     },
     tag: { es: 'Bono de recarga', en: 'Reload bonus', zh: '充值赠送' },
     benefitHtml: {
@@ -239,11 +239,11 @@ export const ppmxBanners: PpmxBanner[] = [
       en: 'Users who deposit get <span class="pill">up to 18% rebate</span>',
       zh: '用户充值即享 <span class="pill">最高 18%返利</span>',
     },
-    title: { es: 'Recarga y recibe hasta 100% de regalo', en: 'Deposit and get up to 100% bonus', zh: '最高100%赠送' },
+    title: { es: 'Recarga y recibe hasta 18% de regalo', en: 'Deposit and get up to 18% bonus', zh: '最高18%赠送' },
     sub: {
-      es: 'La primera recarga recibe un 18% de reembolso.',
-      en: 'The first deposit gets an 18% rebate.',
-      zh: '首次充值享18%返利',
+      es: 'La primera recarga recibe un 8% de reembolso, la segunda un 9%, la tercera un 10% y desde la cuarta un 18%. Cuantas más recargas hagas, mayor será el reembolso.',
+      en: 'The first deposit gets an 8% rebate, the second 9%, the third 10%, and the fourth and subsequent deposits 18%. The more times you deposit, the higher your rebate.',
+      zh: '首次充值享8%返利，二次充值享9%返利，三次充值享10%返利，第四次及以上充值享18%返利。充值的次数越多享受的返利越高！',
     },
     cta: { es: 'Recargar ahora', en: 'Deposit now', zh: '立即充值' },
     valid: { es: 'Válido todos los días', en: 'Valid every day', zh: '每日有效' },
