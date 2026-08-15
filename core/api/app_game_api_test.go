@@ -95,6 +95,25 @@ func TestBuildAppGameSetFromGGRGameUsesProviderCategoryAndSportsType(t *testing.
 	}
 }
 
+func TestBuildAppGameSetFromGGRGameDisablesEmptyGameCode(t *testing.T) {
+	got := buildAppGameSetFromGGRGame("ggr", ggrFetchedGame{
+		ProviderCode:   "SPORTSBOOK",
+		CategoryCode:   "sports",
+		ProviderStatus: 1,
+		Game: game.GGRGame{
+			GameName: "Nexustrike",
+			Status:   1,
+		},
+		Sort: 1,
+	})
+	if got.ThirdGameID == nil || *got.ThirdGameID != "" {
+		t.Fatalf("ThirdGameID = %#v, want empty string", got.ThirdGameID)
+	}
+	if got.DisabledFlag == nil || *got.DisabledFlag != 1 {
+		t.Fatalf("DisabledFlag = %#v, want 1", got.DisabledFlag)
+	}
+}
+
 func TestBuildAppGameSetFromGSCProviderGameUsesConfiguredMapping(t *testing.T) {
 	item := game.GSCProviderGame{
 		GameCode:        "aviator",

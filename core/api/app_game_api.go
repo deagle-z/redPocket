@@ -463,17 +463,19 @@ func syncGGRAppGames(ctx context.Context, db *gorm.DB, platformCode string) (res
 	prefix := strings.TrimSpace(utils.GetDbPrefix(db))
 	providerTotal := 0
 	fetchedTotal := 0
+	emptyGameCodes := 0
 	disabledMissing := 0
 	defer func() {
 		cost := time.Since(startedAt).Round(time.Millisecond)
 		if err != nil {
 			log.Printf(
-				"[ggr_sync] failed prefix=%q platform=%s stage=%s providers=%d fetched=%d total=%d created=%d updated=%d skipped=%d disabled_missing=%d cost=%s err=%v",
+				"[ggr_sync] failed prefix=%q platform=%s stage=%s providers=%d fetched=%d empty_game_codes=%d total=%d created=%d updated=%d skipped=%d disabled_missing=%d cost=%s err=%v",
 				prefix,
 				platformCode,
 				stage,
 				providerTotal,
 				fetchedTotal,
+				emptyGameCodes,
 				result.Total,
 				result.Created,
 				result.Updated,
@@ -485,11 +487,12 @@ func syncGGRAppGames(ctx context.Context, db *gorm.DB, platformCode string) (res
 			return
 		}
 		log.Printf(
-			"[ggr_sync] completed prefix=%s platform=%s providers=%d fetched=%d total=%d created=%d updated=%d skipped=%d disabled_missing=%d cost=%s",
+			"[ggr_sync] completed prefix=%s platform=%s providers=%d fetched=%d empty_game_codes=%d total=%d created=%d updated=%d skipped=%d disabled_missing=%d cost=%s",
 			prefix,
 			platformCode,
 			providerTotal,
 			fetchedTotal,
+			emptyGameCodes,
 			result.Total,
 			result.Created,
 			result.Updated,
@@ -667,15 +670,29 @@ func syncGGRAppGames(ctx context.Context, db *gorm.DB, platformCode string) (res
 		}
 		activeGames := 0
 		disabledGames := 0
-		for _, remoteGame := range gameResp.Games {
+		providerEmptyGameCodes := 0
+		for gameIndex, remoteGame := range gameResp.Games {
 			remoteGame.GameCode = strings.TrimSpace(remoteGame.GameCode)
 			remoteGame.GameName = strings.TrimSpace(remoteGame.GameName)
 			remoteGame.Banner = strings.TrimSpace(remoteGame.Banner)
-			if remoteGame.GameCode == "" {
-				return result, fmt.Errorf("ggr game_code is empty: provider=%s", providerCode)
-			}
 			if remoteGame.Status != 0 && remoteGame.Status != 1 {
 				return result, fmt.Errorf("ggr game status is invalid: provider=%s game=%s status=%d", providerCode, remoteGame.GameCode, remoteGame.Status)
+			}
+			if remoteGame.GameCode == "" {
+				providerEmptyGameCodes++
+				emptyGameCodes++
+				log.Printf(
+					"[ggr_sync] game_code empty; importing disabled prefix=%s provider_index=%d/%d provider=%s game_index=%d/%d game_name=%q banner=%q remote_status=%d",
+					prefix,
+					i+1,
+					providerTotal,
+					providerCode,
+					gameIndex+1,
+					len(gameResp.Games),
+					remoteGame.GameName,
+					remoteGame.Banner,
+					remoteGame.Status,
+				)
 			}
 			key := repository.GGRAppGameKey(providerCode, remoteGame.GameCode)
 			if _, exists := seen[key]; exists {
@@ -683,7 +700,7 @@ func syncGGRAppGames(ctx context.Context, db *gorm.DB, platformCode string) (res
 			}
 			seen[key] = struct{}{}
 			sortIndex++
-			if provider.Status == 1 && remoteGame.Status == 1 {
+			if remoteGame.GameCode != "" && provider.Status == 1 && remoteGame.Status == 1 {
 				activeGames++
 			} else {
 				disabledGames++
@@ -698,7 +715,7 @@ func syncGGRAppGames(ctx context.Context, db *gorm.DB, platformCode string) (res
 		}
 		fetchedTotal = len(fetched)
 		log.Printf(
-			"[ggr_sync] game_list success prefix=%s index=%d/%d provider=%s status=%d games=%d active=%d disabled=%d cumulative=%d cost=%s",
+			"[ggr_sync] game_list success prefix=%s index=%d/%d provider=%s status=%d games=%d active=%d disabled=%d empty_game_codes=%d cumulative=%d cost=%s",
 			prefix,
 			i+1,
 			providerTotal,
@@ -707,15 +724,17 @@ func syncGGRAppGames(ctx context.Context, db *gorm.DB, platformCode string) (res
 			len(gameResp.Games),
 			activeGames,
 			disabledGames,
+			providerEmptyGameCodes,
 			fetchedTotal,
 			time.Since(gameListStartedAt).Round(time.Millisecond),
 		)
 	}
 	log.Printf(
-		"[ggr_sync] remote fetch completed prefix=%s providers=%d games=%d cost=%s",
+		"[ggr_sync] remote fetch completed prefix=%s providers=%d games=%d empty_game_codes=%d cost=%s",
 		prefix,
 		providerTotal,
 		fetchedTotal,
+		emptyGameCodes,
 		time.Since(remoteFetchStartedAt).Round(time.Millisecond),
 	)
 
@@ -776,7 +795,7 @@ func buildAppGameSetFromGGRGame(platformCode string, item ggrFetchedGame) pojo.A
 	thirdGameName := item.Game.GameName
 	sortIndex := item.Sort
 	disabledFlag := 0
-	if item.ProviderStatus != 1 || item.Game.Status != 1 {
+	if gameCode == "" || item.ProviderStatus != 1 || item.Game.Status != 1 {
 		disabledFlag = 1
 	}
 	return pojo.AppGameSet{

@@ -211,6 +211,8 @@ POST https://{API_SERVER}
 | `banner` | `string` | 游戏 Banner 图片 URL |
 | `status` | `integer (32-bit)` | `1` 开放，`0` 维护中 |
 
+本项目接收 GGR 返回的空 `game_code` 记录：`third_game_id` 按原值保存为空字符串，并强制设置 `disabled_flag=1`，不得启动。不会为该记录生成替代代码。同一厂商若返回多条空 `game_code` 记录，由于 `(platform_code, provider_code, game_code)` 无法形成唯一身份，同步仍会以重复游戏错误终止。
+
 ### 成功响应示例
 
 ```json

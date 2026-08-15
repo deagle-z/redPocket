@@ -295,12 +295,15 @@ func UpsertGGRAppGame(db *gorm.DB, req pojo.AppGameSet) (created bool, updated b
 	if req.ThirdGameCategory == nil || strings.TrimSpace(*req.ThirdGameCategory) == "" {
 		return false, false, errors.New("ggr provider_code_required")
 	}
-	if req.ThirdGameID == nil || strings.TrimSpace(*req.ThirdGameID) == "" {
+	if req.ThirdGameID == nil {
 		return false, false, errors.New("ggr game_code_required")
 	}
 	if req.GameName == nil || req.CategoryCode == nil || req.Type == nil || req.ThirdGameName == nil ||
 		req.HorizontalImage == nil || req.GameIcon == nil || req.DisabledFlag == nil {
 		return false, false, errors.New("ggr remote game fields are incomplete")
+	}
+	if strings.TrimSpace(*req.ThirdGameID) == "" && *req.DisabledFlag != 1 {
+		return false, false, errors.New("ggr empty game_code must be disabled")
 	}
 
 	platformCode := strings.ToLower(strings.TrimSpace(*req.PlatformCode))
