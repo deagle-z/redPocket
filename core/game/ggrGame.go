@@ -274,7 +274,7 @@ func ResolveGGRProviderCategoryWithMap(providerCode string, categoryMap map[stri
 	}
 
 	switch categoryCode {
-	case "slots", "casino", "sports", "mini":
+	case "slots", "casino", "sports", "mini", "fishing":
 		return categoryCode, nil
 	default:
 		return "", fmt.Errorf("ggr provider category is invalid: provider=%s category=%s", providerCode, categoryCode)

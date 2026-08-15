@@ -118,10 +118,10 @@ func TestResolveGGRProviderCategoryMappings(t *testing.T) {
 		"DREAMTECH": "slots", "SPRIBE": "mini", "HACKSAW": "slots", "FACHAI": "slots",
 		"PLAYNGO": "slots", "AMUSNET": "slots", "EGT": "slots", "SPADEGAMING": "slots",
 		"FASTSPIN": "slots", "JOKERGAMING": "slots", "RUBYPLAY": "slots", "AMATIC": "slots",
-		"REELKINGDOM": "slots",
+		"REELKINGDOM": "slots", "FATPANDA": "slots", "FISHHUNTER": "fishing",
 	}
-	if len(mapping) != 24 {
-		t.Fatalf("mapping count = %d, want 24", len(mapping))
+	if len(mapping) != 26 {
+		t.Fatalf("mapping count = %d, want 26", len(mapping))
 	}
 	for provider, want := range mapping {
 		got, err := ResolveGGRProviderCategoryWithMap(provider, mapping)
