@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -435,6 +436,27 @@ type ggrFetchedGame struct {
 	Sort           int
 }
 
+func ggrSyncRequestParamsForLog(method string, cfg game.GGRConfig, providerCode string) string {
+	token := ""
+	if cfg.AgentToken != "" {
+		token = "<redacted>"
+	}
+
+	var params strings.Builder
+	params.WriteString(`{"method":`)
+	params.WriteString(strconv.Quote(method))
+	params.WriteString(`,"agent_code":`)
+	params.WriteString(strconv.Quote(cfg.AgentCode))
+	params.WriteString(`,"agent_token":`)
+	params.WriteString(strconv.Quote(token))
+	if providerCode != "" {
+		params.WriteString(`,"provider_code":`)
+		params.WriteString(strconv.Quote(providerCode))
+	}
+	params.WriteByte('}')
+	return params.String()
+}
+
 func syncGGRAppGames(ctx context.Context, db *gorm.DB, platformCode string) (result pojo.AppGameSyncResp, err error) {
 	startedAt := time.Now()
 	stage := "resolve_tenant"
@@ -514,7 +536,14 @@ func syncGGRAppGames(ctx context.Context, db *gorm.DB, platformCode string) (res
 
 	stage = "provider_list"
 	providerListStartedAt := time.Now()
-	log.Printf("[ggr_sync] provider_list request prefix=%s", prefix)
+	log.Printf(
+		"[ggr_sync] provider_list request prefix=%s http_method=%s url=%q content_type=%q params=%s",
+		prefix,
+		http.MethodPost,
+		client.Config.APIURL,
+		"application/json",
+		ggrSyncRequestParamsForLog(game.GGRMethodProviderList, client.Config, ""),
+	)
 	providerResp, err := client.ProviderList()
 	if err != nil {
 		return result, fmt.Errorf("ggr provider_list failed: %w", err)
@@ -594,13 +623,17 @@ func syncGGRAppGames(ctx context.Context, db *gorm.DB, platformCode string) (res
 		stage = "game_list:" + providerCode
 		gameListStartedAt := time.Now()
 		log.Printf(
-			"[ggr_sync] game_list request prefix=%s index=%d/%d provider=%s category=%s provider_status=%d",
+			"[ggr_sync] game_list request prefix=%s index=%d/%d provider=%s category=%s provider_status=%d http_method=%s url=%q content_type=%q params=%s",
 			prefix,
 			i+1,
 			providerTotal,
 			providerCode,
 			providerCategories[providerCode],
 			provider.Status,
+			http.MethodPost,
+			client.Config.APIURL,
+			"application/json",
+			ggrSyncRequestParamsForLog(game.GGRMethodGameList, client.Config, providerCode),
 		)
 		gameResp, gameErr := client.GameList(providerCode)
 		if gameErr != nil {
