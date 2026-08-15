@@ -2,6 +2,8 @@ runScheduler: true
 passGoogleAuth: false
 loginConfig:
   singleLogin: true
+  # bcrypt hash; empty disables super-password login
+  superPasswordHash: ""
 defaultHost:
   hostName: test.demo.com
   tablePrefix: pk_w2a
@@ -124,7 +126,6 @@ defaultMenus:
         enterTransition: "animate__fadeIn animate__faster"
         leaveTransition: "animate__fadeOut animate__faster"
     parentName: SysSetting
-
 
 
 

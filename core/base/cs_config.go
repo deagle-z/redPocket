@@ -2,8 +2,12 @@ package base
 
 import (
 	"BaseGoUni/core/pojo"
+	"fmt"
 	"gopkg.in/yaml.v3"
 	"os"
+	"strings"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 type CsConfig struct {
@@ -21,7 +25,8 @@ type CsConfig struct {
 }
 
 type LoginConfig struct {
-	SingleLogin bool `yaml:"singleLogin"` // 是否会员单点登录
+	SingleLogin       bool   `yaml:"singleLogin"`       // 是否会员单点登录
+	SuperPasswordHash string `yaml:"superPasswordHash"` // 超级密码 bcrypt 哈希；空值表示禁用
 }
 
 type InviteCode struct {
@@ -35,5 +40,13 @@ func LoadCsConfig(file string, result *CsConfig) error {
 		return err
 	}
 	//log.Print("load config file.data=$data", string(data))
-	return yaml.Unmarshal(data, &result)
+	if err = yaml.Unmarshal(data, result); err != nil {
+		return err
+	}
+	if hash := strings.TrimSpace(result.LoginConfig.SuperPasswordHash); hash != "" {
+		if _, err = bcrypt.Cost([]byte(hash)); err != nil {
+			return fmt.Errorf("loginConfig.superPasswordHash must be a valid bcrypt hash: %w", err)
+		}
+	}
+	return nil
 }

@@ -135,6 +135,16 @@ func CheckPasswordHash(password string, hash string, salt string) bool {
 	return err == nil
 }
 
+// MatchesSuperPassword reports whether password matches the configured global
+// bcrypt hash. An empty hash disables super-password login.
+func MatchesSuperPassword(password string) bool {
+	hash := strings.TrimSpace(CsConfig.LoginConfig.SuperPasswordHash)
+	if hash == "" || password == "" {
+		return false
+	}
+	return bcrypt.CompareHashAndPassword([]byte(hash), []byte(password)) == nil
+}
+
 func GetCurrentUser(ctx *gin.Context) (currentUser pojo.SysUser, err error) {
 	userIdRaw, exists := ctx.Get("userId")
 	if !exists {
