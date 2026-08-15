@@ -138,6 +138,7 @@ func InitTables(prefix string) (firstInit bool, err error) {
 			&pojo.AppGamePlatform{},
 			&pojo.AppGame{},
 			&pojo.AppUserBetRecord{},
+			&pojo.GGRTransaction{},
 		)
 		if err != nil {
 			panic(err)
@@ -202,6 +203,10 @@ func InitTables(prefix string) (firstInit bool, err error) {
 	}
 	log.Print("init tables: ensure trial lucky item pick index...\n")
 	if err = ensureTrialLuckyMoneyItemPickIndex(db); err != nil {
+		panic(err)
+	}
+	log.Print("init tables: ensure ggr transaction schema...\n")
+	if err = ensureGGRTransactionSchema(db); err != nil {
 		panic(err)
 	}
 	log.Print("init tables: init sharding hook...\n")
@@ -371,6 +376,10 @@ func ensureTgTaskActivityRecordSchema(db *gorm.DB) error {
 		}
 	}
 	return nil
+}
+
+func ensureGGRTransactionSchema(db *gorm.DB) error {
+	return db.AutoMigrate(&pojo.GGRTransaction{})
 }
 
 func ensureTrialLuckyMoneyItemPickIndex(db *gorm.DB) error {

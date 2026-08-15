@@ -25,6 +25,7 @@ const {
   dataList,
   pagination,
   gameTypeOptions,
+  syncPlatformOptions,
   onSearch,
   resetForm,
   handleSizeChange,
@@ -54,9 +55,9 @@ const {
         <el-form-item label="平台：" prop="platformCode">
           <el-input
             v-model="form.platformCode"
-            placeholder="如 hg"
+            placeholder="如 hg / gsc / ggr"
             clearable
-            class="!w-[130px]"
+            class="!w-[160px]"
           />
         </el-form-item>
         <el-form-item label="第三方ID：" prop="thirdGameId">
@@ -104,9 +105,9 @@ const {
         <el-form-item label="分类：" prop="categoryCode">
           <el-input
             v-model="form.categoryCode"
-            placeholder="分类"
+            placeholder="如 slots / casino / sports / mini"
             clearable
-            class="!w-[160px]"
+            class="!w-[220px]"
           />
         </el-form-item>
         <el-form-item label="首页展示：" prop="homeShow">
@@ -155,12 +156,18 @@ const {
               clearable
               class="!w-[90px]"
             />
-            <el-input
+            <el-select
               v-model="syncForm.platformCode"
-              placeholder="平台"
-              clearable
-              class="!w-[100px]"
-            />
+              placeholder="同步平台"
+              class="!w-[120px]"
+            >
+              <el-option
+                v-for="item in syncPlatformOptions"
+                :key="item.value"
+                :label="item.label"
+                :value="item.value"
+              />
+            </el-select>
             <el-button
               type="primary"
               :icon="useRenderIcon(Download)"

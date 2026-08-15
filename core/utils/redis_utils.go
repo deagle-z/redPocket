@@ -2,11 +2,14 @@ package utils
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"github.com/go-redis/redis/v8"
 	"log"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -49,6 +52,43 @@ func IsKeyExistAndGetValue(lockKey string) (bool, string, error) {
 func ReleaseLock(lockKey string) error {
 	_ = RD.Del(context.Background(), lockKey)
 	return nil
+}
+
+// AcquireOwnedLock creates a Redis lock whose release is restricted to the
+// caller-provided random owner token. It is intended for work that can outlive
+// a single HTTP request and must not delete a replacement lock after expiry.
+func AcquireOwnedLock(lockKey string, ttl time.Duration) (owner string, acquired bool, err error) {
+	if strings.TrimSpace(lockKey) == "" {
+		return "", false, errors.New("redis lock key is empty")
+	}
+	if ttl <= 0 {
+		return "", false, errors.New("redis lock ttl must be positive")
+	}
+	random := make([]byte, 16)
+	if _, err = rand.Read(random); err != nil {
+		return "", false, err
+	}
+	owner = hex.EncodeToString(random)
+	acquired, err = RD.SetNX(context.Background(), lockKey, owner, ttl).Result()
+	if err != nil {
+		return "", false, err
+	}
+	if !acquired {
+		return "", false, nil
+	}
+	return owner, true, nil
+}
+
+func ReleaseOwnedLock(lockKey string, owner string) error {
+	if strings.TrimSpace(lockKey) == "" || strings.TrimSpace(owner) == "" {
+		return errors.New("redis lock key and owner are required")
+	}
+	const script = `
+if redis.call("get", KEYS[1]) == ARGV[1] then
+  return redis.call("del", KEYS[1])
+end
+return 0`
+	return RD.Eval(context.Background(), script, []string{lockKey}, owner).Err()
 }
 
 func GetRdInt64(key string, defaultValue int64) (result int64) {

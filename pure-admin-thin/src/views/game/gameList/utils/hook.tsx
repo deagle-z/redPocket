@@ -18,7 +18,14 @@ const gameTypeOptions = [
   { label: "Mini游戏", value: 1 },
   { label: "视讯游戏", value: 2 },
   { label: "捕鱼游戏", value: 3 },
-  { label: "彩票游戏", value: 4 }
+  { label: "彩票游戏", value: 4 },
+  { label: "体育游戏", value: 5 }
+];
+
+const syncPlatformOptions = [
+  { label: "HG", value: "hg" },
+  { label: "GSC", value: "gsc" },
+  { label: "GGR", value: "ggr" }
 ];
 
 function getGameTypeLabel(value?: number | null) {
@@ -58,7 +65,7 @@ export function useAppGame(tableRef: Ref) {
     type: undefined as number | undefined,
     homeShow: undefined as number | undefined,
     hot: undefined as number | undefined,
-    categoryCode: "slots" as string | undefined,
+    categoryCode: "" as string | undefined,
     disabledFlag: undefined as number | undefined
   });
   const syncForm = reactive({
@@ -405,6 +412,7 @@ export function useAppGame(tableRef: Ref) {
     dataList,
     pagination,
     gameTypeOptions,
+    syncPlatformOptions,
     onSearch,
     resetForm,
     handleSizeChange,

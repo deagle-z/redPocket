@@ -29,6 +29,7 @@ type Config struct {
 	R2       R2Config       `yaml:"r2"`
 	Pay      PayConfig      `yaml:"pay"`
 	Game     GameConfig     `yaml:"game"`
+	GGRGame  GGRGameConfig  `yaml:"ggrGame"`
 	GSCGame  GSCGameConfig  `yaml:"gscGame"`
 }
 
@@ -36,6 +37,14 @@ type GameConfig struct {
 	APIURL    string `yaml:"apiUrl"`    // 游戏厂商 API 地址
 	AppID     string `yaml:"appId"`     // 商户号（商户名称）
 	AppSecret string `yaml:"appSecret"` // 签名密钥
+}
+
+type GGRGameConfig struct {
+	APIURL      string            `yaml:"apiUrl"`      // GGR Game API 地址
+	AgentCode   string            `yaml:"agentCode"`   // GGR 代理代码
+	AgentToken  string            `yaml:"agentToken"`  // 调用 GGR Game API 的代理鉴权 Token
+	AgentSecret string            `yaml:"agentSecret"` // 校验 GGR Seamless API 回调的代理 Secret Key
+	CategoryMap map[string]string `yaml:"categoryMap"` // GGR provider_code 到本地 category_code 映射
 }
 
 type GSCGameConfig struct {

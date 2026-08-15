@@ -54,6 +54,7 @@ func InitGin() {
 	router.POST("/v1/api/seamless/withdraw", api.GSCOpenWithdraw)       // GSC 玩家下注扣款（公开签名接口）
 	router.POST("/v1/api/seamless/deposit", api.GSCOpenDeposit)         // GSC 玩家派奖加款（公开签名接口）
 	router.POST("/v1/api/seamless/pushbetdata", api.GSCOpenPushBetData) // GSC 同步注单数据（公开签名接口）
+	router.POST("/gold_api", api.GGRGoldAPI)                            // GGR 查询余额及处理下注/派奖（公开密钥接口）
 	_ = mime.AddExtensionType(".js", "application/javascript")
 	router.Use(static.ServeRoot("/", "dist"))
 	apiGroup := router.Group("/api/v1")

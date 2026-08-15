@@ -285,6 +285,152 @@ func UpsertAppGameByThirdID(db *gorm.DB, req pojo.AppGameSet) (created bool, err
 	return true, db.Create(&entity).Error
 }
 
+// UpsertGGRAppGame identifies GGR games by provider and game code because game
+// codes are not guaranteed to be unique across providers. Remote-owned fields
+// are refreshed while admin-owned display fields remain untouched.
+func UpsertGGRAppGame(db *gorm.DB, req pojo.AppGameSet) (created bool, updated bool, err error) {
+	if req.PlatformCode == nil || !strings.EqualFold(strings.TrimSpace(*req.PlatformCode), "ggr") {
+		return false, false, errors.New("ggr platform_code_required")
+	}
+	if req.ThirdGameCategory == nil || strings.TrimSpace(*req.ThirdGameCategory) == "" {
+		return false, false, errors.New("ggr provider_code_required")
+	}
+	if req.ThirdGameID == nil || strings.TrimSpace(*req.ThirdGameID) == "" {
+		return false, false, errors.New("ggr game_code_required")
+	}
+	if req.GameName == nil || req.CategoryCode == nil || req.Type == nil || req.ThirdGameName == nil ||
+		req.HorizontalImage == nil || req.GameIcon == nil || req.DisabledFlag == nil {
+		return false, false, errors.New("ggr remote game fields are incomplete")
+	}
+
+	platformCode := strings.ToLower(strings.TrimSpace(*req.PlatformCode))
+	providerCode := strings.ToUpper(strings.TrimSpace(*req.ThirdGameCategory))
+	thirdGameID := strings.TrimSpace(*req.ThirdGameID)
+
+	var entity pojo.AppGame
+	err = db.Where(
+		"LOWER(platform_code) = ? AND UPPER(third_game_category) = ? AND BINARY third_game_id = BINARY ?",
+		platformCode,
+		providerCode,
+		thirdGameID,
+	).First(&entity).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		req.PlatformCode = &platformCode
+		req.ThirdGameCategory = &providerCode
+		created, err = UpsertAppGameByThirdIDAndCategory(db, req)
+		return created, false, err
+	}
+	if err != nil {
+		return false, false, err
+	}
+
+	updates := map[string]any{
+		"game_name":           *req.GameName,
+		"category_code":       strings.ToLower(strings.TrimSpace(*req.CategoryCode)),
+		"type":                *req.Type,
+		"platform_code":       platformCode,
+		"third_game_id":       thirdGameID,
+		"third_game_name":     *req.ThirdGameName,
+		"third_game_category": providerCode,
+		"horizontal_image":    *req.HorizontalImage,
+		"game_icon":           *req.GameIcon,
+		"disabled_flag":       *req.DisabledFlag,
+	}
+	changed := valueString(entity.GameName) != *req.GameName ||
+		strings.ToLower(strings.TrimSpace(valueString(entity.CategoryCode))) != updates["category_code"] ||
+		entity.Type == nil || *entity.Type != *req.Type ||
+		strings.ToLower(strings.TrimSpace(valueString(entity.PlatformCode))) != platformCode ||
+		valueString(entity.ThirdGameID) != thirdGameID ||
+		valueString(entity.ThirdGameName) != *req.ThirdGameName ||
+		strings.ToUpper(strings.TrimSpace(valueString(entity.ThirdGameCategory))) != providerCode ||
+		valueString(entity.HorizontalImage) != *req.HorizontalImage ||
+		valueString(entity.GameIcon) != *req.GameIcon ||
+		entity.DisabledFlag == nil || *entity.DisabledFlag != *req.DisabledFlag
+	if !changed {
+		return false, false, nil
+	}
+	updates["update_time"] = time.Now()
+	if err := db.Model(&pojo.AppGame{}).Where("game_id = ?", entity.GameID).Updates(updates).Error; err != nil {
+		return false, false, err
+	}
+	return false, true, nil
+}
+
+func UpsertAppGameByThirdIDAndCategory(db *gorm.DB, req pojo.AppGameSet) (created bool, err error) {
+	platformCode := strings.TrimSpace(*req.PlatformCode)
+	providerCode := strings.TrimSpace(*req.ThirdGameCategory)
+	thirdGameID := strings.TrimSpace(*req.ThirdGameID)
+
+	var entity pojo.AppGame
+	err = db.Where(
+		"platform_code = ? AND third_game_category = ? AND BINARY third_game_id = BINARY ?",
+		platformCode,
+		providerCode,
+		thirdGameID,
+	).First(&entity).Error
+	if err == nil {
+		return false, nil
+	}
+	if !errors.Is(err, gorm.ErrRecordNotFound) {
+		return false, err
+	}
+
+	now := time.Now()
+	hot := 0
+	homeShow := 0
+	disabledFlag := 0
+	deletedFlag := 0
+	_ = copier.Copy(&entity, &req)
+	entity.GameID = 0
+	entity.PlatformCode = &platformCode
+	entity.ThirdGameCategory = &providerCode
+	entity.ThirdGameID = &thirdGameID
+	if entity.Hot == nil {
+		entity.Hot = &hot
+	}
+	if entity.HomeShow == nil {
+		entity.HomeShow = &homeShow
+	}
+	if entity.DisabledFlag == nil {
+		entity.DisabledFlag = &disabledFlag
+	}
+	entity.DeletedFlag = &deletedFlag
+	entity.CreateTime = &now
+	entity.UpdateTime = &now
+	return true, db.Create(&entity).Error
+}
+
+func DisableMissingGGRAppGames(db *gorm.DB, seen map[string]struct{}) (int, error) {
+	var games []pojo.AppGame
+	if err := db.Model(&pojo.AppGame{}).
+		Where("LOWER(platform_code) = ? AND COALESCE(deleted_flag, 0) = 0", "ggr").
+		Find(&games).Error; err != nil {
+		return 0, err
+	}
+
+	updated := 0
+	for _, item := range games {
+		key := GGRAppGameKey(valueString(item.ThirdGameCategory), valueString(item.ThirdGameID))
+		if _, exists := seen[key]; exists {
+			continue
+		}
+		if item.DisabledFlag != nil && *item.DisabledFlag == 1 {
+			continue
+		}
+		if err := db.Model(&pojo.AppGame{}).
+			Where("game_id = ?", item.GameID).
+			Updates(map[string]any{"disabled_flag": 1, "update_time": time.Now()}).Error; err != nil {
+			return updated, err
+		}
+		updated++
+	}
+	return updated, nil
+}
+
+func GGRAppGameKey(providerCode string, gameCode string) string {
+	return strings.ToUpper(strings.TrimSpace(providerCode)) + "\x00" + strings.TrimSpace(gameCode)
+}
+
 func DelAppGame(db *gorm.DB, gameID int64) (string, error) {
 	now := time.Now()
 	result := db.Model(&pojo.AppGame{}).

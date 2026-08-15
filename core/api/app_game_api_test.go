@@ -59,6 +59,42 @@ func TestShouldLaunchWithGSCClientAllowsOnlyGSC(t *testing.T) {
 	}
 }
 
+func TestShouldLaunchWithGGRClientAllowsOnlyGGR(t *testing.T) {
+	if !shouldLaunchWithGGRClient("ggr") {
+		t.Fatalf("shouldLaunchWithGGRClient(ggr) = false, want true")
+	}
+	if shouldLaunchWithGGRClient("hg") || shouldLaunchWithGGRClient("gsc") || shouldLaunchWithGGRClient("") {
+		t.Fatal("shouldLaunchWithGGRClient accepted a non-GGR platform")
+	}
+}
+
+func TestBuildAppGameSetFromGGRGameUsesProviderCategoryAndSportsType(t *testing.T) {
+	got := buildAppGameSetFromGGRGame("ggr", ggrFetchedGame{
+		ProviderCode:   "SPORTSBOOK",
+		CategoryCode:   "sports",
+		ProviderStatus: 1,
+		Game: game.GGRGame{
+			GameCode: "SPORTSBOOK",
+			GameName: "Nexustrike",
+			Banner:   "https://img.example/sports.png",
+			Status:   1,
+		},
+		Sort: 3,
+	})
+	if got.Type == nil || *got.Type != 5 {
+		t.Fatalf("Type = %#v, want 5", got.Type)
+	}
+	if got.CategoryCode == nil || *got.CategoryCode != "sports" {
+		t.Fatalf("CategoryCode = %#v, want sports", got.CategoryCode)
+	}
+	if got.ThirdGameCategory == nil || *got.ThirdGameCategory != "SPORTSBOOK" {
+		t.Fatalf("ThirdGameCategory = %#v, want SPORTSBOOK", got.ThirdGameCategory)
+	}
+	if got.DisabledFlag == nil || *got.DisabledFlag != 0 {
+		t.Fatalf("DisabledFlag = %#v, want 0", got.DisabledFlag)
+	}
+}
+
 func TestBuildAppGameSetFromGSCProviderGameUsesConfiguredMapping(t *testing.T) {
 	item := game.GSCProviderGame{
 		GameCode:        "aviator",

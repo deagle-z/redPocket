@@ -5,9 +5,12 @@ import (
 	"BaseGoUni/core/pojo"
 	"BaseGoUni/core/repository"
 	"BaseGoUni/core/utils"
+	"context"
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -15,6 +18,7 @@ import (
 
 const hgGameAssetDomain = "https://hgapi.com"
 const appGameLaunchMinimumRechargeAmount = 50.0
+const ggrGameSyncLockTTL = 10 * time.Minute
 
 // GetAppGames godoc
 //
@@ -218,6 +222,10 @@ func LaunchAppGame(ctx *gin.Context) {
 		launchGSCAppGame(ctx, tgUser)
 		return
 	}
+	if shouldLaunchWithGGRClient(platformCode) {
+		launchGGRAppGame(ctx, tgUser, appGame, language)
+		return
+	}
 
 	utils.ErrorBack(ctx, "game_launch_not_supported")
 }
@@ -302,6 +310,23 @@ func launchGSCAppGame(ctx *gin.Context, tgUser pojo.TgUser) {
 	})
 }
 
+func launchGGRAppGame(ctx *gin.Context, tgUser pojo.TgUser, appGame pojo.AppGame, language string) {
+	providerCode := strings.ToUpper(strings.TrimSpace(appGameStringValue(appGame.ThirdGameCategory)))
+	gameCode := strings.TrimSpace(appGameStringValue(appGame.ThirdGameID))
+	resp, err := game.NewGGRClient().GameLaunch(game.GGRGameLaunchInput{
+		UserCode:     strings.TrimSpace(tgUser.Uid),
+		ProviderCode: providerCode,
+		GameCode:     gameCode,
+		Language:     strings.TrimSpace(language),
+		LobbyURL:     appGameGSCOperatorLobbyURL(ctx),
+	})
+	if err != nil {
+		utils.ErrorBack(ctx, err.Error())
+		return
+	}
+	utils.SuccessObjBack(ctx, pojo.AppGameLaunchResp{URL: strings.TrimSpace(resp.LaunchURL)})
+}
+
 func appGameGSCNickname(user pojo.TgUser) string {
 	if value := appGameStringValue(user.FirstName); value != "" {
 		return value
@@ -337,6 +362,10 @@ func appGamePlatformCode(platformCode *string) string {
 
 func shouldLaunchWithGSCClient(platformCode string) bool {
 	return strings.EqualFold(strings.TrimSpace(platformCode), "gsc")
+}
+
+func shouldLaunchWithGGRClient(platformCode string) bool {
+	return strings.EqualFold(strings.TrimSpace(platformCode), "ggr")
 }
 
 func canLaunchAppGame(rechargeAmount float64, rebateTransferred bool) bool {
@@ -384,6 +413,8 @@ func SyncAppGames(ctx *gin.Context) {
 		result, err = syncHGAppGames(db, platformCode, language)
 	case "gsc":
 		result, err = syncGSCAppGames(db, platformCode)
+	case "ggr":
+		result, err = syncGGRAppGames(ctx.Request.Context(), db, platformCode)
 	default:
 		utils.ErrorBack(ctx, "unsupported_game_platform")
 		return
@@ -394,6 +425,163 @@ func SyncAppGames(ctx *gin.Context) {
 	}
 
 	utils.SuccessObjBack(ctx, result)
+}
+
+type ggrFetchedGame struct {
+	ProviderCode   string
+	CategoryCode   string
+	ProviderStatus int
+	Game           game.GGRGame
+	Sort           int
+}
+
+func syncGGRAppGames(ctx context.Context, db *gorm.DB, platformCode string) (pojo.AppGameSyncResp, error) {
+	prefix := strings.TrimSpace(utils.GetDbPrefix(db))
+	if prefix == "" {
+		return pojo.AppGameSyncResp{}, fmt.Errorf("ggr sync tenant prefix is empty")
+	}
+	lockKey := "ggr_game_sync:" + prefix
+	lockOwner, acquired, err := utils.AcquireOwnedLock(lockKey, ggrGameSyncLockTTL)
+	if err != nil {
+		return pojo.AppGameSyncResp{}, fmt.Errorf("acquire ggr sync lock: %w", err)
+	}
+	if !acquired {
+		return pojo.AppGameSyncResp{}, fmt.Errorf("ggr_sync_in_progress")
+	}
+	defer func() {
+		if releaseErr := utils.ReleaseOwnedLock(lockKey, lockOwner); releaseErr != nil {
+			log.Printf("[ggr] release sync lock failed prefix=%s err=%v", prefix, releaseErr)
+		}
+	}()
+
+	client := game.NewGGRClient()
+	providerResp, err := client.ProviderList()
+	if err != nil {
+		return pojo.AppGameSyncResp{}, err
+	}
+
+	providerCodes := make(map[string]struct{}, len(providerResp.Providers))
+	providerCategories := make(map[string]string, len(providerResp.Providers))
+	for _, provider := range providerResp.Providers {
+		code := strings.ToUpper(strings.TrimSpace(provider.Code))
+		if code == "" {
+			return pojo.AppGameSyncResp{}, fmt.Errorf("ggr provider code is empty")
+		}
+		if provider.Status != 0 && provider.Status != 1 {
+			return pojo.AppGameSyncResp{}, fmt.Errorf("ggr provider status is invalid: provider=%s status=%d", code, provider.Status)
+		}
+		if _, exists := providerCodes[code]; exists {
+			return pojo.AppGameSyncResp{}, fmt.Errorf("ggr provider is duplicated: %s", code)
+		}
+		categoryCode, categoryErr := game.ResolveGGRProviderCategoryWithMap(code, client.Config.CategoryMap)
+		if categoryErr != nil {
+			return pojo.AppGameSyncResp{}, categoryErr
+		}
+		providerCodes[code] = struct{}{}
+		providerCategories[code] = categoryCode
+	}
+
+	fetched := make([]ggrFetchedGame, 0)
+	seen := make(map[string]struct{})
+	sortIndex := 0
+	for i, provider := range providerResp.Providers {
+		if i > 0 {
+			timer := time.NewTimer(time.Second)
+			select {
+			case <-ctx.Done():
+				timer.Stop()
+				return pojo.AppGameSyncResp{}, ctx.Err()
+			case <-timer.C:
+			}
+		}
+		providerCode := strings.ToUpper(strings.TrimSpace(provider.Code))
+		gameResp, gameErr := client.GameList(providerCode)
+		if gameErr != nil {
+			return pojo.AppGameSyncResp{}, gameErr
+		}
+		for _, remoteGame := range gameResp.Games {
+			remoteGame.GameCode = strings.TrimSpace(remoteGame.GameCode)
+			remoteGame.GameName = strings.TrimSpace(remoteGame.GameName)
+			remoteGame.Banner = strings.TrimSpace(remoteGame.Banner)
+			if remoteGame.GameCode == "" {
+				return pojo.AppGameSyncResp{}, fmt.Errorf("ggr game_code is empty: provider=%s", providerCode)
+			}
+			if remoteGame.Status != 0 && remoteGame.Status != 1 {
+				return pojo.AppGameSyncResp{}, fmt.Errorf("ggr game status is invalid: provider=%s game=%s status=%d", providerCode, remoteGame.GameCode, remoteGame.Status)
+			}
+			key := repository.GGRAppGameKey(providerCode, remoteGame.GameCode)
+			if _, exists := seen[key]; exists {
+				return pojo.AppGameSyncResp{}, fmt.Errorf("ggr game is duplicated: provider=%s game=%s", providerCode, remoteGame.GameCode)
+			}
+			seen[key] = struct{}{}
+			sortIndex++
+			fetched = append(fetched, ggrFetchedGame{
+				ProviderCode:   providerCode,
+				CategoryCode:   providerCategories[providerCode],
+				ProviderStatus: provider.Status,
+				Game:           remoteGame,
+				Sort:           sortIndex,
+			})
+		}
+	}
+
+	result := pojo.AppGameSyncResp{Total: len(fetched)}
+	err = db.Transaction(func(tx *gorm.DB) error {
+		for _, item := range fetched {
+			gameSet := buildAppGameSetFromGGRGame(platformCode, item)
+			created, updated, upsertErr := repository.UpsertGGRAppGame(tx, gameSet)
+			if upsertErr != nil {
+				return upsertErr
+			}
+			switch {
+			case created:
+				result.Created++
+			case updated:
+				result.Updated++
+			default:
+				result.Skipped++
+			}
+		}
+		disabled, disableErr := repository.DisableMissingGGRAppGames(tx, seen)
+		if disableErr != nil {
+			return disableErr
+		}
+		result.Updated += disabled
+		return nil
+	})
+	if err != nil {
+		return result, err
+	}
+	return result, nil
+}
+
+func buildAppGameSetFromGGRGame(platformCode string, item ggrFetchedGame) pojo.AppGameSet {
+	gameName := item.Game.GameName
+	categoryCode := item.CategoryCode
+	gameType := appGameTypeByCategoryCode(categoryCode)
+	providerCode := item.ProviderCode
+	gameCode := item.Game.GameCode
+	banner := item.Game.Banner
+	thirdGameName := item.Game.GameName
+	sortIndex := item.Sort
+	disabledFlag := 0
+	if item.ProviderStatus != 1 || item.Game.Status != 1 {
+		disabledFlag = 1
+	}
+	return pojo.AppGameSet{
+		GameName:          &gameName,
+		CategoryCode:      &categoryCode,
+		ShowIndex:         &sortIndex,
+		Type:              &gameType,
+		PlatformCode:      &platformCode,
+		ThirdGameID:       &gameCode,
+		ThirdGameName:     &thirdGameName,
+		ThirdGameCategory: &providerCode,
+		HorizontalImage:   &banner,
+		GameIcon:          &banner,
+		Sort:              &sortIndex,
+		DisabledFlag:      &disabledFlag,
+	}
 }
 
 func syncHGAppGames(db *gorm.DB, platformCode string, language string) (pojo.AppGameSyncResp, error) {
@@ -566,6 +754,8 @@ func appGameTypeByCategoryCode(categoryCode string) int {
 		return 3
 	case "lottery":
 		return 4
+	case "sports":
+		return 5
 	default:
 		return 1
 	}

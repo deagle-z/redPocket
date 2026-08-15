@@ -59,6 +59,9 @@ func InitScheduler() {
 	addScheduledTask("0 * * * * *", "withdraw_payout_query_all_hosts", 2*time.Minute, func() {
 		services.SweepTimedOutProcessingWithdrawPayoutOrdersAllHosts()
 	}, "处理超过5小时的代付订单")
+	addScheduledTask("0 0 * * * *", "ggr_transaction_cleanup_all_hosts", 30*time.Minute, func() {
+		services.CleanupExpiredGGRTransactionsAllHosts()
+	}, "清理24小时前的GGR交易幂等记录")
 	services.StartBotLotteryTask()
 	services.StartUsdtRechargeScanTask()
 	c.Start()

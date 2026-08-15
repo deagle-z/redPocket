@@ -39,7 +39,8 @@ const gameTypeOptions = [
   { label: "Mini游戏", value: 1 },
   { label: "视讯游戏", value: 2 },
   { label: "捕鱼游戏", value: 3 },
-  { label: "彩票游戏", value: 4 }
+  { label: "彩票游戏", value: 4 },
+  { label: "体育游戏", value: 5 }
 ];
 
 const yesNoOptions = [{ label: "是" }, { label: "否" }];
@@ -75,7 +76,7 @@ defineExpose({ getRef });
           <el-input
             v-model="newFormInline.platformCode"
             clearable
-            placeholder="如 hg"
+            placeholder="如 hg / gsc / ggr"
           />
         </el-form-item>
       </el-col>
@@ -111,7 +112,7 @@ defineExpose({ getRef });
           <el-input
             v-model="newFormInline.categoryCode"
             clearable
-            placeholder="如 slots / casino"
+            placeholder="如 slots / casino / sports / mini"
           />
         </el-form-item>
       </el-col>

@@ -28,3 +28,33 @@ aliOss:
   endpoint: oss-us-east-1.aliyuncs.com
   accessKeyId: xxxxxxx
   accessKeySecret: xxxxxxxxxx
+
+ggrGame:
+  apiUrl: ""
+  agentCode: ""
+  agentToken: ""
+  agentSecret: ""
+  categoryMap:
+    EVOLUTION: "casino"
+    PP_LIVE_PRO: "casino"
+    SPORTSBOOK: "sports"
+    PRAGMATIC: "slots"
+    PGSOFT: "slots"
+    HABANERO: "slots"
+    BOOONGO: "slots"
+    PLAYSON: "slots"
+    CQ9: "slots"
+    EVOPLAY: "slots"
+    TOPTREND: "slots"
+    DREAMTECH: "slots"
+    SPRIBE: "mini"
+    HACKSAW: "slots"
+    FACHAI: "slots"
+    PLAYNGO: "slots"
+    AMUSNET: "slots"
+    EGT: "slots"
+    SPADEGAMING: "slots"
+    FASTSPIN: "slots"
+    JOKERGAMING: "slots"
+    RUBYPLAY: "slots"
+    AMATIC: "slots"
