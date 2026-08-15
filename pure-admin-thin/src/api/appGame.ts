@@ -134,7 +134,8 @@ export const getAppGameThirdCategories = (data: AppGameThirdCategorySearch) => {
 
 export const syncAppGames = (data: AppGameSyncReq) => {
   return http.request<AppGameSyncResult>("post", "/api/v1/admin/appGame/sync", {
-    data
+    data,
+    timeout: 120000
   });
 };
 
