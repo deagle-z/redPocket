@@ -154,8 +154,9 @@ POST https://{API_SERVER}
 | `JOKERGAMING` | Joker Gaming | `slot` | `slots` |
 | `RUBYPLAY` | RubyPlay | `slot` | `slots` |
 | `AMATIC` | Amatic | `slot` | `slots` |
+| `REELKINGDOM` | Reel Kingdom | `slot` | `slots` |
 
-同步遇到不在映射表中的新 `provider_code` 时整次失败，不写入部分游戏，也不能自动归入任意分类。
+同步遇到不在映射表中的新 `provider_code` 时，会先在日志中输出 Provider List 返回的全部厂商代码、名称、状态以及所有缺失映射，再终止整次同步；不会写入部分游戏，也不能自动归入任意分类。
 
 ---
 

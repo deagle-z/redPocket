@@ -560,10 +560,12 @@ func syncGGRAppGames(ctx context.Context, db *gorm.DB, platformCode string) (res
 	stage = "validate_providers"
 	providerCodes := make(map[string]struct{}, len(providerResp.Providers))
 	providerCategories := make(map[string]string, len(providerResp.Providers))
+	providerMappingErrors := make([]string, 0)
 	activeProviders := 0
 	maintenanceProviders := 0
 	for index, provider := range providerResp.Providers {
 		code := strings.ToUpper(strings.TrimSpace(provider.Code))
+		name := strings.TrimSpace(provider.Name)
 		if code == "" {
 			return result, fmt.Errorf("ggr provider code is empty")
 		}
@@ -573,26 +575,50 @@ func syncGGRAppGames(ctx context.Context, db *gorm.DB, platformCode string) (res
 		if _, exists := providerCodes[code]; exists {
 			return result, fmt.Errorf("ggr provider is duplicated: %s", code)
 		}
-		categoryCode, categoryErr := game.ResolveGGRProviderCategoryWithMap(code, client.Config.CategoryMap)
-		if categoryErr != nil {
-			return result, categoryErr
-		}
 		providerCodes[code] = struct{}{}
-		providerCategories[code] = categoryCode
 		if provider.Status == 1 {
 			activeProviders++
 		} else {
 			maintenanceProviders++
 		}
 		log.Printf(
-			"[ggr_sync] provider mapped prefix=%s index=%d/%d provider=%s remote_status=%d category=%s",
+			"[ggr_sync] provider received prefix=%s index=%d/%d provider=%s name=%q remote_status=%d",
 			prefix,
 			index+1,
 			providerTotal,
 			code,
+			name,
+			provider.Status,
+		)
+
+		categoryCode, categoryErr := game.ResolveGGRProviderCategoryWithMap(code, client.Config.CategoryMap)
+		if categoryErr != nil {
+			providerMappingErrors = append(providerMappingErrors, fmt.Sprintf("%s: %v", code, categoryErr))
+			log.Printf(
+				"[ggr_sync] provider mapping failed prefix=%s index=%d/%d provider=%s name=%q err=%v",
+				prefix,
+				index+1,
+				providerTotal,
+				code,
+				name,
+				categoryErr,
+			)
+			continue
+		}
+		providerCategories[code] = categoryCode
+		log.Printf(
+			"[ggr_sync] provider mapped prefix=%s index=%d/%d provider=%s name=%q remote_status=%d category=%s",
+			prefix,
+			index+1,
+			providerTotal,
+			code,
+			name,
 			provider.Status,
 			categoryCode,
 		)
+	}
+	if len(providerMappingErrors) > 0 {
+		return result, fmt.Errorf("ggr provider category validation failed: %s", strings.Join(providerMappingErrors, "; "))
 	}
 	log.Printf(
 		"[ggr_sync] provider validation success prefix=%s providers=%d active=%d maintenance=%d",
