@@ -45,7 +45,6 @@ After modifying Go backend code, do not run Go tests unless the user explicitly 
 ```
 API handler → Repository → GORM (MySQL)
                          → Redis (cache/locks)
-                         → RabbitMQ (async events)
 ```
 
 - **`core/`** — Framework-level code (reusable across tenants/hosts)
@@ -73,7 +72,7 @@ Defined in [core/common/web_routes.go](core/common/web_routes.go):
 | `/api/v1/app` | None | Mobile app endpoints |
 
 ### Configuration Files
-- **`core.yaml`** — Infrastructure: MySQL master/slave, Redis, RabbitMQ, Aliyun OSS, Cloudflare R2, Telegram bot token
+- **`core.yaml`** — Infrastructure: MySQL master/slave, Redis, Aliyun OSS, Cloudflare R2, Telegram bot token
 - **`cs.yaml`** — Seed data: default host, admin credentials, roles, menus, invite codes
 - **`sc.yaml`** — Scheduler config; merged into `utils.CsConfig` at startup
 
@@ -89,7 +88,7 @@ Global config is accessed via `utils.GlobalConfig` (type `base.CoreConfig`) and 
 1. `hostInfoMiddleware` — resolves host, creates prefixed DB, sets `hostInfo`/`db` in context
 2. CORS middleware
 3. `authMiddleware` / `tenantAuthMiddleware` — JWT validation, role check
-4. `manageLog` (on write routes) — captures request/response, publishes audit log via RabbitMQ
+4. `manageLog` (on write routes) — captures request/response and writes the audit log to the tenant database
 
 ### Telegram Integration
 The Telegram bot is initialized in `main.go` if `GlobalConfig.Telegram.Enabled` is true. Bot handlers live in `app/services/` and use polling. Telegram Mini-App authentication (Web App login) is handled by `core/api/tg_auth_api.go` + `core/utils/tg_auth_utils.go`, which validates the `web_app_data` HMAC signature from Telegram.

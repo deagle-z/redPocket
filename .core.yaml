@@ -11,15 +11,6 @@ redis:
   pass: "marking123"
   db: 3
 
-rabbitMq:
-  host: 192.168.0.19
-  port: 5672
-  username: admin
-  password: marking123
-  exchange: sg_exchange
-  routing: sg_routing
-  queue: sg_queue
-
 aliOss:
   baseDownloadFolder: game
   downloadLink: https://download.incomeharbor.top

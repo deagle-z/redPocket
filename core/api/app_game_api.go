@@ -435,86 +435,200 @@ type ggrFetchedGame struct {
 	Sort           int
 }
 
-func syncGGRAppGames(ctx context.Context, db *gorm.DB, platformCode string) (pojo.AppGameSyncResp, error) {
+func syncGGRAppGames(ctx context.Context, db *gorm.DB, platformCode string) (result pojo.AppGameSyncResp, err error) {
+	startedAt := time.Now()
+	stage := "resolve_tenant"
 	prefix := strings.TrimSpace(utils.GetDbPrefix(db))
+	providerTotal := 0
+	fetchedTotal := 0
+	disabledMissing := 0
+	defer func() {
+		cost := time.Since(startedAt).Round(time.Millisecond)
+		if err != nil {
+			log.Printf(
+				"[ggr_sync] failed prefix=%q platform=%s stage=%s providers=%d fetched=%d total=%d created=%d updated=%d skipped=%d disabled_missing=%d cost=%s err=%v",
+				prefix,
+				platformCode,
+				stage,
+				providerTotal,
+				fetchedTotal,
+				result.Total,
+				result.Created,
+				result.Updated,
+				result.Skipped,
+				disabledMissing,
+				cost,
+				err,
+			)
+			return
+		}
+		log.Printf(
+			"[ggr_sync] completed prefix=%s platform=%s providers=%d fetched=%d total=%d created=%d updated=%d skipped=%d disabled_missing=%d cost=%s",
+			prefix,
+			platformCode,
+			providerTotal,
+			fetchedTotal,
+			result.Total,
+			result.Created,
+			result.Updated,
+			result.Skipped,
+			disabledMissing,
+			cost,
+		)
+	}()
+
 	if prefix == "" {
-		return pojo.AppGameSyncResp{}, fmt.Errorf("ggr sync tenant prefix is empty")
+		return result, fmt.Errorf("ggr sync tenant prefix is empty")
 	}
+	log.Printf("[ggr_sync] started prefix=%s platform=%s", prefix, platformCode)
+
+	stage = "acquire_lock"
 	lockKey := "ggr_game_sync:" + prefix
+	lockStartedAt := time.Now()
+	log.Printf("[ggr_sync] lock acquire prefix=%s key=%s ttl=%s", prefix, lockKey, ggrGameSyncLockTTL)
 	lockOwner, acquired, err := utils.AcquireOwnedLock(lockKey, ggrGameSyncLockTTL)
 	if err != nil {
-		return pojo.AppGameSyncResp{}, fmt.Errorf("acquire ggr sync lock: %w", err)
+		return result, fmt.Errorf("acquire ggr sync lock: %w", err)
 	}
 	if !acquired {
-		return pojo.AppGameSyncResp{}, fmt.Errorf("ggr_sync_in_progress")
+		return result, fmt.Errorf("ggr_sync_in_progress")
 	}
+	log.Printf("[ggr_sync] lock acquired prefix=%s cost=%s", prefix, time.Since(lockStartedAt).Round(time.Millisecond))
 	defer func() {
 		if releaseErr := utils.ReleaseOwnedLock(lockKey, lockOwner); releaseErr != nil {
-			log.Printf("[ggr] release sync lock failed prefix=%s err=%v", prefix, releaseErr)
+			log.Printf("[ggr_sync] lock release failed prefix=%s key=%s err=%v", prefix, lockKey, releaseErr)
+			return
 		}
+		log.Printf("[ggr_sync] lock released prefix=%s key=%s", prefix, lockKey)
 	}()
 
 	client := game.NewGGRClient()
+	log.Printf(
+		"[ggr_sync] client ready prefix=%s api_url=%q agent_code_configured=%t agent_token_configured=%t category_mappings=%d",
+		prefix,
+		client.Config.APIURL,
+		client.Config.AgentCode != "",
+		client.Config.AgentToken != "",
+		len(client.Config.CategoryMap),
+	)
+
+	stage = "provider_list"
+	providerListStartedAt := time.Now()
+	log.Printf("[ggr_sync] provider_list request prefix=%s", prefix)
 	providerResp, err := client.ProviderList()
 	if err != nil {
-		return pojo.AppGameSyncResp{}, err
+		return result, fmt.Errorf("ggr provider_list failed: %w", err)
 	}
+	providerTotal = len(providerResp.Providers)
+	log.Printf(
+		"[ggr_sync] provider_list success prefix=%s status=%d providers=%d cost=%s",
+		prefix,
+		providerResp.Status,
+		providerTotal,
+		time.Since(providerListStartedAt).Round(time.Millisecond),
+	)
 
+	stage = "validate_providers"
 	providerCodes := make(map[string]struct{}, len(providerResp.Providers))
 	providerCategories := make(map[string]string, len(providerResp.Providers))
-	for _, provider := range providerResp.Providers {
+	activeProviders := 0
+	maintenanceProviders := 0
+	for index, provider := range providerResp.Providers {
 		code := strings.ToUpper(strings.TrimSpace(provider.Code))
 		if code == "" {
-			return pojo.AppGameSyncResp{}, fmt.Errorf("ggr provider code is empty")
+			return result, fmt.Errorf("ggr provider code is empty")
 		}
 		if provider.Status != 0 && provider.Status != 1 {
-			return pojo.AppGameSyncResp{}, fmt.Errorf("ggr provider status is invalid: provider=%s status=%d", code, provider.Status)
+			return result, fmt.Errorf("ggr provider status is invalid: provider=%s status=%d", code, provider.Status)
 		}
 		if _, exists := providerCodes[code]; exists {
-			return pojo.AppGameSyncResp{}, fmt.Errorf("ggr provider is duplicated: %s", code)
+			return result, fmt.Errorf("ggr provider is duplicated: %s", code)
 		}
 		categoryCode, categoryErr := game.ResolveGGRProviderCategoryWithMap(code, client.Config.CategoryMap)
 		if categoryErr != nil {
-			return pojo.AppGameSyncResp{}, categoryErr
+			return result, categoryErr
 		}
 		providerCodes[code] = struct{}{}
 		providerCategories[code] = categoryCode
+		if provider.Status == 1 {
+			activeProviders++
+		} else {
+			maintenanceProviders++
+		}
+		log.Printf(
+			"[ggr_sync] provider mapped prefix=%s index=%d/%d provider=%s remote_status=%d category=%s",
+			prefix,
+			index+1,
+			providerTotal,
+			code,
+			provider.Status,
+			categoryCode,
+		)
 	}
+	log.Printf(
+		"[ggr_sync] provider validation success prefix=%s providers=%d active=%d maintenance=%d",
+		prefix,
+		providerTotal,
+		activeProviders,
+		maintenanceProviders,
+	)
 
 	fetched := make([]ggrFetchedGame, 0)
 	seen := make(map[string]struct{})
 	sortIndex := 0
+	remoteFetchStartedAt := time.Now()
 	for i, provider := range providerResp.Providers {
+		providerCode := strings.ToUpper(strings.TrimSpace(provider.Code))
 		if i > 0 {
+			stage = "rate_limit_wait:" + providerCode
+			log.Printf("[ggr_sync] rate limit wait prefix=%s next_provider=%s delay=%s", prefix, providerCode, time.Second)
 			timer := time.NewTimer(time.Second)
 			select {
 			case <-ctx.Done():
 				timer.Stop()
-				return pojo.AppGameSyncResp{}, ctx.Err()
+				return result, fmt.Errorf("ggr sync canceled before provider=%s: %w", providerCode, ctx.Err())
 			case <-timer.C:
 			}
 		}
-		providerCode := strings.ToUpper(strings.TrimSpace(provider.Code))
+
+		stage = "game_list:" + providerCode
+		gameListStartedAt := time.Now()
+		log.Printf(
+			"[ggr_sync] game_list request prefix=%s index=%d/%d provider=%s category=%s provider_status=%d",
+			prefix,
+			i+1,
+			providerTotal,
+			providerCode,
+			providerCategories[providerCode],
+			provider.Status,
+		)
 		gameResp, gameErr := client.GameList(providerCode)
 		if gameErr != nil {
-			return pojo.AppGameSyncResp{}, gameErr
+			return result, fmt.Errorf("ggr game_list failed provider=%s: %w", providerCode, gameErr)
 		}
+		activeGames := 0
+		disabledGames := 0
 		for _, remoteGame := range gameResp.Games {
 			remoteGame.GameCode = strings.TrimSpace(remoteGame.GameCode)
 			remoteGame.GameName = strings.TrimSpace(remoteGame.GameName)
 			remoteGame.Banner = strings.TrimSpace(remoteGame.Banner)
 			if remoteGame.GameCode == "" {
-				return pojo.AppGameSyncResp{}, fmt.Errorf("ggr game_code is empty: provider=%s", providerCode)
+				return result, fmt.Errorf("ggr game_code is empty: provider=%s", providerCode)
 			}
 			if remoteGame.Status != 0 && remoteGame.Status != 1 {
-				return pojo.AppGameSyncResp{}, fmt.Errorf("ggr game status is invalid: provider=%s game=%s status=%d", providerCode, remoteGame.GameCode, remoteGame.Status)
+				return result, fmt.Errorf("ggr game status is invalid: provider=%s game=%s status=%d", providerCode, remoteGame.GameCode, remoteGame.Status)
 			}
 			key := repository.GGRAppGameKey(providerCode, remoteGame.GameCode)
 			if _, exists := seen[key]; exists {
-				return pojo.AppGameSyncResp{}, fmt.Errorf("ggr game is duplicated: provider=%s game=%s", providerCode, remoteGame.GameCode)
+				return result, fmt.Errorf("ggr game is duplicated: provider=%s game=%s", providerCode, remoteGame.GameCode)
 			}
 			seen[key] = struct{}{}
 			sortIndex++
+			if provider.Status == 1 && remoteGame.Status == 1 {
+				activeGames++
+			} else {
+				disabledGames++
+			}
 			fetched = append(fetched, ggrFetchedGame{
 				ProviderCode:   providerCode,
 				CategoryCode:   providerCategories[providerCode],
@@ -523,35 +637,73 @@ func syncGGRAppGames(ctx context.Context, db *gorm.DB, platformCode string) (poj
 				Sort:           sortIndex,
 			})
 		}
+		fetchedTotal = len(fetched)
+		log.Printf(
+			"[ggr_sync] game_list success prefix=%s index=%d/%d provider=%s status=%d games=%d active=%d disabled=%d cumulative=%d cost=%s",
+			prefix,
+			i+1,
+			providerTotal,
+			providerCode,
+			gameResp.Status,
+			len(gameResp.Games),
+			activeGames,
+			disabledGames,
+			fetchedTotal,
+			time.Since(gameListStartedAt).Round(time.Millisecond),
+		)
 	}
+	log.Printf(
+		"[ggr_sync] remote fetch completed prefix=%s providers=%d games=%d cost=%s",
+		prefix,
+		providerTotal,
+		fetchedTotal,
+		time.Since(remoteFetchStartedAt).Round(time.Millisecond),
+	)
 
-	result := pojo.AppGameSyncResp{Total: len(fetched)}
-	err = db.Transaction(func(tx *gorm.DB) error {
+	stage = "database_transaction"
+	databaseStartedAt := time.Now()
+	pendingResult := pojo.AppGameSyncResp{Total: len(fetched)}
+	log.Printf("[ggr_sync] database transaction started prefix=%s games=%d", prefix, len(fetched))
+	transactionErr := db.Transaction(func(tx *gorm.DB) error {
 		for _, item := range fetched {
 			gameSet := buildAppGameSetFromGGRGame(platformCode, item)
 			created, updated, upsertErr := repository.UpsertGGRAppGame(tx, gameSet)
 			if upsertErr != nil {
-				return upsertErr
+				return fmt.Errorf("upsert ggr game provider=%s game=%s: %w", item.ProviderCode, item.Game.GameCode, upsertErr)
 			}
 			switch {
 			case created:
-				result.Created++
+				pendingResult.Created++
 			case updated:
-				result.Updated++
+				pendingResult.Updated++
 			default:
-				result.Skipped++
+				pendingResult.Skipped++
 			}
 		}
 		disabled, disableErr := repository.DisableMissingGGRAppGames(tx, seen)
 		if disableErr != nil {
-			return disableErr
+			return fmt.Errorf("disable missing ggr games: %w", disableErr)
 		}
-		result.Updated += disabled
+		disabledMissing = disabled
+		pendingResult.Updated += disabled
 		return nil
 	})
-	if err != nil {
-		return result, err
+	if transactionErr != nil {
+		disabledMissing = 0
+		return result, fmt.Errorf("ggr database transaction failed: %w", transactionErr)
 	}
+	result = pendingResult
+	stage = "completed"
+	log.Printf(
+		"[ggr_sync] database transaction committed prefix=%s total=%d created=%d updated=%d skipped=%d disabled_missing=%d cost=%s",
+		prefix,
+		result.Total,
+		result.Created,
+		result.Updated,
+		result.Skipped,
+		disabledMissing,
+		time.Since(databaseStartedAt).Round(time.Millisecond),
+	)
 	return result, nil
 }
 

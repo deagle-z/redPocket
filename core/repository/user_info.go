@@ -79,7 +79,7 @@ func AwardUser(db *gorm.DB, reqData pojo.AwardInfo) (result []int64, err error) 
 		return result, errors.New("data error")
 	}
 	lockKeys := make([]string, 0)
-	updateUsers := make([]string, 0)
+	updateUsers := make(map[int64]string)
 	tx := db.Begin()
 	defer func() {
 		if p := recover(); p != nil {
@@ -89,11 +89,8 @@ func AwardUser(db *gorm.DB, reqData pojo.AwardInfo) (result []int64, err error) 
 			tx.Rollback()
 		} else {
 			tx.Commit()
-			for _, updateUser := range updateUsers {
-				_ = utils.PublishMQ(utils.MQMessage{
-					MessageType: utils.KeyMqUserUpdate,
-					Data:        updateUser,
-				})
+			for userID, prefix := range updateUsers {
+				utils.FlushTempUser(prefix, userID)
 			}
 		}
 		for _, lockKey := range lockKeys {
@@ -158,7 +155,7 @@ func AwardUser(db *gorm.DB, reqData pojo.AwardInfo) (result []int64, err error) 
 		if err != nil {
 			return result, err
 		}
-		updateUsers = append(updateUsers, fmt.Sprintf("%d#%s", awardUser.ID, prefix))
+		updateUsers[awardUser.ID] = prefix
 		result = append(result, cashHistory.ID)
 	}
 	return result, err

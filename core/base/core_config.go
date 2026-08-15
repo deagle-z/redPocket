@@ -23,7 +23,6 @@ type Config struct {
 		ConnMaxIdleTimeMinutes int `yaml:"connMaxIdleTimeMinutes"` // 默认 5
 	} `yaml:"mysql"`
 	Redis    Redis          `yaml:"redis"`
-	RabbitMq RabbitMq       `yaml:"rabbitMq"`
 	AliOss   AliOssConfig   `yaml:"aliOss"`
 	Telegram TelegramConfig `yaml:"telegram"`
 	R2       R2Config       `yaml:"r2"`
@@ -133,16 +132,6 @@ type Redis struct {
 	Host string `yaml:"host"`
 	Pass string `yaml:"pass"`
 	Db   int    `yaml:"db"`
-}
-
-type RabbitMq struct {
-	Host     string `yaml:"host"`
-	Port     int    `yaml:"port"`
-	Username string `yaml:"username"`
-	Password string `yaml:"password"`
-	Exchange string `yaml:"exchange"`
-	Routing  string `yaml:"routing"`
-	Queue    string `yaml:"queue"`
 }
 
 func InitGlobalConfig(file string, GlobalConfig *Config) error {

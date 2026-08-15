@@ -539,13 +539,10 @@ func manageLog() gin.HandlerFunc {
 			ResponseBody: responseBody,
 			Ip:           ip,
 		}
-		manageLogStr, _ := json.Marshal(manageLogData)
-		//log.Printf("manageLogStr=%s", string(manageLogStr))
-		_ = utils.PublishMQ(utils.MQMessage{
-			MessageType: utils.KeyManageLogNotify,
-			Data:        string(manageLogStr),
-			DataMore:    tempHostInfo.TablePrefix,
-		})
+		db := utils.NewPrefixDb(tempHostInfo.TablePrefix)
+		if err := db.Create(&manageLogData).Error; err != nil {
+			log.Printf("create manage log failed path=%s err=%v", path, err)
+		}
 	}
 }
 

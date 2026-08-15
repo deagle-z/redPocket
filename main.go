@@ -77,8 +77,6 @@ func main() {
 		log.Printf("Init menu error.err=%v\n", err)
 		return
 	}
-	//go utils2.InitRabbitMq()
-	log.Print("init mq success\n")
 	if utils.CsConfig.RunScheduler {
 		common.InitScheduler()
 		log.Print("init scheduler success\n")

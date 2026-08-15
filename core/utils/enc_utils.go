@@ -15,7 +15,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/golang-jwt/jwt/v4"
-	"github.com/jinzhu/copier"
 	"log"
 	"reflect"
 	"sort"
@@ -38,7 +37,7 @@ func DesEncrypt(encKey, source string) (string, error) {
 	return hex.EncodeToString(ciphertext), nil
 }
 
-func CheckEncReq(encRequest base.EncData, ip string) (result base.DeviceInfo, err error) {
+func CheckEncReq(encRequest base.EncData, _ string) (result base.DeviceInfo, err error) {
 	realKey := strings.ToLower(GetMd5(fmt.Sprintf("%s_rg_%d", encRequest.EncData, encRequest.Time)))
 	if encRequest.CheckKey != realKey {
 		log.Printf("checkKey=%s;realKey=%s", encRequest.CheckKey, realKey)
@@ -55,17 +54,6 @@ func CheckEncReq(encRequest base.EncData, ip string) (result base.DeviceInfo, er
 	if now.Sub(requestTime) > 24*time.Hour {
 		log.Printf("加密请求时间戳错误:%d;%s", encRequest.Time, result.Data)
 	}
-	var tempDevice base.DeviceInfo
-	_ = copier.Copy(&tempDevice, result)
-	tempDevice.Data = ""
-	tempDeviceStr, _ := json.Marshal(tempDevice)
-	go func() {
-		_ = PublishMQ(MQMessage{
-			MessageType: KeyMqDeviceInfo,
-			Data:        string(tempDeviceStr),
-			DataMore:    ip,
-		})
-	}()
 	return result, nil
 }
 

@@ -76,7 +76,7 @@ Defined in [core/common/web_routes.go](core/common/web_routes.go):
 Admin/manager JWT uses `CsConfig.DefaultHost.AccessSecret`. App (mobile) JWT uses `HostInfo.AccessSecret` (per-host secret).
 
 ### Configuration Files
-- **`core.yaml`** — Infrastructure: MySQL master/slave, Redis, RabbitMQ, Aliyun OSS, Cloudflare R2, Telegram bot token
+- **`core.yaml`** — Infrastructure: MySQL master/slave, Redis, Aliyun OSS, Cloudflare R2, Telegram bot token
 - **`cs.yaml`** — Seed data: default host, admin credentials, roles, menus, invite codes
 - **`sc.yaml`** — Scheduler config; merged into `utils.CsConfig` at startup
 
@@ -92,7 +92,7 @@ Global config is accessed via `utils.GlobalConfig` (type `base.CoreConfig`) and 
 1. `hostInfoMiddleware` — resolves host, creates prefixed DB, sets `hostInfo`/`db` in context
 2. CORS middleware
 3. `authMiddleware` / `tenantAuthMiddleware` / `appAuthMiddle` — JWT validation, role check
-4. `manageLog` (on write routes) — captures request/response, publishes audit log via RabbitMQ
+4. `manageLog` (on write routes) — captures request/response and writes the audit log to the tenant database
 
 ### Async Task Queue (Asynq)
 `core/services/lucky_expire_task.go` initializes an Asynq client+server backed by the same Redis instance. Registered task types:
