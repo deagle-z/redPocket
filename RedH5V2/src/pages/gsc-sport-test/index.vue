@@ -5,7 +5,7 @@ import { launchGscSportGame } from '@/api/game'
 definePage({
   name: 'gsc-sport-test',
   meta: {
-    title: 'GSC Sport Test',
+    titleKey: 'gscSportTest.title',
     shell: 'none',
     tabbar: false,
     requiresAuth: true,

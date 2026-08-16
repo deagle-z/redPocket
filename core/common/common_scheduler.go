@@ -20,21 +20,17 @@ func InitScheduler() {
 	// 公共的任务添加函数，减少重复代码
 	addScheduledTask := func(schedule string, lockKey string, lockDuration time.Duration, task func(), logMessage string) {
 		_, err := c.AddFunc(schedule, func() {
-			if logMessage != "" {
-				log.Printf("开始任务: %s", logMessage)
-			}
-			lock, _ := utils.AcquireLock(lockKey, lockDuration)
-			if !lock {
-				if logMessage != "" {
-					log.Printf("任务获取锁失败: %s", logMessage)
-				}
+			lock, lockErr := utils.AcquireLock(lockKey, lockDuration)
+			if lockErr != nil {
+				log.Printf("任务获取锁异常: %s, error: %v", logMessage, lockErr)
 				return
 			}
-			startTime := time.Now()
+			if !lock {
+				return
+			}
 			defer func() {
-				utils.ReleaseLock(lockKey)
-				if logMessage != "" {
-					log.Printf("任务执行完毕: %s;time=%.2fs", logMessage, time.Now().Sub(startTime).Seconds())
+				if releaseErr := utils.ReleaseLock(lockKey); releaseErr != nil {
+					log.Printf("任务释放锁异常: %s, error: %v", logMessage, releaseErr)
 				}
 			}()
 			task()

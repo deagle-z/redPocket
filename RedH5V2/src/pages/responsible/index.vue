@@ -9,7 +9,7 @@ import PpmxPageChrome from '../ppmx-home/components/PpmxPageChrome.vue'
 definePage({
   name: 'responsible',
   meta: {
-    title: 'Juego responsable',
+    titleKey: 'responsible.title',
     shell: 'ppmx',
     tabbar: false,
     requiresAuth: false,

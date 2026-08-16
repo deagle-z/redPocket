@@ -1,6 +1,7 @@
 package api
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"crypto/subtle"
 	"encoding/hex"
@@ -103,33 +104,68 @@ type ggrTransactionFingerprint struct {
 }
 
 type ggrTransactionOutcome struct {
-	Status     int
-	Message    string
-	Balance    float64
-	AppliedBet bool
-	BetFlow    float64
-	UserID     int64
-	TenantID   int64
-	Idempotent bool
+	Status       int
+	Message      string
+	Decision     string
+	Balance      float64
+	StartBalance float64
+	EndBalance   float64
+	AppliedBet   bool
+	BetFlow      float64
+	UserID       int64
+	TenantID     int64
+	Idempotent   bool
 }
 
 // GGRGoldAPI handles both GGR balance queries and seamless transactions.
 // GGR requires its response object directly rather than the application's
 // standard response envelope.
 func GGRGoldAPI(ctx *gin.Context) {
-	req, err := decodeGGRWalletRequest(ctx)
+	startedAt := time.Now()
+	logContext := ggrWalletLogContext(ctx)
+	req, rawParams, err := decodeGGRWalletRequest(ctx)
 	if err != nil {
+		log.Printf(
+			"[ggr_wallet] callback rejected %s stage=decode content_type=%q content_length=%d raw_params=%s cost=%s err=%v",
+			logContext,
+			ctx.GetHeader("Content-Type"),
+			ctx.Request.ContentLength,
+			rawParams,
+			time.Since(startedAt).Round(time.Millisecond),
+			err,
+		)
 		ggrWalletFailure(ctx, false, ggrMessageInternalError)
 		return
 	}
+	log.Printf("[ggr_wallet] callback raw %s params=%s", logContext, rawParams)
+	log.Printf(
+		"[ggr_wallet] callback received %s %s content_type=%q content_length=%d",
+		logContext,
+		ggrWalletRequestSummary(req),
+		ctx.GetHeader("Content-Type"),
+		ctx.Request.ContentLength,
+	)
 	cfg := game.GetGGRConfig()
 	if cfg.AgentCode == "" || cfg.AgentSecret == "" {
-		log.Printf("[ggr] callback configuration is incomplete method=%s", strings.TrimSpace(req.Method))
+		log.Printf(
+			"[ggr_wallet] callback rejected %s method=%q stage=configuration agent_code_configured=%t agent_secret_configured=%t cost=%s",
+			logContext,
+			strings.TrimSpace(req.Method),
+			cfg.AgentCode != "",
+			cfg.AgentSecret != "",
+			time.Since(startedAt).Round(time.Millisecond),
+		)
 		ggrWalletFailure(ctx, strings.TrimSpace(req.Method) == ggrMethodUserBalance, ggrMessageInternalError)
 		return
 	}
 	if !secureStringEqual(strings.TrimSpace(req.AgentCode), cfg.AgentCode) || !secureStringEqual(req.AgentSecret, cfg.AgentSecret) {
-		log.Printf("[ggr] callback authentication failed method=%s agent_code=%s", strings.TrimSpace(req.Method), strings.TrimSpace(req.AgentCode))
+		log.Printf(
+			"[ggr_wallet] callback rejected %s method=%q stage=authentication agent_code=%q cost=%s",
+			logContext,
+			strings.TrimSpace(req.Method),
+			strings.TrimSpace(req.AgentCode),
+			time.Since(startedAt).Round(time.Millisecond),
+		)
 		ggrWalletFailure(ctx, strings.TrimSpace(req.Method) == ggrMethodUserBalance, ggrMessageInternalError)
 		return
 	}
@@ -137,46 +173,96 @@ func GGRGoldAPI(ctx *gin.Context) {
 	db := ctx.MustGet("db").(*gorm.DB)
 	switch strings.TrimSpace(req.Method) {
 	case ggrMethodUserBalance:
-		handleGGRUserBalance(ctx, db, req)
+		handleGGRUserBalance(ctx, db, req, logContext, startedAt)
 	case ggrMethodTransaction:
-		handleGGRTransaction(ctx, db, cfg, req)
+		handleGGRTransaction(ctx, db, cfg, req, logContext, startedAt)
 	default:
+		log.Printf(
+			"[ggr_wallet] callback rejected %s method=%q stage=dispatch cost=%s err=unsupported_method",
+			logContext,
+			strings.TrimSpace(req.Method),
+			time.Since(startedAt).Round(time.Millisecond),
+		)
 		ggrWalletFailure(ctx, false, ggrMessageInternalError)
 	}
 }
 
-func decodeGGRWalletRequest(ctx *gin.Context) (ggrWalletRequest, error) {
+func decodeGGRWalletRequest(ctx *gin.Context) (ggrWalletRequest, string, error) {
 	var req ggrWalletRequest
-	decoder := json.NewDecoder(ctx.Request.Body)
+	body, err := io.ReadAll(ctx.Request.Body)
+	if err != nil {
+		return req, ggrUnreadableRequestBodyForLog(nil), err
+	}
+	rawParams, rawParamsErr := redactGGRWalletRequestBody(body)
+	if rawParamsErr != nil {
+		rawParams = ggrUnreadableRequestBodyForLog(body)
+	}
+	decoder := json.NewDecoder(bytes.NewReader(body))
 	decoder.UseNumber()
 	if err := decoder.Decode(&req); err != nil {
-		return req, err
+		return req, rawParams, err
 	}
 	var trailing any
 	if err := decoder.Decode(&trailing); !errors.Is(err, io.EOF) {
 		if err == nil {
-			return req, errors.New("ggr request contains multiple json values")
+			return req, rawParams, errors.New("ggr request contains multiple json values")
 		}
-		return req, err
+		return req, rawParams, err
 	}
-	return req, nil
+	return req, rawParams, nil
 }
 
-func handleGGRUserBalance(ctx *gin.Context, db *gorm.DB, req ggrWalletRequest) {
+func handleGGRUserBalance(ctx *gin.Context, db *gorm.DB, req ggrWalletRequest, logContext string, startedAt time.Time) {
 	userCode, err := validateGGRBalanceUserCode(req)
 	if err != nil {
+		log.Printf(
+			"[ggr_wallet] balance rejected %s stage=validation user_code=%q cost=%s err=%v",
+			logContext,
+			strings.TrimSpace(req.UserCode),
+			time.Since(startedAt).Round(time.Millisecond),
+			err,
+		)
 		ggrWalletFailure(ctx, true, ggrMessageInternalError)
 		return
 	}
 
 	var user pojo.TgUser
-	if err = db.Select("id, uid, balance, status").
+	err = db.Select("id, uid, balance, status").
 		Where("uid = ? AND status <> ?", userCode, int8(-1)).
-		First(&user).Error; err != nil || user.Status != 1 {
+		First(&user).Error
+	if err != nil {
+		log.Printf(
+			"[ggr_wallet] balance rejected %s stage=load_user user_code=%q cost=%s err=%v",
+			logContext,
+			userCode,
+			time.Since(startedAt).Round(time.Millisecond),
+			err,
+		)
+		ggrWalletFailure(ctx, true, ggrMessageInternalError)
+		return
+	}
+	if user.Status != 1 {
+		log.Printf(
+			"[ggr_wallet] balance rejected %s stage=user_status user_code=%q user_id=%d user_status=%d cost=%s",
+			logContext,
+			userCode,
+			user.ID,
+			user.Status,
+			time.Since(startedAt).Round(time.Millisecond),
+		)
 		ggrWalletFailure(ctx, true, ggrMessageInternalError)
 		return
 	}
 	balance := utils.Truncate2(user.Balance)
+	log.Printf(
+		"[ggr_wallet] balance success %s user_code=%q user_id=%d user_status=%d balance=%.2f cost=%s",
+		logContext,
+		userCode,
+		user.ID,
+		user.Status,
+		balance,
+		time.Since(startedAt).Round(time.Millisecond),
+	)
 	ctx.JSON(http.StatusOK, ggrWalletResponse{Status: 1, UserBalance: &balance})
 }
 
@@ -188,28 +274,113 @@ func validateGGRBalanceUserCode(req ggrWalletRequest) (string, error) {
 	return userCode, nil
 }
 
-func handleGGRTransaction(ctx *gin.Context, db *gorm.DB, cfg game.GGRConfig, req ggrWalletRequest) {
+func handleGGRTransaction(ctx *gin.Context, db *gorm.DB, cfg game.GGRConfig, req ggrWalletRequest, logContext string, startedAt time.Time) {
 	validated, err := validateGGRTransaction(req, cfg)
 	if err != nil {
-		log.Printf("[ggr] transaction validation failed txn_id=%s err=%v", ggrRequestTxnID(req), err)
+		log.Printf(
+			"[ggr_wallet] transaction rejected %s stage=validation %s cost=%s err=%v",
+			logContext,
+			ggrWalletRequestSummary(req),
+			time.Since(startedAt).Round(time.Millisecond),
+			err,
+		)
 		ggrWalletFailure(ctx, false, ggrMessageInternalError)
 		return
 	}
+	log.Printf(
+		"[ggr_wallet] transaction validated %s user_code=%q game_type=%q provider=%q game=%q txn_id=%q txn_type=%q bet_money=%.2f win_money=%.2f has_payout=%t balance_delta=%.2f round_id=%q fingerprint=%s info_bytes=%d",
+		logContext,
+		validated.UserCode,
+		validated.GameType,
+		validated.ProviderCode,
+		validated.GameCode,
+		validated.TxnID,
+		validated.TxnType,
+		validated.BetMoney,
+		validated.WinMoney,
+		validated.WinMoney > 0,
+		ggrBalanceDelta(validated.BetMoney, validated.WinMoney),
+		validated.RoundID,
+		ggrFingerprintForLog(validated.Fingerprint),
+		len(validated.Info),
+	)
 
 	appGame, err := getGGRAppGame(db, validated.ProviderCode, validated.GameCode)
 	if err != nil {
-		log.Printf("[ggr] transaction game not found provider=%s game=%s txn_id=%s err=%v", validated.ProviderCode, validated.GameCode, validated.TxnID, err)
+		log.Printf(
+			"[ggr_wallet] transaction rejected %s stage=load_game user_code=%q provider=%q game=%q txn_id=%q txn_type=%q bet_money=%.2f win_money=%.2f has_payout=%t balance_delta=%.2f cost=%s err=%v",
+			logContext,
+			validated.UserCode,
+			validated.ProviderCode,
+			validated.GameCode,
+			validated.TxnID,
+			validated.TxnType,
+			validated.BetMoney,
+			validated.WinMoney,
+			validated.WinMoney > 0,
+			ggrBalanceDelta(validated.BetMoney, validated.WinMoney),
+			time.Since(startedAt).Round(time.Millisecond),
+			err,
+		)
 		ggrWalletFailure(ctx, false, ggrMessageInternalError)
 		return
 	}
+	log.Printf(
+		"[ggr_wallet] transaction game resolved %s txn_id=%q local_game_id=%d local_name=%q local_category=%q local_disabled=%s local_deleted=%s",
+		logContext,
+		validated.TxnID,
+		appGame.GameID,
+		appGameStringValue(appGame.GameName),
+		appGameStringValue(appGame.CategoryCode),
+		ggrOptionalIntForLog(appGame.DisabledFlag),
+		ggrOptionalIntForLog(appGame.DeletedFlag),
+	)
 
 	outcome, err := applyGGRTransaction(db, validated, appGame)
 	if err != nil {
-		log.Printf("[ggr] transaction failed txn_id=%s err=%v", validated.TxnID, err)
+		log.Printf(
+			"[ggr_wallet] transaction rolled back %s user_code=%q user_id=%d provider=%q game=%q txn_id=%q txn_type=%q start_balance=%.2f bet_money=%.2f win_money=%.2f has_payout=%t balance_delta=%.2f expected_end_balance=%.2f cost=%s err=%v",
+			logContext,
+			validated.UserCode,
+			outcome.UserID,
+			validated.ProviderCode,
+			validated.GameCode,
+			validated.TxnID,
+			validated.TxnType,
+			outcome.StartBalance,
+			validated.BetMoney,
+			validated.WinMoney,
+			validated.WinMoney > 0,
+			ggrBalanceDelta(validated.BetMoney, validated.WinMoney),
+			outcome.EndBalance,
+			time.Since(startedAt).Round(time.Millisecond),
+			err,
+		)
 		ggrWalletFailure(ctx, false, ggrMessageInternalError)
 		return
 	}
 	if outcome.Status != pojo.GGRTransactionResultSuccess {
+		log.Printf(
+			"[ggr_wallet] transaction rejected %s decision=%s user_code=%q user_id=%d provider=%q game=%q txn_id=%q txn_type=%q start_balance=%.2f bet_money=%.2f win_money=%.2f has_payout=%t balance_delta=%.2f end_balance=%.2f idempotent=%t status=%d msg=%q cost=%s",
+			logContext,
+			outcome.Decision,
+			validated.UserCode,
+			outcome.UserID,
+			validated.ProviderCode,
+			validated.GameCode,
+			validated.TxnID,
+			validated.TxnType,
+			outcome.StartBalance,
+			validated.BetMoney,
+			validated.WinMoney,
+			validated.WinMoney > 0,
+			ggrBalanceDelta(validated.BetMoney, validated.WinMoney),
+			outcome.EndBalance,
+			outcome.Idempotent,
+			outcome.Status,
+			outcome.Message,
+			time.Since(startedAt).Round(time.Millisecond),
+		)
 		ggrWalletFailure(ctx, false, outcome.Message)
 		return
 	}
@@ -217,6 +388,27 @@ func handleGGRTransaction(ctx *gin.Context, db *gorm.DB, cfg game.GGRConfig, req
 		postProcessGGRBet(db, outcome)
 	}
 	balance := utils.Truncate2(outcome.Balance)
+	log.Printf(
+		"[ggr_wallet] transaction success %s decision=%s user_code=%q user_id=%d provider=%q game=%q txn_id=%q txn_type=%q start_balance=%.2f bet_money=%.2f win_money=%.2f has_payout=%t balance_delta=%.2f end_balance=%.2f response_balance=%.2f idempotent=%t bet_flow=%.2f cost=%s",
+		logContext,
+		outcome.Decision,
+		validated.UserCode,
+		outcome.UserID,
+		validated.ProviderCode,
+		validated.GameCode,
+		validated.TxnID,
+		validated.TxnType,
+		outcome.StartBalance,
+		validated.BetMoney,
+		validated.WinMoney,
+		validated.WinMoney > 0,
+		ggrBalanceDelta(validated.BetMoney, validated.WinMoney),
+		outcome.EndBalance,
+		balance,
+		outcome.Idempotent,
+		outcome.BetFlow,
+		time.Since(startedAt).Round(time.Millisecond),
+	)
 	ctx.JSON(http.StatusOK, ggrWalletResponse{Status: 1, UserBalance: &balance})
 }
 
@@ -481,57 +673,71 @@ func applyGGRTransaction(db *gorm.DB, req validatedGGRTransaction, appGame pojo.
 		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
 			Where("uid = ? AND status <> ?", req.UserCode, int8(-1)).
 			First(&user).Error; err != nil {
-			return err
+			return fmt.Errorf("stage=lock_user user_code=%q: %w", req.UserCode, err)
 		}
 		outcome.UserID = user.ID
 		outcome.TenantID = user.TenantId
+		outcome.StartBalance = utils.Truncate2(user.Balance)
+		outcome.EndBalance = outcome.StartBalance
 
 		var existing pojo.GGRTransaction
 		err := tx.Where("txn_id = ?", req.TxnID).First(&existing).Error
 		if err == nil {
 			outcome.Idempotent = true
 			if existing.RequestFingerprint != req.Fingerprint || existing.UserID != user.ID {
+				outcome.Decision = "idempotency_conflict"
 				outcome.Status = pojo.GGRTransactionResultFailed
 				outcome.Message = ggrMessageInternalError
 				return nil
 			}
+			outcome.Decision = "idempotent_replay"
 			outcome.Status = existing.ResultStatus
 			outcome.Message = existing.ResultMessage
 			outcome.Balance = utils.Truncate2(user.Balance)
+			outcome.StartBalance = existing.StartBalance
+			outcome.EndBalance = outcome.Balance
 			return nil
 		}
 		if !errors.Is(err, gorm.ErrRecordNotFound) {
-			return err
+			return fmt.Errorf("stage=load_idempotency txn_id=%q: %w", req.TxnID, err)
 		}
 		if user.Status != 1 {
-			return errors.New("ggr player is disabled")
+			return fmt.Errorf("stage=validate_user_status user_id=%d user_status=%d: ggr player is disabled", user.ID, user.Status)
 		}
 
 		startBalance := utils.Truncate2(user.Balance)
 		endBalance := calculateGGREndBalance(startBalance, req.BetMoney, req.WinMoney)
+		outcome.StartBalance = startBalance
+		outcome.EndBalance = endBalance
 		if endBalance < 0 {
 			failed := buildGGRTransactionRecord(req, user, startBalance, startBalance, pojo.GGRTransactionResultFailed, ggrMessageInsufficientFund)
 			if err := tx.Create(&failed).Error; err != nil {
-				return err
+				return fmt.Errorf("stage=create_insufficient_transaction txn_id=%q: %w", req.TxnID, err)
 			}
+			outcome.Decision = "insufficient_funds"
 			outcome.Status = pojo.GGRTransactionResultFailed
 			outcome.Message = ggrMessageInsufficientFund
 			outcome.Balance = startBalance
+			outcome.EndBalance = startBalance
 			return nil
 		}
 
-		if err := tx.Model(&pojo.TgUser{}).Where("id = ?", user.ID).Update("balance", endBalance).Error; err != nil {
-			return err
+		balanceUpdate := tx.Model(&pojo.TgUser{}).Where("id = ?", user.ID).Update("balance", endBalance)
+		if balanceUpdate.Error != nil {
+			return fmt.Errorf("stage=update_balance user_id=%d start_balance=%.2f end_balance=%.2f: %w", user.ID, startBalance, endBalance, balanceUpdate.Error)
+		}
+		if balanceUpdate.RowsAffected != 1 {
+			return fmt.Errorf("stage=update_balance user_id=%d rows_affected=%d", user.ID, balanceUpdate.RowsAffected)
 		}
 		record := buildGGRTransactionRecord(req, user, startBalance, endBalance, pojo.GGRTransactionResultSuccess, "")
 		if err := tx.Create(&record).Error; err != nil {
-			return err
+			return fmt.Errorf("stage=create_transaction txn_id=%q: %w", req.TxnID, err)
 		}
 		if err := createGGRCashHistory(tx, user.ID, req, startBalance, endBalance); err != nil {
-			return err
+			return fmt.Errorf("stage=create_cash_history txn_id=%q: %w", req.TxnID, err)
 		}
 		if err := createGGRBetRecord(tx, user, req, appGame); err != nil {
-			return err
+			return fmt.Errorf("stage=create_bet_record txn_id=%q user_id=%d: %w", req.TxnID, user.ID, err)
 		}
 
 		gameInfo := gameCashTransferGameInfo{
@@ -554,11 +760,12 @@ func applyGGRTransaction(db *gorm.DB, req validatedGGRTransaction, appGame pojo.
 				betFlow,
 				req.ReceivedAt,
 			); err != nil {
-				return err
+				return fmt.Errorf("stage=create_withdraw_flow txn_id=%q user_id=%d: %w", req.TxnID, user.ID, err)
 			}
 			outcome.AppliedBet = true
 			outcome.BetFlow = betFlow
 		}
+		outcome.Decision = "applied"
 		outcome.Status = pojo.GGRTransactionResultSuccess
 		outcome.Message = ""
 		outcome.Balance = endBalance
@@ -569,6 +776,10 @@ func applyGGRTransaction(db *gorm.DB, req validatedGGRTransaction, appGame pojo.
 
 func calculateGGREndBalance(startBalance float64, betMoney float64, winMoney float64) float64 {
 	return utils.Truncate2(utils.Truncate2(startBalance) - utils.Truncate2(betMoney) + utils.Truncate2(winMoney))
+}
+
+func ggrBalanceDelta(betMoney float64, winMoney float64) float64 {
+	return utils.Truncate2(utils.Truncate2(winMoney) - utils.Truncate2(betMoney))
 }
 
 func buildGGRTransactionRecord(req validatedGGRTransaction, user pojo.TgUser, startBalance float64, endBalance float64, status int, message string) pojo.GGRTransaction {
@@ -695,11 +906,123 @@ func ggrTransactionStorageKey(txnID string) string {
 	return hex.EncodeToString(digest[:])
 }
 
-func ggrRequestTxnID(req ggrWalletRequest) string {
-	for _, item := range []*ggrTransactionGame{req.Slot, req.Live, req.Sportsbook, req.Mini} {
-		if item != nil {
-			return strings.TrimSpace(item.TxnID)
+func ggrWalletLogContext(ctx *gin.Context) string {
+	host := utils.GetRequestHost(ctx)
+	prefix := ""
+	if value, exists := ctx.Get("hostInfo"); exists {
+		if hostInfo, ok := value.(pojo.HostInfo); ok {
+			prefix = strings.TrimSpace(hostInfo.TablePrefix)
 		}
 	}
-	return ""
+	return fmt.Sprintf("host=%q prefix=%q client_ip=%q", host, prefix, utils.GetIPAddress(ctx))
+}
+
+func ggrWalletRequestSummary(req ggrWalletRequest) string {
+	objectKey, transactionGame := ggrRequestGameForLog(req)
+	providerCode := ""
+	gameCode := ""
+	betType := ""
+	txnID := ""
+	txnType := ""
+	betMoney := "<missing>"
+	winMoney := "<missing>"
+	roundID := ""
+	if transactionGame != nil {
+		providerCode = strings.TrimSpace(transactionGame.ProviderCode)
+		gameCode = strings.TrimSpace(transactionGame.GameCode)
+		betType = strings.TrimSpace(transactionGame.BetType)
+		txnID = strings.TrimSpace(transactionGame.TxnID)
+		txnType = strings.TrimSpace(transactionGame.TxnType)
+		betMoney = ggrJSONNumberForLog(transactionGame.BetMoney)
+		winMoney = ggrJSONNumberForLog(transactionGame.WinMoney)
+		roundID = strings.TrimSpace(string(transactionGame.RoundID))
+	}
+	return fmt.Sprintf(
+		"method=%q agent_code=%q user_code=%q game_type=%q game_object=%q provider=%q game=%q bet_type=%q txn_id=%q txn_type=%q bet_money=%s win_money=%s round_id=%q agent_balance=%s request_user_balance=%s info_bytes=%d",
+		strings.TrimSpace(req.Method),
+		strings.TrimSpace(req.AgentCode),
+		strings.TrimSpace(req.UserCode),
+		strings.TrimSpace(req.GameType),
+		objectKey,
+		providerCode,
+		gameCode,
+		betType,
+		txnID,
+		txnType,
+		betMoney,
+		winMoney,
+		roundID,
+		ggrJSONNumberForLog(req.AgentBalance),
+		ggrJSONNumberForLog(req.UserBalance),
+		len(req.Info),
+	)
+}
+
+func ggrRequestGameForLog(req ggrWalletRequest) (string, *ggrTransactionGame) {
+	objects := []struct {
+		key  string
+		game *ggrTransactionGame
+	}{
+		{key: "slot", game: req.Slot},
+		{key: "live", game: req.Live},
+		{key: "SB", game: req.Sportsbook},
+		{key: "MN", game: req.Mini},
+	}
+	for _, object := range objects {
+		if object.game != nil {
+			return object.key, object.game
+		}
+	}
+	return "", nil
+}
+
+func ggrJSONNumberForLog(number *json.Number) string {
+	if number == nil {
+		return "<missing>"
+	}
+	return string(*number)
+}
+
+func ggrFingerprintForLog(fingerprint string) string {
+	const visibleLength = 12
+	if len(fingerprint) <= visibleLength {
+		return fingerprint
+	}
+	return fingerprint[:visibleLength]
+}
+
+func ggrOptionalIntForLog(value *int) string {
+	if value == nil {
+		return "<nil>"
+	}
+	return strconv.Itoa(*value)
+}
+
+func redactGGRWalletRequestBody(body []byte) (string, error) {
+	var object map[string]json.RawMessage
+	decoder := json.NewDecoder(bytes.NewReader(body))
+	decoder.UseNumber()
+	if err := decoder.Decode(&object); err != nil {
+		return "", err
+	}
+	var trailing any
+	if err := decoder.Decode(&trailing); !errors.Is(err, io.EOF) {
+		if err == nil {
+			return "", errors.New("ggr request contains multiple json values")
+		}
+		return "", err
+	}
+	if _, exists := object["agent_secret"]; exists {
+		object["agent_secret"] = json.RawMessage(`"<redacted>"`)
+	}
+	redacted, err := json.Marshal(object)
+	if err != nil {
+		return "", err
+	}
+	return string(redacted), nil
+}
+
+func ggrUnreadableRequestBodyForLog(body []byte) string {
+	digest := sha256.Sum256(body)
+	return fmt.Sprintf("<unavailable bytes=%d sha256=%s>", len(body), hex.EncodeToString(digest[:]))
 }

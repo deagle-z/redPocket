@@ -101,6 +101,27 @@ export default {
   home: {
     title: 'PP.MX',
   },
+  play: {
+    title: '游戏',
+  },
+  records: {
+    title: '流水记录',
+  },
+  cryptoPay: {
+    title: 'USDT 支付',
+  },
+  responsible: {
+    title: '责任博彩',
+  },
+  gscSportTest: {
+    title: 'GSC 体育测试',
+  },
+  security: {
+    title: '安全中心',
+    password: '修改密码',
+    email: '绑定邮箱',
+    phone: '修改手机号',
+  },
   profile: {
     title: '我的账户',
   },
@@ -281,6 +302,9 @@ export default {
     },
     guide: {
       title: '活动指南',
+    },
+    download: {
+      title: '下载 PP.MX App',
     },
     wheel: {
       eyebrow: '每日奖励',

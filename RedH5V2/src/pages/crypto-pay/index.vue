@@ -18,7 +18,7 @@ defineOptions({ name: 'CryptoPayPage' })
 definePage({
   name: 'crypto-pay',
   meta: {
-    title: 'USDT Pay',
+    titleKey: 'cryptoPay.title',
     shell: 'none',
     tabbar: false,
     requiresAuth: true,

@@ -101,6 +101,27 @@ export default {
   home: {
     title: 'PP.MX',
   },
+  play: {
+    title: 'Game',
+  },
+  records: {
+    title: 'History',
+  },
+  cryptoPay: {
+    title: 'USDT Payment',
+  },
+  responsible: {
+    title: 'Responsible Gaming',
+  },
+  gscSportTest: {
+    title: 'GSC Sports Test',
+  },
+  security: {
+    title: 'Security Center',
+    password: 'Change Password',
+    email: 'Link Email',
+    phone: 'Change Mobile Number',
+  },
   profile: {
     title: 'My account',
   },
@@ -281,6 +302,9 @@ export default {
     },
     guide: {
       title: 'Activity guide',
+    },
+    download: {
+      title: 'Download the PP.MX App',
     },
     wheel: {
       eyebrow: 'Daily prize',

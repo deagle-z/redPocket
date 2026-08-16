@@ -44,6 +44,8 @@ func SweepTimedOutProcessingWithdrawPayoutOrdersAllHosts() {
 		totalProcessed += processed
 		totalFailed += failed
 	}
-	log.Printf("[withdraw_payout_query] sweep finished prefixes=%d matched=%d processed=%d failed=%d cost=%.2fs",
-		len(seenPrefixes), totalMatched, totalProcessed, totalFailed, time.Since(startAt).Seconds())
+	if totalMatched > 0 || totalFailed > 0 {
+		log.Printf("[withdraw_payout_query] sweep finished prefixes=%d matched=%d processed=%d failed=%d cost=%.2fs",
+			len(seenPrefixes), totalMatched, totalProcessed, totalFailed, time.Since(startAt).Seconds())
+	}
 }

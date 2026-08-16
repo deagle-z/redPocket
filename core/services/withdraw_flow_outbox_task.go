@@ -42,12 +42,8 @@ func sweepWithdrawFlowOutboxDefaultTableOnce() {
 	}
 	defer utils.ReleaseLock(lockKey)
 
-	processed, err := repository.ProcessWithdrawFlowOutboxBatch(utils.NewPrefixDb(prefix), withdrawFlowOutboxBatchSize)
+	_, err = repository.ProcessWithdrawFlowOutboxBatch(utils.NewPrefixDb(prefix), withdrawFlowOutboxBatchSize)
 	if err != nil {
 		log.Printf("[withdraw-flow-outbox] process default table failed prefix=%s err=%v", prefix, err)
-		return
-	}
-	if processed > 0 {
-		log.Printf("[withdraw-flow-outbox] processed default table prefix=%s count=%d", prefix, processed)
 	}
 }

@@ -6,7 +6,6 @@ import (
 	"errors"
 	"github.com/jinzhu/copier"
 	"gorm.io/gorm"
-	"log"
 	"strings"
 )
 
@@ -216,17 +215,15 @@ func GetCountryWithdrawFields(db *gorm.DB, countryCode string) (interface{}, err
 	if country.ID == 0 {
 		return nil, errors.New("country_not_available")
 	}
-	log.Printf("WithdrawFields:%v\n", *country.WithdrawFields)
 	return parseFieldsJSON(country.WithdrawFields), nil
 }
 
 // GetCountryRechargeFields App端获取国家充值字段配置
 func GetCountryRechargeFields(db *gorm.DB, countryCode string) (interface{}, error) {
 	var country pojo.SysCountry
-	db.Debug().Where("country_code = ? AND status = 1", countryCode).First(&country)
+	db.Where("country_code = ? AND status = 1", countryCode).First(&country)
 	if country.ID == 0 {
 		return nil, errors.New("country_not_available")
 	}
-	log.Printf("RechargeFields: %v", country)
 	return parseFieldsJSON(country.RechargeFields), nil
 }

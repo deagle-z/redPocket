@@ -188,8 +188,10 @@ func SweepExpiredLuckyPacketsAllHosts() {
 		totalProcessed += processed
 		totalFailed += failed
 	}
-	log.Printf("[lucky] sweep finished: prefixes=%d matched=%d processed=%d failed=%d cost=%.2fs",
-		len(seenPrefixes), totalMatched, totalProcessed, totalFailed, time.Since(startAt).Seconds())
+	if totalMatched > 0 || totalFailed > 0 {
+		log.Printf("[lucky] sweep finished: prefixes=%d matched=%d processed=%d failed=%d cost=%.2fs",
+			len(seenPrefixes), totalMatched, totalProcessed, totalFailed, time.Since(startAt).Seconds())
+	}
 }
 
 func sweepExpiredLuckyPacketsByPrefix(tablePrefix string) (matched int, processed int, failed int) {
