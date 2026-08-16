@@ -37,8 +37,8 @@
 | 玩家代码 | `user_code = tg_user.uid` |
 | 金额精度 | 所有金额进入业务计算前使用 `utils.Truncate2` 截取两位小数 |
 | 联合交易 | 原子计算 `E = S - bet_money + win_money`，只在最终余额小于 `0` 时返回余额不足 |
-| 重复交易 | `txn_id` 在租户 `ggr_transaction` 表保留 24 小时；保留期内相同请求幂等，不同内容返回 `INTERNAL_ERROR` |
-| 失败幂等 | 首次余额不足也写入交易表，24 小时保留期内相同 `txn_id` 固定返回余额不足 |
+| 重复交易 | `(txn_id, txn_type)` 在租户 `ggr_transaction` 表保留 24 小时；保留期内相同请求幂等，不同内容返回 `INTERNAL_ERROR` |
+| 失败幂等 | 首次余额不足也写入交易表，24 小时保留期内相同 `(txn_id, txn_type)` 固定返回余额不足 |
 
 GGR 原始回调中的 `user_token` 不作为本项目的玩家标识或鉴权凭据；回调鉴权只使用 `agent_code` 和 `agent_secret`。
 
@@ -848,14 +848,14 @@ Content-Type: application/json
 | `bet_money` | `number` | 是 | 下注金额 |
 | `win_money` | `number` | 是 | 派奖金额 |
 | `round_id` | `integer` | 否 | 单次 Spin/局的唯一 ID；同一局的多笔交易共享该值 |
-| `txn_id` | `string` | 是 | 单笔交易唯一 ID |
+| `txn_id` | `string` | 是 | GGR 交易 ID；正式环境已观察到同一局的 `debit` 与 `credit` 共用该值 |
 | `txn_type` | `string` | 是 | `debit`、`credit` 或 `debit_credit` |
 
 ### `round_id` 与 `txn_id`
 
 - `round_id`：一局或一次 Spin 的标识，类型为整数；同一局可以产生多笔交易。
-- `txn_id`：每一笔独立扣款或加款的唯一标识，类型为字符串。
-- 同一 `round_id` 下的不同交易必须具有不同的 `txn_id`。
+- `txn_id`：GGR 交易标识，类型为字符串。官方文档按单笔唯一描述，但正式环境已观察到同一局的 `debit` 与 `credit` 共用该值。
+- 本项目使用 `(txn_id, txn_type)` 作为幂等唯一键，使同一 `txn_id` 的下注和派奖各处理一次；相同组合的重试不会重复入账。
 
 ### Slot 交易示例
 
@@ -1000,7 +1000,7 @@ oddPoint
 
 ### 单局多交易示例
 
-同一个 `round_id` 可以包含多笔不同 `txn_id` 的交易：
+同一个 `round_id` 可以包含多笔交易。以下沿用官方的不同 `txn_id` 示例；正式环境若对 `debit` 和 `credit` 复用 `txn_id`，本项目仍按不同 `txn_type` 分别处理：
 
 ```json
 {
@@ -1091,12 +1091,12 @@ App 继续调用现有 `POST /api/v1/app/appGame/launch`。当游戏 `platform_c
 - `transaction` 仅使用 `user_code` 按 `tg_user.uid` 查询玩家，不要求 `user_token`；随后在用户行锁保护的数据库事务内更新余额，并写入 `ggr_transaction`、`cash_history`、`app_user_bet_record` 和提现流水事件。
 - 顶层 `agent_balance`、`user_balance` 只保存为审计快照，不参与本地余额计算。
 - 所有 GGR 业务响应均使用 HTTP 200，并直接返回 GGR JSON，不套用项目通用响应结构。
-- `runScheduler = true` 时，调度器每小时整点按 `received_at < 当前时间 - 24 小时` 清理所有启用租户的 `ggr_transaction`；记录删除后对应 `txn_id` 不再具备本地幂等保护。
+- `runScheduler = true` 时，调度器每小时整点按 `received_at < 当前时间 - 24 小时` 清理所有启用租户的 `ggr_transaction`；记录删除后对应 `(txn_id, txn_type)` 不再具备本地幂等保护。
 
 ### 部署步骤
 
 1. 在 `core.yaml` 填写 GGR Profile 提供的 `apiUrl`、`agentCode`、`agentToken`、`agentSecret`。
-2. 至少启动一次未设置 `BGU_SKIP_AUTO_MIGRATE=1` 的服务，为每个租户创建 `ggr_transaction`；跳过自动迁移的环境需人工创建同结构表。
+2. 至少启动一次未设置 `BGU_SKIP_AUTO_MIGRATE=1` 的服务，为每个租户创建或升级 `ggr_transaction` 的 `(txn_id, txn_type)` 联合唯一索引。跳过自动迁移的环境需在每个租户数据库执行：`ALTER TABLE ggr_transaction DROP INDEX uk_ggr_transaction_txn_id, ADD UNIQUE INDEX uk_ggr_transaction_event (txn_id, txn_type);`。
 3. 在 GGR Profile 配置租户 Site Endpoint。
 4. 调用 GGR 游戏同步接口，确认游戏分类、图片和状态。
 5. 联调零余额查询、`debit`、`credit`、`debit_credit`、余额不足、成功重复和冲突重复场景。

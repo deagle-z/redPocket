@@ -681,7 +681,7 @@ func applyGGRTransaction(db *gorm.DB, req validatedGGRTransaction, appGame pojo.
 		outcome.EndBalance = outcome.StartBalance
 
 		var existing pojo.GGRTransaction
-		err := tx.Where("txn_id = ?", req.TxnID).First(&existing).Error
+		err := tx.Where("txn_id = ? AND txn_type = ?", req.TxnID, req.TxnType).First(&existing).Error
 		if err == nil {
 			outcome.Idempotent = true
 			if existing.RequestFingerprint != req.Fingerprint || existing.UserID != user.ID {
@@ -699,7 +699,7 @@ func applyGGRTransaction(db *gorm.DB, req validatedGGRTransaction, appGame pojo.
 			return nil
 		}
 		if !errors.Is(err, gorm.ErrRecordNotFound) {
-			return fmt.Errorf("stage=load_idempotency txn_id=%q: %w", req.TxnID, err)
+			return fmt.Errorf("stage=load_idempotency txn_id=%q txn_type=%q: %w", req.TxnID, req.TxnType, err)
 		}
 		if user.Status != 1 {
 			return fmt.Errorf("stage=validate_user_status user_id=%d user_status=%d: ggr player is disabled", user.ID, user.Status)
@@ -748,7 +748,7 @@ func applyGGRTransaction(db *gorm.DB, req validatedGGRTransaction, appGame pojo.
 		}
 		betFlow := gameWithdrawFlowAmount(req.BetMoney, gameInfo)
 		if betFlow > 0 {
-			key := ggrTransactionStorageKey(req.TxnID)
+			key := ggrTransactionStorageKey(req.TxnID, req.TxnType)
 			if err := repository.RecordWithdrawFlowEvent(
 				tx,
 				user.ID,
@@ -824,12 +824,12 @@ func createGGRCashHistory(tx *gorm.DB, userID int64, req validatedGGRTransaction
 	}
 	return tx.Create(&pojo.CashHistory{
 		UserId:      userID,
-		AwardUni:    "ggr_txn:" + ggrTransactionStorageKey(req.TxnID),
+		AwardUni:    "ggr_txn:" + ggrTransactionStorageKey(req.TxnID, req.TxnType),
 		Amount:      netAmount,
 		StartAmount: startBalance,
 		EndAmount:   endBalance,
 		CashMark:    cashMark,
-		CashDesc:    fmt.Sprintf("GGR %s provider=%s txn=%s", req.TxnType, req.ProviderCode, ggrTransactionStorageKey(req.TxnID)),
+		CashDesc:    fmt.Sprintf("GGR %s provider=%s txn=%s", req.TxnType, req.ProviderCode, ggrTransactionStorageKey(req.TxnID, req.TxnType)),
 		Type:        cashType,
 	}).Error
 }
@@ -901,8 +901,8 @@ func secureStringEqual(value string, expected string) bool {
 	return subtle.ConstantTimeCompare([]byte(value), []byte(expected)) == 1
 }
 
-func ggrTransactionStorageKey(txnID string) string {
-	digest := sha256.Sum256([]byte(strings.TrimSpace(txnID)))
+func ggrTransactionStorageKey(txnID string, txnType string) string {
+	digest := sha256.Sum256([]byte(strings.TrimSpace(txnID) + "\x00" + strings.TrimSpace(txnType)))
 	return hex.EncodeToString(digest[:])
 }
 

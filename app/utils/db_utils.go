@@ -379,7 +379,21 @@ func ensureTgTaskActivityRecordSchema(db *gorm.DB) error {
 }
 
 func ensureGGRTransactionSchema(db *gorm.DB) error {
-	return db.AutoMigrate(&pojo.GGRTransaction{})
+	if err := db.AutoMigrate(&pojo.GGRTransaction{}); err != nil {
+		return err
+	}
+	migrator := db.Migrator()
+	if !migrator.HasIndex(&pojo.GGRTransaction{}, "uk_ggr_transaction_event") {
+		if err := migrator.CreateIndex(&pojo.GGRTransaction{}, "uk_ggr_transaction_event"); err != nil {
+			return err
+		}
+	}
+	if migrator.HasIndex(&pojo.GGRTransaction{}, "uk_ggr_transaction_txn_id") {
+		if err := migrator.DropIndex(&pojo.GGRTransaction{}, "uk_ggr_transaction_txn_id"); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func ensureTrialLuckyMoneyItemPickIndex(db *gorm.DB) error {

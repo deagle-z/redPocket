@@ -149,8 +149,11 @@ func TestGGRMoneyFormulaAndFingerprint(t *testing.T) {
 	if first == second {
 		t.Fatal("fingerprint did not change with win_money")
 	}
-	if ggrTransactionStorageKey("txn-1") != ggrTransactionStorageKey("txn-1") {
+	if ggrTransactionStorageKey("txn-1", "debit") != ggrTransactionStorageKey("txn-1", "debit") {
 		t.Fatal("transaction storage key is not deterministic")
+	}
+	if ggrTransactionStorageKey("txn-1", "debit") == ggrTransactionStorageKey("txn-1", "credit") {
+		t.Fatal("debit and credit storage keys must differ for the same txn_id")
 	}
 }
 
