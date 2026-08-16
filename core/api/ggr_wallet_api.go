@@ -39,9 +39,7 @@ type ggrWalletRequest struct {
 	AgentSecret  string              `json:"agent_secret"`
 	AgentBalance *json.Number        `json:"agent_balance"`
 	UserCode     string              `json:"user_code"`
-	UserToken    string              `json:"user_token"`
 	UserBalance  *json.Number        `json:"user_balance"`
-	GameCode     string              `json:"game_code"`
 	GameType     string              `json:"game_type"`
 	Info         string              `json:"info"`
 	Slot         *ggrTransactionGame `json:"slot"`
@@ -70,7 +68,6 @@ type ggrWalletResponse struct {
 type validatedGGRTransaction struct {
 	AgentCode          string
 	UserCode           string
-	UserToken          string
 	GameType           string
 	Info               string
 	ProviderCode       string
@@ -166,22 +163,29 @@ func decodeGGRWalletRequest(ctx *gin.Context) (ggrWalletRequest, error) {
 }
 
 func handleGGRUserBalance(ctx *gin.Context, db *gorm.DB, req ggrWalletRequest) {
-	userCode := strings.TrimSpace(req.UserCode)
-	userToken := strings.TrimSpace(req.UserToken)
-	if userCode == "" || userToken == "" || userCode != userToken || strings.TrimSpace(req.GameCode) == "" {
+	userCode, err := validateGGRBalanceUserCode(req)
+	if err != nil {
 		ggrWalletFailure(ctx, true, ggrMessageInternalError)
 		return
 	}
 
 	var user pojo.TgUser
-	if err := db.Select("id, uid, balance, status").
-		Where("uid = ? AND status <> ?", userToken, int8(-1)).
+	if err = db.Select("id, uid, balance, status").
+		Where("uid = ? AND status <> ?", userCode, int8(-1)).
 		First(&user).Error; err != nil || user.Status != 1 {
 		ggrWalletFailure(ctx, true, ggrMessageInternalError)
 		return
 	}
 	balance := utils.Truncate2(user.Balance)
 	ctx.JSON(http.StatusOK, ggrWalletResponse{Status: 1, UserBalance: &balance})
+}
+
+func validateGGRBalanceUserCode(req ggrWalletRequest) (string, error) {
+	userCode := strings.TrimSpace(req.UserCode)
+	if userCode == "" {
+		return "", errors.New("ggr user_code is required")
+	}
+	return userCode, nil
 }
 
 func handleGGRTransaction(ctx *gin.Context, db *gorm.DB, cfg game.GGRConfig, req ggrWalletRequest) {
@@ -220,13 +224,12 @@ func validateGGRTransaction(req ggrWalletRequest, cfg game.GGRConfig) (validated
 	result := validatedGGRTransaction{
 		AgentCode:  strings.TrimSpace(req.AgentCode),
 		UserCode:   strings.TrimSpace(req.UserCode),
-		UserToken:  strings.TrimSpace(req.UserToken),
 		GameType:   strings.TrimSpace(req.GameType),
 		Info:       req.Info,
 		ReceivedAt: time.Now(),
 	}
-	if result.UserCode == "" || result.UserToken == "" || result.UserCode != result.UserToken {
-		return result, errors.New("ggr user_code and user_token must match tg_user.uid")
+	if result.UserCode == "" {
+		return result, errors.New("ggr user_code is required")
 	}
 
 	transactionGame, err := ggrTransactionGameForType(req)
@@ -311,7 +314,6 @@ func validateGGRTransactionFieldLengths(req validatedGGRTransaction) error {
 	}{
 		{name: "agent_code", value: req.AgentCode, max: 128},
 		{name: "user_code", value: req.UserCode, max: 255},
-		{name: "user_token", value: req.UserToken, max: 255},
 		{name: "game_type", value: req.GameType, max: 16},
 		{name: "provider_code", value: req.ProviderCode, max: 64},
 		{name: "game_code", value: req.GameCode, max: 255},
@@ -421,9 +423,11 @@ func parseGGRRoundID(raw json.RawMessage) (string, error) {
 
 func fingerprintGGRTransaction(req validatedGGRTransaction) (string, error) {
 	canonical := ggrTransactionFingerprint{
-		AgentCode:    req.AgentCode,
-		UserCode:     req.UserCode,
-		UserToken:    req.UserToken,
+		AgentCode: req.AgentCode,
+		UserCode:  req.UserCode,
+		// Preserve the previous canonical fingerprint for in-flight retries.
+		// Before removal, user_token was required to equal user_code.
+		UserToken:    req.UserCode,
 		GameType:     req.GameType,
 		Info:         req.Info,
 		ProviderCode: req.ProviderCode,
@@ -475,12 +479,9 @@ func applyGGRTransaction(db *gorm.DB, req validatedGGRTransaction, appGame pojo.
 	err := db.Transaction(func(tx *gorm.DB) error {
 		var user pojo.TgUser
 		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
-			Where("uid = ? AND status <> ?", req.UserToken, int8(-1)).
+			Where("uid = ? AND status <> ?", req.UserCode, int8(-1)).
 			First(&user).Error; err != nil {
 			return err
-		}
-		if strings.TrimSpace(user.Uid) != req.UserCode {
-			return errors.New("ggr player identity mismatch")
 		}
 		outcome.UserID = user.ID
 		outcome.TenantID = user.TenantId
@@ -572,12 +573,13 @@ func calculateGGREndBalance(startBalance float64, betMoney float64, winMoney flo
 
 func buildGGRTransactionRecord(req validatedGGRTransaction, user pojo.TgUser, startBalance float64, endBalance float64, status int, message string) pojo.GGRTransaction {
 	return pojo.GGRTransaction{
-		TxnID:              req.TxnID,
-		UserID:             user.ID,
-		UID:                strings.TrimSpace(user.Uid),
-		AgentCode:          req.AgentCode,
-		UserCode:           req.UserCode,
-		UserToken:          req.UserToken,
+		TxnID:     req.TxnID,
+		UserID:    user.ID,
+		UID:       strings.TrimSpace(user.Uid),
+		AgentCode: req.AgentCode,
+		UserCode:  req.UserCode,
+		// Keep the legacy non-null column compatible using the canonical UID.
+		UserToken:          req.UserCode,
 		GameType:           req.GameType,
 		ProviderCode:       req.ProviderCode,
 		GameCode:           req.GameCode,

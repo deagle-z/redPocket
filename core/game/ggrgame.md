@@ -8,7 +8,7 @@
 - 请求方式：本文涉及的接口均使用 `POST`
 - 请求格式：JSON；Seamless API、Game Launch 和 In-Game History 页面明确要求 `Content-Type: application/json`
 - Game API 鉴权：`agent_code`、`agent_token` 放在 JSON 请求体中
-- Seamless API 回调身份字段：请求体包含 `agent_code`、`agent_secret` 和 `user_token`；本项目将 `user_token` 映射为玩家 `tg_user.uid`，它不是独立密钥
+- Seamless API 回调身份字段：本项目请求体只使用 `agent_code`、`agent_secret` 和 `user_code` 定位并鉴权玩家
 - 通用状态：`status = 1` 表示成功，`status = 0` 表示失败
 
 > 注意：本文只记录原始页面明确给出的字段、类型和行为。原文未说明的必填性、枚举、分页起始值、时间时区、金额精度等，不在本文中推断。
@@ -30,16 +30,17 @@
 
 | 项目 | 已确认约定 |
 | --- | --- |
-| `user_token` | 直接使用玩家 `tg_user.uid`；查询玩家时按 UID 精确匹配 |
+| 余额查询玩家标识 | 直接使用 `user_code`，按 `tg_user.uid` 精确匹配；不读取 `user_token` 或 `game_code` |
+| 交易玩家标识 | 直接使用 `user_code`，按 `tg_user.uid` 精确匹配；不读取 `user_token` |
 | 钱包字段 | 所有 GGR 游戏类型统一读取和更新 `tg_user.balance` |
 | Sportsbook 钱包 | 同样使用 `tg_user.balance`，不使用 `tg_user.sport_balance` |
-| 玩家代码 | `user_code = user_token = tg_user.uid` |
+| 玩家代码 | `user_code = tg_user.uid` |
 | 金额精度 | 所有金额进入业务计算前使用 `utils.Truncate2` 截取两位小数 |
 | 联合交易 | 原子计算 `E = S - bet_money + win_money`，只在最终余额小于 `0` 时返回余额不足 |
 | 重复交易 | `txn_id` 在租户 `ggr_transaction` 表保留 24 小时；保留期内相同请求幂等，不同内容返回 `INTERNAL_ERROR` |
 | 失败幂等 | 首次余额不足也写入交易表，24 小时保留期内相同 `txn_id` 固定返回余额不足 |
 
-`user_token` 在本项目中是玩家标识而不是秘密凭证，不能用它代替 `agent_secret` 或后续确认的其他回调安全机制。
+GGR 原始回调中的 `user_token` 不作为本项目的玩家标识或鉴权凭据；回调鉴权只使用 `agent_code` 和 `agent_secret`。
 
 ## 接口一览
 
@@ -741,8 +742,8 @@ Content-Type: application/json
 | `agent_code` | `string` | 是 | 代理代码 |
 | `agent_secret` | `string` | 是 | 代理 Secret Key |
 | `user_code` | `string` | 是 | 玩家标识 |
-| `user_token` | `string` | 是 | GGR 定义为玩家会话 Token；本项目传递并按 `tg_user.uid` 解析 |
-| `game_code` | `string` | 是 | 玩家当前游戏代码 |
+| `user_token` | `string` | GGR 原文是；本项目否 | 本项目余额查询不读取该字段 |
+| `game_code` | `string` | GGR 原文是；本项目否 | 本项目余额查询不读取该字段 |
 
 ### 请求示例
 
@@ -751,9 +752,7 @@ Content-Type: application/json
   "method": "user_balance",
   "agent_code": "<AGENT_CODE>",
   "agent_secret": "<AGENT_SECRET>",
-  "user_code": "<USER_CODE>",
-  "user_token": "<TG_USER_UID>",
-  "game_code": "vs20olympgate"
+  "user_code": "<TG_USER_UID>"
 }
 ```
 
@@ -820,7 +819,7 @@ Content-Type: application/json
 | `agent_secret` | `string` | 代理 Secret Key |
 | `agent_balance` | `number` | 请求示例中的代理余额；原文未说明站点应如何使用该值 |
 | `user_code` | `string` | 玩家标识 |
-| `user_token` | `string` | GGR 定义为玩家会话 Token；本项目传递并按 `tg_user.uid` 解析 |
+| `user_token` | `string` | GGR 原始字段；本项目不读取或要求该字段 |
 | `user_balance` | `number` | 请求示例中的玩家余额；原文未说明该值是否仅供参考 |
 | `game_type` | `string` | 游戏类型，本文页面列出 `slot`、`live`、`SB`、`MN` |
 | `info` | `string` | 真人和体育交易的顶层扩展信息，为序列化后的 JSON 字符串 |
@@ -867,7 +866,6 @@ Content-Type: application/json
   "agent_secret": "<AGENT_SECRET>",
   "agent_balance": 10000000,
   "user_code": "<USER_CODE>",
-  "user_token": "<TG_USER_UID>",
   "user_balance": 99200,
   "game_type": "slot",
   "slot": {
@@ -894,7 +892,6 @@ Content-Type: application/json
   "agent_secret": "<AGENT_SECRET>",
   "agent_balance": 10000000,
   "user_code": "<USER_CODE>",
-  "user_token": "<TG_USER_UID>",
   "user_balance": 102000,
   "game_type": "live",
   "info": "<STRINGIFIED_JSON>",
@@ -920,7 +917,6 @@ Content-Type: application/json
   "agent_secret": "<AGENT_SECRET>",
   "agent_balance": 10000000,
   "user_code": "<USER_CODE>",
-  "user_token": "<TG_USER_UID>",
   "user_balance": 102000,
   "game_type": "SB",
   "info": "<STRINGIFIED_JSON>",
@@ -946,7 +942,6 @@ Content-Type: application/json
   "agent_secret": "<AGENT_SECRET>",
   "agent_balance": 10000000,
   "user_code": "<USER_CODE>",
-  "user_token": "<TG_USER_UID>",
   "user_balance": 99200,
   "game_type": "MN",
   "MN": {
@@ -1092,8 +1087,8 @@ App 继续调用现有 `POST /api/v1/app/appGame/launch`。当游戏 `platform_c
 
 - GGR Profile 的 Site Endpoint 配置为租户 HTTPS Origin，不包含 `/gold_api`；GGR 会追加该路径。
 - `POST /gold_api` 不使用平台 JWT，以请求体中的 `agent_code`、`agent_secret` 鉴权。
-- `user_balance` 成功时从 `tg_user.balance` 返回当前余额，包括余额为 `0` 的情况。
-- `transaction` 在用户行锁保护的数据库事务内更新余额，并写入 `ggr_transaction`、`cash_history`、`app_user_bet_record` 和提现流水事件。
+- `user_balance` 仅使用 `user_code` 按 `tg_user.uid` 查询，并从 `tg_user.balance` 返回当前余额，包括余额为 `0` 的情况；不要求 `user_token` 或 `game_code`。
+- `transaction` 仅使用 `user_code` 按 `tg_user.uid` 查询玩家，不要求 `user_token`；随后在用户行锁保护的数据库事务内更新余额，并写入 `ggr_transaction`、`cash_history`、`app_user_bet_record` 和提现流水事件。
 - 顶层 `agent_balance`、`user_balance` 只保存为审计快照，不参与本地余额计算。
 - 所有 GGR 业务响应均使用 HTTP 200，并直接返回 GGR JSON，不套用项目通用响应结构。
 - `runScheduler = true` 时，调度器每小时整点按 `received_at < 当前时间 - 24 小时` 清理所有启用租户的 `ggr_transaction`；记录删除后对应 `txn_id` 不再具备本地幂等保护。

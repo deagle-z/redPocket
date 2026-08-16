@@ -37,7 +37,6 @@ func TestValidateGGRTransactionAcceptsAllGameTypes(t *testing.T) {
 				Method:    ggrMethodTransaction,
 				AgentCode: "agent-1",
 				UserCode:  "12345678",
-				UserToken: "12345678",
 				GameType:  test.gameType,
 			}
 			item := &ggrTransactionGame{
@@ -83,7 +82,6 @@ func TestValidateGGRTransactionStrictMoneyRules(t *testing.T) {
 				Method:    ggrMethodTransaction,
 				AgentCode: "agent-1",
 				UserCode:  "12345678",
-				UserToken: "12345678",
 				GameType:  "slot",
 				Slot: &ggrTransactionGame{
 					ProviderCode: "PRAGMATIC",
@@ -102,14 +100,13 @@ func TestValidateGGRTransactionStrictMoneyRules(t *testing.T) {
 	}
 }
 
-func TestValidateGGRTransactionRejectsIdentityAndObjectMismatch(t *testing.T) {
+func TestValidateGGRTransactionRejectsObjectMismatch(t *testing.T) {
 	bet := json.Number("1")
 	win := json.Number("0")
 	req := ggrWalletRequest{
 		Method:    ggrMethodTransaction,
 		AgentCode: "agent-1",
 		UserCode:  "12345678",
-		UserToken: "87654321",
 		GameType:  "live",
 		Slot: &ggrTransactionGame{
 			ProviderCode: "PRAGMATIC",
@@ -122,11 +119,6 @@ func TestValidateGGRTransactionRejectsIdentityAndObjectMismatch(t *testing.T) {
 		},
 	}
 	cfg := game.GGRConfig{CategoryMap: map[string]string{"PRAGMATIC": "slots"}}
-	if _, err := validateGGRTransaction(req, cfg); err == nil {
-		t.Fatal("identity mismatch error = nil")
-	}
-
-	req.UserToken = req.UserCode
 	if _, err := validateGGRTransaction(req, cfg); err == nil {
 		t.Fatal("game object mismatch error = nil")
 	}
@@ -141,7 +133,7 @@ func TestGGRMoneyFormulaAndFingerprint(t *testing.T) {
 	}
 
 	base := validatedGGRTransaction{
-		AgentCode: "agent-1", UserCode: "12345678", UserToken: "12345678", GameType: "slot",
+		AgentCode: "agent-1", UserCode: "12345678", GameType: "slot",
 		ProviderCode: "PRAGMATIC", GameCode: "game-1", BetType: "BASE", BetMoney: 10,
 		WinMoney: 2, RoundID: "123", TxnID: "txn-1", TxnType: "debit_credit",
 	}
@@ -170,5 +162,19 @@ func TestGGRWalletResponseKeepsZeroBalance(t *testing.T) {
 	}
 	if !strings.Contains(string(body), `"user_balance":0`) {
 		t.Fatalf("response = %s, want explicit zero user_balance", body)
+	}
+}
+
+func TestValidateGGRBalanceUserCodeOnlyRequiresUserCode(t *testing.T) {
+	got, err := validateGGRBalanceUserCode(ggrWalletRequest{UserCode: " 12345678 "})
+	if err != nil {
+		t.Fatalf("validateGGRBalanceUserCode() error = %v", err)
+	}
+	if got != "12345678" {
+		t.Fatalf("validateGGRBalanceUserCode() = %q, want %q", got, "12345678")
+	}
+
+	if _, err := validateGGRBalanceUserCode(ggrWalletRequest{}); err == nil {
+		t.Fatal("validateGGRBalanceUserCode() accepted an empty user_code")
 	}
 }
